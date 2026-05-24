@@ -1,3 +1,3 @@
 #!/bin/bash
 
-pi --tools read,grep,find,ls,edit,write --continue
+pi --tools read,grep,find,ls,edit,write,git --continue
