@@ -17,11 +17,19 @@
         commonAgentRuntime = common-nix-runtime.lib.commonAgentRuntime {
           inherit pkgs;
         };
+        pi-startup = pkgs.writeShellScriptBin "pi-startup" ''
+          echo "Starting PI runtime..."
+          pi --tools read,grep,find,ls,edit,write,git --continue
+        '';
+
       in
       {
+        packages.pi-start = pi-startup;
+
         devShells.default = pkgs.mkShell {
           packages = commonAgentRuntime ++ [
             # project-specific tools here
+            pi-startup
           ];
 
           shellHook = ''
