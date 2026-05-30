@@ -1,5 +1,5 @@
 {
-  description = "Project with Pi agent runtime";
+  description = "Reusable Pi coding-agent runtime with bubblewrap isolation";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
@@ -7,35 +7,367 @@
     common-nix-runtime.url = "git+file:///home/samo/CODEFAB/common-nix-runtime";
   };
 
-  outputs = { self, nixpkgs, flake-utils, common-nix-runtime, ...}:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        # Import nixpkgs with rust-overlay
-        pkgs = import nixpkgs {
-          inherit system;
-        };
-        commonAgentRuntime = common-nix-runtime.lib.commonAgentRuntime {
-          inherit pkgs;
-        };
-        pi-startup = pkgs.writeShellScriptBin "pi-startup" ''
-          echo "Starting PI runtime..."
-          pi --tools read,grep,find,ls,edit,write,git --continue
+  outputs = { self, nixpkgs, flake-utils, common-nix-runtime, ... }:
+    let
+      defaultTools = "read,bash,edit,write,grep,find,ls";
+
+      mkRuntime = pkgs:
+        (common-nix-runtime.lib.commonAgentRuntime { inherit pkgs; })
+        ++ (with pkgs; [
+          bubblewrap
+          bash
+          coreutils
+          cacert
+          fd
+          findutils
+          gawk
+          gnugrep
+          gnused
+          gnutar
+          gzip
+          which
+        ]);
+
+      mkPiBwrap = pkgs:
+        let
+          runtimePackages = mkRuntime pkgs;
+          runtimePath = pkgs.lib.makeBinPath runtimePackages;
+        in
+        pkgs.writeShellScriptBin "pi-bwrap" ''
+          set -euo pipefail
+
+          export PATH="${runtimePath}:''${PATH:-}"
+          DEFAULT_PI_TOOLS="${defaultTools}"
+          if [ -n "''${PI_BWRAP_DEFAULT_TOOLS:-}" ]; then
+            DEFAULT_PI_TOOLS="$PI_BWRAP_DEFAULT_TOOLS"
+          fi
+
+          usage() {
+            cat <<'USAGE'
+          pi-bwrap - run pi-coding-agent inside a rootless bubblewrap sandbox
+
+          Usage:
+            pi-bwrap [pi args...]
+            pi-bwrap -- [pi args...]
+
+          Defaults when no pi args are given:
+            pi --tools read,bash,edit,write,grep,find,ls --continue
+
+          Security model:
+            - mounts the detected project root read-write at /workspace
+            - mounts /nix/store read-only for devshell tools
+            - mounts /usr/local/bin and the global pi npm package read-only when present
+            - uses an isolated HOME at /home/pi
+            - copies host pi auth.json/models.json into sandbox state by default
+            - does not mount host $HOME, ~/.ssh, cloud credentials, or docker sockets
+            - clears the environment, then passes terminal basics and selected LLM provider vars
+
+          Environment knobs:
+            PI_BWRAP_PROJECT_ROOT=/path   Project to mount; default: git root, else $PWD
+            PI_BWRAP_USE_GIT_ROOT=0       Use $PWD instead of auto git-root detection
+            PI_BWRAP_STATE_DIR=/path      Persistent sandbox home/config; default: XDG state per project
+            PI_BWRAP_EPHEMERAL_HOME=1     Use a temporary sandbox home/config for this run
+            PI_BWRAP_IMPORT_AUTH=0        Do not import host ~/.pi/agent auth files
+            PI_BWRAP_AUTH_SYNC=missing    Copy auth only if sandbox copy is absent (default: always)
+            PI_BWRAP_HOST_AGENT_DIR=/path Host pi agent dir (default: $PI_CODING_AGENT_DIR or ~/.pi/agent)
+            PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
+            PI_BWRAP_NET=0                Disable network namespace sharing
+            PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
+
+          To pass pi's own -h/--help, use:
+            pi-bwrap -- --help
+          USAGE
+          }
+
+          if [ "''${1:-}" = "--help" ] || [ "''${1:-}" = "-h" ]; then
+            usage
+            exit 0
+          fi
+
+          if [ "''${1:-}" = "--" ]; then
+            shift
+          fi
+
+          if ! command -v pi >/dev/null 2>&1; then
+            echo "pi-bwrap: pi was not found on PATH before entering the sandbox." >&2
+            echo "Install pi globally, or enter a shell that provides it, then retry." >&2
+            exit 127
+          fi
+
+          project_root="''${PI_BWRAP_PROJECT_ROOT:-}"
+          if [ -z "$project_root" ]; then
+            if [ "''${PI_BWRAP_USE_GIT_ROOT:-1}" = "1" ] && command -v git >/dev/null 2>&1; then
+              project_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+            fi
+            if [ -z "$project_root" ]; then
+              project_root="$PWD"
+            fi
+          fi
+          project_root="$(realpath -m "$project_root")"
+          if [ ! -d "$project_root" ]; then
+            echo "pi-bwrap: project root does not exist: $project_root" >&2
+            exit 2
+          fi
+
+          host_cwd="$(realpath -m "$PWD")"
+          case "$host_cwd" in
+            "$project_root")
+              inside_cwd="/workspace"
+              ;;
+            "$project_root"/*)
+              inside_cwd="/workspace''${host_cwd#"$project_root"}"
+              ;;
+            *)
+              inside_cwd="/workspace"
+              ;;
+          esac
+
+          if [ "''${PI_BWRAP_EPHEMERAL_HOME:-0}" = "1" ]; then
+            state_base="$(mktemp -d "''${TMPDIR:-/tmp}/pi-bwrap.XXXXXX")"
+            cleanup_tmp="$state_base"
+            trap 'rm -rf "$cleanup_tmp"' EXIT
+          else
+            project_hash="$(printf '%s' "$project_root" | sha256sum | awk '{print $1}' | cut -c1-16)"
+            state_parent="''${XDG_STATE_HOME:-''${HOME:-/tmp}/.local/state}"
+            state_base="''${PI_BWRAP_STATE_DIR:-$state_parent/pi-env/$project_hash}"
+            state_base="$(realpath -m "$state_base")"
+          fi
+
+          mkdir -p \
+            "$state_base/home/.pi/agent" \
+            "$state_base/home/.cache" \
+            "$state_base/agent" \
+            "$state_base/cache"
+          chmod 700 "$state_base" "$state_base/home" "$state_base/home/.pi" "$state_base/home/.cache" "$state_base/agent" "$state_base/cache" 2>/dev/null || true
+
+          if [ "''${PI_BWRAP_IMPORT_AUTH:-1}" = "1" ]; then
+            host_agent_dir="''${PI_BWRAP_HOST_AGENT_DIR:-}"
+            if [ -z "$host_agent_dir" ] && [ -n "''${PI_CODING_AGENT_DIR:-}" ]; then
+              host_agent_dir="$PI_CODING_AGENT_DIR"
+            fi
+            if [ -z "$host_agent_dir" ] && [ -n "''${HOME:-}" ]; then
+              host_agent_dir="$HOME/.pi/agent"
+            fi
+
+            if [ -n "$host_agent_dir" ]; then
+              host_agent_dir="$(realpath -m "$host_agent_dir")"
+              if [ -d "$host_agent_dir" ]; then
+                for auth_file in auth.json models.json; do
+                  if [ -f "$host_agent_dir/$auth_file" ]; then
+                    if [ "''${PI_BWRAP_AUTH_SYNC:-always}" = "always" ] || [ ! -e "$state_base/agent/$auth_file" ]; then
+                      cp -p "$host_agent_dir/$auth_file" "$state_base/agent/$auth_file"
+                      chmod 600 "$state_base/agent/$auth_file" 2>/dev/null || true
+                    fi
+                  fi
+                done
+              fi
+            fi
+          fi
+
+          if [ "$#" -eq 0 ]; then
+            pi_args=(--tools "$DEFAULT_PI_TOOLS" --continue)
+          else
+            pi_args=("$@")
+          fi
+
+          env_args=(--clearenv)
+
+          set_env() {
+            env_args+=(--setenv "$1" "$2")
+          }
+
+          copy_env() {
+            local name="$1"
+            local value
+            if value="$(printenv "$name" 2>/dev/null)" && [ -n "$value" ]; then
+              set_env "$name" "$value"
+            fi
+          }
+
+          set_env TERM "''${TERM:-xterm-256color}"
+          copy_env COLORTERM
+          copy_env NO_COLOR
+          copy_env FORCE_COLOR
+
+          for name in \
+            ANTHROPIC_API_KEY \
+            OPENAI_API_KEY OPENAI_BASE_URL \
+            AZURE_OPENAI_API_KEY AZURE_OPENAI_BASE_URL AZURE_OPENAI_RESOURCE_NAME AZURE_OPENAI_API_VERSION AZURE_OPENAI_DEPLOYMENT_NAME_MAP \
+            DEEPSEEK_API_KEY GEMINI_API_KEY MISTRAL_API_KEY GROQ_API_KEY CEREBRAS_API_KEY \
+            CLOUDFLARE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_GATEWAY_ID \
+            XAI_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY ZAI_API_KEY OPENCODE_API_KEY \
+            HF_TOKEN FIREWORKS_API_KEY TOGETHER_API_KEY KIMI_API_KEY MINIMAX_API_KEY MINIMAX_CN_API_KEY \
+            XIAOMI_API_KEY XIAOMI_TOKEN_PLAN_CN_API_KEY XIAOMI_TOKEN_PLAN_AMS_API_KEY XIAOMI_TOKEN_PLAN_SGP_API_KEY
+          do
+            copy_env "$name"
+          done
+
+          if [ -n "''${PI_BWRAP_PASS_ENV:-}" ]; then
+            for name in $(printf '%s' "''${PI_BWRAP_PASS_ENV}" | tr ',:' '  '); do
+              copy_env "$name"
+            done
+          fi
+
+          bwrap_args=(
+            --die-with-parent
+            --unshare-all
+            --new-session
+            --proc /proc
+            --dev /dev
+            --tmpfs /tmp
+            --dir /run
+            --dir /var
+            --tmpfs /var/tmp
+            --dir /etc
+            --dir /etc/ssl
+            --dir /bin
+            --dir /nix
+            --dir /usr
+            --dir /usr/bin
+            --dir /usr/local
+            --dir /usr/local/bin
+            --dir /usr/local/lib
+            --dir /usr/local/lib/node_modules
+            --dir /usr/local/lib/node_modules/@earendil-works
+            --dir /home
+            --ro-bind /nix/store /nix/store
+            --ro-bind-try /etc/passwd /etc/passwd
+            --ro-bind-try /etc/group /etc/group
+            --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf
+            --ro-bind-try /etc/hosts /etc/hosts
+            --ro-bind-try /etc/resolv.conf /etc/resolv.conf
+            --ro-bind-try /etc/ssl/certs /etc/ssl/certs
+            --ro-bind-try /etc/ca-certificates /etc/ca-certificates
+            --ro-bind-try /etc/pki /etc/pki
+            --ro-bind-try /usr/local/bin /usr/local/bin
+            --ro-bind-try /usr/local/lib/node_modules/@earendil-works/pi-coding-agent /usr/local/lib/node_modules/@earendil-works/pi-coding-agent
+            --symlink ${pkgs.bash}/bin/bash /bin/bash
+            --symlink ${pkgs.bash}/bin/bash /bin/sh
+            --symlink ${pkgs.coreutils}/bin/env /usr/bin/env
+            --bind "$project_root" /workspace
+            --bind "$state_base/home" /home/pi
+            --bind "$state_base/agent" /home/pi/.pi/agent
+            --bind "$state_base/cache" /home/pi/.cache
+            --chdir "$inside_cwd"
+            --setenv HOME /home/pi
+            --setenv SHELL /bin/bash
+            --setenv USER pi
+            --setenv LOGNAME pi
+            --setenv PWD "$inside_cwd"
+            --setenv PI_CODING_AGENT_DIR /home/pi/.pi/agent
+            --setenv PI_CODING_AGENT_SESSION_DIR /home/pi/.pi/agent/sessions
+            --setenv XDG_CACHE_HOME /home/pi/.cache
+            --setenv TMPDIR /tmp
+            --setenv PATH "${runtimePath}:/usr/local/bin:/usr/bin:/bin"
+            --setenv SSL_CERT_FILE "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            --setenv NIX_SSL_CERT_FILE "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            --setenv GIT_CONFIG_NOSYSTEM 1
+            --setenv PI_SKIP_VERSION_CHECK "''${PI_SKIP_VERSION_CHECK:-1}"
+            --setenv PI_TELEMETRY "''${PI_TELEMETRY:-0}"
+          )
+
+          if [ "''${PI_BWRAP_NET:-1}" = "1" ]; then
+            bwrap_args+=(--share-net)
+          fi
+
+          exec ${pkgs.bubblewrap}/bin/bwrap \
+            "''${env_args[@]}" \
+            "''${bwrap_args[@]}" \
+            -- ${pkgs.bash}/bin/bash -lc 'exec pi "$@"' pi "''${pi_args[@]}"
         '';
 
-      in
-      {
-        packages.pi-start = pi-startup;
+      mkPiStart = pkgs:
+        let
+          piBwrap = mkPiBwrap pkgs;
+        in
+        pkgs.writeShellScriptBin "pi-start" ''
+          set -euo pipefail
+          tools="${defaultTools}"
+          if [ -n "''${PI_BWRAP_DEFAULT_TOOLS:-}" ]; then
+            tools="$PI_BWRAP_DEFAULT_TOOLS"
+          fi
+          exec ${piBwrap}/bin/pi-bwrap --tools "$tools" --continue "$@"
+        '';
 
-        devShells.default = pkgs.mkShell {
-          packages = commonAgentRuntime ++ [
-            # project-specific tools here
-            pi-startup
-          ];
+      mkPiStartup = pkgs:
+        let
+          piStart = mkPiStart pkgs;
+        in
+        pkgs.writeShellScriptBin "pi-startup" ''
+          set -euo pipefail
+          exec ${piStart}/bin/pi-start "$@"
+        '';
+
+      mkPiShell = { pkgs, extraPackages ? [ ], shellHook ? "" }:
+        let
+          piBwrap = mkPiBwrap pkgs;
+          piStart = mkPiStart pkgs;
+          piStartup = mkPiStartup pkgs;
+        in
+        pkgs.mkShell {
+          packages = (mkRuntime pkgs) ++ [
+            piBwrap
+            piStart
+            piStartup
+          ] ++ extraPackages;
 
           shellHook = ''
             export PS1="(nix-dev) \u@\h:\w$ "
-            echo "Pi agent runtime loaded"
-          '';
+            if [ -z "''${PI_ENV_QUIET:-}" ]; then
+              echo "Pi agent runtime loaded"
+              echo "Use 'pi-start' for isolated default startup, or 'pi-bwrap -- <pi args>' for custom runs."
+            fi
+          '' + shellHook;
         };
+    in
+    {
+      lib = {
+        inherit defaultTools mkRuntime mkPiBwrap mkPiStart mkPiStartup mkPiShell;
+      };
+    }
+    // flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+        piBwrap = mkPiBwrap pkgs;
+        piStart = mkPiStart pkgs;
+        piStartup = mkPiStartup pkgs;
+        piRuntime = pkgs.buildEnv {
+          name = "pi-env-runtime";
+          paths = (mkRuntime pkgs) ++ [
+            piBwrap
+            piStart
+            piStartup
+          ];
+        };
+      in
+      {
+        packages = {
+          default = piStart;
+          pi-start = piStart;
+          pi-startup = piStartup;
+          pi-bwrap = piBwrap;
+          pi-runtime = piRuntime;
+        };
+
+        apps = {
+          default = {
+            type = "app";
+            program = "${piStart}/bin/pi-start";
+          };
+          pi-start = {
+            type = "app";
+            program = "${piStart}/bin/pi-start";
+          };
+          pi-bwrap = {
+            type = "app";
+            program = "${piBwrap}/bin/pi-bwrap";
+          };
+          pi-startup = {
+            type = "app";
+            program = "${piStartup}/bin/pi-startup";
+          };
+        };
+
+        devShells.default = mkPiShell { inherit pkgs; };
       });
 }
