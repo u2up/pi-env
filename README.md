@@ -39,11 +39,12 @@ pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 - uses isolated `$HOME=/home/pi`;
 - stores sandbox Pi state outside the project by default under `$XDG_STATE_HOME/pi-env/<project-hash>`;
 - copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
+- bind-mounts only the host Pi session directory for the current working directory into the sandbox by default (disabled for ephemeral homes), so `/resume` and `--continue` can access sessions for the directory/project without exposing all sessions;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or Docker sockets;
 - clears the environment, then passes only terminal basics and selected LLM provider variables;
 - shares the host network by default so Pi can reach model providers.
 
-Important: with the `bash`/`read` tools enabled, auth copied into the sandbox can be read by commands/tools inside the sandbox. This is still safer than mounting your whole home, but use least-privilege API keys or a provider proxy when possible.
+Important: with the `bash`/`read` tools enabled, auth copied into the sandbox and project sessions bind-mounted into the sandbox can be read by commands/tools inside the sandbox. This is still safer than mounting your whole home, but use least-privilege API keys or a provider proxy when possible.
 
 ## Useful environment knobs
 
@@ -54,6 +55,7 @@ PI_BWRAP_STATE_DIR=/path/to/state       # persistent sandbox home/config
 PI_BWRAP_EPHEMERAL_HOME=1               # temporary home/config for this run
 PI_BWRAP_IMPORT_AUTH=0                  # do not import host ~/.pi/agent auth files
 PI_BWRAP_AUTH_SYNC=missing              # copy auth only if sandbox copy is absent; default is always
+PI_BWRAP_IMPORT_SESSIONS=0              # do not bind host sessions for the current working directory; defaults to 1 unless PI_BWRAP_EPHEMERAL_HOME=1
 PI_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi/agent
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_NET=0                          # disable network sharing

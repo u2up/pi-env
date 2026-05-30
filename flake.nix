@@ -59,6 +59,7 @@
             - mounts /usr/local/bin and the global pi npm package read-only when present
             - uses an isolated HOME at /home/pi
             - copies host pi auth.json/models.json into sandbox state by default
+            - bind-mounts only the host pi sessions for the current working directory by default (disabled for ephemeral homes)
             - does not mount host $HOME, ~/.ssh, cloud credentials, or docker sockets
             - clears the environment, then passes terminal basics and selected LLM provider vars
 
@@ -69,6 +70,7 @@
             PI_BWRAP_EPHEMERAL_HOME=1     Use a temporary sandbox home/config for this run
             PI_BWRAP_IMPORT_AUTH=0        Do not import host ~/.pi/agent auth files
             PI_BWRAP_AUTH_SYNC=missing    Copy auth only if sandbox copy is absent (default: always)
+            PI_BWRAP_IMPORT_SESSIONS=0    Do not bind project sessions from host ~/.pi/agent (default: 1, or 0 with ephemeral home)
             PI_BWRAP_HOST_AGENT_DIR=/path Host pi agent dir (default: $PI_CODING_AGENT_DIR or ~/.pi/agent)
             PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
             PI_BWRAP_NET=0                Disable network namespace sharing
@@ -136,31 +138,61 @@
           mkdir -p \
             "$state_base/home/.pi/agent" \
             "$state_base/home/.cache" \
-            "$state_base/agent" \
+            "$state_base/agent/sessions" \
             "$state_base/cache"
-          chmod 700 "$state_base" "$state_base/home" "$state_base/home/.pi" "$state_base/home/.cache" "$state_base/agent" "$state_base/cache" 2>/dev/null || true
+          chmod 700 "$state_base" "$state_base/home" "$state_base/home/.pi" "$state_base/home/.cache" "$state_base/agent" "$state_base/agent/sessions" "$state_base/cache" 2>/dev/null || true
 
-          if [ "''${PI_BWRAP_IMPORT_AUTH:-1}" = "1" ]; then
-            host_agent_dir="''${PI_BWRAP_HOST_AGENT_DIR:-}"
-            if [ -z "$host_agent_dir" ] && [ -n "''${PI_CODING_AGENT_DIR:-}" ]; then
-              host_agent_dir="$PI_CODING_AGENT_DIR"
-            fi
-            if [ -z "$host_agent_dir" ] && [ -n "''${HOME:-}" ]; then
-              host_agent_dir="$HOME/.pi/agent"
-            fi
+          host_agent_dir="''${PI_BWRAP_HOST_AGENT_DIR:-}"
+          if [ -z "$host_agent_dir" ] && [ -n "''${PI_CODING_AGENT_DIR:-}" ]; then
+            host_agent_dir="$PI_CODING_AGENT_DIR"
+          fi
+          if [ -z "$host_agent_dir" ] && [ -n "''${HOME:-}" ]; then
+            host_agent_dir="$HOME/.pi/agent"
+          fi
+          if [ -n "$host_agent_dir" ]; then
+            host_agent_dir="$(realpath -m "$host_agent_dir")"
+          fi
 
-            if [ -n "$host_agent_dir" ]; then
-              host_agent_dir="$(realpath -m "$host_agent_dir")"
-              if [ -d "$host_agent_dir" ]; then
-                for auth_file in auth.json models.json; do
-                  if [ -f "$host_agent_dir/$auth_file" ]; then
-                    if [ "''${PI_BWRAP_AUTH_SYNC:-always}" = "always" ] || [ ! -e "$state_base/agent/$auth_file" ]; then
-                      cp -p "$host_agent_dir/$auth_file" "$state_base/agent/$auth_file"
-                      chmod 600 "$state_base/agent/$auth_file" 2>/dev/null || true
-                    fi
-                  fi
-                done
+          if [ "''${PI_BWRAP_IMPORT_AUTH:-1}" = "1" ] && [ -n "$host_agent_dir" ] && [ -d "$host_agent_dir" ]; then
+            for auth_file in auth.json models.json; do
+              if [ -f "$host_agent_dir/$auth_file" ]; then
+                if [ "''${PI_BWRAP_AUTH_SYNC:-always}" = "always" ] || [ ! -e "$state_base/agent/$auth_file" ]; then
+                  cp -p "$host_agent_dir/$auth_file" "$state_base/agent/$auth_file"
+                  chmod 600 "$state_base/agent/$auth_file" 2>/dev/null || true
+                fi
               fi
+            done
+          fi
+
+          session_bind_args=()
+          session_dir_for_path() {
+            local normalized stripped replaced
+            normalized="$(realpath -m "$1")"
+            stripped="''${normalized#/}"
+            replaced="''${stripped//\//-}"
+            replaced="''${replaced//:/-}"
+            printf -- '--%s--' "$replaced"
+          }
+
+          import_sessions_default=1
+          if [ "''${PI_BWRAP_EPHEMERAL_HOME:-0}" = "1" ]; then
+            import_sessions_default=0
+          fi
+
+          if [ "''${PI_BWRAP_IMPORT_SESSIONS:-$import_sessions_default}" = "1" ] && [ -n "$host_agent_dir" ]; then
+            host_session_dir_name="$(session_dir_for_path "$host_cwd")"
+            sandbox_session_dir_name="$(session_dir_for_path "$inside_cwd")"
+            host_project_session_dir="$host_agent_dir/sessions/$host_session_dir_name"
+            state_workspace_session_dir="$state_base/agent/sessions/$sandbox_session_dir_name"
+
+            if mkdir -p "$host_project_session_dir" "$state_workspace_session_dir" 2>/dev/null; then
+              chmod 700 "$host_agent_dir" "$host_agent_dir/sessions" "$host_project_session_dir" "$state_workspace_session_dir" 2>/dev/null || true
+              if [ -d "$state_workspace_session_dir" ] && [ "$state_workspace_session_dir" != "$host_project_session_dir" ]; then
+                find "$state_workspace_session_dir" -maxdepth 1 -type f -name '*.jsonl' -exec cp -n {} "$host_project_session_dir/" \; 2>/dev/null || true
+              fi
+              session_bind_args=(--bind "$host_project_session_dir" "/home/pi/.pi/agent/sessions/$sandbox_session_dir_name")
+            else
+              echo "pi-bwrap: warning: could not prepare host project session dir: $host_project_session_dir" >&2
             fi
           fi
 
@@ -247,6 +279,7 @@
             --bind "$project_root" /workspace
             --bind "$state_base/home" /home/pi
             --bind "$state_base/agent" /home/pi/.pi/agent
+            "''${session_bind_args[@]}"
             --bind "$state_base/cache" /home/pi/.cache
             --chdir "$inside_cwd"
             --setenv HOME /home/pi
