@@ -15,8 +15,6 @@ Inside `nix develop` the prompt is prefixed with `(nix-dev)`. Start Pi with:
 pi-start
 ```
 
-`pi-startup` is kept as a backwards-compatible alias.
-
 `pi-start` runs:
 
 ```bash

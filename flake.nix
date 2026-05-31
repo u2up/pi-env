@@ -397,26 +397,15 @@
           exec ${piBwrap}/bin/pi-bwrap --tools "$tools" --continue "$@"
         '';
 
-      mkPiStartup = pkgs:
-        let
-          piStart = mkPiStart pkgs;
-        in
-        pkgs.writeShellScriptBin "pi-startup" ''
-          set -euo pipefail
-          exec ${piStart}/bin/pi-start "$@"
-        '';
-
       mkPiShell = { pkgs, extraPackages ? [ ], shellHook ? "" }:
         let
           piBwrap = mkPiBwrap pkgs;
           piStart = mkPiStart pkgs;
-          piStartup = mkPiStartup pkgs;
         in
         pkgs.mkShell {
           packages = (mkRuntime pkgs) ++ [
             piBwrap
             piStart
-            piStartup
           ] ++ extraPackages;
 
           shellHook = ''
@@ -430,7 +419,7 @@
     in
     {
       lib = {
-        inherit defaultTools mkRuntime mkPiBwrap mkPiStart mkPiStartup mkPiShell;
+        inherit defaultTools mkRuntime mkPiBwrap mkPiStart mkPiShell;
       };
     }
     // flake-utils.lib.eachDefaultSystem (system:
@@ -438,13 +427,11 @@
         pkgs = import nixpkgs { inherit system; };
         piBwrap = mkPiBwrap pkgs;
         piStart = mkPiStart pkgs;
-        piStartup = mkPiStartup pkgs;
         piRuntime = pkgs.buildEnv {
           name = "pi-env-runtime";
           paths = (mkRuntime pkgs) ++ [
             piBwrap
             piStart
-            piStartup
           ];
         };
       in
@@ -452,7 +439,6 @@
         packages = {
           default = piStart;
           pi-start = piStart;
-          pi-startup = piStartup;
           pi-bwrap = piBwrap;
           pi-runtime = piRuntime;
         };
@@ -469,10 +455,6 @@
           pi-bwrap = {
             type = "app";
             program = "${piBwrap}/bin/pi-bwrap";
-          };
-          pi-startup = {
-            type = "app";
-            program = "${piStartup}/bin/pi-startup";
           };
         };
 
