@@ -288,6 +288,38 @@ PI_BWRAP_GIT_CONFIG_SYNC=missing pi-start
 
 Git credentials, SSH keys, signing keys, credential helpers' backing stores, and other files referenced from Git config are not imported automatically.
 
+## Upgrading pi-coding-agent
+
+`pi-env` does not pin or install `pi-coding-agent` through Nix. The wrappers expect a `pi` executable to already exist on the host `PATH`, then `pi-bwrap` bind-mounts the host/global Pi installation read-only into the sandbox.
+
+When a new Pi version is available, upgrade Pi on the host, outside `pi-start` / `pi-bwrap`:
+
+```bash
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
+pi --version
+```
+
+Then continue using `pi-env` normally:
+
+```bash
+nix develop
+pi-start
+```
+
+Do not run Pi self-updates from inside the Bubblewrap sandbox: `/usr/local/bin` and the global Pi npm package are mounted read-only there.
+
+If your current global Pi supports self-update and your user has permission to update the global install, this can also be run on the host:
+
+```bash
+pi update --self
+```
+
+That updates Pi itself. It is separate from updating a project's `pi-env` flake input. If another project consumes this repository as a flake input and `pi-env` changed, update that input in the consuming project with:
+
+```bash
+nix flake update pi-env
+```
+
 ## Notes
 
 - Pi's built-in tool list is `read,bash,edit,write,grep,find,ls`. `pi-start` allowlists those by default. If you need extension/custom tools too, include them in `PI_BWRAP_DEFAULT_TOOLS` or call `pi-bwrap` with your own `--tools` list.
