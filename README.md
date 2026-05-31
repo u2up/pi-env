@@ -37,6 +37,7 @@ pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 - uses isolated `$HOME=/home/pi`;
 - stores sandbox Pi state outside the project by default under `$XDG_STATE_HOME/pi-env/<project-hash>`;
 - imports common Pi rules/skills/prompts from the host Pi agent directory by default (`$PI_CODING_AGENT_DIR`, else `~/.pi/agent`), limited to `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, and `prompts/`;
+- exposes global Pi extensions and installed package directories from the host Pi agent directory by default (`extensions/`, `npm/`, `git/`) and copies `settings.json`, while project-local `.pi/extensions` and `.pi/settings.json` are available through `/workspace`;
 - copies host Git config into the sandbox by default (`~/.gitconfig` and `$XDG_CONFIG_HOME/git/config` / `~/.config/git/config`), but not Git credentials or SSH keys;
 - copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
 - bind-mounts only the host Pi session directory for the current working directory into the sandbox by default (disabled for ephemeral homes), so `/resume` and `--continue` can access sessions for the directory/project without exposing all sessions;
@@ -60,6 +61,8 @@ PI_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi
 PI_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills dir; default: host Pi agent dir
 PI_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, or prompts
 PI_BWRAP_COMMON_SYNC=missing            # copy common files only if sandbox copy is absent; default is always
+PI_BWRAP_IMPORT_EXTENSIONS=0            # do not expose global Pi extensions/packages from host agent dir
+PI_BWRAP_EXTENSIONS_SYNC=missing        # copy settings.json only if sandbox copy is absent; default is always
 PI_BWRAP_IMPORT_GIT_CONFIG=0            # do not import host ~/.gitconfig and XDG git config
 PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy is absent; default is always
 PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
@@ -199,7 +202,7 @@ skills/
 prompts/
 ```
 
-It does not import the whole host home, and auth/session handling remains controlled separately by `PI_BWRAP_IMPORT_AUTH` and `PI_BWRAP_IMPORT_SESSIONS`.
+It does not import the whole host home, and auth/session handling remains controlled separately by `PI_BWRAP_IMPORT_AUTH` and `PI_BWRAP_IMPORT_SESSIONS`. Global extension/package exposure is controlled separately by `PI_BWRAP_IMPORT_EXTENSIONS`.
 
 To keep common rules/skills in a separate repo or directory, point `PI_BWRAP_COMMON_AGENT_DIR` at it:
 
@@ -225,12 +228,14 @@ Disable common resource import entirely with:
 PI_BWRAP_IMPORT_COMMON=0 pi-start
 ```
 
-Project-specific rules and skills should live in the project repository so they are versioned with the project:
+Project-specific rules, skills, and extensions should live in the project repository so they are versioned with the project:
 
 ```text
 project/
   AGENTS.md
   .pi/
+    extensions/
+      project-extension.ts
     skills/
       project-skill/
         SKILL.md
@@ -238,10 +243,10 @@ project/
     settings.json
 ```
 
-Pi loads the common resources from `/home/pi/.pi/agent` and also discovers project resources from `/workspace`, so this gives a clean split:
+Pi loads the common/global resources from `/home/pi/.pi/agent` and also discovers project resources from `/workspace`, so this gives a clean split:
 
-- common rules/skills: user-owned, reusable across projects;
-- project-specific rules/skills: committed with the project;
+- common rules/skills and global extensions/packages: user-owned, reusable across projects;
+- project-specific rules/skills/extensions/packages: committed with the project;
 - `pi-env`: neutral runtime and isolation layer only.
 
 ## Git config
@@ -286,5 +291,6 @@ Git credentials, SSH keys, signing keys, credential helpers' backing stores, and
 ## Notes
 
 - Pi's built-in tool list is `read,bash,edit,write,grep,find,ls`. `pi-start` allowlists those by default. If you need extension/custom tools too, include them in `PI_BWRAP_DEFAULT_TOOLS` or call `pi-bwrap` with your own `--tools` list.
+- Global Pi extensions and globally installed Pi packages are exposed read-only from the host agent directory by default. Disable this with `PI_BWRAP_IMPORT_EXTENSIONS=0`. Project-local extensions/packages under `.pi/` are available because the project is mounted at `/workspace`.
 - Use `git` through the `bash` tool unless you install/register a separate Git tool extension.
 - Bubblewrap limits filesystem/environment exposure. It does not provide domain-level network allowlists. For tighter network policy, disable network with `PI_BWRAP_NET=0`, use an external firewall/proxy, or add Pi's sandbox extension as an additional layer for `bash` commands.

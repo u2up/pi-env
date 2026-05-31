@@ -61,6 +61,7 @@
             - mounts /usr/local/bin and the global pi npm package read-only when present
             - uses an isolated HOME at /home/pi
             - imports common Pi rules/skills/prompts from the host Pi agent dir by default
+            - exposes global Pi extensions/packages from the host Pi agent dir by default
             - copies host Git config into sandbox HOME by default, but not credentials or SSH keys
             - copies host pi auth.json/models.json into sandbox state by default
             - bind-mounts only the host pi sessions for the current working directory by default (disabled for ephemeral homes)
@@ -79,6 +80,8 @@
             PI_BWRAP_COMMON_AGENT_DIR=/path Common rules/skills dir (default: host pi agent dir)
             PI_BWRAP_IMPORT_COMMON=0       Do not import common AGENTS/SYSTEM files, skills, or prompts
             PI_BWRAP_COMMON_SYNC=missing   Copy common files only if sandbox copy is absent (default: always)
+            PI_BWRAP_IMPORT_EXTENSIONS=0   Do not expose global Pi extensions/packages from host agent dir
+            PI_BWRAP_EXTENSIONS_SYNC=missing Copy settings.json only if sandbox copy is absent (default: always)
             PI_BWRAP_IMPORT_GIT_CONFIG=0   Do not import host ~/.gitconfig and XDG git config
             PI_BWRAP_GIT_CONFIG_SYNC=missing Copy git config only if sandbox copy is absent (default: always)
             PI_BWRAP_HOST_GITCONFIG=/path  Host global git config (default: ~/.gitconfig)
@@ -239,6 +242,26 @@
             done
           fi
 
+          extension_bind_args=()
+          should_sync_extensions() {
+            local target="$1"
+            [ "''${PI_BWRAP_EXTENSIONS_SYNC:-always}" = "always" ] || [ ! -e "$target" ]
+          }
+
+          if [ "''${PI_BWRAP_IMPORT_EXTENSIONS:-1}" = "1" ] && [ -n "$host_agent_dir" ] && [ -d "$host_agent_dir" ] && [ "$host_agent_dir" != "$state_base/agent" ]; then
+            if [ -f "$host_agent_dir/settings.json" ] && should_sync_extensions "$state_base/agent/settings.json"; then
+              cp -p "$host_agent_dir/settings.json" "$state_base/agent/settings.json"
+              chmod 600 "$state_base/agent/settings.json" 2>/dev/null || true
+            fi
+
+            for extension_dir_name in extensions npm git; do
+              if [ -d "$host_agent_dir/$extension_dir_name" ]; then
+                mkdir -p "$state_base/agent/$extension_dir_name"
+                extension_bind_args+=(--ro-bind "$host_agent_dir/$extension_dir_name" "/home/pi/.pi/agent/$extension_dir_name")
+              fi
+            done
+          fi
+
           session_bind_args=()
           session_dir_for_path() {
             local normalized stripped replaced
@@ -354,6 +377,7 @@
             --bind "$project_root" /workspace
             --bind "$state_base/home" /home/pi
             --bind "$state_base/agent" /home/pi/.pi/agent
+            "''${extension_bind_args[@]}"
             "''${session_bind_args[@]}"
             --bind "$state_base/cache" /home/pi/.cache
             --chdir "$inside_cwd"
