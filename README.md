@@ -62,13 +62,22 @@ PI_BWRAP_NET=0                          # disable network sharing
 PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 ```
 
-## Use from another flake
+## Use in another project
+
+`pi-env` is intended to be reused from other project flakes. How you wire it in depends on whether the target project already has a `flake.nix`.
+
+- **Project has no flake yet:** use the full example below as a starting `flake.nix`.
+- **Project already has its own flake:** do not replace it. Add `pi-env` to the existing `inputs`, add `pi-env` to the `outputs = { ... }:` argument list, then either wrap the existing devshell with `mkPiShell` or add the `pi-start` / `pi-bwrap` packages to it.
+
+### New project flake / replace the project's devshell
 
 ```nix
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
+
+    # Replace this path with wherever this pi-env repository lives.
     pi-env.url = "git+file:///home/samo/CODEFAB/PIWS/pi-env";
     pi-env.inputs.nixpkgs.follows = "nixpkgs";
     pi-env.inputs.flake-utils.follows = "flake-utils";
@@ -81,9 +90,13 @@ PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
       in {
         devShells.default = pi-env.lib.mkPiShell {
           inherit pkgs;
+
           extraPackages = with pkgs; [
-            # project-specific tools
+            # project-specific tools, for example:
+            # nodejs
+            # python3
           ];
+
           shellHook = ''
             echo "project shell loaded"
           '';
@@ -92,7 +105,47 @@ PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 }
 ```
 
-Alternative if you already have a shell:
+Then run from the other project:
+
+```bash
+nix develop
+pi-start
+```
+
+For custom Pi arguments:
+
+```bash
+pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+```
+
+`pi-start` starts Pi in the Bubblewrap sandbox with the default tool allowlist and `--continue`. `pi-bwrap -- ...` passes the arguments after `--` directly to Pi.
+
+### Project already has its own flake
+
+If the project already has a `flake.nix`, keep its existing structure and only add the `pi-env` pieces.
+
+First add the input:
+
+```nix
+inputs = {
+  # existing inputs...
+
+  pi-env.url = "git+file:///home/samo/CODEFAB/PIWS/pi-env";
+  pi-env.inputs.nixpkgs.follows = "nixpkgs";
+  pi-env.inputs.flake-utils.follows = "flake-utils";
+};
+```
+
+Then include `pi-env` in the outputs arguments:
+
+```nix
+outputs = { self, nixpkgs, flake-utils, pi-env, ... }:
+  # existing outputs...
+```
+
+#### Add to an existing devshell
+
+If the project already has a devshell, add the wrappers to its package list:
 
 ```nix
 packages = [
@@ -100,6 +153,22 @@ packages = [
   pi-env.packages.${system}.pi-bwrap
 ];
 ```
+
+Or, if your shell uses `nativeBuildInputs` / `buildInputs`, add the same packages there.
+
+### Common per-project overrides
+
+These can be set before running `pi-start` / `pi-bwrap`, or exported in the project's shell hook:
+
+```bash
+PI_BWRAP_PROJECT_ROOT=/path/to/repo pi-start  # mount this repo at /workspace
+PI_BWRAP_USE_GIT_ROOT=0 pi-start              # use $PWD instead of git root
+PI_BWRAP_EPHEMERAL_HOME=1 pi-start            # throw away sandbox home after the run
+PI_BWRAP_IMPORT_AUTH=0 pi-start               # do not copy host Pi auth into sandbox state
+PI_BWRAP_NET=0 pi-start                       # disable network access
+```
+
+Inside the sandbox, the selected project is mounted read-write at `/workspace`, while the sandbox home and Pi config live separately from the host home.
 
 ## Notes
 
