@@ -39,6 +39,7 @@ pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 - uses isolated `$HOME=/home/pi`;
 - stores sandbox Pi state outside the project by default under `$XDG_STATE_HOME/pi-env/<project-hash>`;
 - imports common Pi rules/skills/prompts from the host Pi agent directory by default (`$PI_CODING_AGENT_DIR`, else `~/.pi/agent`), limited to `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, and `prompts/`;
+- copies host Git config into the sandbox by default (`~/.gitconfig` and `$XDG_CONFIG_HOME/git/config` / `~/.config/git/config`), but not Git credentials or SSH keys;
 - copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
 - bind-mounts only the host Pi session directory for the current working directory into the sandbox by default (disabled for ephemeral homes), so `/resume` and `--continue` can access sessions for the directory/project without exposing all sessions;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or Docker sockets;
@@ -61,6 +62,10 @@ PI_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi
 PI_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills dir; default: host Pi agent dir
 PI_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, or prompts
 PI_BWRAP_COMMON_SYNC=missing            # copy common files only if sandbox copy is absent; default is always
+PI_BWRAP_IMPORT_GIT_CONFIG=0            # do not import host ~/.gitconfig and XDG git config
+PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy is absent; default is always
+PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
+PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_NET=0                          # disable network sharing
 PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
@@ -240,6 +245,45 @@ Pi loads the common resources from `/home/pi/.pi/agent` and also discovers proje
 - common rules/skills: user-owned, reusable across projects;
 - project-specific rules/skills: committed with the project;
 - `pi-env`: neutral runtime and isolation layer only.
+
+## Git config
+
+`pi-bwrap` imports the user's host Git config into the isolated sandbox home by default:
+
+```text
+~/.gitconfig
+$XDG_CONFIG_HOME/git/config, or ~/.config/git/config
+```
+
+Inside the sandbox these become:
+
+```text
+/home/pi/.gitconfig
+/home/pi/.config/git/config
+```
+
+This lets Git commands run by Pi use the user's normal identity, aliases, default branch settings, diff settings, and other non-secret Git preferences while still avoiding a host `$HOME` mount.
+
+Disable this with:
+
+```bash
+PI_BWRAP_IMPORT_GIT_CONFIG=0 pi-start
+```
+
+Use a different config source with:
+
+```bash
+PI_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pi-start
+PI_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pi-start
+```
+
+By default the sandbox copy is refreshed on each run. Preserve an existing sandbox copy with:
+
+```bash
+PI_BWRAP_GIT_CONFIG_SYNC=missing pi-start
+```
+
+Git credentials, SSH keys, signing keys, credential helpers' backing stores, and other files referenced from Git config are not imported automatically.
 
 ## Notes
 

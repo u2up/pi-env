@@ -60,6 +60,8 @@
             - mounts /nix/store read-only for devshell tools
             - mounts /usr/local/bin and the global pi npm package read-only when present
             - uses an isolated HOME at /home/pi
+            - imports common Pi rules/skills/prompts from the host Pi agent dir by default
+            - copies host Git config into sandbox HOME by default, but not credentials or SSH keys
             - copies host pi auth.json/models.json into sandbox state by default
             - bind-mounts only the host pi sessions for the current working directory by default (disabled for ephemeral homes)
             - does not mount host $HOME, ~/.ssh, cloud credentials, or docker sockets
@@ -77,6 +79,10 @@
             PI_BWRAP_COMMON_AGENT_DIR=/path Common rules/skills dir (default: host pi agent dir)
             PI_BWRAP_IMPORT_COMMON=0       Do not import common AGENTS/SYSTEM files, skills, or prompts
             PI_BWRAP_COMMON_SYNC=missing   Copy common files only if sandbox copy is absent (default: always)
+            PI_BWRAP_IMPORT_GIT_CONFIG=0   Do not import host ~/.gitconfig and XDG git config
+            PI_BWRAP_GIT_CONFIG_SYNC=missing Copy git config only if sandbox copy is absent (default: always)
+            PI_BWRAP_HOST_GITCONFIG=/path  Host global git config (default: ~/.gitconfig)
+            PI_BWRAP_HOST_XDG_GIT_CONFIG=/path Host XDG git config (default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config)
             PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
             PI_BWRAP_NET=0                Disable network namespace sharing
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
@@ -143,9 +149,12 @@
           mkdir -p \
             "$state_base/home/.pi/agent" \
             "$state_base/home/.cache" \
+            "$state_base/home/.config/git" \
             "$state_base/agent/sessions" \
             "$state_base/cache"
-          chmod 700 "$state_base" "$state_base/home" "$state_base/home/.pi" "$state_base/home/.cache" "$state_base/agent" "$state_base/agent/sessions" "$state_base/cache" 2>/dev/null || true
+          chmod 700 "$state_base" "$state_base/home" "$state_base/home/.pi" "$state_base/home/.cache" "$state_base/home/.config" "$state_base/home/.config/git" "$state_base/agent" "$state_base/agent/sessions" "$state_base/cache" 2>/dev/null || true
+
+          host_home="''${HOME:-}"
 
           host_agent_dir="''${PI_BWRAP_HOST_AGENT_DIR:-}"
           if [ -z "$host_agent_dir" ] && [ -n "''${PI_CODING_AGENT_DIR:-}" ]; then
@@ -182,6 +191,41 @@
                 cp -a "$common_agent_dir/$common_dir_name" "$state_base/agent/$common_dir_name"
               fi
             done
+          fi
+
+          should_sync_git_config() {
+            local target="$1"
+            [ "''${PI_BWRAP_GIT_CONFIG_SYNC:-always}" = "always" ] || [ ! -e "$target" ]
+          }
+
+          if [ "''${PI_BWRAP_IMPORT_GIT_CONFIG:-1}" = "1" ]; then
+            host_gitconfig="''${PI_BWRAP_HOST_GITCONFIG:-}"
+            if [ -z "$host_gitconfig" ] && [ -n "$host_home" ]; then
+              host_gitconfig="$host_home/.gitconfig"
+            fi
+            if [ -n "$host_gitconfig" ]; then
+              host_gitconfig="$(realpath -m "$host_gitconfig")"
+              if [ -f "$host_gitconfig" ] && should_sync_git_config "$state_base/home/.gitconfig"; then
+                cp -p "$host_gitconfig" "$state_base/home/.gitconfig"
+                chmod 600 "$state_base/home/.gitconfig" 2>/dev/null || true
+              fi
+            fi
+
+            host_xdg_git_config="''${PI_BWRAP_HOST_XDG_GIT_CONFIG:-}"
+            if [ -z "$host_xdg_git_config" ] && [ -n "''${XDG_CONFIG_HOME:-}" ]; then
+              host_xdg_git_config="''${XDG_CONFIG_HOME}/git/config"
+            fi
+            if [ -z "$host_xdg_git_config" ] && [ -n "$host_home" ]; then
+              host_xdg_git_config="$host_home/.config/git/config"
+            fi
+            if [ -n "$host_xdg_git_config" ]; then
+              host_xdg_git_config="$(realpath -m "$host_xdg_git_config")"
+              if [ -f "$host_xdg_git_config" ] && should_sync_git_config "$state_base/home/.config/git/config"; then
+                mkdir -p "$state_base/home/.config/git"
+                cp -p "$host_xdg_git_config" "$state_base/home/.config/git/config"
+                chmod 600 "$state_base/home/.config/git/config" 2>/dev/null || true
+              fi
+            fi
           fi
 
           if [ "''${PI_BWRAP_IMPORT_AUTH:-1}" = "1" ] && [ -n "$host_agent_dir" ] && [ -d "$host_agent_dir" ]; then
