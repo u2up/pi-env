@@ -27,6 +27,35 @@ For custom Pi arguments:
 pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
+### Running `pi config`
+
+Pi's `config` subcommand is used to enable or disable extensions, skills, prompt templates, and themes.
+
+To edit the **sandboxed pi-env config**, run it through Bubblewrap:
+
+```bash
+pi-bwrap -- config
+# or
+pi-bwrap config
+```
+
+Inside the sandbox, Pi uses `/home/pi/.pi/agent/settings.json`, backed by pi-env's per-project state directory. Project-local config remains the mounted repo's `.pi/settings.json` under `/workspace`.
+
+By default, pi-env copies the host `settings.json` into sandbox state on each run when global extensions/packages are imported. If you want sandbox edits made by `pi-bwrap -- config` to persist instead of being refreshed from the host copy, use:
+
+```bash
+PI_BWRAP_EXTENSIONS_SYNC=missing pi-bwrap -- config
+```
+
+To edit your **real host/global Pi config**, run `pi config` directly after entering the Nix devshell:
+
+```bash
+nix develop
+pi config
+```
+
+This uses the Nix-provided runtime/tools on `PATH`, but does **not** enter the Bubblewrap sandbox. It modifies the host Pi agent config, normally `~/.pi/agent/settings.json` unless `PI_CODING_AGENT_DIR` points elsewhere.
+
 ## Bubblewrap safety defaults
 
 `pi-bwrap`:
