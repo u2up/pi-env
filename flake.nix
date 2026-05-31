@@ -72,6 +72,9 @@
             PI_BWRAP_AUTH_SYNC=missing    Copy auth only if sandbox copy is absent (default: always)
             PI_BWRAP_IMPORT_SESSIONS=0    Do not bind project sessions from host ~/.pi/agent (default: 1, or 0 with ephemeral home)
             PI_BWRAP_HOST_AGENT_DIR=/path Host pi agent dir (default: $PI_CODING_AGENT_DIR or ~/.pi/agent)
+            PI_BWRAP_COMMON_AGENT_DIR=/path Common rules/skills dir (default: host pi agent dir)
+            PI_BWRAP_IMPORT_COMMON=0       Do not import common AGENTS/SYSTEM files, skills, or prompts
+            PI_BWRAP_COMMON_SYNC=missing   Copy common files only if sandbox copy is absent (default: always)
             PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
             PI_BWRAP_NET=0                Disable network namespace sharing
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
@@ -151,6 +154,32 @@
           fi
           if [ -n "$host_agent_dir" ]; then
             host_agent_dir="$(realpath -m "$host_agent_dir")"
+          fi
+
+          common_agent_dir="''${PI_BWRAP_COMMON_AGENT_DIR:-$host_agent_dir}"
+          if [ -n "$common_agent_dir" ]; then
+            common_agent_dir="$(realpath -m "$common_agent_dir")"
+          fi
+
+          should_sync_common() {
+            local target="$1"
+            [ "''${PI_BWRAP_COMMON_SYNC:-always}" = "always" ] || [ ! -e "$target" ]
+          }
+
+          if [ "''${PI_BWRAP_IMPORT_COMMON:-1}" = "1" ] && [ -n "$common_agent_dir" ] && [ -d "$common_agent_dir" ] && [ "$common_agent_dir" != "$state_base/agent" ]; then
+            for common_file in AGENTS.md CLAUDE.md SYSTEM.md APPEND_SYSTEM.md; do
+              if [ -f "$common_agent_dir/$common_file" ] && should_sync_common "$state_base/agent/$common_file"; then
+                cp -p "$common_agent_dir/$common_file" "$state_base/agent/$common_file"
+              fi
+            done
+
+            for common_dir_name in skills prompts; do
+              if [ -d "$common_agent_dir/$common_dir_name" ] && should_sync_common "$state_base/agent/$common_dir_name"; then
+                rm -rf "$state_base/agent/$common_dir_name"
+                mkdir -p "$state_base/agent"
+                cp -a "$common_agent_dir/$common_dir_name" "$state_base/agent/$common_dir_name"
+              fi
+            done
           fi
 
           if [ "''${PI_BWRAP_IMPORT_AUTH:-1}" = "1" ] && [ -n "$host_agent_dir" ] && [ -d "$host_agent_dir" ]; then

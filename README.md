@@ -38,6 +38,7 @@ pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 - mounts `/usr/local/bin` and the global Pi npm package read-only when present, so a global npm-installed `pi` works;
 - uses isolated `$HOME=/home/pi`;
 - stores sandbox Pi state outside the project by default under `$XDG_STATE_HOME/pi-env/<project-hash>`;
+- imports common Pi rules/skills/prompts from the host Pi agent directory by default (`$PI_CODING_AGENT_DIR`, else `~/.pi/agent`), limited to `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, and `prompts/`;
 - copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
 - bind-mounts only the host Pi session directory for the current working directory into the sandbox by default (disabled for ephemeral homes), so `/resume` and `--continue` can access sessions for the directory/project without exposing all sessions;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or Docker sockets;
@@ -57,6 +58,9 @@ PI_BWRAP_IMPORT_AUTH=0                  # do not import host ~/.pi/agent auth fi
 PI_BWRAP_AUTH_SYNC=missing              # copy auth only if sandbox copy is absent; default is always
 PI_BWRAP_IMPORT_SESSIONS=0              # do not bind host sessions for the current working directory; defaults to 1 unless PI_BWRAP_EPHEMERAL_HOME=1
 PI_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi/agent
+PI_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills dir; default: host Pi agent dir
+PI_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, or prompts
+PI_BWRAP_COMMON_SYNC=missing            # copy common files only if sandbox copy is absent; default is always
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_NET=0                          # disable network sharing
 PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
@@ -169,6 +173,73 @@ PI_BWRAP_NET=0 pi-start                       # disable network access
 ```
 
 Inside the sandbox, the selected project is mounted read-write at `/workspace`, while the sandbox home and Pi config live separately from the host home.
+
+## Common vs project-specific rules and skills
+
+`pi-env` keeps the runtime separate from user-specific agent behavior. It does not ship common rules or skills itself. Instead, `pi-bwrap` imports common Pi resources from an external directory into the sandbox Pi agent directory.
+
+By default, the common directory is the user's normal Pi agent directory:
+
+```bash
+$PI_CODING_AGENT_DIR   # if set
+~/.pi/agent            # otherwise
+```
+
+From that directory, `pi-bwrap` imports only common agent resources:
+
+```text
+AGENTS.md
+CLAUDE.md
+SYSTEM.md
+APPEND_SYSTEM.md
+skills/
+prompts/
+```
+
+It does not import the whole host home, and auth/session handling remains controlled separately by `PI_BWRAP_IMPORT_AUTH` and `PI_BWRAP_IMPORT_SESSIONS`.
+
+To keep common rules/skills in a separate repo or directory, point `PI_BWRAP_COMMON_AGENT_DIR` at it:
+
+```bash
+PI_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-start
+```
+
+Expected layout:
+
+```text
+my-pi-common/
+  AGENTS.md
+  skills/
+    common-skill/
+      SKILL.md
+  prompts/
+    review.md
+```
+
+Disable common resource import entirely with:
+
+```bash
+PI_BWRAP_IMPORT_COMMON=0 pi-start
+```
+
+Project-specific rules and skills should live in the project repository so they are versioned with the project:
+
+```text
+project/
+  AGENTS.md
+  .pi/
+    skills/
+      project-skill/
+        SKILL.md
+    prompts/
+    settings.json
+```
+
+Pi loads the common resources from `/home/pi/.pi/agent` and also discovers project resources from `/workspace`, so this gives a clean split:
+
+- common rules/skills: user-owned, reusable across projects;
+- project-specific rules/skills: committed with the project;
+- `pi-env`: neutral runtime and isolation layer only.
 
 ## Notes
 
