@@ -62,6 +62,9 @@ For each supported system the flake must expose packages:
 - `pi-start`
 - `pi-bwrap`
 - `pi-runtime`
+- `agent-coord-init`
+- `agent-coord-clone`
+- `agent-coord-new`
 
 ### FLAKE-005 Apps
 
@@ -153,6 +156,40 @@ where `$tools` is the default tool list or `PI_BWRAP_DEFAULT_TOOLS` when set.
 ### CMD-008 Missing Pi executable
 
 If `pi` is not found on `PATH` before sandbox entry, `pi-bwrap` must exit with code `127` and print an actionable error.
+
+### CMD-009 Coordination MVP commands
+
+The flake/devshell must provide these opt-in coordination commands:
+
+- `agent-coord-init`
+- `agent-coord-clone`
+- `agent-coord-new`
+
+### CMD-010 `agent-coord-init`
+
+`agent-coord-init` must create a local bare coordination remote and, unless
+`--bare-only` is used, clone and scaffold a working coordination repository.
+It must install the rule/protocol templates into:
+
+- `AGENTS.md`
+- `docs/SYNC_PROTOCOL.md`
+- `docs/ITEM_FORMAT.md`
+- `.pi/skills/agent-coordination/SKILL.md`
+
+It must also create the standard workspace/project directory skeleton and
+configure the clone with `pull.rebase=true` and `rebase.autoStash=true`.
+
+### CMD-011 `agent-coord-clone`
+
+`agent-coord-clone` must clone a coordination remote into the selected
+workspace directory and configure the clone with `pull.rebase=true` and
+`rebase.autoStash=true`.
+
+### CMD-012 `agent-coord-new`
+
+`agent-coord-new` must create a Markdown item with timestamp-based ID,
+frontmatter, title, acceptance-criteria placeholder, and activity entry. It
+must not commit or push automatically.
 
 ## 6. Project root and working directory requirements
 
@@ -428,7 +465,7 @@ The sandbox must share the host network by default so Pi can reach model provide
 
 ### DOC-000 Design documents
 
-Design proposals that are not yet mandatory runtime behavior must be documented separately and referenced from requirements/use-case documentation. The optional Git-backed multi-agent coordination proposal is documented in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md), including proposed `agent-coord-init` scaffolding, `pi-skill-templates`, coordination-repo `AGENTS.md` rules, and Pi skill templates installed into the coordination repository.
+Design proposals that are not yet mandatory runtime behavior must be documented separately and referenced from requirements/use-case documentation. The Git-backed multi-agent coordination design is documented in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). Implemented coordination behavior is limited to explicit requirements for concrete commands, files, and environment variables in this document.
 
 ### DOC-001 README coverage
 
@@ -442,6 +479,7 @@ Design proposals that are not yet mandatory runtime behavior must be documented 
 - reuse from another project with and without an existing flake
 - common vs project-specific rules and skills
 - Git config import behavior
+- opt-in coordination helper basics
 - security notes and limitations
 
 ## 13. Blackbox test blueprint
@@ -470,6 +508,9 @@ Commands:
 nix build .#pi-bwrap
 nix build .#pi-start
 nix build .#pi-runtime
+nix build .#agent-coord-init
+nix build .#agent-coord-clone
+nix build .#agent-coord-new
 ```
 
 Expected: all builds succeed.
@@ -691,6 +732,18 @@ Expected:
 With fake Pi, attempt to read host-only files such as host home markers, `.ssh`, and Docker socket path.
 
 Expected they are not visible unless they are inside the selected project root or explicitly copied by supported import behavior.
+
+### TEST-029 Coordination MVP helpers
+
+Run `tests/agent-coord-blackbox.sh` from the repository root.
+
+Expected:
+
+- `agent-coord-init` creates a bare remote and scaffolded clone;
+- generated rules, docs, and Pi skill files exist;
+- clone Git settings enable rebase and autostash;
+- `agent-coord-clone` can clone the same domain;
+- `agent-coord-new` creates a timestamp-ID Markdown item.
 
 ## 14. Coordination implementation guard
 

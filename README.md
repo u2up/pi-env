@@ -56,6 +56,47 @@ pi config
 
 This uses the Nix-provided runtime/tools on `PATH`, but does **not** enter the Bubblewrap sandbox. It modifies the host Pi agent config, normally `~/.pi/agent/settings.json` unless `PI_CODING_AGENT_DIR` points elsewhere.
 
+## Agent coordination helpers
+
+`pi-env` includes opt-in helpers for Git-backed coordination repositories.
+They are plain Git/Markdown tooling and are separate from `pi-start`.
+
+Minimal setup:
+
+```bash
+export PI_COORD_ROOT=~/agent-remotes
+export PI_COORD_WORKSPACE=piws
+export PI_COORD_DIR=coordination
+export PI_COORD_AGENT_ID=agent-a
+
+agent-coord-init --project pi-env
+```
+
+This creates a bare remote at:
+
+```text
+$PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git
+```
+
+and clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, protocol docs,
+item-format docs, and `.pi/skills/agent-coordination/SKILL.md`.
+
+Clone the same coordination domain elsewhere with:
+
+```bash
+agent-coord-clone
+```
+
+Create a timestamp-ID item with:
+
+```bash
+agent-coord-new --project pi-env "Document pi config behavior"
+```
+
+The helpers do not make `pi-start` create, claim, close, commit, or push
+coordination state automatically. See `AGENT_COORDINATION_DESIGN.md` for
+the full design.
+
 ## Bubblewrap safety defaults
 
 `pi-bwrap`:

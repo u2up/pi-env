@@ -433,13 +433,42 @@ Use cases for the isolated launcher include:
 - using ephemeral state for disposable runs;
 - importing only the auth/session/config needed for the current project.
 
-## 23. Future: coordinate multiple agents with Git
+## 23. Coordinate multiple agents with Git
 
-For workspaces where several agents operate in separate project clones, `pi-env` can optionally help establish and maintain a dedicated Git-backed coordination repository. The coordination repository contains workspace/project issues, TODOs, bugs, decisions, notes, and agent logs, and agents synchronize only by normal Git pull/commit/push operations.
+For workspaces where several agents operate in separate project clones,
+`pi-env` can optionally help establish and maintain a dedicated Git-backed
+coordination repository. The coordination repository contains
+workspace/project issues, TODOs, bugs, decisions, notes, and agent logs, and
+agents synchronize only by normal Git pull/commit/push operations.
 
-As part of that setup, `pi-env` could ship defaults under `pi-skill-templates/agent-coordination/`, and `agent-coord-init` could install `AGENTS.md`, protocol documentation, item-format documentation, and a Pi skill under `.pi/skills/agent-coordination/SKILL.md`. Those generated files would define the workspace-specific rules for claiming, updating, blocking, closing, and conflict-resolving coordination items.
+Minimal flow:
 
-This use case remains opt-in. Default `pi-start` behavior must not create, claim, close, commit, push, or otherwise mutate coordination state automatically.
+```bash
+export PI_COORD_ROOT=~/agent-remotes
+export PI_COORD_WORKSPACE=piws
+export PI_COORD_DIR=coordination
+export PI_COORD_AGENT_ID=agent-a
+
+agent-coord-init --project pi-env
+agent-coord-new --project pi-env "Document pi config behavior"
+```
+
+Another workspace clone can join the same domain with:
+
+```bash
+agent-coord-clone
+```
+
+`agent-coord-init` installs defaults from
+`pi-skill-templates/agent-coordination/` into `AGENTS.md`, protocol
+documentation, item-format documentation, and
+`.pi/skills/agent-coordination/SKILL.md`. Those generated files define the
+workspace-specific rules for claiming, updating, blocking, closing, and
+conflict-resolving coordination items.
+
+This use case remains opt-in. Default `pi-start` behavior must not create,
+claim, close, commit, push, or otherwise mutate coordination state
+automatically.
 
 ## Non-goals and limitations
 
