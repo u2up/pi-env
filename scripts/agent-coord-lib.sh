@@ -1,0 +1,290 @@
+# Shared helpers for pi-env coordination commands.
+
+coord_die() {
+  printf 'agent-coord: %s\n' "$*" >&2
+  exit 1
+}
+
+coord_note() {
+  printf 'agent-coord: %s\n' "$*" >&2
+}
+
+coord_abs() {
+  realpath -m "$1"
+}
+
+coord_default_root() {
+  if [ -n "${PI_COORD_ROOT:-}" ]; then
+    printf '%s\n' "$PI_COORD_ROOT"
+  elif [ -n "${HOME:-}" ]; then
+    printf '%s\n' "$HOME/agent-remotes"
+  else
+    printf '%s\n' "./agent-remotes"
+  fi
+}
+
+coord_default_workspace() {
+  if [ -n "${PI_COORD_WORKSPACE:-}" ]; then
+    printf '%s\n' "$PI_COORD_WORKSPACE"
+  else
+    basename "$(pwd -P)"
+  fi
+}
+
+coord_default_dir() {
+  printf '%s\n' "${PI_COORD_DIR:-coordination}"
+}
+
+coord_default_agent() {
+  if [ -n "${PI_COORD_AGENT_ID:-}" ]; then
+    printf '%s\n' "$PI_COORD_AGENT_ID"
+  elif [ -n "${USER:-}" ]; then
+    printf '%s\n' "$USER"
+  else
+    printf '%s\n' "agent"
+  fi
+}
+
+coord_template_dir() {
+  local script_dir
+  if [ -n "${PI_ENV_COORD_TEMPLATE_DIR:-}" ]; then
+    printf '%s\n' "$PI_ENV_COORD_TEMPLATE_DIR"
+    return
+  fi
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  printf '%s\n' "$(coord_abs "$script_dir/../pi-skill-templates/agent-coordination")"
+}
+
+coord_sanitize_path_part() {
+  printf '%s' "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//; s/-+/-/g'
+}
+
+coord_project_id_prefix() {
+  local value prefix
+  value="$1"
+  prefix="$(printf '%s' "$value" \
+    | tr '[:lower:]' '[:upper:]' \
+    | sed -E 's/[^A-Z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')"
+  if [ -z "$prefix" ]; then
+    prefix="ITEM"
+  fi
+  printf '%s\n' "$prefix"
+}
+
+coord_slug() {
+  local slug
+  slug="$(printf '%s' "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' \
+    | cut -c1-60)"
+  if [ -z "$slug" ]; then
+    slug="item"
+  fi
+  printf '%s\n' "$slug"
+}
+
+coord_timestamp_id() {
+  date -u +%Y%m%d-%H%M%S
+}
+
+coord_timestamp_iso() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+coord_remote_for() {
+  local root workspace
+  root="$1"
+  workspace="$2"
+  printf '%s/%s-coordination.git\n' "$root" "$workspace"
+}
+
+coord_is_coord_repo() {
+  local dir
+  dir="$1"
+  [ -d "$dir/.git" ] \
+    && [ -f "$dir/AGENTS.md" ] \
+    && [ -f "$dir/docs/SYNC_PROTOCOL.md" ] \
+    && [ -f "$dir/docs/ITEM_FORMAT.md" ]
+}
+
+coord_resolve_dir() {
+  local candidate git_root
+  candidate="${1:-}"
+  if [ -z "$candidate" ] && [ -n "${PI_COORD_DIR:-}" ]; then
+    candidate="$PI_COORD_DIR"
+  fi
+  if [ -z "$candidate" ]; then
+    git_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    if [ -n "$git_root" ] && coord_is_coord_repo "$git_root"; then
+      coord_abs "$git_root"
+      return
+    fi
+    candidate="coordination"
+  fi
+  [ -d "$candidate" ] || coord_die "coordination dir not found: $candidate"
+  candidate="$(coord_abs "$candidate")"
+  [ -d "$candidate/.git" ] || coord_die "not a Git repo: $candidate"
+  printf '%s\n' "$candidate"
+}
+
+coord_git_config_defaults() {
+  git config pull.rebase true
+  git config rebase.autoStash true
+}
+
+coord_install_template() {
+  local source_name target template_dir target_dir
+  source_name="$1"
+  target="$2"
+  template_dir="$(coord_template_dir)"
+  [ -f "$template_dir/$source_name" ] \
+    || coord_die "missing template: $template_dir/$source_name"
+  target_dir="$(dirname "$target")"
+  mkdir -p "$target_dir"
+  cp "$template_dir/$source_name" "$target"
+}
+
+coord_git_has_head() {
+  git rev-parse --verify HEAD >/dev/null 2>&1
+}
+
+coord_git_has_staged_changes() {
+  ! git diff --cached --quiet --exit-code
+}
+
+coord_git_has_worktree_changes() {
+  ! git diff --quiet --exit-code || [ -n "$(git ls-files --others --exclude-standard)" ]
+}
+
+coord_commit_all_if_changed() {
+  local message
+  message="$1"
+  git add -A
+  if coord_git_has_staged_changes; then
+    git commit -m "$message"
+    return 0
+  fi
+  return 1
+}
+
+coord_frontmatter_value() {
+  local file key
+  file="$1"
+  key="$2"
+  awk -v key="$key" '
+    NR == 1 && $0 == "---" { fm = 1; next }
+    fm && $0 == "---" { exit }
+    fm && index($0, key ":") == 1 {
+      sub("^[^:]+:[[:space:]]*", "")
+      print
+      exit
+    }
+  ' "$file"
+}
+
+coord_set_frontmatter() {
+  local file tmp sep keys values pair key value
+  file="$1"
+  shift
+  sep=$(printf '\037')
+  keys=""
+  values=""
+  for pair in "$@"; do
+    key="${pair%%=*}"
+    value="${pair#*=}"
+    keys="${keys}${sep}${key}"
+    values="${values}${sep}${value}"
+  done
+  keys="${keys#${sep}}"
+  values="${values#${sep}}"
+  tmp="$(mktemp)"
+  awk -v keys="$keys" -v values="$values" -v sep="$sep" '
+    BEGIN {
+      n = split(keys, key_list, sep)
+      split(values, value_list, sep)
+      for (i = 1; i <= n; i++) {
+        wanted[key_list[i]] = value_list[i]
+        found[key_list[i]] = 0
+      }
+    }
+    NR == 1 && $0 == "---" {
+      in_fm = 1
+      print
+      next
+    }
+    in_fm && $0 == "---" {
+      for (i = 1; i <= n; i++) {
+        key = key_list[i]
+        if (!found[key]) {
+          print key ": " wanted[key]
+        }
+      }
+      in_fm = 0
+      print
+      next
+    }
+    in_fm {
+      for (i = 1; i <= n; i++) {
+        key = key_list[i]
+        if (index($0, key ":") == 1) {
+          print key ": " wanted[key]
+          found[key] = 1
+          next
+        }
+      }
+      print
+      next
+    }
+    { print }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+coord_append_activity() {
+  local file timestamp agent message
+  file="$1"
+  timestamp="$2"
+  agent="$3"
+  message="$4"
+  message="$(printf '%s' "$message" | tr '\n' ' ')"
+  if ! grep -q '^## Activity$' "$file"; then
+    printf '\n## Activity\n' >>"$file"
+  fi
+  printf '\n- %s %s: %s\n' "$timestamp" "$agent" "$message" >>"$file"
+}
+
+coord_find_item() {
+  local query match_count matches file id_value
+  query="$1"
+  if [ -f "$query" ]; then
+    coord_abs "$query"
+    return
+  fi
+
+  matches=""
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    case "$(basename "$file")" in
+      "$query"|"$query".md|"$query"-*)
+        matches="${matches}${file}"$'\n'
+        continue
+        ;;
+    esac
+    id_value="$(coord_frontmatter_value "$file" id || true)"
+    if [ "$id_value" = "$query" ]; then
+      matches="${matches}${file}"$'\n'
+    fi
+  done < <(find workspace projects -type f -name '*.md' 2>/dev/null | sort)
+
+  match_count="$(printf '%s' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [ "$match_count" = "0" ]; then
+    coord_die "item not found: $query"
+  fi
+  if [ "$match_count" != "1" ]; then
+    printf 'agent-coord: multiple items match %s:\n%s' "$query" "$matches" >&2
+    exit 1
+  fi
+  printf '%s' "$matches" | sed '/^$/d' | head -n 1
+}

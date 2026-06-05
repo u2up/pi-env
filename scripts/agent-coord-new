@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-new - create a templated coordination item
+
+Usage:
+  agent-coord-new [options] "Item title"
+
+Options:
+  --coord-dir DIR    Coordination clone; default: PI_COORD_DIR or ./coordination
+  --project KEY      Create under projects/<key>/issues/open
+  --workspace-item   Create under workspace/issues/open
+  --type TYPE        Frontmatter type; default: issue
+  --priority VALUE   Priority value; default: medium
+  --owner ID         Initial owner; default: empty
+  --id ID            Explicit item ID; default: timestamp ID
+  -h, --help         Show this help
+
+If --project is omitted, PI_COORD_PROJECT is used when set. Otherwise the
+item is created as a workspace-level item.
+USAGE
+}
+
+coord_dir_opt=""
+project_key="${PI_COORD_PROJECT:-}"
+workspace_item=0
+item_type="issue"
+priority="medium"
+owner=""
+explicit_id=""
+title_parts=()
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --coord-dir)
+      [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    --project)
+      [ "$#" -ge 2 ] || coord_die "--project requires a value"
+      project_key="$2"
+      workspace_item=0
+      shift 2
+      ;;
+    --workspace-item)
+      workspace_item=1
+      project_key=""
+      shift
+      ;;
+    --type)
+      [ "$#" -ge 2 ] || coord_die "--type requires a value"
+      item_type="$2"
+      shift 2
+      ;;
+    --priority)
+      [ "$#" -ge 2 ] || coord_die "--priority requires a value"
+      priority="$2"
+      shift 2
+      ;;
+    --owner)
+      [ "$#" -ge 2 ] || coord_die "--owner requires a value"
+      owner="$2"
+      shift 2
+      ;;
+    --id)
+      [ "$#" -ge 2 ] || coord_die "--id requires a value"
+      explicit_id="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      title_parts+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ "${#title_parts[@]}" -eq 0 ]; then
+  coord_die "item title is required"
+fi
+
+title="${title_parts[*]}"
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+cd "$coord_dir"
+
+if [ -z "$project_key" ]; then
+  workspace_item=1
+fi
+
+if [ "$workspace_item" = "1" ]; then
+  item_root="workspace/issues/open"
+  project_value="workspace"
+  id_prefix="$(coord_project_id_prefix "${PI_COORD_WORKSPACE:-workspace}")"
+else
+  project_dir="$(coord_sanitize_path_part "$project_key")"
+  [ -n "$project_dir" ] || coord_die "project key produced an empty path"
+  item_root="projects/$project_dir/issues/open"
+  project_value="$project_dir"
+  id_prefix="$(coord_project_id_prefix "$project_key")"
+fi
+
+mkdir -p "$item_root"
+slug="$(coord_slug "$title")"
+created="$(coord_timestamp_iso)"
+
+if [ -n "$explicit_id" ]; then
+  item_id="$explicit_id"
+else
+  item_id="$id_prefix-$(coord_timestamp_id)"
+fi
+
+path="$item_root/$item_id-$slug.md"
+if [ -e "$path" ]; then
+  coord_die "item already exists: $path"
+fi
+
+cat >"$path" <<EOF_ITEM
+---
+id: $item_id
+type: $item_type
+status: open
+project: $project_value
+owner: $owner
+priority: $priority
+created: $created
+updated: $created
+closed:
+related: []
+---
+
+# $title
+
+## Context
+
+## Acceptance criteria
+
+- [ ] Define acceptance criteria.
+
+## Activity
+
+- $created $(coord_default_agent): Created.
+EOF_ITEM
+
+coord_note "created item: $path"
+printf '%s\n' "$path"

@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-init - create and scaffold a coordination repository
+
+Usage:
+  agent-coord-init [options]
+
+Options:
+  --root DIR        Bare remote parent; default: PI_COORD_ROOT or ~/agent-remotes
+  --workspace ID    Coordination domain; default: PI_COORD_WORKSPACE or cwd name
+  --dir DIR         Working clone dir; default: PI_COORD_DIR or coordination
+  --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
+  --project KEY     Initial project directory; default: workspace ID
+  --bare-only       Only create the bare remote
+  -h, --help        Show this help
+
+The remote path is:
+  <root>/<workspace>-coordination.git
+USAGE
+}
+
+root="$(coord_default_root)"
+workspace="$(coord_default_workspace)"
+coord_dir="$(coord_default_dir)"
+agent_id="$(coord_default_agent)"
+project_key=""
+bare_only=0
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --root)
+      [ "$#" -ge 2 ] || coord_die "--root requires a value"
+      root="$2"
+      shift 2
+      ;;
+    --workspace)
+      [ "$#" -ge 2 ] || coord_die "--workspace requires a value"
+      workspace="$2"
+      shift 2
+      ;;
+    --dir)
+      [ "$#" -ge 2 ] || coord_die "--dir requires a value"
+      coord_dir="$2"
+      shift 2
+      ;;
+    --agent-id)
+      [ "$#" -ge 2 ] || coord_die "--agent-id requires a value"
+      agent_id="$2"
+      shift 2
+      ;;
+    --project)
+      [ "$#" -ge 2 ] || coord_die "--project requires a value"
+      project_key="$2"
+      shift 2
+      ;;
+    --bare-only)
+      bare_only=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      coord_die "unknown argument: $1"
+      ;;
+  esac
+done
+
+[ -n "$workspace" ] || coord_die "workspace must not be empty"
+[ -n "$agent_id" ] || coord_die "agent id must not be empty"
+if [ -z "$project_key" ]; then
+  project_key="$workspace"
+fi
+
+root="$(coord_abs "$root")"
+remote="$(coord_remote_for "$root" "$workspace")"
+mkdir -p "$root"
+
+if [ -e "$remote" ] && [ ! -d "$remote/objects" ]; then
+  coord_die "remote path exists but is not a bare Git repo: $remote"
+fi
+
+if [ ! -d "$remote" ]; then
+  git init --bare --initial-branch=main "$remote" >/dev/null 2>&1 \
+    || git init --bare "$remote" >/dev/null
+  coord_note "created bare remote: $remote"
+else
+  coord_note "bare remote already exists: $remote"
+fi
+
+if [ "$bare_only" = "1" ]; then
+  exit 0
+fi
+
+if [ -e "$coord_dir" ]; then
+  if [ -d "$coord_dir" ] && [ -z "$(find "$coord_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+    rmdir "$coord_dir"
+  else
+    coord_die "working clone already exists: $coord_dir"
+  fi
+fi
+
+git clone "$remote" "$coord_dir" >/dev/null 2>&1 || {
+  rm -rf "$coord_dir"
+  coord_die "failed to clone remote: $remote"
+}
+
+cd "$coord_dir"
+coord_git_config_defaults
+
+if coord_git_has_head; then
+  coord_note "clone already has commits; no scaffold was written"
+  exit 0
+fi
+
+git checkout -B main >/dev/null 2>&1
+
+project_dir="$(coord_sanitize_path_part "$project_key")"
+agent_file="$(coord_sanitize_path_part "$agent_id")"
+[ -n "$project_dir" ] || project_dir="project"
+[ -n "$agent_file" ] || agent_file="agent"
+
+mkdir -p \
+  docs \
+  ".pi/skills/agent-coordination" \
+  "projects/$project_dir/issues/open" \
+  "projects/$project_dir/issues/blocked" \
+  "projects/$project_dir/issues/closed" \
+  "projects/$project_dir/decisions" \
+  "projects/$project_dir/notes" \
+  workspace/issues/open \
+  workspace/issues/blocked \
+  workspace/issues/closed \
+  workspace/decisions \
+  workspace/architecture \
+  workspace/cross-project-todos \
+  agents
+
+coord_install_template AGENTS.md AGENTS.md
+coord_install_template SYNC_PROTOCOL.md docs/SYNC_PROTOCOL.md
+coord_install_template ITEM_FORMAT.md docs/ITEM_FORMAT.md
+coord_install_template SKILL.md .pi/skills/agent-coordination/SKILL.md
+
+cat >README.md <<EOF_README
+# $workspace coordination
+
+This repository stores Git-backed agent coordination state for the
+$workspace workspace.
+
+Use normal Git pull, commit, and push operations to synchronize state.
+Read AGENTS.md and docs/SYNC_PROTOCOL.md before changing shared items.
+EOF_README
+
+cat >WORKSPACE.md <<EOF_WORKSPACE
+# Workspace: $workspace
+
+- Coordination domain: $workspace
+- Bare remote: $remote
+- Initial project: $project_dir
+EOF_WORKSPACE
+
+cat >"agents/$agent_file.md" <<EOF_AGENT
+# $agent_id
+
+- Agent ID: $agent_id
+- Created: $(coord_timestamp_iso)
+
+## Notes
+
+EOF_AGENT
+
+find projects workspace agents -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
+
+if coord_commit_all_if_changed "Initialize coordination repository"; then
+  git push -u origin main >/dev/null
+  git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+  coord_note "initialized coordination clone: $(pwd -P)"
+else
+  coord_note "no changes to commit"
+fi

@@ -421,16 +421,50 @@
           exec ${piBwrap}/bin/pi-bwrap --tools "$tools" --continue "$@"
         '';
 
+      agentCoordCommandNames = [
+        "agent-coord-init"
+        "agent-coord-clone"
+        "agent-coord-new"
+      ];
+
+      mkAgentCoordSupport = pkgs:
+        pkgs.runCommand "pi-env-agent-coordination-support" { } ''
+          mkdir -p "$out/share/pi-env"
+          cp -R ${./pi-skill-templates} "$out/share/pi-env/pi-skill-templates"
+          cp -R ${./scripts} "$out/share/pi-env/scripts"
+          chmod +x "$out/share/pi-env/scripts"/agent-coord-*
+        '';
+
+      mkAgentCoordCommand = pkgs: name:
+        let
+          runtimePath = pkgs.lib.makeBinPath (mkRuntime pkgs);
+          support = mkAgentCoordSupport pkgs;
+        in
+        pkgs.writeShellScriptBin name ''
+          set -euo pipefail
+          export PATH="${runtimePath}:''${PATH:-}"
+          export PI_ENV_COORD_TEMPLATE_DIR="${support}/share/pi-env/pi-skill-templates/agent-coordination"
+          export PI_ENV_COORD_LIB="${support}/share/pi-env/scripts/agent-coord-lib.sh"
+          exec "${support}/share/pi-env/scripts/${name}" "$@"
+        '';
+
+      mkAgentCoordCommands = pkgs:
+        builtins.listToAttrs (map (name: {
+          inherit name;
+          value = mkAgentCoordCommand pkgs name;
+        }) agentCoordCommandNames);
+
       mkPiShell = { pkgs, extraPackages ? [ ], shellHook ? "" }:
         let
           piBwrap = mkPiBwrap pkgs;
           piStart = mkPiStart pkgs;
+          agentCoordCommands = builtins.attrValues (mkAgentCoordCommands pkgs);
         in
         pkgs.mkShell {
           packages = (mkRuntime pkgs) ++ [
             piBwrap
             piStart
-          ] ++ extraPackages;
+          ] ++ agentCoordCommands ++ extraPackages;
 
           shellHook = ''
             export PS1="(nix-dev) \u@\h:\w$ "
@@ -443,7 +477,16 @@
     in
     {
       lib = {
-        inherit defaultTools mkRuntime mkPiBwrap mkPiStart mkPiShell;
+        inherit
+          defaultTools
+          mkRuntime
+          mkPiBwrap
+          mkPiStart
+          agentCoordCommandNames
+          mkAgentCoordSupport
+          mkAgentCoordCommand
+          mkAgentCoordCommands
+          mkPiShell;
       };
     }
     // flake-utils.lib.eachDefaultSystem (system:
@@ -451,12 +494,13 @@
         pkgs = import nixpkgs { inherit system; };
         piBwrap = mkPiBwrap pkgs;
         piStart = mkPiStart pkgs;
+        agentCoordCommands = mkAgentCoordCommands pkgs;
         piRuntime = pkgs.buildEnv {
           name = "pi-env-runtime";
           paths = (mkRuntime pkgs) ++ [
             piBwrap
             piStart
-          ];
+          ] ++ builtins.attrValues agentCoordCommands;
         };
       in
       {
@@ -465,7 +509,7 @@
           pi-start = piStart;
           pi-bwrap = piBwrap;
           pi-runtime = piRuntime;
-        };
+        } // agentCoordCommands;
 
         apps = {
           default = {
