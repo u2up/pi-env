@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-close - close a coordination item
+
+Usage:
+  agent-coord-close [options] ITEM
+
+Options:
+  --coord-dir DIR     Coordination clone; default: PI_COORD_DIR or ./coordination
+  --agent-id ID       Agent identity; default: PI_COORD_AGENT_ID or USER
+  --result TEXT       Result/activity text; default: Closed.
+  --no-pull           Do not pull/rebase before closing
+  --no-push           Commit but do not push after closing
+  --force             Allow closing an item owned by another agent
+  -h, --help          Show this help
+USAGE
+}
+
+coord_dir_opt=""
+agent_id="$(coord_default_agent)"
+result="Closed."
+pull_first=1
+push_after=1
+force=0
+item_query=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --coord-dir)
+      [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    --agent-id)
+      [ "$#" -ge 2 ] || coord_die "--agent-id requires a value"
+      agent_id="$2"
+      shift 2
+      ;;
+    --result)
+      [ "$#" -ge 2 ] || coord_die "--result requires a value"
+      result="$2"
+      shift 2
+      ;;
+    --no-pull)
+      pull_first=0
+      shift
+      ;;
+    --no-push)
+      push_after=0
+      shift
+      ;;
+    --force)
+      force=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      if [ -n "$item_query" ]; then
+        coord_die "unexpected extra argument: $1"
+      fi
+      item_query="$1"
+      shift
+      ;;
+  esac
+done
+
+[ -n "$item_query" ] || coord_die "item is required"
+[ -n "$agent_id" ] || coord_die "agent id must not be empty"
+
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+cd "$coord_dir"
+
+if [ "$pull_first" = "1" ]; then
+  coord_pull_rebase
+fi
+
+item_path="$(coord_repo_path "$(coord_find_item "$item_query")")"
+item_id="$(coord_frontmatter_value "$item_path" id || true)"
+status="$(coord_frontmatter_value "$item_path" status || true)"
+owner="$(coord_frontmatter_value "$item_path" owner || true)"
+[ -n "$item_id" ] || item_id="$(basename "$item_path" .md)"
+
+if [ -n "$owner" ] && [ "$owner" != "$agent_id" ] && [ "$force" != "1" ]; then
+  coord_die "item is owned by $owner; use --force to close it"
+fi
+
+target_path="$item_path"
+case "$item_path" in
+  */issues/open/*)
+    target_path="${item_path/\/issues\/open\//\/issues\/closed\/}"
+    ;;
+  */issues/blocked/*)
+    target_path="${item_path/\/issues\/blocked\//\/issues\/closed\/}"
+    ;;
+esac
+
+if [ "$target_path" != "$item_path" ]; then
+  mkdir -p "$(dirname "$target_path")"
+  git mv "$item_path" "$target_path"
+  item_path="$target_path"
+fi
+
+now="$(coord_timestamp_iso)"
+coord_set_frontmatter \
+  "$item_path" \
+  "status=closed" \
+  "owner=$agent_id" \
+  "updated=$now" \
+  "closed=$now"
+coord_append_activity "$item_path" "$now" "$agent_id" "$result"
+
+git add "$item_path"
+if coord_git_has_staged_changes; then
+  message="Close $item_id"
+  coord_validate_subject "$message"
+  git commit -m "$message"
+else
+  coord_note "item was already closed: $item_id"
+fi
+
+if [ "$push_after" = "1" ]; then
+  git push
+fi
+
+printf '%s\n' "$item_path"

@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-push - commit and push coordination changes
+
+Usage:
+  agent-coord-push [options] [git push args...]
+
+Options:
+  --coord-dir DIR       Coordination clone; default: PI_COORD_DIR or ./coordination
+  -m, --message TEXT    Commit subject; default: Update coordination state
+  --no-add              Do not run git add -A before committing
+  -h, --help            Show this help
+USAGE
+}
+
+coord_dir_opt=""
+message="Update coordination state"
+add_all=1
+git_args=()
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --coord-dir)
+      [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    -m|--message)
+      [ "$#" -ge 2 ] || coord_die "$1 requires a value"
+      message="$2"
+      shift 2
+      ;;
+    --no-add)
+      add_all=0
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      git_args+=("$@")
+      break
+      ;;
+    *)
+      git_args+=("$1")
+      shift
+      ;;
+  esac
+done
+
+coord_validate_subject "$message"
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+cd "$coord_dir"
+
+if [ "$add_all" = "1" ]; then
+  git add -A
+fi
+
+if coord_git_has_staged_changes; then
+  git commit -m "$message"
+else
+  coord_note "no staged changes to commit"
+fi
+
+git push "${git_args[@]}"

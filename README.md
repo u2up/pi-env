@@ -91,6 +91,17 @@ Create a timestamp-ID item with:
 
 ```bash
 agent-coord-new --project pi-env "Document pi config behavior"
+agent-coord-push -m "Add PI-ENV documentation item"
+```
+
+Lifecycle helpers are also available:
+
+```text
+agent-coord-status    show sync status and open/blocked items
+agent-coord-pull      run git pull --rebase --autostash
+agent-coord-push      commit and push coordination changes
+agent-coord-claim     claim an item, commit, and push
+agent-coord-close     close an item, commit, and push
 ```
 
 The helpers do not make `pi-start` create, claim, close, commit, or push

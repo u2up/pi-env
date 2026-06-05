@@ -424,7 +424,12 @@
       agentCoordCommandNames = [
         "agent-coord-init"
         "agent-coord-clone"
+        "agent-coord-status"
+        "agent-coord-pull"
+        "agent-coord-push"
         "agent-coord-new"
+        "agent-coord-claim"
+        "agent-coord-close"
       ];
 
       mkAgentCoordSupport = pkgs:

@@ -451,6 +451,16 @@ export PI_COORD_AGENT_ID=agent-a
 
 agent-coord-init --project pi-env
 agent-coord-new --project pi-env "Document pi config behavior"
+agent-coord-push -m "Add PI-ENV documentation item"
+```
+
+Agents can inspect and update item state with:
+
+```bash
+agent-coord-status
+agent-coord-pull
+agent-coord-claim PI-ENV-20260605-143022
+agent-coord-close PI-ENV-20260605-143022 --result "Implemented."
 ```
 
 Another workspace clone can join the same domain with:

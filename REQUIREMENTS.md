@@ -65,6 +65,11 @@ For each supported system the flake must expose packages:
 - `agent-coord-init`
 - `agent-coord-clone`
 - `agent-coord-new`
+- `agent-coord-status`
+- `agent-coord-pull`
+- `agent-coord-push`
+- `agent-coord-claim`
+- `agent-coord-close`
 
 ### FLAKE-005 Apps
 
@@ -157,13 +162,18 @@ where `$tools` is the default tool list or `PI_BWRAP_DEFAULT_TOOLS` when set.
 
 If `pi` is not found on `PATH` before sandbox entry, `pi-bwrap` must exit with code `127` and print an actionable error.
 
-### CMD-009 Coordination MVP commands
+### CMD-009 Coordination helper commands
 
 The flake/devshell must provide these opt-in coordination commands:
 
 - `agent-coord-init`
 - `agent-coord-clone`
+- `agent-coord-status`
+- `agent-coord-pull`
+- `agent-coord-push`
 - `agent-coord-new`
+- `agent-coord-claim`
+- `agent-coord-close`
 
 ### CMD-010 `agent-coord-init`
 
@@ -190,6 +200,23 @@ workspace directory and configure the clone with `pull.rebase=true` and
 `agent-coord-new` must create a Markdown item with timestamp-based ID,
 frontmatter, title, acceptance-criteria placeholder, and activity entry. It
 must not commit or push automatically.
+
+### CMD-013 Coordination lifecycle helpers
+
+The lifecycle helpers must remain thin wrappers around Git and Markdown
+file edits:
+
+- `agent-coord-status` shows Git status and open/blocked item summaries;
+- `agent-coord-pull` runs `git pull --rebase --autostash`;
+- `agent-coord-push` commits staged/all changes and pushes;
+- `agent-coord-claim` pulls, sets `status: claimed`, sets `owner:`,
+  appends activity, commits, and pushes unless disabled by options;
+- `agent-coord-close` pulls, moves issue items to `closed/`, sets closed
+  frontmatter, appends activity, commits, and pushes unless disabled by
+  options.
+
+Commands that create commits must reject subject lines longer than 72
+characters.
 
 ## 6. Project root and working directory requirements
 
@@ -511,6 +538,11 @@ nix build .#pi-runtime
 nix build .#agent-coord-init
 nix build .#agent-coord-clone
 nix build .#agent-coord-new
+nix build .#agent-coord-status
+nix build .#agent-coord-pull
+nix build .#agent-coord-push
+nix build .#agent-coord-claim
+nix build .#agent-coord-close
 ```
 
 Expected: all builds succeed.
@@ -743,7 +775,9 @@ Expected:
 - generated rules, docs, and Pi skill files exist;
 - clone Git settings enable rebase and autostash;
 - `agent-coord-clone` can clone the same domain;
-- `agent-coord-new` creates a timestamp-ID Markdown item.
+- `agent-coord-new` creates a timestamp-ID Markdown item;
+- status, push, claim, and close helpers perform the expected file and Git
+  state transitions.
 
 ## 14. Coordination implementation guard
 

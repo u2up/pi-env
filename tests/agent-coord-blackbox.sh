@@ -54,4 +54,29 @@ grep -q '^project: pi-env$' "$tmp/workspace/coordination/$action_path"
 grep -q '^# Document pi config behavior$' \
   "$tmp/workspace/coordination/$action_path"
 
+item_id="$(grep '^id: ' "$tmp/workspace/coordination/$action_path" | sed 's/^id: //')"
+
+agent-coord-status --coord-dir "$tmp/workspace/coordination" >/dev/null
+agent-coord-push \
+  --coord-dir "$tmp/workspace/coordination" \
+  -m "Add coordination test item" >/dev/null
+
+agent-coord-claim \
+  --coord-dir "$tmp/workspace/coordination" \
+  --agent-id agent-a \
+  "$item_id" >/dev/null
+
+grep -q '^status: claimed$' "$tmp/workspace/coordination/$action_path"
+grep -q '^owner: agent-a$' "$tmp/workspace/coordination/$action_path"
+
+closed_path="$(agent-coord-close \
+  --coord-dir "$tmp/workspace/coordination" \
+  --agent-id agent-a \
+  --result "Completed in test." \
+  "$item_id" | tail -n 1)"
+
+test -f "$tmp/workspace/coordination/$closed_path"
+grep -q '^status: closed$' "$tmp/workspace/coordination/$closed_path"
+grep -q '^closed: 20' "$tmp/workspace/coordination/$closed_path"
+
 printf 'agent coordination blackbox tests passed\n'

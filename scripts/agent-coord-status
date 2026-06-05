@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-status - show coordination repository status
+
+Usage:
+  agent-coord-status [options]
+
+Options:
+  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
+  -h, --help        Show this help
+USAGE
+}
+
+coord_dir_opt=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --coord-dir)
+      [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      coord_die "unknown argument: $1"
+      ;;
+  esac
+done
+
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+cd "$coord_dir"
+
+printf 'Repository: %s\n' "$coord_dir"
+git status --short --branch
+printf '\nItems:\n'
+
+found=0
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  found=1
+  id="$(coord_frontmatter_value "$file" id || true)"
+  status="$(coord_frontmatter_value "$file" status || true)"
+  owner="$(coord_frontmatter_value "$file" owner || true)"
+  priority="$(coord_frontmatter_value "$file" priority || true)"
+  title="$(grep -m 1 '^# ' "$file" | sed 's/^# //' || true)"
+  [ -n "$id" ] || id="$(basename "$file" .md)"
+  [ -n "$status" ] || status="unknown"
+  [ -n "$owner" ] || owner="-"
+  [ -n "$priority" ] || priority="-"
+  [ -n "$title" ] || title="(untitled)"
+  printf -- '- %s [%s] owner=%s priority=%s %s (%s)\n' \
+    "$id" "$status" "$owner" "$priority" "$title" "$file"
+done < <(
+  find workspace/issues/open workspace/issues/blocked \
+    projects/*/issues/open projects/*/issues/blocked \
+    -type f -name '*.md' 2>/dev/null | sort
+)
+
+if [ "$found" = "0" ]; then
+  printf '  no open or blocked items found\n'
+fi

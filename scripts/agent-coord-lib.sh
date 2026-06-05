@@ -158,15 +158,38 @@ coord_git_has_worktree_changes() {
   ! git diff --quiet --exit-code || [ -n "$(git ls-files --others --exclude-standard)" ]
 }
 
+coord_validate_subject() {
+  local subject
+  subject="$1"
+  if [ "${#subject}" -gt 72 ]; then
+    coord_die "commit subject exceeds 72 characters: $subject"
+  fi
+}
+
 coord_commit_all_if_changed() {
   local message
   message="$1"
+  coord_validate_subject "$message"
   git add -A
   if coord_git_has_staged_changes; then
     git commit -m "$message"
     return 0
   fi
   return 1
+}
+
+coord_pull_rebase() {
+  if git remote get-url origin >/dev/null 2>&1; then
+    git pull --rebase --autostash "$@"
+  else
+    coord_note "no origin remote configured; skipping pull"
+  fi
+}
+
+coord_repo_path() {
+  local path
+  path="$1"
+  realpath -m --relative-to="$(pwd -P)" "$path" 2>/dev/null || printf '%s\n' "$path"
 }
 
 coord_frontmatter_value() {
