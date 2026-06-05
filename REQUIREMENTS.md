@@ -426,7 +426,7 @@ The sandbox must share the host network by default so Pi can reach model provide
 
 ### DOC-000 Design documents
 
-Design proposals that are not yet mandatory runtime behavior must be documented separately and referenced from requirements/use-case documentation. The optional Git-backed multi-agent coordination proposal is documented in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md).
+Design proposals that are not yet mandatory runtime behavior must be documented separately and referenced from requirements/use-case documentation. The optional Git-backed multi-agent coordination proposal is documented in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md), including proposed `agent-coord-init` scaffolding, `pi-skill-templates`, coordination-repo `AGENTS.md` rules, and Pi skill templates installed into the coordination repository.
 
 ### DOC-001 README coverage
 
@@ -692,7 +692,7 @@ Expected they are not visible unless they are inside the selected project root o
 
 ## 14. Non-goals and caveats
 
-- The agent coordination repository infrastructure described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md) is a proposal, not part of the current mandatory blackbox behavior unless implemented and promoted into explicit requirements above.
+- The agent coordination repository infrastructure described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md), including helper commands and generated Pi skill/rule templates, is a proposal, not part of the current mandatory blackbox behavior unless implemented and promoted into explicit requirements above.
 - Bubblewrap does not provide domain-level network allowlisting.
 - If `read`/`bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions are readable by commands/tools inside the sandbox.
 - `pi-env` does not ship user-specific common rules, skills, prompts, or extensions; it imports/exposes them from an external directory when configured.

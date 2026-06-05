@@ -75,8 +75,16 @@ Recommended workspace-level layout:
 
 ```text
 coordination/
+  AGENTS.md
   README.md
   WORKSPACE.md
+  docs/
+    SYNC_PROTOCOL.md
+    ITEM_FORMAT.md
+  .pi/
+    skills/
+      agent-coordination/
+        SKILL.md
   projects/
     project-a/
       issues/
@@ -104,6 +112,8 @@ coordination/
     agent-a.md
     agent-b.md
 ```
+
+`AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `agent-coord-init`. After initialization, the copies in the coordination repository are authoritative for that workspace and can be edited/versioned like any other coordination state.
 
 Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions` for codebase-specific Pi behavior. Keep task state and cross-agent synchronization in the coordination repository.
 
@@ -241,20 +251,118 @@ With these set, `agent-coord-clone` can infer:
 $PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git -> $PI_COORD_DIR
 ```
 
-## 9. Optional Pi integration
+## 9. Coordination rules installed by `agent-coord-init`
+
+Because `pi-env` is a Pi-related project, the default agent rules should be provided as Pi skill templates and scaffolded instructions. The `pi-env` source tree should keep these defaults under a clear template directory such as:
+
+```text
+pi-skill-templates/
+  agent-coordination/
+    SKILL.md
+    AGENTS.md
+    SYNC_PROTOCOL.md
+    ITEM_FORMAT.md
+```
+
+`agent-coord-init` should install those templates into a newly initialized coordination repository as at least:
+
+```text
+coordination/AGENTS.md
+coordination/docs/SYNC_PROTOCOL.md
+coordination/docs/ITEM_FORMAT.md
+coordination/.pi/skills/agent-coordination/SKILL.md
+```
+
+The installed files are the workspace's authoritative rules. `pi-env` templates are only defaults; after initialization, updates to rules should be committed to the coordination repository so all agents receive them via Git.
+
+### 9.1 Required `AGENTS.md` rules
+
+The generated `coordination/AGENTS.md` should instruct agents:
+
+1. Treat the coordination repository as the only shared synchronization source for agent work state.
+2. Pull/rebase before inspecting, selecting, creating, claiming, blocking, closing, or otherwise modifying items.
+3. Commit and push coordination changes immediately after changing shared state.
+4. Never force-push, rewrite public history, delete closed items, or renumber item IDs.
+5. Prefer one claimed item per agent unless explicitly instructed otherwise.
+6. Do not edit another agent's claimed item except to resolve a Git conflict, add clearly relevant factual information, or when workspace rules define it as stale/abandoned.
+7. Record all meaningful state transitions in the item's `## Activity` section.
+8. Link completed work to concrete project commits, branches, PRs, or file paths where possible.
+9. Keep coordination changes small and reviewable.
+10. Keep all Git commit, tag, and other Git message text readable in standard terminals: subject/summary lines should be at most 72 characters, and body paragraphs should be hard-wrapped at 72 characters where practical.
+11. If a push/rebase conflict occurs, resolve it conservatively and preserve both agents' factual updates when possible.
+
+### 9.2 Item manipulation rules
+
+Agents should use these state transitions:
+
+- create: add a new Markdown item under `issues/open/` or the appropriate typed directory;
+- claim: set `status: claimed`, set `owner: <agent-id>`, append activity, commit, push;
+- block: move to `blocked/` when needed, set `status: blocked`, document blocker and owner expectations;
+- resume/unblock: move back to `open/` or keep claimed if the same agent continues;
+- close: use `git mv` into `closed/`, set `status: closed`, set `closed: <timestamp>`, append result and links;
+- split: create new linked items and mark the relationship in `related:` / `split_from:` fields;
+- supersede: leave the old item in place, mark `status: closed` or `superseded`, and link to the replacement.
+
+Do not encode important state only in a commit message. The file content must remain understandable from a checkout.
+
+### 9.3 Required Pi skill template
+
+`pi-env` should ship the canonical skill source as `pi-skill-templates/agent-coordination/SKILL.md`. `agent-coord-init` should copy it to `coordination/.pi/skills/agent-coordination/SKILL.md`. A generated skill should look like this in spirit:
+
+```markdown
+# Agent Coordination
+
+Use this skill when working in a workspace that contains a Git-backed agent coordination repository, when asked to find/claim/update work, or before making changes that affect shared agent state.
+
+## Coordination repository
+
+The coordination repository is the only synchronization source for agent task state. Find it at `./coordination` unless the user or environment says otherwise.
+
+## Required protocol
+
+1. `cd coordination && git pull --rebase` before reading or modifying coordination state.
+2. Inspect open/claimed/blocked items relevant to the current workspace/project.
+3. Claim at most one item unless instructed otherwise.
+4. Commit and push immediately after claiming or changing status.
+5. Do project work in the project repository.
+6. Return to the coordination repo, pull/rebase, update the item with results and links, then commit and push.
+
+## Safety rules
+
+- Never force-push.
+- Never rewrite coordination history.
+- Never renumber IDs.
+- Never delete closed items.
+- Keep Git commit/tag message subject lines at or below 72 characters and hard-wrap body text at 72 characters where practical.
+- Preserve other agents' factual updates during conflict resolution.
+- Ask the user when ownership, stale claims, or conflicts are ambiguous.
+```
+
+The skill should complement, not replace, `coordination/AGENTS.md`. If they differ, the checked-in coordination repository rules win.
+
+### 9.4 Template ownership and updates
+
+`pi-env` may update its built-in templates over time. Existing coordination repositories should not be silently overwritten. If template upgrade support is added, it should be explicit, diffable, and commit-based, for example:
+
+```bash
+agent-coord-upgrade-rules --preview
+agent-coord-upgrade-rules
+```
+
+## 10. Optional Pi integration
 
 `pi-start` should not mutate coordination state automatically.
 
 Possible safe integrations:
 
 - print a reminder when `./coordination` exists;
-- provide a generated or scaffolded `coordination/README.md` with agent instructions;
+- provide generated/scaffolded `coordination/AGENTS.md`, docs, and Pi skill templates through `agent-coord-init`;
 - provide an optional prompt/context snippet explaining the Git sync protocol;
 - allow users to mount/select the coordination repository explicitly when it is outside the project root.
 
 Any automatic claim, close, commit, or push behavior should be opt-in and implemented outside the default `pi-start` path.
 
-## 10. Non-goals
+## 11. Non-goals
 
 Initial infrastructure should avoid:
 

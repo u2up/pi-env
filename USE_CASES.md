@@ -437,6 +437,8 @@ Use cases for the isolated launcher include:
 
 For workspaces where several agents operate in separate project clones, `pi-env` could optionally help establish and maintain a dedicated Git-backed coordination repository. The coordination repository would contain workspace/project issues, TODOs, bugs, decisions, notes, and agent logs, and agents would synchronize only by normal Git pull/commit/push operations.
 
+As part of that setup, `pi-env` could ship defaults under `pi-skill-templates/agent-coordination/`, and `agent-coord-init` could install `AGENTS.md`, protocol documentation, item-format documentation, and a Pi skill under `.pi/skills/agent-coordination/SKILL.md`. Those generated files would define the workspace-specific rules for claiming, updating, blocking, closing, and conflict-resolving coordination items.
+
 This future use case is specified as a design proposal, not current behavior, in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md).
 
 ## Non-goals and limitations
