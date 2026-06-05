@@ -478,7 +478,15 @@ conflict-resolving coordination items.
 
 This use case remains opt-in. Default `pi-start` behavior must not create,
 claim, close, commit, push, or otherwise mutate coordination state
-automatically.
+automatically. When a coordination clone is outside the project root, mount
+it explicitly for sandboxed Pi runs:
+
+```bash
+PI_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
+```
+
+Inside the sandbox it appears at `/coordination`, and `PI_COORD_DIR` points
+there.
 
 ## Non-goals and limitations
 

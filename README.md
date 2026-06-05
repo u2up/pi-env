@@ -105,8 +105,18 @@ agent-coord-close     close an item, commit, and push
 ```
 
 The helpers do not make `pi-start` create, claim, close, commit, or push
-coordination state automatically. See `AGENT_COORDINATION_DESIGN.md` for
-the full design.
+coordination state automatically. If a coordination clone is under the
+mounted project, `pi-bwrap` only exposes it as normal project files and sets
+`PI_COORD_DIR` to the sandbox path. For a coordination clone outside the
+project, opt in explicitly:
+
+```bash
+PI_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
+```
+
+That clone is mounted read-write at `/coordination` and `PI_COORD_DIR` is
+set to `/coordination` inside the sandbox. See
+`AGENT_COORDINATION_DESIGN.md` for the full design.
 
 ## Bubblewrap safety defaults
 
@@ -122,6 +132,7 @@ the full design.
 - copies host Git config into the sandbox by default (`~/.gitconfig` and `$XDG_CONFIG_HOME/git/config` / `~/.config/git/config`), but not Git credentials or SSH keys;
 - copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
 - bind-mounts only the host Pi session directory for the current working directory into the sandbox by default (disabled for ephemeral homes), so `/resume` and `--continue` can access sessions for the directory/project without exposing all sessions;
+- passes `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`, and coordination directory context when set, and can explicitly mount an external coordination clone with `PI_BWRAP_COORDINATION_DIR`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or Docker sockets;
 - clears the environment, then passes only terminal basics and selected LLM provider variables;
 - shares the host network by default so Pi can reach model providers.
@@ -148,6 +159,7 @@ PI_BWRAP_IMPORT_GIT_CONFIG=0            # do not import host ~/.gitconfig and XD
 PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy is absent; default is always
 PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
 PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
+PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_NET=0                          # disable network sharing
 PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name

@@ -478,6 +478,24 @@ Inside the sandbox the launcher must set:
 - `PI_SKIP_VERSION_CHECK`, defaulting to `1`
 - `PI_TELEMETRY`, defaulting to `0`
 
+### ENV-006 Coordination context
+
+When set, the launcher must pass safe coordination context into the
+sandbox:
+
+- `PI_COORD_ROOT`
+- `PI_COORD_WORKSPACE`
+- `PI_COORD_AGENT_ID`
+
+If a coordination clone is detected under the selected project, or selected
+with `PI_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set
+`PI_COORD_DIR` inside the sandbox to the sandbox-visible path.
+
+`PI_BWRAP_COORDINATION_DIR=/path/to/coordination` must explicitly bind an
+external coordination clone read-write at `/coordination`. The launcher may
+print a reminder when a coordination repository is available, but it must
+not mutate coordination state.
+
 ## 11. Network requirements
 
 ### NET-001 Default network
@@ -507,6 +525,7 @@ Design proposals that are not yet mandatory runtime behavior must be documented 
 - common vs project-specific rules and skills
 - Git config import behavior
 - opt-in coordination helper basics
+- safe coordination context/mount behavior
 - security notes and limitations
 
 ## 13. Blackbox test blueprint

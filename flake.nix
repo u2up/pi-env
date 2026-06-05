@@ -88,6 +88,7 @@
             PI_BWRAP_HOST_XDG_GIT_CONFIG=/path Host XDG git config (default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config)
             PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
             PI_BWRAP_NET=0                Disable network namespace sharing
+            PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
           To pass pi's own -h/--help, use:
@@ -294,6 +295,52 @@
             fi
           fi
 
+          coord_bind_args=()
+          sandbox_coord_dir=""
+          host_coord_dir=""
+          coord_dir_explicit=0
+
+          if [ -n "''${PI_BWRAP_COORDINATION_DIR:-}" ]; then
+            host_coord_dir="$(realpath -m "$PI_BWRAP_COORDINATION_DIR")"
+            coord_dir_explicit=1
+          elif [ -n "''${PI_COORD_DIR:-}" ]; then
+            coord_dir_explicit=1
+            case "$PI_COORD_DIR" in
+              /*)
+                host_coord_dir="$(realpath -m "$PI_COORD_DIR")"
+                ;;
+              *)
+                host_coord_dir="$(realpath -m "$project_root/$PI_COORD_DIR")"
+                ;;
+            esac
+          elif [ -d "$project_root/coordination" ]; then
+            host_coord_dir="$(realpath -m "$project_root/coordination")"
+          fi
+
+          if [ -n "$host_coord_dir" ]; then
+            if [ -d "$host_coord_dir" ]; then
+              case "$host_coord_dir" in
+                "$project_root")
+                  sandbox_coord_dir="/workspace"
+                  ;;
+                "$project_root"/*)
+                  sandbox_coord_dir="/workspace''${host_coord_dir#"$project_root"}"
+                  ;;
+                *)
+                  sandbox_coord_dir="/coordination"
+                  coord_bind_args=(--dir /coordination --bind "$host_coord_dir" /coordination)
+                  ;;
+              esac
+
+              if [ -d "$host_coord_dir/.git" ] || [ -f "$host_coord_dir/AGENTS.md" ]; then
+                echo "pi-bwrap: coordination repo available at $sandbox_coord_dir" >&2
+                echo "pi-bwrap: pull/rebase before changing shared state" >&2
+              fi
+            elif [ "$coord_dir_explicit" = "1" ]; then
+              echo "pi-bwrap: warning: coordination dir not found: $host_coord_dir" >&2
+            fi
+          fi
+
           if [ "$#" -eq 0 ]; then
             pi_args=(--tools "$DEFAULT_PI_TOOLS" --continue)
           else
@@ -338,6 +385,15 @@
             done
           fi
 
+          copy_env PI_COORD_ROOT
+          copy_env PI_COORD_WORKSPACE
+          copy_env PI_COORD_AGENT_ID
+          if [ -n "$sandbox_coord_dir" ]; then
+            set_env PI_COORD_DIR "$sandbox_coord_dir"
+          else
+            copy_env PI_COORD_DIR
+          fi
+
           bwrap_args=(
             --die-with-parent
             --unshare-all
@@ -379,6 +435,7 @@
             --bind "$state_base/agent" /home/pi/.pi/agent
             "''${extension_bind_args[@]}"
             "''${session_bind_args[@]}"
+            "''${coord_bind_args[@]}"
             --bind "$state_base/cache" /home/pi/.cache
             --chdir "$inside_cwd"
             --setenv HOME /home/pi
