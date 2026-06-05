@@ -419,6 +419,13 @@ nix build .#pi-start
 nix build .#pi-runtime
 ```
 
+Coordination helpers can be validated without Nix:
+
+```bash
+tests/agent-coord-blackbox.sh
+tests/agent-coord-concurrency.sh
+```
+
 A fake `pi` executable can be placed early on `PATH` to inspect arguments, cwd, environment, and visible files inside the sandbox.
 
 ## 22. Safer code-review and automation workflows

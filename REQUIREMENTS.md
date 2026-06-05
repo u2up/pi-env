@@ -810,6 +810,17 @@ Expected:
   state transitions;
 - rule upgrade preview runs without mutating coordination state.
 
+### TEST-030 Coordination conflict hardening
+
+Run `tests/agent-coord-concurrency.sh` from the repository root.
+
+Expected:
+
+- a stale no-pull claim cannot push over another agent's claim;
+- a pulled clone refuses to claim or close an item owned by another agent;
+- the owning agent can close the item and other clones can pull the result;
+- helper-generated commit subjects longer than 72 characters are rejected.
+
 ## 14. Coordination implementation guard
 
 Git-backed coordination support, when enabled, must keep the same design boundaries:

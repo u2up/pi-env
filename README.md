@@ -125,8 +125,16 @@ PI_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
 ```
 
 That clone is mounted read-write at `/coordination` and `PI_COORD_DIR` is
-set to `/coordination` inside the sandbox. See
-`AGENT_COORDINATION_DESIGN.md` for the full design.
+set to `/coordination` inside the sandbox.
+
+Coordination helper smoke tests:
+
+```bash
+tests/agent-coord-blackbox.sh
+tests/agent-coord-concurrency.sh
+```
+
+See `AGENT_COORDINATION_DESIGN.md` for the full design.
 
 ## Bubblewrap safety defaults
 
