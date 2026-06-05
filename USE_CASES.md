@@ -4,7 +4,7 @@
 
 This document summarizes the practical ways the current project can be used.
 
-A possible future use case for Git-backed multi-agent task synchronization is described separately in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md).
+A possible opt-in use case for Git-backed multi-agent task synchronization is described separately in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). Coordination helpers must remain explicit Git/Markdown tooling and must not make `pi-start` mutate shared coordination state automatically.
 
 ## 1. Run Pi in the current repository
 
@@ -435,11 +435,11 @@ Use cases for the isolated launcher include:
 
 ## 23. Future: coordinate multiple agents with Git
 
-For workspaces where several agents operate in separate project clones, `pi-env` could optionally help establish and maintain a dedicated Git-backed coordination repository. The coordination repository would contain workspace/project issues, TODOs, bugs, decisions, notes, and agent logs, and agents would synchronize only by normal Git pull/commit/push operations.
+For workspaces where several agents operate in separate project clones, `pi-env` can optionally help establish and maintain a dedicated Git-backed coordination repository. The coordination repository contains workspace/project issues, TODOs, bugs, decisions, notes, and agent logs, and agents synchronize only by normal Git pull/commit/push operations.
 
 As part of that setup, `pi-env` could ship defaults under `pi-skill-templates/agent-coordination/`, and `agent-coord-init` could install `AGENTS.md`, protocol documentation, item-format documentation, and a Pi skill under `.pi/skills/agent-coordination/SKILL.md`. Those generated files would define the workspace-specific rules for claiming, updating, blocking, closing, and conflict-resolving coordination items.
 
-This future use case is specified as a design proposal, not current behavior, in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md).
+This use case remains opt-in. Default `pi-start` behavior must not create, claim, close, commit, push, or otherwise mutate coordination state automatically.
 
 ## Non-goals and limitations
 

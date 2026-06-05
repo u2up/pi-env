@@ -6,7 +6,9 @@ This document is derived from the current source tree and git history of `pi-env
 
 `pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`.
 
-An optional future extension for Git-backed multi-agent coordination is described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). That design is intentionally separate from the current required runtime/sandbox contract unless requirements in this document explicitly reference it.
+An optional extension for Git-backed multi-agent coordination is described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). That design is intentionally separate from the current required runtime/sandbox contract unless requirements in this document explicitly reference it.
+
+Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.
 
 The project must keep two responsibilities separate:
 
@@ -690,9 +692,22 @@ With fake Pi, attempt to read host-only files such as host home markers, `.ssh`,
 
 Expected they are not visible unless they are inside the selected project root or explicitly copied by supported import behavior.
 
-## 14. Non-goals and caveats
+## 14. Coordination implementation guard
 
-- The agent coordination repository infrastructure described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md), including helper commands and generated Pi skill/rule templates, is a proposal, not part of the current mandatory blackbox behavior unless implemented and promoted into explicit requirements above.
+Git-backed coordination support, when enabled, must keep the same design boundaries:
+
+- one bare coordination repository is one coordination domain;
+- coordination repositories are plain Git repositories containing Markdown and small metadata blocks;
+- helper commands are thin wrappers around Git and file scaffolding/editing;
+- `pi-start` may only provide safe context, reminders, or mounts for coordination repositories;
+- `pi-start` must not create, claim, close, commit, push, or otherwise mutate coordination state automatically;
+- no daemon, database, background push, force-push, hidden lock service, or non-Git synchronization mechanism may be introduced for coordination state.
+
+Coordination behavior becomes mandatory only when a requirement in this document names a concrete command, file, or environment variable.
+
+## 15. Non-goals and caveats
+
+- Agent coordination repository infrastructure is optional unless implemented and promoted into explicit requirements above.
 - Bubblewrap does not provide domain-level network allowlisting.
 - If `read`/`bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions are readable by commands/tools inside the sandbox.
 - `pi-env` does not ship user-specific common rules, skills, prompts, or extensions; it imports/exposes them from an external directory when configured.
