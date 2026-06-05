@@ -461,7 +461,11 @@ agent-coord-status
 agent-coord-pull
 agent-coord-claim PI-ENV-20260605-143022
 agent-coord-close PI-ENV-20260605-143022 --result "Implemented."
+agent-coord-upgrade-rules --preview
 ```
+
+Rule upgrades are explicit. Use `agent-coord-upgrade-rules --preview` to
+inspect diffs, then `agent-coord-upgrade-rules` to commit template updates.
 
 Another workspace clone can join the same domain with:
 

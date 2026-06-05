@@ -79,4 +79,12 @@ test -f "$tmp/workspace/coordination/$closed_path"
 grep -q '^status: closed$' "$tmp/workspace/coordination/$closed_path"
 grep -q '^closed: 20' "$tmp/workspace/coordination/$closed_path"
 
+head_before="$(git -C "$tmp/workspace/coordination" rev-parse HEAD)"
+agent-coord-upgrade-rules \
+  --coord-dir "$tmp/workspace/coordination" \
+  --preview >/dev/null
+head_after="$(git -C "$tmp/workspace/coordination" rev-parse HEAD)"
+test "$head_before" = "$head_after"
+test -z "$(git -C "$tmp/workspace/coordination" status --short)"
+
 printf 'agent coordination blackbox tests passed\n'

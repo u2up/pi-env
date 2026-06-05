@@ -487,6 +487,7 @@
         "agent-coord-new"
         "agent-coord-claim"
         "agent-coord-close"
+        "agent-coord-upgrade-rules"
       ];
 
       mkAgentCoordSupport = pkgs:

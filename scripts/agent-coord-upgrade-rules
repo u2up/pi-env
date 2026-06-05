@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-upgrade-rules - preview or apply bundled rule templates
+
+Usage:
+  agent-coord-upgrade-rules [options]
+
+Options:
+  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
+  --preview         Show diffs without changing files
+  --no-pull         Do not pull/rebase before applying changes
+  --push            Push the upgrade commit after applying it
+  -h, --help        Show this help
+
+Existing rules are never overwritten silently. Preview mode is read-only.
+Apply mode requires a clean worktree and commits any template changes.
+USAGE
+}
+
+coord_dir_opt=""
+preview=0
+pull_first=1
+push_after=0
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --coord-dir)
+      [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    --preview)
+      preview=1
+      shift
+      ;;
+    --no-pull)
+      pull_first=0
+      shift
+      ;;
+    --push)
+      push_after=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      coord_die "unknown argument: $1"
+      ;;
+  esac
+done
+
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+template_dir="$(coord_template_dir)"
+cd "$coord_dir"
+
+rules=(
+  "AGENTS.md:AGENTS.md"
+  "SYNC_PROTOCOL.md:docs/SYNC_PROTOCOL.md"
+  "ITEM_FORMAT.md:docs/ITEM_FORMAT.md"
+  "SKILL.md:.pi/skills/agent-coordination/SKILL.md"
+)
+
+if [ "$preview" = "1" ]; then
+  diff_seen=0
+  for rule in "${rules[@]}"; do
+    source_name="${rule%%:*}"
+    target="${rule#*:}"
+    source="$template_dir/$source_name"
+    [ -f "$source" ] || coord_die "missing template: $source"
+    if [ -f "$target" ]; then
+      git diff --no-index -- "$target" "$source" || diff_seen=1
+    else
+      printf 'Would add %s from %s\n' "$target" "$source"
+      git diff --no-index -- /dev/null "$source" || diff_seen=1
+    fi
+  done
+  if [ "$diff_seen" = "0" ]; then
+    coord_note "coordination rules are already up to date"
+  fi
+  exit 0
+fi
+
+if coord_git_has_worktree_changes || coord_git_has_staged_changes; then
+  coord_die "worktree has changes; commit or stash before upgrading rules"
+fi
+
+if [ "$pull_first" = "1" ]; then
+  coord_pull_rebase
+fi
+
+for rule in "${rules[@]}"; do
+  source_name="${rule%%:*}"
+  target="${rule#*:}"
+  coord_install_template "$source_name" "$target"
+done
+
+if coord_commit_all_if_changed "Upgrade coordination rules"; then
+  coord_note "committed coordination rule upgrade"
+  if [ "$push_after" = "1" ]; then
+    git push
+  fi
+else
+  coord_note "coordination rules are already up to date"
+fi

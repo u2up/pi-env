@@ -102,6 +102,16 @@ agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
 agent-coord-claim     claim an item, commit, and push
 agent-coord-close     close an item, commit, and push
+agent-coord-upgrade-rules --preview
+                      preview/apply bundled rule template updates
+```
+
+Existing coordination repositories are not silently overwritten. Rule
+upgrades are explicit and diffable:
+
+```bash
+agent-coord-upgrade-rules --preview
+agent-coord-upgrade-rules
 ```
 
 The helpers do not make `pi-start` create, claim, close, commit, or push

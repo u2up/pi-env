@@ -70,6 +70,7 @@ For each supported system the flake must expose packages:
 - `agent-coord-push`
 - `agent-coord-claim`
 - `agent-coord-close`
+- `agent-coord-upgrade-rules`
 
 ### FLAKE-005 Apps
 
@@ -174,6 +175,7 @@ The flake/devshell must provide these opt-in coordination commands:
 - `agent-coord-new`
 - `agent-coord-claim`
 - `agent-coord-close`
+- `agent-coord-upgrade-rules`
 
 ### CMD-010 `agent-coord-init`
 
@@ -217,6 +219,14 @@ file edits:
 
 Commands that create commits must reject subject lines longer than 72
 characters.
+
+### CMD-014 `agent-coord-upgrade-rules`
+
+`agent-coord-upgrade-rules --preview` must show template diffs without
+changing files. Without `--preview`, it must require a clean worktree, copy
+bundled coordination rule templates into their installed locations, and
+commit the changes when any template differs. It must not push unless
+`--push` is used.
 
 ## 6. Project root and working directory requirements
 
@@ -562,6 +572,7 @@ nix build .#agent-coord-pull
 nix build .#agent-coord-push
 nix build .#agent-coord-claim
 nix build .#agent-coord-close
+nix build .#agent-coord-upgrade-rules
 ```
 
 Expected: all builds succeed.
@@ -796,7 +807,8 @@ Expected:
 - `agent-coord-clone` can clone the same domain;
 - `agent-coord-new` creates a timestamp-ID Markdown item;
 - status, push, claim, and close helpers perform the expected file and Git
-  state transitions.
+  state transitions;
+- rule upgrade preview runs without mutating coordination state.
 
 ## 14. Coordination implementation guard
 
