@@ -6,6 +6,8 @@ This document is derived from the current source tree and git history of `pi-env
 
 `pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`.
 
+An optional future extension for Git-backed multi-agent coordination is described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). That design is intentionally separate from the current required runtime/sandbox contract unless requirements in this document explicitly reference it.
+
 The project must keep two responsibilities separate:
 
 - **Nix devshell/runtime:** reproducibly provide command-line tools on `PATH`.
@@ -422,6 +424,10 @@ The sandbox must share the host network by default so Pi can reach model provide
 
 ## 12. Documentation requirements
 
+### DOC-000 Design documents
+
+Design proposals that are not yet mandatory runtime behavior must be documented separately and referenced from requirements/use-case documentation. The optional Git-backed multi-agent coordination proposal is documented in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md).
+
 ### DOC-001 README coverage
 
 `README.md` must document:
@@ -686,6 +692,7 @@ Expected they are not visible unless they are inside the selected project root o
 
 ## 14. Non-goals and caveats
 
+- The agent coordination repository infrastructure described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md) is a proposal, not part of the current mandatory blackbox behavior unless implemented and promoted into explicit requirements above.
 - Bubblewrap does not provide domain-level network allowlisting.
 - If `read`/`bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions are readable by commands/tools inside the sandbox.
 - `pi-env` does not ship user-specific common rules, skills, prompts, or extensions; it imports/exposes them from an external directory when configured.

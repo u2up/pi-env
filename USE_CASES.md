@@ -4,6 +4,8 @@
 
 This document summarizes the practical ways the current project can be used.
 
+A possible future use case for Git-backed multi-agent task synchronization is described separately in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md).
+
 ## 1. Run Pi in the current repository
 
 Use `pi-env` directly as a development shell for this repository or any checkout using the flake:
@@ -430,6 +432,12 @@ Use cases for the isolated launcher include:
 - disabling network for offline inspections;
 - using ephemeral state for disposable runs;
 - importing only the auth/session/config needed for the current project.
+
+## 23. Future: coordinate multiple agents with Git
+
+For workspaces where several agents operate in separate project clones, `pi-env` could optionally help establish and maintain a dedicated Git-backed coordination repository. The coordination repository would contain workspace/project issues, TODOs, bugs, decisions, notes, and agent logs, and agents would synchronize only by normal Git pull/commit/push operations.
+
+This future use case is specified as a design proposal, not current behavior, in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md).
 
 ## Non-goals and limitations
 
