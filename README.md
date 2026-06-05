@@ -103,7 +103,26 @@ PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 
 ## Use in another project
 
-`pi-env` is intended to be reused from other project flakes. How you wire it in depends on whether the target project already has a `flake.nix`.
+`pi-env` can be used directly from another project, or wired into that project's own flake.
+
+If the target project does not need additional Nix dependencies, you do not need to create or edit its `flake.nix`. From the target project directory, enter the `pi-env` shell directly:
+
+```bash
+cd /path/to/other-project
+nix develop /home/location/pi-env
+pi-start
+```
+
+Or run Pi in one command:
+
+```bash
+cd /path/to/other-project
+nix develop /home/location/pi-env -c pi-start
+```
+
+The current working directory remains the target project. `pi-start` / `pi-bwrap` detects the project root from `$PWD` / Git and mounts that project at `/workspace`.
+
+Wire `pi-env` into the target project's own flake when you want project-specific Nix dependencies, a committed/shared devshell, shell hooks, or a pinned `pi-env` input in the project's `flake.lock`.
 
 - **Project has no flake yet:** use the full example below as a starting `flake.nix`.
 - **Project already has its own flake:** do not replace it. Add `pi-env` to the existing `inputs`, add `pi-env` to the `outputs = { ... }:` argument list, then either wrap the existing devshell with `mkPiShell` or add the `pi-start` / `pi-bwrap` packages to it.
