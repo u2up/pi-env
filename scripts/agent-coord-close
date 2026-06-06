@@ -20,6 +20,7 @@ Usage:
 Options:
   --coord-dir DIR     Coordination clone; default: PI_COORD_DIR or ./coordination
   --agent-id ID       Agent identity; default: PI_COORD_AGENT_ID or USER
+  --role ROLE         Coordination role; default: PI_COORD_ROLE
   --result TEXT       Result/activity text; default: Closed.
   --no-pull           Do not pull/rebase before closing
   --no-push           Commit but do not push after closing
@@ -30,6 +31,7 @@ USAGE
 
 coord_dir_opt=""
 agent_id="$(coord_default_agent)"
+role="$(coord_default_role)"
 result="Closed."
 pull_first=1
 push_after=1
@@ -46,6 +48,11 @@ while [ "$#" -gt 0 ]; do
     --agent-id)
       [ "$#" -ge 2 ] || coord_die "--agent-id requires a value"
       agent_id="$2"
+      shift 2
+      ;;
+    --role)
+      [ "$#" -ge 2 ] || coord_die "--role requires a value"
+      role="$2"
       shift 2
       ;;
     --result)
@@ -116,19 +123,20 @@ if [ "$target_path" != "$item_path" ]; then
 fi
 
 now="$(coord_timestamp_iso)"
+actor="$(coord_effective_actor "$agent_id" "$role")"
 coord_set_frontmatter \
   "$item_path" \
   "status=closed" \
   "owner=$agent_id" \
   "updated=$now" \
   "closed=$now"
-coord_append_activity "$item_path" "$now" "$agent_id" "$result"
+coord_append_activity "$item_path" "$now" "$actor" "$result"
 
 git add "$item_path"
 if coord_git_has_staged_changes; then
   message="Close $item_id"
   coord_validate_subject "$message"
-  git commit -m "$message"
+  coord_git_commit "$actor" -m "$message"
 else
   coord_note "item was already closed: $item_id"
 fi

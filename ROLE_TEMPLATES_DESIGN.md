@@ -180,7 +180,8 @@ Coordination state remains plain Git and Markdown. Role support should not make
 `pi-start` mutate coordination automatically.
 
 When a role is active and coordination helper commands commit coordination
-state, those commits should be attributable to the role. The planned behavior is:
+state, those commits should be attributable to the role. The implemented
+behavior is:
 
 - coordination helpers accept `--role ROLE` and read `PI_COORD_ROLE`;
 - activity entries use the effective actor, for example `pi/architect`;
@@ -193,11 +194,11 @@ state, those commits should be attributable to the role. The planned behavior is
       commit -m "Claim PIENV-1234"
   ```
 
-The role manager can propagate the active role to coordination commands by
-registering role-aware tools or by safely prefixing coordination-related bash
-commands with `PI_COORD_ROLE=<role>`. Project repository commits should continue
-to use the normal imported Git identity unless the user explicitly requests a
-role identity there too.
+The role manager propagates the active role to coordination commands by setting
+`PI_COORD_ROLE` for Pi subprocesses to the role's `coordCommitter` value, or the
+role name when that field is omitted. Project repository commits continue to use
+the normal imported Git identity unless the user explicitly requests a role
+identity there too.
 
 ## Base roles
 

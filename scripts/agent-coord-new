@@ -25,6 +25,8 @@ Options:
   --type TYPE         Frontmatter type; default: issue
   --priority VALUE    Priority value; default: medium
   --owner ID          Initial owner; default: empty
+  --agent-id ID       Activity actor's agent ID; default: PI_COORD_AGENT_ID or USER
+  --role ROLE         Coordination role; default: PI_COORD_ROLE
   --id ID             Explicit item ID; default: timestamp ID
   -h, --help          Show this help
 
@@ -44,6 +46,8 @@ workspace_item=0
 item_type="issue"
 priority="medium"
 owner=""
+agent_id="$(coord_default_agent)"
+role="$(coord_default_role)"
 explicit_id=""
 title_parts=()
 
@@ -85,6 +89,16 @@ while [ "$#" -gt 0 ]; do
       owner="$2"
       shift 2
       ;;
+    --agent-id)
+      [ "$#" -ge 2 ] || coord_die "--agent-id requires a value"
+      agent_id="$2"
+      shift 2
+      ;;
+    --role)
+      [ "$#" -ge 2 ] || coord_die "--role requires a value"
+      role="$2"
+      shift 2
+      ;;
     --id)
       [ "$#" -ge 2 ] || coord_die "--id requires a value"
       explicit_id="$2"
@@ -114,6 +128,7 @@ if [ -z "$project_key" ]; then
 fi
 
 created="$(coord_timestamp_iso)"
+actor="$(coord_effective_actor "$agent_id" "$role")"
 
 if [ "$workspace_item" = "1" ]; then
   item_root="workspace/issues/open"
@@ -225,7 +240,7 @@ related: []
 
 ## Activity
 
-- $created $(coord_default_agent): Created.
+- $created $actor: Created.
 EOF_ITEM
 
 coord_note "created item: $path"

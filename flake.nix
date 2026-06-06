@@ -90,6 +90,7 @@
             PI_BWRAP_NET=0                Disable network namespace sharing
             PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
             PI_COORD_ROOT=/workspace/agent-remotes Bare coordination remotes root; auto-bound when available
+            PI_COORD_ROLE=architect       Active coordination role passed to helpers
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
           To pass pi's own -h/--help, use:
@@ -414,6 +415,7 @@
           copy_env PI_COORD_WORKSPACE
           copy_env PI_COORD_AGENT_ID
           copy_env PI_COORD_PROJECT_KEY
+          copy_env PI_COORD_ROLE
           if [ -n "$sandbox_coord_dir" ]; then
             set_env PI_COORD_DIR "$sandbox_coord_dir"
           else

@@ -22,6 +22,7 @@ Options:
   --workspace ID    Coordination domain; default: PI_COORD_WORKSPACE or cwd name
   --dir DIR         Working clone dir; default: PI_COORD_DIR or coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
+  --role ROLE       Coordination role; default: PI_COORD_ROLE
   --project KEY     Initial project directory; default: workspace ID
   --project-key KEY Initial project's item ID prefix; default: derived project
   --bare-only       Only create the bare remote
@@ -36,6 +37,7 @@ root="$(coord_default_root)"
 workspace="$(coord_default_workspace)"
 coord_dir="$(coord_default_dir)"
 agent_id="$(coord_default_agent)"
+role="$(coord_default_role)"
 project_key=""
 project_id_key="${PI_COORD_PROJECT_KEY:-}"
 bare_only=0
@@ -60,6 +62,11 @@ while [ "$#" -gt 0 ]; do
     --agent-id)
       [ "$#" -ge 2 ] || coord_die "--agent-id requires a value"
       agent_id="$2"
+      shift 2
+      ;;
+    --role)
+      [ "$#" -ge 2 ] || coord_die "--role requires a value"
+      role="$2"
       shift 2
       ;;
     --project)
@@ -218,7 +225,8 @@ EOF_AGENT
 
 find projects workspace agents -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
 
-if coord_commit_all_if_changed "Initialize coordination repository"; then
+actor="$(coord_effective_actor "$agent_id" "$role")"
+if coord_commit_all_if_changed "Initialize coordination repository" "$actor"; then
   git push -u origin main >/dev/null
   git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
   coord_note "initialized coordination clone: $(pwd -P)"

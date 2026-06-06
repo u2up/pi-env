@@ -23,6 +23,7 @@ const ROLE_CYCLE_DONE_TOOL_NAME = "role_cycle_done";
 const ROLE_UI_STATUS_KEY = "role-manager";
 const ROLE_CYCLE_WIDGET_KEY = "role-manager-cycle";
 const ROLE_CYCLE_SECTION_TITLE = "One-cycle workflow";
+const PI_COORD_ROLE_ENV = "PI_COORD_ROLE";
 
 const ROLE_CYCLE_DONE_PARAMETERS = {
   type: "object",
@@ -658,6 +659,8 @@ export default function roleManager(pi: ExtensionAPI) {
   let roleRegistry = loadRoleRegistry([]);
   let warnedMissingActiveRoles = new Set<string>();
   let activeRoleOriginalSettings: RuntimeSettingsSnapshot | undefined;
+  let originalCoordRoleValue: string | undefined;
+  let originalCoordRoleCaptured = false;
 
   function refreshRoles(ctx: ExtensionContext) {
     try {
@@ -685,6 +688,36 @@ export default function roleManager(pi: ExtensionAPI) {
       thinkingLevel: normalizeText(pi.getThinkingLevel()),
       tools: pi.getActiveTools(),
     };
+  }
+
+  function coordinationRoleNameFor(role: { name?: string; coordCommitter?: string }) {
+    return normalizeText(role.coordCommitter) ?? normalizeText(role.name);
+  }
+
+  function captureOriginalCoordRole() {
+    if (originalCoordRoleCaptured) return;
+    originalCoordRoleValue = process.env[PI_COORD_ROLE_ENV];
+    originalCoordRoleCaptured = true;
+  }
+
+  function setActiveCoordRole(role: { name?: string; coordCommitter?: string }) {
+    const coordRole = coordinationRoleNameFor(role);
+    if (!coordRole) return;
+    captureOriginalCoordRole();
+    process.env[PI_COORD_ROLE_ENV] = coordRole;
+  }
+
+  function restoreOriginalCoordRole() {
+    if (!originalCoordRoleCaptured) return;
+
+    if (originalCoordRoleValue === undefined) {
+      delete process.env[PI_COORD_ROLE_ENV];
+    } else {
+      process.env[PI_COORD_ROLE_ENV] = originalCoordRoleValue;
+    }
+
+    originalCoordRoleValue = undefined;
+    originalCoordRoleCaptured = false;
   }
 
   function currentRoleState(ctx: ExtensionContext) {
@@ -978,6 +1011,7 @@ export default function roleManager(pi: ExtensionAPI) {
       activatedAt: new Date().toISOString(),
       ...extraState,
     });
+    setActiveCoordRole(role);
     await applyRoleRuntimeSettings(role, ctx);
     updateRoleUIForCurrentState(ctx, extraState.roleCycle);
     notifyInfo(ctx, `role-manager: activated role ${role.name}`);
@@ -992,6 +1026,7 @@ export default function roleManager(pi: ExtensionAPI) {
 
     persistRoleState(null, previousSettings, { clearedAt: new Date().toISOString() });
     activeRoleOriginalSettings = undefined;
+    restoreOriginalCoordRole();
     clearRoleUI(pi, ctx);
 
     const restored = await restoreRuntimeSettings(previousSettings, ctx);
@@ -1006,6 +1041,7 @@ export default function roleManager(pi: ExtensionAPI) {
     const state = currentRoleState(ctx);
     if (!state.roleName) {
       activeRoleOriginalSettings = undefined;
+      restoreOriginalCoordRole();
       clearRoleUI(pi, ctx);
       return;
     }
@@ -1013,7 +1049,10 @@ export default function roleManager(pi: ExtensionAPI) {
     const role = findRole(roleRegistry, state.roleName);
     activeRoleOriginalSettings = state.previousSettings ?? snapshotRuntimeSettings(ctx);
     if (role) {
+      setActiveCoordRole(role);
       await applyRoleRuntimeSettings(role, ctx);
+    } else {
+      setActiveCoordRole({ name: state.roleName });
     }
     updateRoleUIForCurrentState(ctx);
   }

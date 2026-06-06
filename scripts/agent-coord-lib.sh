@@ -69,6 +69,53 @@ coord_default_agent() {
   fi
 }
 
+coord_default_role() {
+  printf '%s\n' "${PI_COORD_ROLE:-}"
+}
+
+coord_trim() {
+  printf '%s' "$1" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+coord_effective_actor() {
+  local agent role
+  agent="$(coord_trim "$1")"
+  role="$(coord_trim "$2")"
+
+  if [ -n "$agent" ] && [ -n "$role" ]; then
+    printf '%s/%s\n' "$agent" "$role"
+  elif [ -n "$role" ]; then
+    printf '%s\n' "$role"
+  else
+    printf '%s\n' "$agent"
+  fi
+}
+
+coord_actor_email() {
+  local actor local_part
+  actor="$1"
+  local_part="$(printf '%s' "$actor" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[[:space:]\/]+/+/g; s/[^a-z0-9._+%-]+/-/g; s/^[^a-z0-9]+//; s/[^a-z0-9]+$//')"
+  if [ -z "$local_part" ]; then
+    local_part="coordination"
+  fi
+  printf '%s@coordination.local\n' "$local_part"
+}
+
+coord_git_commit() {
+  local actor email
+  actor="$1"
+  shift
+
+  if [ -n "$actor" ]; then
+    email="$(coord_actor_email "$actor")"
+    git -c "user.name=$actor" -c "user.email=$email" commit "$@"
+  else
+    git commit "$@"
+  fi
+}
+
 coord_template_dir() {
   local script_dir
   if [ -n "${PI_ENV_COORD_TEMPLATE_DIR:-}" ]; then
@@ -212,12 +259,13 @@ coord_validate_subject() {
 }
 
 coord_commit_all_if_changed() {
-  local message
+  local message actor
   message="$1"
+  actor="${2:-}"
   coord_validate_subject "$message"
   git add -A
   if coord_git_has_staged_changes; then
-    git commit -m "$message"
+    coord_git_commit "$actor" -m "$message"
     return 0
   fi
   return 1

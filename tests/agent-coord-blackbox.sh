@@ -15,7 +15,16 @@ mkdir -p "$HOME" "$workspace_dir"
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
-unset PI_COORD_ROOT PI_COORD_WORKSPACE PI_COORD_DIR PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY
+unset PI_COORD_ROOT PI_COORD_WORKSPACE PI_COORD_DIR PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
+
+project_git="$tmp/project-git"
+mkdir -p "$project_git"
+git -C "$project_git" init -q
+git -C "$project_git" config user.name "Project User"
+git -C "$project_git" config user.email "project@example.invalid"
+PI_COORD_ROLE=architect git -C "$project_git" commit --allow-empty -m "Project commit" >/dev/null
+test "$(git -C "$project_git" log -1 --format='%an <%ae>')" = "Project User <project@example.invalid>"
+
 mkdir -p "$tmp/default-root"
 cd "$tmp/default-root"
 git init -q
@@ -139,6 +148,8 @@ git -C clone rev-parse --verify HEAD >/dev/null
 action_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --project pi-env \
+  --agent-id agent-a \
+  --role architect \
   "Document pi config behavior" | tail -n 1)"
 
 test -f "$workspace_dir/coordination/$action_path"
@@ -146,6 +157,7 @@ grep -q '^id: PIENV-[0-9]\{8\}-[0-9]\{6\}$' \
   "$workspace_dir/coordination/$action_path"
 grep -q '^status: open$' "$workspace_dir/coordination/$action_path"
 grep -q '^project: pi-env$' "$workspace_dir/coordination/$action_path"
+grep -q ' agent-a/architect: Created\.$' "$workspace_dir/coordination/$action_path"
 grep -q '^# Document pi config behavior$' \
   "$workspace_dir/coordination/$action_path"
 
@@ -171,17 +183,25 @@ item_id="$(grep '^id: ' "$workspace_dir/coordination/$action_path" | sed 's/^id:
 agent-coord-status --coord-dir "$workspace_dir/coordination" >/dev/null
 agent-coord-push \
   --coord-dir "$workspace_dir/coordination" \
+  --agent-id agent-a \
+  --role architect \
   -m "Add coordination test item" >/dev/null
+test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
+  "agent-a/architect <agent-a+architect@coordination.local>|agent-a/architect <agent-a+architect@coordination.local>"
 
 agent-coord-claim \
   --coord-dir "$workspace_dir/coordination" \
   --agent-id agent-a \
+  --role developer \
   "$item_id" >/dev/null
 
 grep -q '^status: claimed$' "$workspace_dir/coordination/$action_path"
 grep -q '^owner: agent-a$' "$workspace_dir/coordination/$action_path"
+grep -q ' agent-a/developer: Claimed\.$' "$workspace_dir/coordination/$action_path"
+test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
+  "agent-a/developer <agent-a+developer@coordination.local>|agent-a/developer <agent-a+developer@coordination.local>"
 
-closed_path="$(agent-coord-close \
+closed_path="$(PI_COORD_ROLE=tester agent-coord-close \
   --coord-dir "$workspace_dir/coordination" \
   --agent-id agent-a \
   --result "Completed in test." \
@@ -190,6 +210,9 @@ closed_path="$(agent-coord-close \
 test -f "$workspace_dir/coordination/$closed_path"
 grep -q '^status: closed$' "$workspace_dir/coordination/$closed_path"
 grep -q '^closed: 20' "$workspace_dir/coordination/$closed_path"
+grep -q ' agent-a/tester: Completed in test\.$' "$workspace_dir/coordination/$closed_path"
+test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
+  "agent-a/tester <agent-a+tester@coordination.local>|agent-a/tester <agent-a+tester@coordination.local>"
 
 head_before="$(git -C "$workspace_dir/coordination" rev-parse HEAD)"
 agent-coord-upgrade-rules \

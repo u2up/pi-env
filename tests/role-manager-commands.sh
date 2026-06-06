@@ -15,13 +15,14 @@ const repoRoot = process.env.REPO_ROOT;
 const jiti = createJiti(import.meta.url);
 const roleManager = (await jiti.import("./role-manager/extensions/role-manager.ts")).default;
 
-function roleMarkdown({ name, marker }) {
+function roleMarkdown({ name, marker, coordCommitter = name }) {
   return `---
 name: ${name}
 description: Project ${name}
 icon: 🧪
 thinking: high
 tools: ["read", "bash", "missing_tool"]
+coordCommitter: ${coordCommitter}
 provider: anthropic
 model: target
 ---
@@ -58,17 +59,23 @@ const cwd = join(tmp, "project");
 mkdirSync(join(cwd, ".pi", "roles"), { recursive: true });
 writeFileSync(
   join(cwd, ".pi", "roles", "modeler.md"),
-  roleMarkdown({ name: "modeler", marker: "PROJECT modeler" }),
+  roleMarkdown({
+    name: "modeler",
+    marker: "PROJECT modeler",
+    coordCommitter: "project-modeler",
+  }),
 );
 
 const previousEnv = {
   PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR,
   PI_BWRAP_COMMON_AGENT_DIR: process.env.PI_BWRAP_COMMON_AGENT_DIR,
   PI_COORD_DIR: process.env.PI_COORD_DIR,
+  PI_COORD_ROLE: process.env.PI_COORD_ROLE,
 };
 process.env.PI_CODING_AGENT_DIR = join(tmp, "agent");
 delete process.env.PI_BWRAP_COMMON_AGENT_DIR;
 process.env.PI_COORD_DIR = join(tmp, "coordination");
+process.env.PI_COORD_ROLE = "ambient-role";
 
 const models = [
   { provider: "anthropic", id: "original", name: "Original", api: "anthropic-messages", baseUrl: "", reasoning: true, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000, maxTokens: 100 },
@@ -378,6 +385,7 @@ try {
   assert.equal(harness.state.currentModel.id, "target");
   assert.equal(harness.state.thinkingLevel, "high");
   assert.deepEqual(harness.state.activeTools, ["read", "bash"]);
+  assert.equal(process.env.PI_COORD_ROLE, "project-modeler");
   assert.equal(harness.statuses.at(-1).key, "role-manager");
   assert.match(harness.statuses.at(-1).text, /🧪 role:modeler/);
   assert.match(harness.titles.at(-1), /role:modeler/);
@@ -390,6 +398,8 @@ try {
 
   const prompt = await harness.buildSystemPrompt();
   assert.match(prompt, /Active Role: 🧪 modeler/);
+  assert.match(prompt, /coordination role: project-modeler/);
+  assert.match(prompt, /PI_COORD_ROLE/);
   assert.match(prompt, /PROJECT modeler mission/);
 
   const restart = createHarness([...harness.entries]);
@@ -400,6 +410,7 @@ try {
   assert.equal(restart.state.currentModel.id, "target");
   assert.equal(restart.state.thinkingLevel, "high");
   assert.deepEqual(restart.state.activeTools, ["read", "bash"]);
+  assert.equal(process.env.PI_COORD_ROLE, "project-modeler");
   assert.match(restart.statuses.at(-1).text, /🧪 role:modeler/);
   assert.match(restart.titles.at(-1), /role:modeler/);
 
@@ -412,12 +423,14 @@ try {
   assert.equal(harness.statuses.at(-1).text, undefined);
   assert.equal(harness.widgets.at(-1).content, undefined);
   assert.doesNotMatch(harness.titles.at(-1), /role:/);
+  assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
   assert.doesNotMatch(await harness.buildSystemPrompt(), /Active Role:/);
 
   harness.state.selection = "developer";
   await harness.commands.get("role").handler("", harness.ctx);
   assert.equal(harness.entries.at(-1).data.activeRoleName, "developer");
   assert.equal(harness.state.thinkingLevel, "medium");
+  assert.equal(process.env.PI_COORD_ROLE, "developer");
 
   const cycle = createHarness([]);
   await cycle.emit("session_start", { type: "session_start", reason: "startup" });
@@ -433,6 +446,7 @@ try {
   assert.ok(cycleEntry.data.roleCycle.checklist.includes("PROJECT modeler workflow."));
   assert.equal(cycle.state.currentModel.id, "target");
   assert.equal(cycle.state.thinkingLevel, "high");
+  assert.equal(process.env.PI_COORD_ROLE, "project-modeler");
   assert.deepEqual(cycle.state.activeTools, ["read", "bash", "role_cycle_done"]);
   assert.equal(cycle.sentUserMessages.length, 1);
   assert.match(cycle.sentUserMessages[0].content, /Role cycle kickoff/);

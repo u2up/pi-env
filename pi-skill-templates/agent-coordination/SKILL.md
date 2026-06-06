@@ -17,9 +17,12 @@ workspace rules say otherwise.
 2. Inspect open, claimed, and blocked items relevant to the current
    workspace or project.
 3. Claim at most one item unless instructed otherwise.
-4. Commit and push immediately after claiming or changing status.
-5. Do project work in the project repository.
-6. Return to the coordination repo, pull/rebase, update the item with
+4. When an active role is in effect, preserve it for coordination helpers
+   with `--role ROLE` or `PI_COORD_ROLE=ROLE`; activity should show the
+   effective actor, for example `pi/architect`.
+5. Commit and push immediately after claiming or changing status.
+6. Do project work in the project repository.
+7. Return to the coordination repo, pull/rebase, update the item with
    results and links, then commit and push.
 
 ## Item keys

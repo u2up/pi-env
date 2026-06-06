@@ -256,6 +256,10 @@ file edits:
 - `agent-coord-status` shows Git status and open/blocked item summaries;
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
+- coordination commands that create activity entries or commits accept
+  `--role ROLE`, read `PI_COORD_ROLE`, render effective actors such as
+  `pi/architect`, and use per-command Git identity overrides for
+  coordination commits;
 - `agent-coord-claim` pulls, sets `status: claimed`, sets `owner:`,
   appends activity, commits, and pushes unless disabled by options;
 - `agent-coord-close` pulls, moves issue items to `closed/`, sets closed
@@ -542,6 +546,7 @@ sandbox:
 - `PI_COORD_WORKSPACE`
 - `PI_COORD_AGENT_ID`
 - `PI_COORD_PROJECT_KEY`
+- `PI_COORD_ROLE`
 
 If `PI_COORD_ROOT` points inside the selected project, the launcher must
 pass it into the sandbox as the corresponding `/workspace/...` path.

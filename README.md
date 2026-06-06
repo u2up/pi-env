@@ -149,11 +149,21 @@ bootstrap-coordination
 agent-coord-status    show sync status and open/blocked items
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
+agent-coord-new       create a templated item
 agent-coord-claim     claim an item, commit, and push
 agent-coord-close     close an item, commit, and push
 agent-coord-upgrade-rules --preview
                       preview/apply bundled rule template updates
 ```
+
+Commands that create activity entries or coordination commits accept
+`--role ROLE` and read `PI_COORD_ROLE`. When both an agent ID and role are
+available, activity uses an effective actor such as `pi/architect` and helper
+commits use per-command Git identity overrides such as
+`pi/architect <pi+architect@coordination.local>`. These overrides are scoped to
+the helper's coordination-repository `git commit`; normal project repository
+commits keep the user's imported Git identity unless the user explicitly opts in
+to another identity.
 
 Existing coordination repositories are not silently overwritten. Rule
 upgrades are explicit and diffable:
@@ -190,6 +200,12 @@ tests/role-manager-schema.sh
 tests/role-manager-loader.sh
 tests/role-manager-commands.sh
 ```
+
+When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
+Pi subprocesses to the role's `coordCommitter` value, or to the role name when
+`coordCommitter` is omitted. That environment value is how bash-invoked
+`agent-coord-*` commands inherit the active role without changing project Git
+identity.
 
 See `AGENT_COORDINATION_DESIGN.md` for the full design.
 
@@ -231,7 +247,7 @@ and the `PIENV-ROLE-*` coordination items for the implementation roadmap.
 - copies host Git config into the sandbox by default (`~/.gitconfig` and `$XDG_CONFIG_HOME/git/config` / `~/.config/git/config`), but not Git credentials or SSH keys;
 - copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
 - bind-mounts only the host Pi session directory for the current working directory into the sandbox by default (disabled for ephemeral homes), so `/resume` and `--continue` can access sessions for the directory/project without exposing all sessions;
-- passes `PI_COORD_ROOT`, `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`, and coordination directory context when set, mapping project-local coordination paths to `/workspace/...`, auto-binding host `/workspace/agent-remotes` when available, and can explicitly mount an external coordination clone with `PI_BWRAP_COORDINATION_DIR`;
+- passes `PI_COORD_ROOT`, `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, and coordination directory context when set, mapping project-local coordination paths to `/workspace/...`, auto-binding host `/workspace/agent-remotes` when available, and can explicitly mount an external coordination clone with `PI_BWRAP_COORDINATION_DIR`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or Docker sockets;
 - clears the environment, then passes only terminal basics and selected LLM provider variables;
 - shares the host network by default so Pi can reach model providers.
@@ -260,6 +276,7 @@ PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gi
 PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
 PI_COORD_ROOT=/workspace/agent-remotes   # bare coordination remotes; default is project-visible agent-remotes
+PI_COORD_ROLE=architect                  # active coordination role for helper commits/activity
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_NET=0                          # disable network sharing
 PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name

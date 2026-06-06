@@ -19,6 +19,8 @@ Usage:
 
 Options:
   --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
+  --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
+  --role ROLE       Coordination role; default: PI_COORD_ROLE
   --preview         Show diffs without changing files
   --no-pull         Do not pull/rebase before applying changes
   --push            Push the upgrade commit after applying it
@@ -30,6 +32,8 @@ USAGE
 }
 
 coord_dir_opt=""
+agent_id="$(coord_default_agent)"
+role="$(coord_default_role)"
 preview=0
 pull_first=1
 push_after=0
@@ -39,6 +43,16 @@ while [ "$#" -gt 0 ]; do
     --coord-dir)
       [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
       coord_dir_opt="$2"
+      shift 2
+      ;;
+    --agent-id)
+      [ "$#" -ge 2 ] || coord_die "--agent-id requires a value"
+      agent_id="$2"
+      shift 2
+      ;;
+    --role)
+      [ "$#" -ge 2 ] || coord_die "--role requires a value"
+      role="$2"
       shift 2
       ;;
     --preview)
@@ -108,7 +122,8 @@ for rule in "${rules[@]}"; do
   coord_install_template "$source_name" "$target"
 done
 
-if coord_commit_all_if_changed "Upgrade coordination rules"; then
+actor="$(coord_effective_actor "$agent_id" "$role")"
+if coord_commit_all_if_changed "Upgrade coordination rules" "$actor"; then
   coord_note "committed coordination rule upgrade"
   if [ "$push_after" = "1" ]; then
     git push

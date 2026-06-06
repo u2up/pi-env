@@ -269,14 +269,20 @@ export function formatActiveRoleSystemPrompt(role) {
   if (role.tools?.length) metadata.push(`- requested tools: ${role.tools.join(", ")}`);
   if (role.model) metadata.push(`- requested model: ${role.model}`);
   if (role.provider) metadata.push(`- requested provider: ${role.provider}`);
-  if (role.coordCommitter) {
-    metadata.push(`- coordination role: ${role.coordCommitter}`);
+  const coordinationRole = role.coordCommitter ?? role.name;
+  if (coordinationRole) {
+    metadata.push(`- coordination role: ${coordinationRole}`);
   }
 
   return `## Active Role: ${title}
 
 The current session has the \`${role.name}\` role active. Follow this role
 for the current turn. Do not assume instructions from inactive roles.
+When running coordination helper commands, preserve the active role by using
+\`--role ${coordinationRole}\` or the role manager's \`PI_COORD_ROLE\`
+environment value. This affects coordination helper commits only; do not use
+role-specific Git identity for project repository commits unless explicitly
+requested.
 
 ### Role metadata
 

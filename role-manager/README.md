@@ -50,5 +50,6 @@ parent session, names the fresh session with a role prefix, and starts the
 cycle from the replacement-session context. While a role is active, the
 extension updates the footer status and terminal title; while `/role-cycle` is
 running, it also shows the role's one-cycle checklist above the editor.
-`/role-clear` removes those UI decorations. Coordination identity is
-implemented by a later coordination item.
+`/role-clear` removes those UI decorations. While a role is active, the
+extension also exports `PI_COORD_ROLE` to Pi subprocesses using the role's
+`coordCommitter` value, or the role name when `coordCommitter` is omitted.
