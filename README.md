@@ -185,6 +185,29 @@ tests/agent-coord-concurrency.sh
 
 See `AGENT_COORDINATION_DESIGN.md` for the full design.
 
+## Role templates architecture (planned)
+
+`pi-env` also has a planned optional role-template layer for agent roles such
+as architect, developer, builder, tester, and reviewer. The design uses
+Markdown role definitions managed by a Pi extension rather than plain prompt
+templates alone. That lets a role switch persist across turns, change tools or
+thinking level, start a fresh session for a clean role cycle, show a visual
+role indicator, and set role-aware coordination commit identity.
+
+Planned commands include:
+
+```text
+/role <name>                switch the current session to a role
+/role-cycle <name> <goal>   run one bounded role cycle in this session
+/role-new <name> <goal>     start a fresh session and run one role cycle
+```
+
+Base roles will come from the role-manager package, while project-specific
+roles can live in `.pi/roles/` next to project Pi extensions, skills, and
+prompts. Common roles can live in a shared agent resource directory when role
+support is implemented. See `ROLE_TEMPLATES_DESIGN.md` for the architecture and
+the `PIENV-ROLE-*` coordination items for the implementation roadmap.
+
 ## Bubblewrap safety defaults
 
 `pi-bwrap`:

@@ -264,6 +264,7 @@ PI_COORD_ROOT=/workspace/agent-remotes # where bare coordination remotes live
 PI_COORD_WORKSPACE=piws                # coordination domain/workspace id
 PI_COORD_DIR=coordination              # clone directory in each workspace
 PI_COORD_AGENT_ID=agent-a              # agent identity for ownership/activity logs
+PI_COORD_ROLE=architect                # optional active role for role-aware commits
 PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
 ```
 
@@ -285,6 +286,25 @@ resolves to the current project root, that default should be
 and outside Bubblewrap. `pi-bwrap` should auto-bind host
 `/workspace/agent-remotes` at that same sandbox path when it exists and is
 not already part of the selected project mount.
+
+### 8.1 Optional role-aware identity
+
+If a role-template extension is active, coordination helpers may use
+`PI_COORD_ROLE` or an explicit `--role ROLE` option to make coordination
+actions attributable to the role that performed them. The effective actor can
+be rendered as `<agent-id>/<role>`, for example `pi/architect`, in item activity
+logs. Coordination commits can use per-command Git identity overrides such
+as:
+
+```bash
+git -c user.name=pi/architect \
+    -c user.email=pi+architect@coordination.local \
+    commit -m "Claim PIENV-1234"
+```
+
+Role-aware identity should apply to the coordination repository only. It should
+not change project repository Git identity unless the user explicitly opts in.
+`pi-start` must still avoid automatic claims, closes, commits, or pushes.
 
 ## 9. Coordination rules installed by `agent-coord-init`
 

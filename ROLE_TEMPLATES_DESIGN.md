@@ -1,0 +1,233 @@
+# Role Template Architecture
+
+This document describes the planned optional role-template layer for
+`pi-env` and `pi-coding-agent` sessions.
+
+The goal is to let a user switch the active agent role, optionally start a
+fresh session for that role, and run exactly one role cycle while keeping
+project-specific role extensions easy to add.
+
+## Summary
+
+Implement roles as **Markdown role definitions managed by a Pi extension**.
+Plain Pi prompt templates are useful for one-shot prompts, but they do not
+provide enough control for persistent role state, tool selection, fresh
+sessions, visual status, or role-aware coordination commits.
+
+The role layer should therefore be packaged as:
+
+```text
+role-manager package
+  extensions/
+    role-manager.ts
+  roles/
+    architect.md
+    developer.md
+    builder.md
+    tester.md
+    reviewer.md
+```
+
+The extension loads role definition files, applies the selected role to the
+system prompt for each turn, controls active tools/model/thinking when a role
+requests them, exposes slash commands, and renders the current role in the
+interactive UI.
+
+## Non-goals
+
+- Do not make `pi-start` automatically claim, close, commit, push, or otherwise
+  mutate coordination state.
+- Do not make every role always visible in the model context.
+- Do not change the project repository Git committer identity just because a
+  role is active.
+- Do not hard-code project-specific roles into `pi-env` itself.
+
+## Role definition format
+
+Each role is a Markdown file with frontmatter plus model-readable
+instructions.
+
+```markdown
+---
+name: architect
+description: Designs architecture and produces implementation plans
+icon: 🧭
+thinking: high
+tools: ["read", "grep", "find", "ls"]
+coordCommitter: architect
+---
+
+# Architect Role
+
+## Mission
+
+Understand the system, identify trade-offs, and produce a clear design.
+
+## One-cycle workflow
+
+1. Pull/read coordination state when coordination is in scope.
+2. Inspect relevant project files.
+3. Identify architecture constraints, risks, and alternatives.
+4. Produce a concise design and next steps.
+5. Update coordination state only when explicitly working on an item.
+6. Stop after the cycle report.
+```
+
+Recommended fields:
+
+| Field | Required | Purpose |
+|-------|----------|---------|
+| `name` | yes | Stable role id used by commands and status. |
+| `description` | yes | Human-facing summary in selectors. |
+| `icon` | no | Short visual marker for footer/title/status. |
+| `thinking` | no | Requested Pi thinking level. |
+| `tools` | no | Active tool allowlist while the role is active. |
+| `model` / `provider` | no | Optional model override for the role. |
+| `coordCommitter` | no | Role name used for coordination commits. |
+
+The Markdown body should define:
+
+- mission;
+- allowed and forbidden actions;
+- one-cycle workflow;
+- expected final report;
+- coordination behavior.
+
+## Resource discovery and override order
+
+Roles should be loaded without putting all role bodies into context. Only the
+active role is injected for a turn.
+
+Suggested merge order, with later entries overriding earlier entries by
+`name`:
+
+1. base package roles shipped with the role-manager package;
+2. common/global roles, for example `~/.pi/agent/roles`;
+3. common roles imported through `PI_BWRAP_COMMON_AGENT_DIR/roles`;
+4. optional workspace roles in a coordination repo, for example
+   `coordination/roles`;
+5. project roles in `.pi/roles`.
+
+Project-specific roles therefore live next to other project Pi resources:
+
+```text
+project/
+  .pi/
+    roles/
+      domain-architect.md
+      release-builder.md
+    extensions/
+    skills/
+    prompts/
+    settings.json
+```
+
+## Commands
+
+The extension should expose these commands:
+
+```text
+/role                       Select a role interactively
+/role <name>                Switch the current session to a role
+/role-clear                 Clear role state and restore previous defaults
+/role-cycle <name> <goal>   Run one cycle in the current session
+/role-new <name> <goal>     Start a fresh session and run one role cycle
+```
+
+`/role-new` should use Pi's session replacement API to create a fresh session,
+set a session name such as `[architect] design roles`, persist role state, and
+send the one-cycle prompt in the replacement session.
+
+## One-cycle behavior
+
+A role cycle is one bounded unit of work for the active role. The cycle prompt
+should include:
+
+- active role name;
+- user goal;
+- whether project and coordination changes are allowed;
+- instruction to follow the role's one-cycle workflow;
+- instruction to stop after the final role report.
+
+For robust termination, the extension should register a final tool named
+`role_cycle_done`. The role-cycle prompt instructs the model to call the tool
+when the cycle is complete with:
+
+- summary;
+- files inspected;
+- files changed;
+- tests or checks run;
+- coordination updates;
+- recommended next role.
+
+The tool should return `terminate: true` so Pi does not automatically continue
+with another model turn after the final report.
+
+## Visual role indicator
+
+Interactive sessions should make the active role obvious:
+
+- footer status, for example `🧭 role:architect`;
+- terminal title, for example `pi - architect`;
+- optional widget for the current cycle checklist while a cycle is running.
+
+The extension should clear all role UI when `/role-clear` is used or when no
+role is active.
+
+## Coordination identity
+
+Coordination state remains plain Git and Markdown. Role support should not make
+`pi-start` mutate coordination automatically.
+
+When a role is active and coordination helper commands commit coordination
+state, those commits should be attributable to the role. The planned behavior is:
+
+- coordination helpers accept `--role ROLE` and read `PI_COORD_ROLE`;
+- activity entries use the effective actor, for example `pi/architect`;
+- coordination commits use a role-specific Git identity through per-command
+  `git -c` options, for example:
+
+  ```bash
+  git -c user.name="pi/architect" \
+      -c user.email="pi+architect@coordination.local" \
+      commit -m "Claim PIENV-1234"
+  ```
+
+The role manager can propagate the active role to coordination commands by
+registering role-aware tools or by safely prefixing coordination-related bash
+commands with `PI_COORD_ROLE=<role>`. Project repository commits should continue
+to use the normal imported Git identity unless the user explicitly requests a
+role identity there too.
+
+## Base roles
+
+Initial built-in roles should be small and composable:
+
+| Role | Purpose | Default tools |
+|------|---------|---------------|
+| `architect` | Design, trade-offs, decisions, implementation plans. | `read`, `grep`, `find`, `ls` |
+| `developer` | Focused source changes that implement an accepted plan. | `read`, `grep`, `find`, `ls`, `edit`, `write`, `bash` |
+| `builder` | Build, package, integration, CI and release-prep failures. | `read`, `grep`, `find`, `ls`, `bash`, `edit` |
+| `tester` | Reproduction, tests, verification, coverage gaps. | `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write` |
+| `reviewer` | Diff review, risk review, security and maintainability feedback. | `read`, `grep`, `find`, `ls`, `bash` |
+
+## pi-env integration
+
+The role-template layer should remain optional. `pi-env` should provide the
+runtime support needed to use it across projects:
+
+- ship the role-manager as a Pi package whose extension discovers its bundled
+  `roles/` directory;
+- allow common `roles/` directories to be imported with other common Pi
+  resources when role support is enabled;
+- keep project-local `.pi/roles` available through the `/workspace` mount;
+- document required extra tools if a role-manager extension registers custom
+  tools such as `role_cycle_done`;
+- keep `pi-start`'s default behavior unchanged unless the user enables the role
+  package or extension.
+
+## Implementation roadmap
+
+The coordination repository contains open PIENV role-template items that split
+this design into implementable work. Completing those items should result in the
+architecture described here.

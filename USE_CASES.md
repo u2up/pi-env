@@ -6,6 +6,13 @@ This document summarizes the practical ways the current project can be used.
 
 A possible opt-in use case for Git-backed multi-agent task synchronization is described separately in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). Coordination helpers must remain explicit Git/Markdown tooling and must not make `pi-start` mutate shared coordination state automatically.
 
+A planned optional role-template layer is described in
+[Role Template Architecture](ROLE_TEMPLATES_DESIGN.md). It will let users
+select roles such as architect, developer, builder, tester, and reviewer;
+start a fresh session for a role; run one bounded role cycle; show the active
+role in the UI; and use role-aware coordination commit identity. That feature
+should remain extension/package based and opt-in.
+
 ## 1. Run Pi in the current repository
 
 Use `pi-env` directly as a development shell for this repository or any checkout using the flake:
