@@ -80,11 +80,18 @@ function createHarness(initialEntries = []) {
   const commands = new Map();
   const handlers = new Map();
   const notifications = [];
+  const sentUserMessages = [];
+  const newSessionRequests = [];
+  const newSessionSetups = [];
+  const replacementNotifications = [];
+  const replacementSentUserMessages = [];
   const state = {
     currentModel: models[0],
     thinkingLevel: "low",
     activeTools: ["read", "edit"],
     selection: undefined,
+    sessionFile: join(tmp, "sessions", "original.jsonl"),
+    newSessionCancelled: false,
   };
 
   const pi = {
@@ -97,6 +104,9 @@ function createHarness(initialEntries = []) {
     },
     appendEntry(customType, data) {
       entries.push({ type: "custom", customType, data });
+    },
+    sendUserMessage(content, options) {
+      sentUserMessages.push({ content, options });
     },
     getThinkingLevel() {
       return state.thinkingLevel;
@@ -145,6 +155,9 @@ function createHarness(initialEntries = []) {
       getEntries() {
         return entries;
       },
+      getSessionFile() {
+        return state.sessionFile;
+      },
     },
     ui: {
       notify(message, type) {
@@ -154,7 +167,74 @@ function createHarness(initialEntries = []) {
         return state.selection ?? options[0];
       },
     },
+    isIdle() {
+      return true;
+    },
     async waitForIdle() {},
+    async newSession(options = {}) {
+      newSessionRequests.push(options);
+      if (state.newSessionCancelled) {
+        return { cancelled: true };
+      }
+
+      const replacementEntries = [];
+      const sessionInfoNames = [];
+      const setupSessionManager = {
+        appendSessionInfo(name) {
+          sessionInfoNames.push(name);
+          replacementEntries.push({ type: "session_info", name });
+        },
+        appendCustomEntry(customType, data) {
+          replacementEntries.push({ type: "custom", customType, data });
+        },
+        getEntries() {
+          return replacementEntries;
+        },
+        buildSessionContext() {
+          return { messages: [] };
+        },
+      };
+
+      if (options.setup) {
+        await options.setup(setupSessionManager);
+      }
+      newSessionSetups.push({ sessionInfoNames: [...sessionInfoNames], entries: [...replacementEntries] });
+
+      if (options.withSession) {
+        const replacementCtx = {
+          cwd,
+          hasUI: true,
+          model: state.currentModel,
+          modelRegistry: ctx.modelRegistry,
+          sessionManager: {
+            getBranch() {
+              return replacementEntries;
+            },
+            getEntries() {
+              return replacementEntries;
+            },
+            getSessionFile() {
+              return join(tmp, "sessions", "replacement.jsonl");
+            },
+          },
+          ui: {
+            notify(message, type) {
+              replacementNotifications.push({ message, type });
+            },
+          },
+          isIdle() {
+            return true;
+          },
+          async waitForIdle() {},
+          async sendUserMessage(content, options) {
+            replacementSentUserMessages.push({ content, options });
+          },
+        };
+        await options.withSession(replacementCtx);
+      }
+
+      return { cancelled: false };
+    },
   };
 
   async function emit(event, payload) {
@@ -182,7 +262,21 @@ function createHarness(initialEntries = []) {
 
   roleManager(pi);
 
-  return { entries, commands, handlers, notifications, state, ctx, emit, buildSystemPrompt };
+  return {
+    entries,
+    commands,
+    handlers,
+    notifications,
+    sentUserMessages,
+    newSessionRequests,
+    newSessionSetups,
+    replacementNotifications,
+    replacementSentUserMessages,
+    state,
+    ctx,
+    emit,
+    buildSystemPrompt,
+  };
 }
 
 try {
@@ -191,6 +285,8 @@ try {
 
   assert.ok(harness.commands.has("role"), "/role command is registered");
   assert.ok(harness.commands.has("role-clear"), "/role-clear command is registered");
+  assert.ok(harness.commands.has("role-cycle"), "/role-cycle command is registered");
+  assert.ok(harness.commands.has("role-new"), "/role-new command is registered");
 
   await harness.commands.get("role").handler("modeler", harness.ctx);
 
@@ -237,6 +333,61 @@ try {
   await harness.commands.get("role").handler("", harness.ctx);
   assert.equal(harness.entries.at(-1).data.activeRoleName, "developer");
   assert.equal(harness.state.thinkingLevel, "medium");
+
+  const cycle = createHarness([]);
+  await cycle.emit("session_start", { type: "session_start", reason: "startup" });
+  await cycle.commands.get("role-cycle").handler("modeler design role manager", cycle.ctx);
+
+  const cycleEntry = cycle.entries.find(
+    (entry) => entry.customType === ROLE_MANAGER_STATE_CUSTOM_TYPE,
+  );
+  assert.equal(cycleEntry.data.activeRoleName, "modeler");
+  assert.equal(cycleEntry.data.roleCycle.mode, "current-session");
+  assert.equal(cycleEntry.data.roleCycle.goal, "design role manager");
+  assert.equal(typeof cycleEntry.data.roleCycle.startedAt, "string");
+  assert.equal(cycle.state.currentModel.id, "target");
+  assert.equal(cycle.state.thinkingLevel, "high");
+  assert.deepEqual(cycle.state.activeTools, ["read", "bash"]);
+  assert.equal(cycle.sentUserMessages.length, 1);
+  assert.match(cycle.sentUserMessages[0].content, /Role cycle kickoff/);
+  assert.match(cycle.sentUserMessages[0].content, /Goal: design role manager/);
+  assert.match(cycle.sentUserMessages[0].content, /exactly one bounded cycle/);
+  assert.match(cycle.sentUserMessages[0].content, /role_cycle_done/);
+
+  const fresh = createHarness([]);
+  await fresh.emit("session_start", { type: "session_start", reason: "startup" });
+  await fresh.commands.get("role-new").handler("modeler design role manager", fresh.ctx);
+
+  assert.equal(fresh.newSessionRequests.length, 1);
+  assert.equal(fresh.newSessionRequests[0].parentSession, fresh.state.sessionFile);
+  assert.deepEqual(fresh.newSessionSetups[0].sessionInfoNames, ["[modeler] design role manager"]);
+  assert.deepEqual(fresh.entries, [], "fresh session command must not mutate the original session state");
+  assert.deepEqual(fresh.sentUserMessages, [], "fresh session command must not use the old pi sender");
+  assert.deepEqual(fresh.replacementSentUserMessages, [
+    { content: "/role-cycle modeler design role manager", options: undefined },
+  ]);
+  assert.ok(
+    fresh.replacementNotifications.some((notice) =>
+      notice.message.includes("starting fresh modeler role cycle"),
+    ),
+  );
+
+  const cancelled = createHarness([]);
+  await cancelled.emit("session_start", { type: "session_start", reason: "startup" });
+  cancelled.state.newSessionCancelled = true;
+  await cancelled.commands.get("role-new").handler("modeler design role manager", cancelled.ctx);
+
+  assert.equal(cancelled.newSessionRequests.length, 1);
+  assert.equal(cancelled.newSessionSetups.length, 0);
+  assert.deepEqual(cancelled.entries, []);
+  assert.deepEqual(cancelled.sentUserMessages, []);
+  assert.deepEqual(cancelled.replacementSentUserMessages, []);
+  assert.equal(cancelled.state.currentModel.id, "original");
+  assert.equal(cancelled.state.thinkingLevel, "low");
+  assert.deepEqual(cancelled.state.activeTools, ["read", "edit"]);
+  assert.ok(
+    cancelled.notifications.some((notice) => notice.message.includes("new role session cancelled")),
+  );
 
   console.log("role manager command tests passed");
 } finally {

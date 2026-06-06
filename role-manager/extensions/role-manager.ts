@@ -27,6 +27,13 @@ interface RuntimeSettingsSnapshot {
   tools?: string[];
 }
 
+interface ParsedRoleCycleArgs {
+  roleName: string;
+  goal: string;
+}
+
+const MAX_ROLE_SESSION_NAME_LENGTH = 80;
+
 function notifyWarning(ctx: ExtensionContext, message: string) {
   try {
     if (ctx.hasUI) {
@@ -79,6 +86,75 @@ function normalizeText(value: unknown) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function collapseWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function parseRoleCycleArgs(args: string): ParsedRoleCycleArgs | undefined {
+  const trimmed = args.trim();
+  if (!trimmed) return undefined;
+
+  const match = /^(\S+)(?:\s+([\s\S]+))?$/.exec(trimmed);
+  if (!match) return undefined;
+
+  const roleName = normalizeText(match[1]);
+  const goal = normalizeText(match[2]);
+  if (!roleName || !goal) return undefined;
+
+  return { roleName, goal };
+}
+
+function formatRoleCyclePrompt(role: any, goal: string) {
+  const roleName = role.name ?? "unknown";
+  const roleTitle = role.icon ? `${role.icon} ${roleName}` : roleName;
+
+  return `## Role cycle kickoff
+
+Active role: ${roleTitle}
+Goal: ${goal.trim()}
+
+Run exactly one bounded cycle for the active role.
+
+Operating constraints:
+
+- Follow the active role instructions and its one-cycle workflow.
+- Work only on the stated goal; do not start unrelated tasks.
+- Project changes are allowed only when directly needed for the goal and
+  permitted by the current repository instructions.
+- Coordination changes are allowed only when directly needed for the goal and
+  permitted by the current coordination rules.
+- Use only context available in this session. If this is a fresh session, do
+  not assume parent-session conversation details unless they are included here.
+- Finish with the role's expected final report and then stop. Do not begin a
+  second role cycle.
+- If a \`role_cycle_done\` tool is available, call it as the final action with
+  the cycle summary, files inspected, files changed, checks run, coordination
+  updates, and recommended next role. If the tool is not available, include
+  those fields in the final report instead.
+`;
+}
+
+function formatRoleSessionName(roleName: string, goal: string) {
+  const prefix = `[${roleName}] `;
+  const fallbackGoal = "role cycle";
+  const normalizedGoal = collapseWhitespace(goal) || fallbackGoal;
+  const maxGoalLength = Math.max(1, MAX_ROLE_SESSION_NAME_LENGTH - prefix.length);
+
+  if (normalizedGoal.length <= maxGoalLength) {
+    return `${prefix}${normalizedGoal}`;
+  }
+
+  if (maxGoalLength > 3) {
+    return `${prefix}${normalizedGoal.slice(0, maxGoalLength - 3).trimEnd()}...`;
+  }
+
+  return `${prefix}${normalizedGoal.slice(0, maxGoalLength)}`;
+}
+
+function formatRoleCycleCommand(roleName: string, goal: string) {
+  return `/role-cycle ${roleName} ${goal.trim()}`;
 }
 
 function uniqueToolNames(tools: string[]) {
@@ -147,6 +223,21 @@ export default function roleManager(pi: ExtensionAPI) {
   function formatAvailableRoles() {
     const names = availableRoleNames();
     return names.length > 0 ? names.join(", ") : "(none loaded)";
+  }
+
+  function roleArgumentCompletions(prefix: string) {
+    const trimmedPrefix = prefix.trimStart();
+    if (/\s/.test(trimmedPrefix)) return null;
+
+    const normalizedPrefix = trimmedPrefix.toLowerCase();
+    const items = roleRegistry.roles
+      .filter((role) => role.name.toLowerCase().startsWith(normalizedPrefix))
+      .map((role) => ({
+        value: role.name,
+        label: role.icon ? `${role.icon} ${role.name}` : role.name,
+        description: role.description,
+      }));
+    return items.length > 0 ? items : null;
   }
 
   function resolveRoleModel(role: { name?: string; provider?: string; model?: string }, ctx: ExtensionContext) {
@@ -312,7 +403,11 @@ export default function roleManager(pi: ExtensionAPI) {
     });
   }
 
-  async function activateRole(roleName: string, ctx: ExtensionContext) {
+  async function activateRole(
+    roleName: string,
+    ctx: ExtensionContext,
+    extraState: Record<string, unknown> = {},
+  ) {
     const role = findRole(roleRegistry, roleName);
     if (!role) {
       notifyError(
@@ -328,7 +423,10 @@ export default function roleManager(pi: ExtensionAPI) {
       : snapshotRuntimeSettings(ctx);
 
     activeRoleOriginalSettings = previousSettings;
-    persistRoleState(role.name, previousSettings, { activatedAt: new Date().toISOString() });
+    persistRoleState(role.name, previousSettings, {
+      activatedAt: new Date().toISOString(),
+      ...extraState,
+    });
     await applyRoleRuntimeSettings(role, ctx);
     notifyInfo(ctx, `role-manager: activated role ${role.name}`);
     return true;
@@ -367,17 +465,7 @@ export default function roleManager(pi: ExtensionAPI) {
 
   pi.registerCommand("role", {
     description: "Switch the active role",
-    getArgumentCompletions: (prefix: string) => {
-      const normalizedPrefix = prefix.trim().toLowerCase();
-      const items = roleRegistry.roles
-        .filter((role) => role.name.toLowerCase().startsWith(normalizedPrefix))
-        .map((role) => ({
-          value: role.name,
-          label: role.icon ? `${role.icon} ${role.name}` : role.name,
-          description: role.description,
-        }));
-      return items.length > 0 ? items : null;
-    },
+    getArgumentCompletions: roleArgumentCompletions,
     handler: async (args, ctx) => {
       await ctx.waitForIdle();
 
@@ -409,6 +497,86 @@ export default function roleManager(pi: ExtensionAPI) {
     handler: async (_args, ctx) => {
       await ctx.waitForIdle();
       await clearRole(ctx);
+    },
+  });
+
+  pi.registerCommand("role-cycle", {
+    description: "Activate a role and run one bounded role cycle in this session",
+    getArgumentCompletions: roleArgumentCompletions,
+    handler: async (args, ctx) => {
+      await ctx.waitForIdle();
+
+      const parsed = parseRoleCycleArgs(args);
+      if (!parsed) {
+        notifyError(ctx, "Usage: /role-cycle <role> <goal>");
+        return;
+      }
+
+      const role = findRole(roleRegistry, parsed.roleName);
+      if (!role) {
+        notifyError(
+          ctx,
+          `role-manager: unknown role ${JSON.stringify(parsed.roleName)}. Available: ${formatAvailableRoles()}`,
+        );
+        return;
+      }
+
+      const startedAt = new Date().toISOString();
+      const activated = await activateRole(role.name, ctx, {
+        roleCycle: {
+          mode: "current-session",
+          goal: parsed.goal,
+          startedAt,
+        },
+      });
+      if (!activated) return;
+
+      pi.sendUserMessage(formatRoleCyclePrompt(role, parsed.goal));
+    },
+  });
+
+  pi.registerCommand("role-new", {
+    description: "Start a fresh session and run one bounded role cycle there",
+    getArgumentCompletions: roleArgumentCompletions,
+    handler: async (args, ctx) => {
+      await ctx.waitForIdle();
+
+      const parsed = parseRoleCycleArgs(args);
+      if (!parsed) {
+        notifyError(ctx, "Usage: /role-new <role> <goal>");
+        return;
+      }
+
+      const role = findRole(roleRegistry, parsed.roleName);
+      if (!role) {
+        notifyError(
+          ctx,
+          `role-manager: unknown role ${JSON.stringify(parsed.roleName)}. Available: ${formatAvailableRoles()}`,
+        );
+        return;
+      }
+
+      const parentSession = ctx.sessionManager.getSessionFile();
+      const sessionName = formatRoleSessionName(role.name, parsed.goal);
+      const roleCycleCommand = formatRoleCycleCommand(role.name, parsed.goal);
+
+      const result = await ctx.newSession({
+        parentSession,
+        setup: async (sessionManager) => {
+          sessionManager.appendSessionInfo(sessionName);
+        },
+        withSession: async (replacementCtx) => {
+          replacementCtx.ui.notify(
+            `role-manager: starting fresh ${role.name} role cycle`,
+            "info",
+          );
+          await replacementCtx.sendUserMessage(roleCycleCommand);
+        },
+      });
+
+      if (result.cancelled) {
+        notifyInfo(ctx, "role-manager: new role session cancelled");
+      }
     },
   });
 

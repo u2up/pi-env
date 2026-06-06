@@ -11,8 +11,9 @@ It currently provides:
   (`lib/role-loader.mjs`);
 - a lightweight Pi extension that loads base, global/common, coordination,
   and project role files, reports warnings without failing Pi startup,
-  provides `/role` and `/role-clear`, applies active-role model/thinking/tool
-  settings, and injects only the active role body into the system prompt;
+  provides `/role`, `/role-clear`, `/role-cycle`, and `/role-new`, applies
+  active-role model/thinking/tool settings, and injects only the active role
+  body into the system prompt;
 - base roles for `architect`, `developer`, `builder`, `tester`, and
   `reviewer`.
 
@@ -35,9 +36,14 @@ when no session state has been recorded. Use:
 /role                       open an interactive role selector
 /role <name>                activate a role in the current session
 /role-clear                 clear the role and restore previous settings
+/role-cycle <name> <goal>   activate a role and run one bounded cycle here
+/role-new <name> <goal>     start a fresh session and run one cycle there
 ```
 
 Role activation persists the active role plus the pre-role model, thinking
-level, and tool selection in the Pi session. One-cycle termination, active-role
-UI status, and coordination identity are implemented by later coordination
-items.
+level, and tool selection in the Pi session. `/role-cycle` sends a bounded
+one-cycle kickoff prompt in the current session. `/role-new` uses Pi's session
+replacement API, records the parent session, names the fresh session with a
+role prefix, and starts the cycle from the replacement-session context. The
+dedicated `role_cycle_done` termination tool, active-role UI status, and
+coordination identity are implemented by later coordination items.
