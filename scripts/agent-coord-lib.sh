@@ -13,9 +13,33 @@ coord_abs() {
   realpath -m "$1"
 }
 
+coord_project_root() {
+  local root
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -z "$root" ]; then
+    root="$(pwd -P)"
+  fi
+  coord_abs "$root"
+}
+
 coord_default_root() {
+  local project_root workspace_root
   if [ -n "${PI_COORD_ROOT:-}" ]; then
     printf '%s\n' "$PI_COORD_ROOT"
+    return
+  fi
+
+  project_root="$(coord_project_root)"
+  if [ -d /workspace ]; then
+    workspace_root="$(coord_abs /workspace)"
+    if [ "$project_root" = "/workspace" ] || [ "$project_root" = "$workspace_root" ]; then
+      printf '%s\n' "/workspace/agent-remotes"
+      return
+    fi
+  fi
+
+  if [ -n "$project_root" ]; then
+    printf '%s\n' "$project_root/agent-remotes"
   elif [ -n "${HOME:-}" ]; then
     printf '%s\n' "$HOME/agent-remotes"
   else

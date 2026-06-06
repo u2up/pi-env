@@ -451,7 +451,7 @@ agents synchronize only by normal Git pull/commit/push operations.
 Minimal flow:
 
 ```bash
-export PI_COORD_ROOT=~/agent-remotes
+export PI_COORD_ROOT=/workspace/agent-remotes
 export PI_COORD_WORKSPACE=piws
 export PI_COORD_DIR=coordination
 export PI_COORD_AGENT_ID=agent-a
@@ -460,6 +460,11 @@ agent-coord-init --project pi-env
 agent-coord-new --project pi-env "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
+
+If `PI_COORD_ROOT` is unset, helpers default to a project-visible
+`agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
+resolves to the current project root, that default is
+`/workspace/agent-remotes` rather than the isolated sandbox `$HOME`.
 
 Generated item IDs use a project item key prefix. Project keys are stored
 in `projects/<project>/PROJECT.md` as `item_key`; workspace-level keys are

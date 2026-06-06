@@ -15,6 +15,23 @@ mkdir -p "$HOME" "$workspace_dir"
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
+unset PI_COORD_ROOT
+mkdir -p "$tmp/default-root"
+cd "$tmp/default-root"
+git init -q
+agent-coord-init \
+  --workspace default-demo \
+  --agent-id agent-a \
+  --project pi-env \
+  --bare-only >/dev/null
+test -d "$tmp/default-root/agent-remotes/default-demo-coordination.git"
+test ! -e "$HOME/agent-remotes/default-demo-coordination.git"
+
+if [ -d /workspace ] && [ "$(realpath -m /workspace)" = "$(realpath -m "$repo_root")" ]; then
+  workspace_default_root="$(cd "$repo_root" && unset PI_COORD_ROOT && . "$PI_ENV_COORD_LIB" && coord_default_root)"
+  test "$workspace_default_root" = "/workspace/agent-remotes"
+fi
+
 cd "$workspace_dir"
 agent-coord-init \
   --root "$tmp/remotes" \

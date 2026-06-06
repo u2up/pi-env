@@ -193,6 +193,12 @@ write `WORKSPACE.md` and initial project `PROJECT.md` item-key metadata,
 and configure the clone with `pull.rebase=true` and
 `rebase.autoStash=true`.
 
+When `--root` and `PI_COORD_ROOT` are omitted, coordination helpers must
+use a project-visible `agent-remotes` directory instead of the isolated
+sandbox `$HOME`. If `/workspace` resolves to the current project root, the
+default root must be `/workspace/agent-remotes`; otherwise it must be
+`<project-root>/agent-remotes`.
+
 ### CMD-011 `agent-coord-clone`
 
 `agent-coord-clone` must clone a coordination remote into the selected
@@ -515,6 +521,9 @@ sandbox:
 - `PI_COORD_WORKSPACE`
 - `PI_COORD_AGENT_ID`
 - `PI_COORD_PROJECT_KEY`
+
+If `PI_COORD_ROOT` points inside the selected project, the launcher must
+pass it into the sandbox as the corresponding `/workspace/...` path.
 
 If a coordination clone is detected under the selected project, or selected
 with `PI_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set

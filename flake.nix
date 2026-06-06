@@ -89,6 +89,7 @@
             PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
             PI_BWRAP_NET=0                Disable network namespace sharing
             PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
+            PI_COORD_ROOT=/workspace/agent-remotes Bare coordination remotes root
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
           To pass pi's own -h/--help, use:
@@ -385,7 +386,20 @@
             done
           fi
 
-          copy_env PI_COORD_ROOT
+          if [ -n "''${PI_COORD_ROOT:-}" ]; then
+            host_coord_root="$(realpath -m "$PI_COORD_ROOT")"
+            case "$host_coord_root" in
+              "$project_root")
+                set_env PI_COORD_ROOT /workspace
+                ;;
+              "$project_root"/*)
+                set_env PI_COORD_ROOT "/workspace''${host_coord_root#"$project_root"}"
+                ;;
+              *)
+                set_env PI_COORD_ROOT "$PI_COORD_ROOT"
+                ;;
+            esac
+          fi
           copy_env PI_COORD_WORKSPACE
           copy_env PI_COORD_AGENT_ID
           copy_env PI_COORD_PROJECT_KEY

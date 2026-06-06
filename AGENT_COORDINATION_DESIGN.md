@@ -48,7 +48,7 @@ If workspaces are unrelated, use separate bare coordination repositories.
 Example:
 
 ```text
-~/agent-remotes/
+/workspace/agent-remotes/
   piws-coordination.git
   client-a-coordination.git
   oss-tools-coordination.git
@@ -256,11 +256,11 @@ Everything else can remain normal Git commands until real usage proves that more
 ## 8. Proposed environment variables
 
 ```bash
-PI_COORD_ROOT=~/agent-remotes       # where bare coordination remotes live
-PI_COORD_WORKSPACE=piws             # coordination domain/workspace id
-PI_COORD_DIR=coordination           # clone directory in each workspace
-PI_COORD_AGENT_ID=agent-a           # agent identity for ownership/activity logs
-PI_COORD_PROJECT_KEY=PIENV          # optional generated item ID prefix
+PI_COORD_ROOT=/workspace/agent-remotes # where bare coordination remotes live
+PI_COORD_WORKSPACE=piws                # coordination domain/workspace id
+PI_COORD_DIR=coordination              # clone directory in each workspace
+PI_COORD_AGENT_ID=agent-a              # agent identity for ownership/activity logs
+PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
 ```
 
 With these set, `agent-coord-clone` can infer:
@@ -268,6 +268,12 @@ With these set, `agent-coord-clone` can infer:
 ```text
 $PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git -> $PI_COORD_DIR
 ```
+
+When `PI_COORD_ROOT` is unset, helpers should prefer a project-visible
+`agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
+resolves to the current project root, that default should be
+`/workspace/agent-remotes` so the same bare remote is usable from inside
+and outside Bubblewrap.
 
 ## 9. Coordination rules installed by `agent-coord-init`
 

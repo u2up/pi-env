@@ -18,7 +18,7 @@ Usage:
   agent-coord-init [options]
 
 Options:
-  --root DIR        Bare remote parent; default: PI_COORD_ROOT or ~/agent-remotes
+  --root DIR        Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
   --workspace ID    Coordination domain; default: PI_COORD_WORKSPACE or cwd name
   --dir DIR         Working clone dir; default: PI_COORD_DIR or coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
