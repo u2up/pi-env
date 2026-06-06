@@ -458,8 +458,13 @@ export PI_COORD_AGENT_ID=agent-a
 
 agent-coord-init --project pi-env
 agent-coord-new --project pi-env "Document pi config behavior"
-agent-coord-push -m "Add PI-ENV documentation item"
+agent-coord-push -m "Add PIENV documentation item"
 ```
+
+Generated item IDs use a `PROJECTKEY` prefix. Set it explicitly with
+`agent-coord-new --project-key KEY` or `PI_COORD_PROJECT_KEY=KEY`. If it is
+not set, it is derived from the workspace directory name by uppercasing it
+and removing delimiters/non-alphanumeric characters.
 
 Agents can inspect and update item state with:
 

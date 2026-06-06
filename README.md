@@ -91,8 +91,15 @@ Create a timestamp-ID item with:
 
 ```bash
 agent-coord-new --project pi-env "Document pi config behavior"
-agent-coord-push -m "Add PI-ENV documentation item"
+agent-coord-push -m "Add PIENV documentation item"
 ```
+
+Generated item IDs use a `PROJECTKEY` prefix. Set it explicitly with
+`agent-coord-new --project-key KEY` or `PI_COORD_PROJECT_KEY=KEY`. If it is
+not set, `agent-coord-new` derives it from the workspace directory name,
+uppercases it, and removes delimiters/non-alphanumeric characters. For
+example, `pi-env_test` becomes `PIENVTEST`. `--id ID` overrides the whole
+item ID.
 
 Lifecycle helpers are also available:
 
@@ -150,7 +157,7 @@ See `AGENT_COORDINATION_DESIGN.md` for the full design.
 - copies host Git config into the sandbox by default (`~/.gitconfig` and `$XDG_CONFIG_HOME/git/config` / `~/.config/git/config`), but not Git credentials or SSH keys;
 - copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
 - bind-mounts only the host Pi session directory for the current working directory into the sandbox by default (disabled for ephemeral homes), so `/resume` and `--continue` can access sessions for the directory/project without exposing all sessions;
-- passes `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`, and coordination directory context when set, and can explicitly mount an external coordination clone with `PI_BWRAP_COORDINATION_DIR`;
+- passes `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`, and coordination directory context when set, and can explicitly mount an external coordination clone with `PI_BWRAP_COORDINATION_DIR`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or Docker sockets;
 - clears the environment, then passes only terminal basics and selected LLM provider variables;
 - shares the host network by default so Pi can reach model providers.

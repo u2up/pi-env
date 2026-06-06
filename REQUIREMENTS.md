@@ -203,6 +203,11 @@ workspace directory and configure the clone with `pull.rebase=true` and
 frontmatter, title, acceptance-criteria placeholder, and activity entry. It
 must not commit or push automatically.
 
+The generated item ID prefix must be configurable with `--project-key` or
+`PI_COORD_PROJECT_KEY`. When no project key is supplied, it must default to
+the workspace directory name, uppercased with delimiters and other
+non-alphanumeric characters removed. `--id` must override the whole item ID.
+
 ### CMD-013 Coordination lifecycle helpers
 
 The lifecycle helpers must remain thin wrappers around Git and Markdown
@@ -496,6 +501,7 @@ sandbox:
 - `PI_COORD_ROOT`
 - `PI_COORD_WORKSPACE`
 - `PI_COORD_AGENT_ID`
+- `PI_COORD_PROJECT_KEY`
 
 If a coordination clone is detected under the selected project, or selected
 with `PI_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set

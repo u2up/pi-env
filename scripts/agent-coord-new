@@ -18,22 +18,25 @@ Usage:
   agent-coord-new [options] "Item title"
 
 Options:
-  --coord-dir DIR    Coordination clone; default: PI_COORD_DIR or ./coordination
-  --project KEY      Create under projects/<key>/issues/open
-  --workspace-item   Create under workspace/issues/open
-  --type TYPE        Frontmatter type; default: issue
-  --priority VALUE   Priority value; default: medium
-  --owner ID         Initial owner; default: empty
-  --id ID            Explicit item ID; default: timestamp ID
-  -h, --help         Show this help
+  --coord-dir DIR     Coordination clone; default: PI_COORD_DIR or ./coordination
+  --project KEY       Create under projects/<key>/issues/open
+  --project-key KEY   Item ID prefix; default: PI_COORD_PROJECT_KEY or workspace dir
+  --workspace-item    Create under workspace/issues/open
+  --type TYPE         Frontmatter type; default: issue
+  --priority VALUE    Priority value; default: medium
+  --owner ID          Initial owner; default: empty
+  --id ID             Explicit item ID; default: timestamp ID
+  -h, --help          Show this help
 
 If --project is omitted, PI_COORD_PROJECT is used when set. Otherwise the
-item is created as a workspace-level item.
+item is created as a workspace-level item. The project key is uppercased
+and delimiters/non-alphanumeric characters are removed for item IDs.
 USAGE
 }
 
 coord_dir_opt=""
 project_key="${PI_COORD_PROJECT:-}"
+project_id_key="${PI_COORD_PROJECT_KEY:-}"
 workspace_item=0
 item_type="issue"
 priority="medium"
@@ -52,6 +55,11 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -ge 2 ] || coord_die "--project requires a value"
       project_key="$2"
       workspace_item=0
+      shift 2
+      ;;
+    --project-key)
+      [ "$#" -ge 2 ] || coord_die "--project-key requires a value"
+      project_id_key="$2"
       shift 2
       ;;
     --workspace-item)
@@ -96,6 +104,10 @@ fi
 
 title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+if [ -z "$project_id_key" ]; then
+  project_id_key="$(coord_workspace_dir_key "$coord_dir")"
+fi
+id_prefix="$(coord_project_id_prefix "$project_id_key")"
 cd "$coord_dir"
 
 if [ -z "$project_key" ]; then
@@ -105,13 +117,11 @@ fi
 if [ "$workspace_item" = "1" ]; then
   item_root="workspace/issues/open"
   project_value="workspace"
-  id_prefix="$(coord_project_id_prefix "${PI_COORD_WORKSPACE:-workspace}")"
 else
   project_dir="$(coord_sanitize_path_part "$project_key")"
   [ -n "$project_dir" ] || coord_die "project key produced an empty path"
   item_root="projects/$project_dir/issues/open"
   project_value="$project_dir"
-  id_prefix="$(coord_project_id_prefix "$project_key")"
 fi
 
 mkdir -p "$item_root"

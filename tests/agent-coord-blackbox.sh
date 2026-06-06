@@ -10,11 +10,12 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 export HOME="$tmp/home"
-mkdir -p "$HOME" "$tmp/workspace"
+workspace_dir="$tmp/pi-env_test"
+mkdir -p "$HOME" "$workspace_dir"
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
-cd "$tmp/workspace"
+cd "$workspace_dir"
 agent-coord-init \
   --root "$tmp/remotes" \
   --workspace demo \
@@ -41,50 +42,58 @@ test -f clone/docs/SYNC_PROTOCOL.md
 
 git -C clone rev-parse --verify HEAD >/dev/null
 
-action_path="$(cd "$tmp/workspace" && agent-coord-new \
+action_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --project pi-env \
   "Document pi config behavior" | tail -n 1)"
 
-test -f "$tmp/workspace/coordination/$action_path"
-grep -q '^id: PI-ENV-[0-9]\{8\}-[0-9]\{6\}$' \
-  "$tmp/workspace/coordination/$action_path"
-grep -q '^status: open$' "$tmp/workspace/coordination/$action_path"
-grep -q '^project: pi-env$' "$tmp/workspace/coordination/$action_path"
+test -f "$workspace_dir/coordination/$action_path"
+grep -q '^id: PIENVTEST-[0-9]\{8\}-[0-9]\{6\}$' \
+  "$workspace_dir/coordination/$action_path"
+grep -q '^status: open$' "$workspace_dir/coordination/$action_path"
+grep -q '^project: pi-env$' "$workspace_dir/coordination/$action_path"
 grep -q '^# Document pi config behavior$' \
-  "$tmp/workspace/coordination/$action_path"
+  "$workspace_dir/coordination/$action_path"
 
-item_id="$(grep '^id: ' "$tmp/workspace/coordination/$action_path" | sed 's/^id: //')"
+explicit_key_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --project-key my_key \
+  "Explicit project key item" | tail -n 1)"
+grep -q '^id: MYKEY-[0-9]\{8\}-[0-9]\{6\}$' \
+  "$workspace_dir/coordination/$explicit_key_path"
 
-agent-coord-status --coord-dir "$tmp/workspace/coordination" >/dev/null
+item_id="$(grep '^id: ' "$workspace_dir/coordination/$action_path" | sed 's/^id: //')"
+
+agent-coord-status --coord-dir "$workspace_dir/coordination" >/dev/null
 agent-coord-push \
-  --coord-dir "$tmp/workspace/coordination" \
+  --coord-dir "$workspace_dir/coordination" \
   -m "Add coordination test item" >/dev/null
 
 agent-coord-claim \
-  --coord-dir "$tmp/workspace/coordination" \
+  --coord-dir "$workspace_dir/coordination" \
   --agent-id agent-a \
   "$item_id" >/dev/null
 
-grep -q '^status: claimed$' "$tmp/workspace/coordination/$action_path"
-grep -q '^owner: agent-a$' "$tmp/workspace/coordination/$action_path"
+grep -q '^status: claimed$' "$workspace_dir/coordination/$action_path"
+grep -q '^owner: agent-a$' "$workspace_dir/coordination/$action_path"
 
 closed_path="$(agent-coord-close \
-  --coord-dir "$tmp/workspace/coordination" \
+  --coord-dir "$workspace_dir/coordination" \
   --agent-id agent-a \
   --result "Completed in test." \
   "$item_id" | tail -n 1)"
 
-test -f "$tmp/workspace/coordination/$closed_path"
-grep -q '^status: closed$' "$tmp/workspace/coordination/$closed_path"
-grep -q '^closed: 20' "$tmp/workspace/coordination/$closed_path"
+test -f "$workspace_dir/coordination/$closed_path"
+grep -q '^status: closed$' "$workspace_dir/coordination/$closed_path"
+grep -q '^closed: 20' "$workspace_dir/coordination/$closed_path"
 
-head_before="$(git -C "$tmp/workspace/coordination" rev-parse HEAD)"
+head_before="$(git -C "$workspace_dir/coordination" rev-parse HEAD)"
 agent-coord-upgrade-rules \
-  --coord-dir "$tmp/workspace/coordination" \
+  --coord-dir "$workspace_dir/coordination" \
   --preview >/dev/null
-head_after="$(git -C "$tmp/workspace/coordination" rev-parse HEAD)"
+head_after="$(git -C "$workspace_dir/coordination" rev-parse HEAD)"
 test "$head_before" = "$head_after"
-test -z "$(git -C "$tmp/workspace/coordination" status --short)"
+test -z "$(git -C "$workspace_dir/coordination" status --short)"
 
 printf 'agent coordination blackbox tests passed\n'

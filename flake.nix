@@ -388,6 +388,7 @@
           copy_env PI_COORD_ROOT
           copy_env PI_COORD_WORKSPACE
           copy_env PI_COORD_AGENT_ID
+          copy_env PI_COORD_PROJECT_KEY
           if [ -n "$sandbox_coord_dir" ]; then
             set_env PI_COORD_DIR "$sandbox_coord_dir"
           else

@@ -66,11 +66,18 @@ coord_project_id_prefix() {
   value="$1"
   prefix="$(printf '%s' "$value" \
     | tr '[:lower:]' '[:upper:]' \
-    | sed -E 's/[^A-Z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')"
+    | sed -E 's/[^A-Z0-9]+//g')"
   if [ -z "$prefix" ]; then
     prefix="ITEM"
   fi
   printf '%s\n' "$prefix"
+}
+
+coord_workspace_dir_key() {
+  local coord_dir parent
+  coord_dir="$(coord_abs "$1")"
+  parent="$(dirname "$coord_dir")"
+  basename "$parent"
 }
 
 coord_slug() {
