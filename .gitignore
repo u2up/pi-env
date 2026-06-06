@@ -2,5 +2,8 @@ result
 result-*
 .direnv/
 .pi/
+!/examples/project-role-override/.pi/
+!/examples/project-role-override/.pi/roles/
+!/examples/project-role-override/.pi/roles/*.md
 /coordination/
 /agent-remotes/

@@ -193,9 +193,10 @@ tests/agent-coord-blackbox.sh
 tests/agent-coord-concurrency.sh
 ```
 
-Role-manager schema/template, loader, and command smoke tests:
+Role-manager package, schema/template, loader, and command smoke tests:
 
 ```bash
+tests/role-manager-package.sh
 tests/role-manager-schema.sh
 tests/role-manager-loader.sh
 tests/role-manager-commands.sh
@@ -209,29 +210,95 @@ identity.
 
 See `AGENT_COORDINATION_DESIGN.md` for the full design.
 
-## Role templates architecture (planned)
+## Role-manager package
 
-`pi-env` also has a planned optional role-template layer for agent roles such
-as architect, developer, builder, tester, and reviewer. The design uses
-Markdown role definitions managed by a Pi extension rather than plain prompt
-templates alone. That lets a role switch persist across turns, change tools or
-thinking level, start a fresh session for a clean role cycle, show a visual
-role indicator, and set role-aware coordination commit identity.
+`pi-env` ships an optional Pi role-manager package for agent roles such as
+architect, developer, builder, tester, and reviewer. The package contains a Pi
+extension plus Markdown role definitions under `role-manager/`. It is not
+enabled by default, so `pi-start` behavior is unchanged unless you load or
+install the package.
 
-Planned commands include:
+Inside `nix develop`, the shell exports `PI_ENV_ROLE_MANAGER_PACKAGE` to the
+Nix-built role-manager package path. Try it for one run with the usual default
+Pi tool allowlist and session continuation:
+
+```bash
+pi-start -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
+```
+
+Or install it into project-local Pi settings so the project loads it normally:
+
+```bash
+pi-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
+pi-start
+```
+
+The role-manager package can also be built directly:
+
+```bash
+nix build /path/to/pi-env#pi-role-manager
+pi-bwrap install -l "$(readlink -f result)"
+```
+
+### Role files and precedence
+
+Base roles are bundled with the package:
+
+| Role | Purpose | Default tools |
+|------|---------|---------------|
+| `architect` | Design, trade-offs, decisions, and plans. | `read`, `grep`, `find`, `ls` |
+| `developer` | Focused source changes. | `read`, `grep`, `find`, `ls`, `edit`, `write`, `bash` |
+| `builder` | Build, packaging, integration, and release prep. | `read`, `grep`, `find`, `ls`, `bash`, `edit` |
+| `tester` | Reproduction, tests, verification, and coverage gaps. | `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write` |
+| `reviewer` | Diff, risk, security, and maintainability review. | `read`, `grep`, `find`, `ls`, `bash` |
+
+Role definitions are Markdown files with frontmatter. Project roles live in
+`.pi/roles/*.md` beside other project Pi resources. Common roles can live in the
+host/common agent resource directory as `roles/*.md`; `pi-bwrap` imports that
+`roles/` directory with common `skills/` and `prompts/` when common import is
+enabled. Coordination workspaces may also provide `coordination/roles` when a
+coordination clone is mounted.
+
+Roles are merged by `name`; later sources override earlier ones:
+
+1. bundled base package roles;
+2. global/common agent roles imported into `/home/pi/.pi/agent/roles`;
+3. common roles from `PI_BWRAP_COMMON_AGENT_DIR/roles` when directly visible;
+4. coordination workspace roles from `$PI_COORD_DIR/roles` or `coordination/roles`;
+5. project roles from `.pi/roles`.
+
+See `role-manager/ROLE_FILE_SCHEMA.md` for the full schema. See
+`examples/project-role-override/.pi/roles/domain-architect.md` for a minimal
+project-specific role that adds a role without changing the base package.
+
+### Role commands and tools
+
+The extension registers these slash commands:
 
 ```text
+/role                       select a role interactively
 /role <name>                switch the current session to a role
+/role-clear                 clear the role and restore prior settings
 /role-cycle <name> <goal>   run one bounded role cycle in this session
 /role-new <name> <goal>     start a fresh session and run one role cycle
 ```
 
-Base roles will come from the role-manager package, while project-specific
-roles can live in `.pi/roles/` next to project Pi extensions, skills, and
-prompts. The initial schema, validator, and built-in role templates live under
-`role-manager/`. Common roles can live in a shared agent resource directory when
-role support is implemented. See `ROLE_TEMPLATES_DESIGN.md` for the architecture
-and the `PIENV-ROLE-*` coordination items for the implementation roadmap.
+When a role is active, only that role's instructions are injected into the
+system prompt for each turn. Role frontmatter may request a thinking level,
+model/provider, and tool allowlist. Unknown requested tools are warned and
+ignored. The default `pi-start` allowlist includes every built-in tool used by
+the bundled roles. `/role-cycle` also enables the package's `role_cycle_done`
+tool for that cycle; the model is instructed to call it as the final action so
+Pi can terminate the cycle without an extra follow-up turn.
+
+When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
+Pi subprocesses to the role's `coordCommitter` value, or to the role name when
+`coordCommitter` is omitted. Coordination helper commands use that value only
+for coordination activity actors and per-command coordination Git identity;
+project repository commits keep the normal imported Git identity unless the user
+explicitly changes it.
+
+See `ROLE_TEMPLATES_DESIGN.md` for the architecture.
 
 ## Bubblewrap safety defaults
 
@@ -242,7 +309,7 @@ and the `PIENV-ROLE-*` coordination items for the implementation roadmap.
 - mounts `/usr/local/bin` and the global Pi npm package read-only when present, so a global npm-installed `pi` works;
 - uses isolated `$HOME=/home/pi`;
 - stores sandbox Pi state outside the project by default under `$XDG_STATE_HOME/pi-env/<project-hash>`;
-- imports common Pi rules/skills/prompts from the host Pi agent directory by default (`$PI_CODING_AGENT_DIR`, else `~/.pi/agent`), limited to `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, and `prompts/`;
+- imports common Pi rules/skills/prompts/roles from the host Pi agent directory by default (`$PI_CODING_AGENT_DIR`, else `~/.pi/agent`), limited to `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, `prompts/`, and `roles/`;
 - exposes global Pi extensions and installed package directories from the host Pi agent directory by default (`extensions/`, `npm/`, `git/`) and copies `settings.json`, while project-local `.pi/extensions` and `.pi/settings.json` are available through `/workspace`;
 - copies host Git config into the sandbox by default (`~/.gitconfig` and `$XDG_CONFIG_HOME/git/config` / `~/.config/git/config`), but not Git credentials or SSH keys;
 - copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
@@ -265,8 +332,8 @@ PI_BWRAP_IMPORT_AUTH=0                  # do not import host ~/.pi/agent auth fi
 PI_BWRAP_AUTH_SYNC=missing              # copy auth only if sandbox copy is absent; default is always
 PI_BWRAP_IMPORT_SESSIONS=0              # do not bind host sessions for the current working directory; defaults to 1 unless PI_BWRAP_EPHEMERAL_HOME=1
 PI_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi/agent
-PI_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills dir; default: host Pi agent dir
-PI_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, or prompts
+PI_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills/roles dir; default: host Pi agent dir
+PI_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, prompts, or roles
 PI_BWRAP_COMMON_SYNC=missing            # copy common files only if sandbox copy is absent; default is always
 PI_BWRAP_IMPORT_EXTENSIONS=0            # do not expose global Pi extensions/packages from host agent dir
 PI_BWRAP_EXTENSIONS_SYNC=missing        # copy settings.json only if sandbox copy is absent; default is always
@@ -409,9 +476,9 @@ PI_BWRAP_NET=0 pi-start                       # disable network access
 
 Inside the sandbox, the selected project is mounted read-write at `/workspace`, while the sandbox home and Pi config live separately from the host home.
 
-## Common vs project-specific rules and skills
+## Common vs project-specific Pi resources
 
-`pi-env` keeps the runtime separate from user-specific agent behavior. It does not ship common rules or skills itself. Instead, `pi-bwrap` imports common Pi resources from an external directory into the sandbox Pi agent directory.
+`pi-env` keeps the runtime separate from user-specific agent behavior. It does not ship common rules, skills, prompts, or custom roles itself. Instead, `pi-bwrap` imports common Pi resources from an external directory into the sandbox Pi agent directory.
 
 By default, the common directory is the user's normal Pi agent directory:
 
@@ -429,11 +496,12 @@ SYSTEM.md
 APPEND_SYSTEM.md
 skills/
 prompts/
+roles/
 ```
 
 It does not import the whole host home, and auth/session handling remains controlled separately by `PI_BWRAP_IMPORT_AUTH` and `PI_BWRAP_IMPORT_SESSIONS`. Global extension/package exposure is controlled separately by `PI_BWRAP_IMPORT_EXTENSIONS`.
 
-To keep common rules/skills in a separate repo or directory, point `PI_BWRAP_COMMON_AGENT_DIR` at it:
+To keep common rules, skills, prompts, or roles in a separate repo or directory, point `PI_BWRAP_COMMON_AGENT_DIR` at it:
 
 ```bash
 PI_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-start
@@ -449,6 +517,8 @@ my-pi-common/
       SKILL.md
   prompts/
     review.md
+  roles/
+    domain-architect.md
 ```
 
 Disable common resource import entirely with:
@@ -457,7 +527,7 @@ Disable common resource import entirely with:
 PI_BWRAP_IMPORT_COMMON=0 pi-start
 ```
 
-Project-specific rules, skills, and extensions should live in the project repository so they are versioned with the project:
+Project-specific rules, skills, roles, and extensions should live in the project repository so they are versioned with the project:
 
 ```text
 project/
@@ -469,13 +539,15 @@ project/
       project-skill/
         SKILL.md
     prompts/
+    roles/
+      release-builder.md
     settings.json
 ```
 
 Pi loads the common/global resources from `/home/pi/.pi/agent` and also discovers project resources from `/workspace`, so this gives a clean split:
 
-- common rules/skills and global extensions/packages: user-owned, reusable across projects;
-- project-specific rules/skills/extensions/packages: committed with the project;
+- common rules/skills/roles and global extensions/packages: user-owned, reusable across projects;
+- project-specific rules/skills/roles/extensions/packages: committed with the project;
 - `pi-env`: neutral runtime and isolation layer only.
 
 ## Git config

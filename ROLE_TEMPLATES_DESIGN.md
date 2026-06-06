@@ -1,7 +1,7 @@
 # Role Template Architecture
 
-This document describes the planned optional role-template layer for
-`pi-env` and `pi-coding-agent` sessions.
+This document describes the optional role-template layer for `pi-env` and
+`pi-coding-agent` sessions.
 
 The goal is to let a user switch the active agent role, optionally start a
 fresh session for that role, and run exactly one role cycle while keeping
@@ -14,7 +14,7 @@ Plain Pi prompt templates are useful for one-shot prompts, but they do not
 provide enough control for persistent role state, tool selection, fresh
 sessions, visual status, or role-aware coordination commits.
 
-The role layer should therefore be packaged as:
+The role layer is packaged as:
 
 ```text
 role-manager package
@@ -229,6 +229,6 @@ runtime support needed to use it across projects:
 
 ## Implementation roadmap
 
-The coordination repository contains open PIENV role-template items that split
-this design into implementable work. Completing those items should result in the
-architecture described here.
+The coordination repository tracked PIENV role-template items that split this
+design into implementable work. The current implementation follows this
+architecture while keeping role support optional.

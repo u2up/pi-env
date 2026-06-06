@@ -1,7 +1,6 @@
 # pi-env role-manager package
 
-This is the initial Pi role-manager resource package for pi-env role template
-support.
+This is the Pi role-manager resource package for pi-env role template support.
 
 It currently provides:
 
@@ -18,10 +17,23 @@ It currently provides:
 - base roles for `architect`, `developer`, `builder`, `tester`, and
   `reviewer`.
 
-Try it locally with:
+Try it locally from this repository with:
 
 ```bash
 pi -e ./role-manager
+```
+
+Inside the `pi-env` devshell, load the Nix-packaged role manager for one run
+with:
+
+```bash
+pi-start -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
+```
+
+Or install that package path into project-local Pi settings:
+
+```bash
+pi-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
 ```
 
 Role merge order is base package roles, global agent roles, common agent

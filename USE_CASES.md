@@ -6,12 +6,12 @@ This document summarizes the practical ways the current project can be used.
 
 A possible opt-in use case for Git-backed multi-agent task synchronization is described separately in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). Coordination helpers must remain explicit Git/Markdown tooling and must not make `pi-start` mutate shared coordination state automatically.
 
-A planned optional role-template layer is described in
-[Role Template Architecture](ROLE_TEMPLATES_DESIGN.md). It will let users
-select roles such as architect, developer, builder, tester, and reviewer;
-start a fresh session for a role; run one bounded role cycle; show the active
-role in the UI; and use role-aware coordination commit identity. That feature
-should remain extension/package based and opt-in.
+An optional role-template layer is described in
+[Role Template Architecture](ROLE_TEMPLATES_DESIGN.md). It lets users select
+roles such as architect, developer, builder, tester, and reviewer; start a fresh
+session for a role; run one bounded role cycle; show the active role in the UI;
+and use role-aware coordination commit identity. That feature remains
+extension/package based and opt-in.
 
 ## 1. Run Pi in the current repository
 
@@ -171,7 +171,7 @@ Enable it explicitly, including for ephemeral homes:
 PI_BWRAP_IMPORT_SESSIONS=1 pi-start
 ```
 
-## 10. Use common Pi rules, skills, and prompts
+## 10. Use common Pi rules, skills, prompts, and roles
 
 `pi-env` can import common user-owned Pi resources into the sandbox agent directory. By default it uses:
 
@@ -189,9 +189,10 @@ SYSTEM.md
 APPEND_SYSTEM.md
 skills/
 prompts/
+roles/
 ```
 
-Use a separate shared rules/skills repository:
+Use a separate shared rules/skills/roles repository:
 
 ```bash
 PI_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-start
@@ -213,8 +214,8 @@ PI_BWRAP_COMMON_SYNC=missing pi-start
 
 A common setup is:
 
-- common personal/team rules and skills outside the project;
-- project-specific rules, skills, and extensions committed inside the project.
+- common personal/team rules, skills, and roles outside the project;
+- project-specific rules, skills, roles, and extensions committed inside the project.
 
 Example project layout:
 
@@ -228,6 +229,8 @@ project/
       project-skill/
         SKILL.md
     prompts/
+    roles/
+      release-builder.md
     settings.json
 ```
 
@@ -545,7 +548,7 @@ there.
 
 `pi-env` does not:
 
-- ship personal or team rules/skills/prompts itself;
+- ship personal or team rules/skills/prompts/roles itself;
 - mount the whole host home by default;
 - import SSH keys, Git credentials, signing keys, cloud credentials, or Docker sockets;
 - provide domain-level network allowlisting;

@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "files": [
+    "README.md",
+    "ROLE_FILE_SCHEMA.md",
+    "extensions/",
+    "lib/",
+    "roles/"
+  ],
   "keywords": ["pi-package", "pi-role-manager"],
   "pi": {
     "extensions": ["./extensions/role-manager.ts"]

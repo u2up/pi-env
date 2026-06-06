@@ -60,7 +60,7 @@
             - mounts /nix/store read-only for devshell tools
             - mounts /usr/local/bin and the global pi npm package read-only when present
             - uses an isolated HOME at /home/pi
-            - imports common Pi rules/skills/prompts from the host Pi agent dir by default
+            - imports common Pi rules/skills/prompts/roles from the host Pi agent dir by default
             - exposes global Pi extensions/packages from the host Pi agent dir by default
             - copies host Git config into sandbox HOME by default, but not credentials or SSH keys
             - copies host pi auth.json/models.json into sandbox state by default
@@ -77,8 +77,8 @@
             PI_BWRAP_AUTH_SYNC=missing    Copy auth only if sandbox copy is absent (default: always)
             PI_BWRAP_IMPORT_SESSIONS=0    Do not bind project sessions from host ~/.pi/agent (default: 1, or 0 with ephemeral home)
             PI_BWRAP_HOST_AGENT_DIR=/path Host pi agent dir (default: $PI_CODING_AGENT_DIR or ~/.pi/agent)
-            PI_BWRAP_COMMON_AGENT_DIR=/path Common rules/skills dir (default: host pi agent dir)
-            PI_BWRAP_IMPORT_COMMON=0       Do not import common AGENTS/SYSTEM files, skills, or prompts
+            PI_BWRAP_COMMON_AGENT_DIR=/path Common rules/skills/roles dir (default: host pi agent dir)
+            PI_BWRAP_IMPORT_COMMON=0       Do not import common AGENTS/SYSTEM files, skills, prompts, or roles
             PI_BWRAP_COMMON_SYNC=missing   Copy common files only if sandbox copy is absent (default: always)
             PI_BWRAP_IMPORT_EXTENSIONS=0   Do not expose global Pi extensions/packages from host agent dir
             PI_BWRAP_EXTENSIONS_SYNC=missing Copy settings.json only if sandbox copy is absent (default: always)
@@ -190,7 +190,7 @@
               fi
             done
 
-            for common_dir_name in skills prompts; do
+            for common_dir_name in skills prompts roles; do
               if [ -d "$common_agent_dir/$common_dir_name" ] && should_sync_common "$state_base/agent/$common_dir_name"; then
                 rm -rf "$state_base/agent/$common_dir_name"
                 mkdir -p "$state_base/agent"
@@ -548,11 +548,18 @@
           value = mkAgentCoordCommand pkgs name;
         }) agentCoordCommandNames);
 
+      mkRoleManagerPackage = pkgs:
+        pkgs.runCommand "pi-env-role-manager" { } ''
+          mkdir -p "$out"
+          cp -R ${./role-manager}/. "$out/"
+        '';
+
       mkPiShell = { pkgs, extraPackages ? [ ], shellHook ? "" }:
         let
           piBwrap = mkPiBwrap pkgs;
           piStart = mkPiStart pkgs;
           agentCoordCommands = builtins.attrValues (mkAgentCoordCommands pkgs);
+          roleManagerPackage = mkRoleManagerPackage pkgs;
         in
         pkgs.mkShell {
           packages = (mkRuntime pkgs) ++ [
@@ -562,6 +569,7 @@
 
           shellHook = ''
             export PS1="(nix-dev) \u@\h:\w$ "
+            export PI_ENV_ROLE_MANAGER_PACKAGE="${roleManagerPackage}"
             if [ -z "''${PI_ENV_QUIET:-}" ]; then
               echo "Pi agent runtime loaded"
               echo "Use 'pi-start' for isolated default startup, or 'pi-bwrap -- <pi args>' for custom runs."
@@ -580,6 +588,7 @@
           mkAgentCoordSupport
           mkAgentCoordCommand
           mkAgentCoordCommands
+          mkRoleManagerPackage
           mkPiShell;
       };
     }
@@ -589,6 +598,7 @@
         piBwrap = mkPiBwrap pkgs;
         piStart = mkPiStart pkgs;
         agentCoordCommands = mkAgentCoordCommands pkgs;
+        roleManagerPackage = mkRoleManagerPackage pkgs;
         piRuntime = pkgs.buildEnv {
           name = "pi-env-runtime";
           paths = (mkRuntime pkgs) ++ [
@@ -603,6 +613,7 @@
           pi-start = piStart;
           pi-bwrap = piBwrap;
           pi-runtime = piRuntime;
+          pi-role-manager = roleManagerPackage;
         } // agentCoordCommands;
 
         apps = {

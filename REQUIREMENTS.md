@@ -26,7 +26,7 @@ The git history establishes these product requirements:
 5. Bubblewrap isolation became the primary runtime boundary.
 6. Project-specific Pi sessions were intentionally exposed inside the sandbox, but only for the active project/path.
 7. The flake is intended for reuse by other projects through `lib.mkPiShell` or packages.
-8. Common Pi rules/skills/prompts are imported from an external user-controlled directory, not shipped by `pi-env`.
+8. Common Pi rules/skills/prompts/roles are imported from an external user-controlled directory, not shipped by `pi-env`.
 9. Host Git configuration is copied into the sandbox by default, but credentials, SSH keys, and host home are not mounted.
 
 ## 3. Flake requirements
@@ -53,6 +53,7 @@ The flake must expose `lib` attributes:
 - `mkPiBwrap`
 - `mkPiStart`
 - `mkPiShell`
+- `mkRoleManagerPackage`
 
 ### FLAKE-004 Packages
 
@@ -62,6 +63,7 @@ For each supported system the flake must expose packages:
 - `pi-start`
 - `pi-bwrap`
 - `pi-runtime`
+- `pi-role-manager`
 - `bootstrap-coordination`
 - `agent-coord-init`
 - `agent-coord-clone`
@@ -85,7 +87,8 @@ For each supported system the flake must expose apps:
 
 The default devshell must include the runtime packages and wrappers and must print a helpful startup message unless `PI_ENV_QUIET` is set.
 
-The shell prompt must be prefixed with `(nix-dev)`.
+The shell prompt must be prefixed with `(nix-dev)`. The shell must export
+`PI_ENV_ROLE_MANAGER_PACKAGE` to the Nix-built role-manager Pi package path.
 
 ## 4. Runtime package requirements
 
@@ -277,6 +280,21 @@ bundled coordination rule templates into their installed locations, and
 commit the changes when any template differs. It must not push unless
 `--push` is used.
 
+### CMD-015 Role-manager package
+
+The role-manager resources must be packaged as an installable Pi package or
+equivalent local resource bundle. The package must include:
+
+- `package.json` with the `pi-package` keyword and a `pi.extensions` manifest;
+- `extensions/role-manager.ts`;
+- `lib/role-loader.mjs` and `lib/role-schema.mjs`;
+- bundled base roles under `roles/`;
+- schema and user documentation.
+
+The flake package `pi-role-manager` must expose this package directory so it
+can be loaded with `pi-start -e "$PI_ENV_ROLE_MANAGER_PACKAGE"` from the
+devshell or installed with `pi-bwrap install -l <path>`.
+
 ## 6. Project root and working directory requirements
 
 ### PATH-001 Project root detection
@@ -388,6 +406,7 @@ When common import is enabled and the common directory exists, the launcher must
 - `APPEND_SYSTEM.md`
 - `skills/`
 - `prompts/`
+- `roles/`
 
 ### AGENT-005 Common import disable
 
@@ -591,7 +610,8 @@ Design proposals that are not yet mandatory runtime behavior must be documented 
 - Bubblewrap safety defaults
 - environment knobs
 - reuse from another project with and without an existing flake
-- common vs project-specific rules and skills
+- common vs project-specific rules, skills, prompts, and roles
+- optional role-manager package setup, role sources, commands, and tool allowlists
 - Git config import behavior
 - opt-in coordination helper basics
 - safe coordination context/mount behavior
@@ -611,7 +631,7 @@ nix flake show
 
 Expected:
 
-- packages include `pi-start`, `pi-bwrap`, `pi-runtime`, and `default`
+- packages include `pi-start`, `pi-bwrap`, `pi-runtime`, `pi-role-manager`, and `default`
 - apps include `pi-start`, `pi-bwrap`, and `default`
 - `devShells.default` exists
 
@@ -623,6 +643,7 @@ Commands:
 nix build .#pi-bwrap
 nix build .#pi-start
 nix build .#pi-runtime
+nix build .#pi-role-manager
 nix build .#agent-coord-init
 nix build .#agent-coord-clone
 nix build .#agent-coord-new
@@ -879,6 +900,27 @@ Expected:
 - a pulled clone refuses to claim or close an item owned by another agent;
 - the owning agent can close the item and other clones can pull the result;
 - helper-generated commit subjects longer than 72 characters are rejected.
+
+### TEST-031 Role-manager package and commands
+
+Run the role-manager smoke tests from the repository root:
+
+```bash
+tests/role-manager-package.sh
+tests/role-manager-schema.sh
+tests/role-manager-loader.sh
+tests/role-manager-commands.sh
+```
+
+Expected:
+
+- the role-manager manifest is a Pi package with the expected extension;
+- the flake exposes `pi-role-manager` and the devshell package path;
+- common-resource handling includes `roles/` directories;
+- bundled and example project roles validate;
+- loader precedence, active-role prompt injection, command behavior,
+  one-cycle termination, UI setup, and role-aware coordination environment
+  behavior pass.
 
 ## 14. Coordination implementation guard
 
