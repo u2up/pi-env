@@ -23,6 +23,7 @@ Options:
   --dir DIR         Working clone dir; default: PI_COORD_DIR or coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --project KEY     Initial project directory; default: workspace ID
+  --project-key KEY Initial project's item ID prefix; default: derived project
   --bare-only       Only create the bare remote
   -h, --help        Show this help
 
@@ -36,6 +37,7 @@ workspace="$(coord_default_workspace)"
 coord_dir="$(coord_default_dir)"
 agent_id="$(coord_default_agent)"
 project_key=""
+project_id_key="${PI_COORD_PROJECT_KEY:-}"
 bare_only=0
 
 while [ "$#" -gt 0 ]; do
@@ -63,6 +65,11 @@ while [ "$#" -gt 0 ]; do
     --project)
       [ "$#" -ge 2 ] || coord_die "--project requires a value"
       project_key="$2"
+      shift 2
+      ;;
+    --project-key)
+      [ "$#" -ge 2 ] || coord_die "--project-key requires a value"
+      project_id_key="$2"
       shift 2
       ;;
     --bare-only)
@@ -133,6 +140,13 @@ agent_file="$(coord_sanitize_path_part "$agent_id")"
 [ -n "$project_dir" ] || project_dir="project"
 [ -n "$agent_file" ] || agent_file="agent"
 
+created="$(coord_timestamp_iso)"
+workspace_item_key="$(coord_project_id_prefix "$(coord_workspace_dir_key .)")"
+if [ -z "$project_id_key" ]; then
+  project_id_key="$project_key"
+fi
+project_item_key="$(coord_project_id_prefix "$project_id_key")"
+
 mkdir -p \
   docs \
   ".pi/skills/agent-coordination" \
@@ -165,18 +179,38 @@ Read AGENTS.md and docs/SYNC_PROTOCOL.md before changing shared items.
 EOF_README
 
 cat >WORKSPACE.md <<EOF_WORKSPACE
+---
+workspace: $workspace
+item_key: $workspace_item_key
+created: $created
+---
+
 # Workspace: $workspace
 
 - Coordination domain: $workspace
+- Workspace item key: $workspace_item_key
 - Bare remote: $remote
 - Initial project: $project_dir
 EOF_WORKSPACE
+
+cat >"projects/$project_dir/PROJECT.md" <<EOF_PROJECT
+---
+project: $project_dir
+item_key: $project_item_key
+created: $created
+---
+
+# Project: $project_dir
+
+- Project item key: $project_item_key
+- Source name: $project_key
+EOF_PROJECT
 
 cat >"agents/$agent_file.md" <<EOF_AGENT
 # $agent_id
 
 - Agent ID: $agent_id
-- Created: $(coord_timestamp_iso)
+- Created: $created
 
 ## Notes
 

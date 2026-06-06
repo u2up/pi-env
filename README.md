@@ -78,8 +78,9 @@ This creates a bare remote at:
 $PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git
 ```
 
-and clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, protocol docs,
-item-format docs, and `.pi/skills/agent-coordination/SKILL.md`.
+and clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, `WORKSPACE.md`,
+project `PROJECT.md` metadata, protocol docs, item-format docs, and
+`.pi/skills/agent-coordination/SKILL.md`.
 
 Clone the same coordination domain elsewhere with:
 
@@ -94,10 +95,23 @@ agent-coord-new --project pi-env "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
 
-Generated item IDs use a `PROJECTKEY` prefix. Set it explicitly with
-`agent-coord-new --project-key KEY` or `PI_COORD_PROJECT_KEY=KEY`. If it is
-not set, `agent-coord-new` derives it from the workspace directory name,
-uppercases it, and removes delimiters/non-alphanumeric characters. For
+Generated item IDs use a project item key prefix. Use
+`agent-coord-init --project-key PIENV` to set the initial project's stored
+key during scaffolding. Project keys are stored
+in the coordination repo at `projects/<project>/PROJECT.md` as `item_key`.
+Workspace-level item keys are stored in `WORKSPACE.md` as `item_key`.
+Agents should use those stored keys instead of inventing new ones.
+
+Key resolution for `agent-coord-new` is:
+
+1. `--project-key KEY`;
+2. stored project/workspace `item_key`;
+3. `PI_COORD_PROJECT_KEY` when no stored key exists;
+4. derived `--project` / `PI_COORD_PROJECT` for project items;
+5. derived workspace directory name for workspace-level items.
+
+Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
+backslashes, and other non-alphanumeric characters are removed. For
 example, `pi-env_test` becomes `PIENVTEST`. `--id ID` overrides the whole
 item ID.
 

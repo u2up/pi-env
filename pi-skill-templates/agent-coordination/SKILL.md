@@ -22,6 +22,12 @@ workspace rules say otherwise.
 6. Return to the coordination repo, pull/rebase, update the item with
    results and links, then commit and push.
 
+## Item keys
+
+Use stored `item_key` metadata when creating items. Project item keys live
+in `projects/<project>/PROJECT.md`; workspace-level item keys live in
+`WORKSPACE.md`. Do not invent or silently change keys.
+
 ## Safety rules
 
 - Never force-push.

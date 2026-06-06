@@ -461,10 +461,16 @@ agent-coord-new --project pi-env "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
 
-Generated item IDs use a `PROJECTKEY` prefix. Set it explicitly with
-`agent-coord-new --project-key KEY` or `PI_COORD_PROJECT_KEY=KEY`. If it is
-not set, it is derived from the workspace directory name by uppercasing it
-and removing delimiters/non-alphanumeric characters.
+Generated item IDs use a project item key prefix. Project keys are stored
+in `projects/<project>/PROJECT.md` as `item_key`; workspace-level keys are
+stored in `WORKSPACE.md` as `item_key`. Agents should use those stored keys
+instead of inventing new ones.
+
+`agent-coord-new` resolves keys in this order: `--project-key`, stored
+metadata, `PI_COORD_PROJECT_KEY`, derived project name, then derived
+workspace directory for workspace-level items. Derived keys are uppercased
+and all delimiters, whitespace, slashes, backslashes, pipes, and other
+non-alphanumeric characters are removed.
 
 Agents can inspect and update item state with:
 

@@ -29,6 +29,19 @@ This repository is the authoritative coordination state for this workspace.
 11. If a push or rebase conflict occurs, resolve it conservatively and
     preserve both agents' factual updates when possible.
 
+## Item keys
+
+Use the stored `item_key` for generated coordination item IDs:
+
+- project items use `projects/<project>/PROJECT.md`;
+- workspace-level items use top-level `WORKSPACE.md`.
+
+Do not invent, rename, or silently change item keys. If a key is missing,
+derive it from the project or workspace directory name by uppercasing it
+and removing delimiters and other non-alphanumeric characters, then commit
+that key in the appropriate metadata file. Changing an existing `item_key`
+requires an explicit workspace decision.
+
 ## State transitions
 
 - Create: add a new Markdown item under `issues/open/` or the appropriate

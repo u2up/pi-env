@@ -188,8 +188,10 @@ It must install the rule/protocol templates into:
 - `docs/ITEM_FORMAT.md`
 - `.pi/skills/agent-coordination/SKILL.md`
 
-It must also create the standard workspace/project directory skeleton and
-configure the clone with `pull.rebase=true` and `rebase.autoStash=true`.
+It must also create the standard workspace/project directory skeleton,
+write `WORKSPACE.md` and initial project `PROJECT.md` item-key metadata,
+and configure the clone with `pull.rebase=true` and
+`rebase.autoStash=true`.
 
 ### CMD-011 `agent-coord-clone`
 
@@ -203,10 +205,21 @@ workspace directory and configure the clone with `pull.rebase=true` and
 frontmatter, title, acceptance-criteria placeholder, and activity entry. It
 must not commit or push automatically.
 
-The generated item ID prefix must be configurable with `--project-key` or
-`PI_COORD_PROJECT_KEY`. When no project key is supplied, it must default to
-the workspace directory name, uppercased with delimiters and other
-non-alphanumeric characters removed. `--id` must override the whole item ID.
+The generated item ID prefix must resolve in this order:
+
+1. explicit `--project-key`;
+2. stored `item_key` metadata for the selected project or workspace;
+3. `PI_COORD_PROJECT_KEY` when no stored key exists;
+4. derived `--project` / `PI_COORD_PROJECT` for project items;
+5. derived workspace directory name for workspace-level items.
+
+Derived keys must be uppercased with delimiters, whitespace, pipes,
+slashes, backslashes, and other non-alphanumeric characters removed.
+`--id` must override the whole item ID.
+
+Project item keys must be stored in `projects/<project>/PROJECT.md` as
+`item_key`; workspace-level item keys must be stored in `WORKSPACE.md` as
+`item_key`.
 
 ### CMD-013 Coordination lifecycle helpers
 
@@ -808,7 +821,7 @@ Run `tests/agent-coord-blackbox.sh` from the repository root.
 Expected:
 
 - `agent-coord-init` creates a bare remote and scaffolded clone;
-- generated rules, docs, and Pi skill files exist;
+- generated rules, docs, Pi skill files, and key metadata files exist;
 - clone Git settings enable rebase and autostash;
 - `agent-coord-clone` can clone the same domain;
 - `agent-coord-new` creates a timestamp-ID Markdown item;

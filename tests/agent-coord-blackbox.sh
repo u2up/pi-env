@@ -28,6 +28,8 @@ test -f coordination/docs/SYNC_PROTOCOL.md
 test -f coordination/docs/ITEM_FORMAT.md
 test -f coordination/.pi/skills/agent-coordination/SKILL.md
 test -d coordination/projects/pi-env/issues/open
+grep -q '^item_key: PIENV$' coordination/projects/pi-env/PROJECT.md
+grep -q '^item_key: PIENVTEST$' coordination/WORKSPACE.md
 git -C coordination config --get pull.rebase | grep -qx true
 git -C coordination config --get rebase.autoStash | grep -qx true
 
@@ -48,7 +50,7 @@ action_path="$(cd "$workspace_dir" && agent-coord-new \
   "Document pi config behavior" | tail -n 1)"
 
 test -f "$workspace_dir/coordination/$action_path"
-grep -q '^id: PIENVTEST-[0-9]\{8\}-[0-9]\{6\}$' \
+grep -q '^id: PIENV-[0-9]\{8\}-[0-9]\{6\}$' \
   "$workspace_dir/coordination/$action_path"
 grep -q '^status: open$' "$workspace_dir/coordination/$action_path"
 grep -q '^project: pi-env$' "$workspace_dir/coordination/$action_path"
@@ -57,11 +59,20 @@ grep -q '^# Document pi config behavior$' \
 
 explicit_key_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
-  --project-key my_key \
+  --project other-project \
+  --project-key 'my_key | test/foo\bar' \
   "Explicit project key item" | tail -n 1)"
-grep -q '^id: MYKEY-[0-9]\{8\}-[0-9]\{6\}$' \
+grep -q '^id: MYKEYTESTFOOBAR-[0-9]\{8\}-[0-9]\{6\}$' \
   "$workspace_dir/coordination/$explicit_key_path"
+grep -q '^item_key: MYKEYTESTFOOBAR$' \
+  "$workspace_dir/coordination/projects/other-project/PROJECT.md"
+
+workspace_item_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --workspace-item \
+  "Workspace coordination item" | tail -n 1)"
+grep -q '^id: PIENVTEST-[0-9]\{8\}-[0-9]\{6\}$' \
+  "$workspace_dir/coordination/$workspace_item_path"
 
 item_id="$(grep '^id: ' "$workspace_dir/coordination/$action_path" | sed 's/^id: //')"
 

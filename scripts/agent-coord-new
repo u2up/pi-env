@@ -20,7 +20,7 @@ Usage:
 Options:
   --coord-dir DIR     Coordination clone; default: PI_COORD_DIR or ./coordination
   --project KEY       Create under projects/<key>/issues/open
-  --project-key KEY   Item ID prefix; default: PI_COORD_PROJECT_KEY or workspace dir
+  --project-key KEY   Item ID prefix; overrides stored/default project key
   --workspace-item    Create under workspace/issues/open
   --type TYPE         Frontmatter type; default: issue
   --priority VALUE    Priority value; default: medium
@@ -29,14 +29,17 @@ Options:
   -h, --help          Show this help
 
 If --project is omitted, PI_COORD_PROJECT is used when set. Otherwise the
-item is created as a workspace-level item. The project key is uppercased
-and delimiters/non-alphanumeric characters are removed for item IDs.
+item is created as a workspace-level item. The item key is resolved from
+--project-key, stored project/workspace metadata, PI_COORD_PROJECT_KEY, or
+a derived project/workspace name. It is uppercased and all non-alphanumeric
+characters are removed for item IDs.
 USAGE
 }
 
 coord_dir_opt=""
 project_key="${PI_COORD_PROJECT:-}"
-project_id_key="${PI_COORD_PROJECT_KEY:-}"
+project_id_key_arg=""
+project_id_key_env="${PI_COORD_PROJECT_KEY:-}"
 workspace_item=0
 item_type="issue"
 priority="medium"
@@ -59,7 +62,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --project-key)
       [ "$#" -ge 2 ] || coord_die "--project-key requires a value"
-      project_id_key="$2"
+      project_id_key_arg="$2"
       shift 2
       ;;
     --workspace-item)
@@ -104,29 +107,88 @@ fi
 
 title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
-if [ -z "$project_id_key" ]; then
-  project_id_key="$(coord_workspace_dir_key "$coord_dir")"
-fi
-id_prefix="$(coord_project_id_prefix "$project_id_key")"
 cd "$coord_dir"
 
 if [ -z "$project_key" ]; then
   workspace_item=1
 fi
 
+created="$(coord_timestamp_iso)"
+
 if [ "$workspace_item" = "1" ]; then
   item_root="workspace/issues/open"
   project_value="workspace"
+  metadata_file="WORKSPACE.md"
+  stored_key="$(coord_metadata_item_key "$metadata_file")"
+  if [ -n "$project_id_key_arg" ] && [ -n "$stored_key" ]; then
+    if [ "$(coord_project_id_prefix "$project_id_key_arg")" != "$(coord_project_id_prefix "$stored_key")" ]; then
+      coord_die "--project-key conflicts with stored workspace item_key: $stored_key"
+    fi
+  fi
+  if [ -n "$project_id_key_arg" ]; then
+    project_id_key="$project_id_key_arg"
+  elif [ -n "$stored_key" ]; then
+    project_id_key="$stored_key"
+  elif [ -n "$project_id_key_env" ]; then
+    project_id_key="$project_id_key_env"
+  else
+    project_id_key="$(coord_workspace_dir_key .)"
+  fi
+  id_prefix="$(coord_project_id_prefix "$project_id_key")"
+  if [ ! -f "$metadata_file" ]; then
+    cat >"$metadata_file" <<EOF_WORKSPACE
+---
+workspace: workspace
+item_key: $id_prefix
+created: $created
+---
+
+# Workspace
+
+- Workspace item key: $id_prefix
+EOF_WORKSPACE
+  fi
 else
   project_dir="$(coord_sanitize_path_part "$project_key")"
   [ -n "$project_dir" ] || coord_die "project key produced an empty path"
   item_root="projects/$project_dir/issues/open"
   project_value="$project_dir"
+  metadata_file="projects/$project_dir/PROJECT.md"
+  stored_key="$(coord_metadata_item_key "$metadata_file")"
+  if [ -n "$project_id_key_arg" ] && [ -n "$stored_key" ]; then
+    if [ "$(coord_project_id_prefix "$project_id_key_arg")" != "$(coord_project_id_prefix "$stored_key")" ]; then
+      coord_die "--project-key conflicts with stored project item_key: $stored_key"
+    fi
+  fi
+  if [ -n "$project_id_key_arg" ]; then
+    project_id_key="$project_id_key_arg"
+  elif [ -n "$stored_key" ]; then
+    project_id_key="$stored_key"
+  elif [ -n "$project_id_key_env" ]; then
+    project_id_key="$project_id_key_env"
+  else
+    project_id_key="$project_key"
+  fi
+  id_prefix="$(coord_project_id_prefix "$project_id_key")"
+  if [ ! -f "$metadata_file" ]; then
+    mkdir -p "$(dirname "$metadata_file")"
+    cat >"$metadata_file" <<EOF_PROJECT
+---
+project: $project_dir
+item_key: $id_prefix
+created: $created
+---
+
+# Project: $project_dir
+
+- Project item key: $id_prefix
+- Source name: $project_key
+EOF_PROJECT
+  fi
 fi
 
 mkdir -p "$item_root"
 slug="$(coord_slug "$title")"
-created="$(coord_timestamp_iso)"
 
 if [ -n "$explicit_id" ]; then
   item_id="$explicit_id"

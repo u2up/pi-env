@@ -74,10 +74,24 @@ coord_project_id_prefix() {
 }
 
 coord_workspace_dir_key() {
-  local coord_dir parent
+  local coord_dir parent key
   coord_dir="$(coord_abs "$1")"
   parent="$(dirname "$coord_dir")"
-  basename "$parent"
+  key="$(basename "$parent")"
+  if [ -z "$key" ] || [ "$key" = "/" ]; then
+    key="${PI_COORD_WORKSPACE:-workspace}"
+  fi
+  printf '%s\n' "$key"
+}
+
+coord_metadata_item_key() {
+  local file value
+  file="$1"
+  value=""
+  if [ -f "$file" ]; then
+    value="$(coord_frontmatter_value "$file" item_key || true)"
+  fi
+  printf '%s\n' "$value"
 }
 
 coord_slug() {
