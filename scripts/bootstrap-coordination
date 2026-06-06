@@ -1,0 +1,452 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+bootstrap-coordination - initialize coordination with inferred defaults
+
+Usage:
+  bootstrap-coordination [options]
+
+Options:
+  --project-root DIR  Project/workspace directory to inspect; default: current directory
+  --root DIR          Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
+  --workspace ID      Coordination domain; default: PI_COORD_WORKSPACE or inferred project name
+  --dir DIR           Working clone dir; default: PI_COORD_DIR or coordination
+  --agent-id ID       Agent identity; default: PI_COORD_AGENT_ID or USER
+  --project KEY       Initial project directory; default: PI_COORD_PROJECT or inferred project name
+  --project-key KEY   Initial project's item ID prefix; default: PI_COORD_PROJECT_KEY or derived project
+  --bare-only         Only create the bare remote
+  --print-only        Print suggested settings and command; do not initialize or restore
+  --dry-run           Alias for --print-only
+  --no-status         Do not run agent-coord-status after initialization/existing clone detection
+  -h, --help          Show this help
+
+The command prints suggested PI_COORD_* settings, then calls
+agent-coord-init with those explicit values. It is a generic bootstrapper:
+when PI_COORD_* values are unset, it infers the project/workspace name from
+PI_COORD_PROJECT, the Git origin repository name, the Git root basename, or
+the current directory basename, in that order. With --project-root, target
+workspace/project/dir/key defaults are inferred from that directory instead
+of inherited PI_COORD_WORKSPACE, PI_COORD_DIR, PI_COORD_PROJECT, and
+PI_COORD_PROJECT_KEY values; pass explicit options to override them. If a
+coordination clone already exists but the planned local bare remote is
+missing or empty, the remote is restored from the clone's committed history.
+USAGE
+}
+
+bootstrap_script_path() {
+  local name
+  name="$1"
+  if [ -x "$script_dir/$name" ]; then
+    printf '%s\n' "$script_dir/$name"
+    return
+  fi
+  if command -v "$name" >/dev/null 2>&1; then
+    command -v "$name"
+    return
+  fi
+  coord_die "required command not found: $name"
+}
+
+bootstrap_repo_name_from_url() {
+  local url name
+  url="$1"
+  url="${url%/}"
+  name="${url##*/}"
+  name="${name##*:}"
+  name="${name%.git}"
+  coord_sanitize_path_part "$name"
+}
+
+bootstrap_infer_project_name() {
+  local use_context_env remote name root base
+  use_context_env="${1:-1}"
+
+  if [ "$use_context_env" = "1" ] && [ -n "${PI_COORD_PROJECT:-}" ]; then
+    printf '%s\n' "$PI_COORD_PROJECT"
+    return
+  fi
+
+  remote="$(git remote get-url origin 2>/dev/null || true)"
+  if [ -n "$remote" ]; then
+    name="$(bootstrap_repo_name_from_url "$remote")"
+    if [ -n "$name" ]; then
+      printf '%s\n' "$name"
+      return
+    fi
+  fi
+
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$root" ]; then
+    base="$(basename "$root")"
+    base="$(coord_sanitize_path_part "$base")"
+    if [ -n "$base" ]; then
+      printf '%s\n' "$base"
+      return
+    fi
+  fi
+
+  base="$(basename "$(pwd -P)")"
+  coord_sanitize_path_part "$base"
+}
+
+bootstrap_shell_quote() {
+  printf '%q' "$1"
+}
+
+bootstrap_print_plan() {
+  local init_command
+  init_command="agent-coord-init --root $(bootstrap_shell_quote "$root_abs") --workspace $(bootstrap_shell_quote "$workspace") --dir $(bootstrap_shell_quote "$coord_dir_abs") --agent-id $(bootstrap_shell_quote "$agent_id") --project $(bootstrap_shell_quote "$project") --project-key $(bootstrap_shell_quote "$project_item_key")"
+  if [ "$bare_only" = "1" ]; then
+    init_command="$init_command --bare-only"
+  fi
+
+  cat <<EOF_PLAN
+Suggested coordination settings:
+  Inspect dir:  $inspect_dir
+  Root:         $root_abs
+  Workspace:    $workspace
+  Clone dir:    $coord_dir_abs
+  Remote:       $remote
+  Agent ID:     $agent_id
+  Project:      $project
+  Project key:  $project_item_key
+
+Suggested environment for future runs:
+  export PI_COORD_ROOT=$(bootstrap_shell_quote "$root_abs")
+  export PI_COORD_WORKSPACE=$(bootstrap_shell_quote "$workspace")
+  export PI_COORD_DIR=$(bootstrap_shell_quote "$coord_dir_abs")
+  export PI_COORD_AGENT_ID=$(bootstrap_shell_quote "$agent_id")
+  export PI_COORD_PROJECT=$(bootstrap_shell_quote "$project")
+  export PI_COORD_PROJECT_KEY=$(bootstrap_shell_quote "$project_item_key")
+
+Initialization command:
+  $init_command
+EOF_PLAN
+}
+
+bootstrap_warn_git_identity() {
+  if [ -n "${GIT_AUTHOR_NAME:-}" ] && [ -n "${GIT_AUTHOR_EMAIL:-}" ]; then
+    return
+  fi
+  if git config --global --get user.name >/dev/null 2>&1 \
+    && git config --global --get user.email >/dev/null 2>&1; then
+    return
+  fi
+  coord_note "warning: Git user.name/user.email are not globally configured; initialization commit may fail"
+}
+
+bootstrap_local_path_from_url() {
+  local url
+  url="$1"
+  case "$url" in
+    file://*)
+      printf '%s\n' "${url#file://}"
+      ;;
+    /*|./*|../*)
+      printf '%s\n' "$url"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+bootstrap_normalized_local_remote_path() {
+  local base_dir url local_path
+  base_dir="$1"
+  url="$2"
+  local_path="$(bootstrap_local_path_from_url "$url")" || return 1
+  case "$local_path" in
+    /*)
+      coord_abs "$local_path"
+      ;;
+    *)
+      realpath -m "$base_dir/$local_path"
+      ;;
+  esac
+}
+
+bootstrap_origin_points_to_remote() {
+  local coord_dir origin_url remote_path origin_path
+  coord_dir="$1"
+  origin_url="$2"
+  remote_path="$3"
+  if [ "$origin_url" = "$remote_path" ]; then
+    return 0
+  fi
+  origin_path="$(bootstrap_normalized_local_remote_path "$coord_dir" "$origin_url" 2>/dev/null || true)"
+  [ -n "$origin_path" ] && [ "$origin_path" = "$remote_path" ]
+}
+
+bootstrap_clone_has_uncommitted_changes() {
+  local coord_dir
+  coord_dir="$1"
+  ! git -C "$coord_dir" diff --quiet --exit-code \
+    || ! git -C "$coord_dir" diff --cached --quiet --exit-code \
+    || [ -n "$(git -C "$coord_dir" ls-files --others --exclude-standard)" ]
+}
+
+bootstrap_ensure_remote_from_clone() {
+  local coord_dir remote_path branch remote_created needs_push origin_url origin_path
+  coord_dir="$1"
+  remote_path="$2"
+  remote_created=0
+  needs_push=0
+
+  if [ -e "$remote_path" ]; then
+    [ -d "$remote_path/objects" ] \
+      || coord_die "remote path exists but is not a bare Git repo: $remote_path"
+  else
+    if ! git -C "$coord_dir" rev-parse --verify HEAD >/dev/null 2>&1; then
+      coord_die "cannot restore missing remote from clone without commits: $coord_dir"
+    fi
+    mkdir -p "$(dirname "$remote_path")"
+    branch="$(git -C "$coord_dir" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    [ -n "$branch" ] || branch="main"
+    git init --bare --initial-branch="$branch" "$remote_path" >/dev/null 2>&1 \
+      || git init --bare "$remote_path" >/dev/null
+    git --git-dir="$remote_path" symbolic-ref HEAD "refs/heads/$branch" 2>/dev/null || true
+    remote_created=1
+    needs_push=1
+    coord_note "created missing bare remote: $remote_path"
+  fi
+
+  git -C "$coord_dir" config pull.rebase true
+  git -C "$coord_dir" config rebase.autoStash true
+
+  if ! git -C "$coord_dir" rev-parse --verify HEAD >/dev/null 2>&1; then
+    return
+  fi
+
+  branch="$(git -C "$coord_dir" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  [ -n "$branch" ] || branch="main"
+
+  if git -C "$coord_dir" remote get-url origin >/dev/null 2>&1; then
+    origin_url="$(git -C "$coord_dir" remote get-url origin)"
+    if ! bootstrap_origin_points_to_remote "$coord_dir" "$origin_url" "$remote_path"; then
+      origin_path="$(bootstrap_normalized_local_remote_path "$coord_dir" "$origin_url" 2>/dev/null || true)"
+      if [ -n "$origin_path" ] && [ ! -e "$origin_path" ]; then
+        git -C "$coord_dir" remote set-url origin "$remote_path"
+        coord_note "updated origin remote to restored path: $remote_path"
+      else
+        coord_note "origin points elsewhere; restored remote will be pushed explicitly: $remote_path"
+      fi
+    fi
+  else
+    git -C "$coord_dir" remote add origin "$remote_path"
+    coord_note "added origin remote: $remote_path"
+  fi
+
+  if ! git --git-dir="$remote_path" rev-parse --verify "refs/heads/$branch" >/dev/null 2>&1; then
+    needs_push=1
+  fi
+
+  if [ "$needs_push" = "1" ]; then
+    if bootstrap_clone_has_uncommitted_changes "$coord_dir"; then
+      coord_note "warning: uncommitted coordination changes are not included in restored remote"
+    fi
+    if git -C "$coord_dir" remote get-url origin >/dev/null 2>&1 \
+      && bootstrap_origin_points_to_remote "$coord_dir" "$(git -C "$coord_dir" remote get-url origin)" "$remote_path"; then
+      git -C "$coord_dir" push -u origin "HEAD:refs/heads/$branch" >/dev/null
+    else
+      git -C "$coord_dir" push "$remote_path" "HEAD:refs/heads/$branch" >/dev/null
+    fi
+    git --git-dir="$remote_path" symbolic-ref HEAD "refs/heads/$branch" 2>/dev/null || true
+    if [ "$remote_created" = "1" ]; then
+      coord_note "restored bare remote from local clone branch: $branch"
+    else
+      coord_note "pushed local clone branch to empty bare remote: $branch"
+    fi
+  fi
+}
+
+project_root_arg=""
+root_arg=""
+workspace_arg=""
+coord_dir_arg=""
+agent_id_arg=""
+project_arg=""
+project_key_arg=""
+bare_only=0
+print_only=0
+status_after=1
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --project-root)
+      [ "$#" -ge 2 ] || coord_die "--project-root requires a value"
+      project_root_arg="$2"
+      shift 2
+      ;;
+    --root)
+      [ "$#" -ge 2 ] || coord_die "--root requires a value"
+      root_arg="$2"
+      shift 2
+      ;;
+    --workspace)
+      [ "$#" -ge 2 ] || coord_die "--workspace requires a value"
+      workspace_arg="$2"
+      shift 2
+      ;;
+    --dir)
+      [ "$#" -ge 2 ] || coord_die "--dir requires a value"
+      coord_dir_arg="$2"
+      shift 2
+      ;;
+    --agent-id)
+      [ "$#" -ge 2 ] || coord_die "--agent-id requires a value"
+      agent_id_arg="$2"
+      shift 2
+      ;;
+    --project)
+      [ "$#" -ge 2 ] || coord_die "--project requires a value"
+      project_arg="$2"
+      shift 2
+      ;;
+    --project-key)
+      [ "$#" -ge 2 ] || coord_die "--project-key requires a value"
+      project_key_arg="$2"
+      shift 2
+      ;;
+    --bare-only)
+      bare_only=1
+      shift
+      ;;
+    --print-only|--dry-run)
+      print_only=1
+      shift
+      ;;
+    --no-status)
+      status_after=0
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      coord_die "unknown argument: $1"
+      ;;
+  esac
+done
+
+use_context_env=1
+if [ -n "$project_root_arg" ]; then
+  [ -d "$project_root_arg" ] || coord_die "project root does not exist: $project_root_arg"
+  cd "$project_root_arg"
+  use_context_env=0
+fi
+
+inferred_project="$(bootstrap_infer_project_name "$use_context_env")"
+
+if [ -n "$root_arg" ]; then
+  root="$root_arg"
+else
+  root="$(coord_default_root)"
+fi
+
+if [ -n "$workspace_arg" ]; then
+  workspace="$workspace_arg"
+elif [ "$use_context_env" = "1" ] && [ -n "${PI_COORD_WORKSPACE:-}" ]; then
+  workspace="$PI_COORD_WORKSPACE"
+elif [ -n "$inferred_project" ]; then
+  workspace="$inferred_project"
+else
+  workspace="$(coord_default_workspace)"
+fi
+
+if [ -n "$coord_dir_arg" ]; then
+  coord_dir="$coord_dir_arg"
+elif [ "$use_context_env" = "1" ]; then
+  coord_dir="$(coord_default_dir)"
+else
+  coord_dir="coordination"
+fi
+
+if [ -n "$agent_id_arg" ]; then
+  agent_id="$agent_id_arg"
+else
+  agent_id="$(coord_default_agent)"
+fi
+
+if [ -n "$project_arg" ]; then
+  project="$project_arg"
+elif [ "$use_context_env" = "1" ] && [ -n "${PI_COORD_PROJECT:-}" ]; then
+  project="$PI_COORD_PROJECT"
+elif [ -n "$inferred_project" ]; then
+  project="$inferred_project"
+else
+  project="$workspace"
+fi
+
+if [ -n "$project_key_arg" ]; then
+  project_item_key="$(coord_project_id_prefix "$project_key_arg")"
+elif [ "$use_context_env" = "1" ] && [ -n "${PI_COORD_PROJECT_KEY:-}" ]; then
+  project_item_key="$(coord_project_id_prefix "$PI_COORD_PROJECT_KEY")"
+else
+  project_item_key="$(coord_project_id_prefix "$project")"
+fi
+
+[ -n "$workspace" ] || coord_die "workspace must not be empty"
+[ -n "$agent_id" ] || coord_die "agent id must not be empty"
+[ -n "$project" ] || coord_die "project must not be empty"
+[ -n "$project_item_key" ] || coord_die "project key must not be empty"
+
+inspect_dir="$(pwd -P)"
+root_abs="$(coord_abs "$root")"
+coord_dir_abs="$(coord_abs "$coord_dir")"
+remote="$(coord_remote_for "$root_abs" "$workspace")"
+
+bootstrap_print_plan
+
+if [ "$print_only" = "1" ]; then
+  exit 0
+fi
+
+if [ "$bare_only" != "1" ]; then
+  bootstrap_warn_git_identity
+fi
+
+agent_coord_init="$(bootstrap_script_path agent-coord-init)"
+agent_coord_status="$(bootstrap_script_path agent-coord-status)"
+
+if [ "$bare_only" != "1" ] \
+  && [ -e "$coord_dir_abs" ] \
+  && coord_is_coord_repo "$coord_dir_abs"; then
+  coord_note "coordination clone already exists: $coord_dir_abs"
+  bootstrap_ensure_remote_from_clone "$coord_dir_abs" "$remote"
+  if [ "$status_after" = "1" ]; then
+    "$agent_coord_status" --coord-dir "$coord_dir_abs"
+  fi
+  exit 0
+fi
+
+init_args=(
+  --root "$root_abs"
+  --workspace "$workspace"
+  --dir "$coord_dir_abs"
+  --agent-id "$agent_id"
+  --project "$project"
+  --project-key "$project_item_key"
+)
+if [ "$bare_only" = "1" ]; then
+  init_args+=(--bare-only)
+fi
+
+"$agent_coord_init" "${init_args[@]}"
+
+if [ "$status_after" = "1" ] && [ "$bare_only" != "1" ]; then
+  "$agent_coord_status" --coord-dir "$coord_dir_abs"
+fi

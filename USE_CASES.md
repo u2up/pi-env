@@ -448,7 +448,15 @@ coordination repository. The coordination repository contains
 workspace/project issues, TODOs, bugs, decisions, notes, and agent logs, and
 agents synchronize only by normal Git pull/commit/push operations.
 
-Minimal flow:
+Guided bootstrap flow:
+
+```bash
+bootstrap-coordination
+agent-coord-new --project pi-env "Document pi config behavior"
+agent-coord-push -m "Add PIENV documentation item"
+```
+
+Manual flow:
 
 ```bash
 export PI_COORD_ROOT=/workspace/agent-remotes
@@ -460,6 +468,14 @@ agent-coord-init --project pi-env
 agent-coord-new --project pi-env "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
+
+`bootstrap-coordination --print-only` prints the inferred `PI_COORD_*`
+defaults and the corresponding `agent-coord-init` command without creating
+or restoring anything. Use `--project-root /path/to/project` to inspect
+another project from the current pi-env devshell. Without `--print-only`,
+it runs that initialization command. If the local coordination clone already
+exists but the planned local bare remote is missing or empty, it recreates
+that remote from committed clone history and repairs `origin` when safe.
 
 If `PI_COORD_ROOT` is unset, helpers default to a project-visible
 `agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`

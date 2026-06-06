@@ -233,6 +233,8 @@ git config rebase.autoStash true
 `pi-env` could expose a small helper CLI or a set of shell commands:
 
 ```text
+bootstrap-coordination
+                      infer defaults and initialize via agent-coord-init
 agent-coord-init      create a local bare coordination remote
 agent-coord-clone     clone a coordination remote into the current workspace
 agent-coord-status    show sync status and current open/claimed items
@@ -241,6 +243,8 @@ agent-coord-push      commit/push coordination changes
 agent-coord-new       create a new templated item
 agent-coord-claim     claim an item
 agent-coord-close     close an item and move it to closed/
+agent-coord-upgrade-rules
+                      preview/apply rule template updates
 ```
 
 A minimal first implementation could include only:
@@ -263,7 +267,12 @@ PI_COORD_AGENT_ID=agent-a              # agent identity for ownership/activity l
 PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
 ```
 
-With these set, `agent-coord-clone` can infer:
+`bootstrap-coordination` can print and apply inferred values for these
+variables when they are not already set, including when pointed at another
+project/workspace with `--project-root`. If the coordination clone already
+exists but the planned local bare remote is missing or empty, it can restore
+that remote from committed clone history without changing item state. With
+these set, `agent-coord-clone` can infer:
 
 ```text
 $PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git -> $PI_COORD_DIR

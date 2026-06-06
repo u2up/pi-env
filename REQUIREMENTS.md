@@ -62,6 +62,7 @@ For each supported system the flake must expose packages:
 - `pi-start`
 - `pi-bwrap`
 - `pi-runtime`
+- `bootstrap-coordination`
 - `agent-coord-init`
 - `agent-coord-clone`
 - `agent-coord-new`
@@ -167,6 +168,7 @@ If `pi` is not found on `PATH` before sandbox entry, `pi-bwrap` must exit with c
 
 The flake/devshell must provide these opt-in coordination commands:
 
+- `bootstrap-coordination`
 - `agent-coord-init`
 - `agent-coord-clone`
 - `agent-coord-status`
@@ -176,6 +178,25 @@ The flake/devshell must provide these opt-in coordination commands:
 - `agent-coord-claim`
 - `agent-coord-close`
 - `agent-coord-upgrade-rules`
+
+`bootstrap-coordination` must remain a thin wrapper around
+`agent-coord-init`: it prints the inferred `PI_COORD_*` settings and the
+corresponding initialization command, then initializes with those explicit
+values unless `--print-only`/`--dry-run` is used. When project/workspace
+values are unset, it must infer useful defaults from `PI_COORD_PROJECT`,
+the Git origin repository name, the Git root basename, or the current
+directory basename, in that order. It must support `--project-root DIR`
+to infer and initialize relative to another project/workspace directory;
+when doing so, stale context values from `PI_COORD_WORKSPACE`,
+`PI_COORD_DIR`, `PI_COORD_PROJECT`, and `PI_COORD_PROJECT_KEY` must not
+override the target directory's inferred defaults unless explicit options
+are supplied. If the selected coordination clone already exists but the
+planned local bare remote is missing or does not contain the clone's
+current branch, it must restore that bare remote from committed clone
+history, adding `origin` when absent and updating `origin` only when it
+points to a missing local path.
+`--print-only`/`--dry-run` must not create or restore anything. It must not
+claim, close, or otherwise mutate item state automatically.
 
 ### CMD-010 `agent-coord-init`
 

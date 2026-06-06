@@ -506,6 +506,7 @@
         '';
 
       agentCoordCommandNames = [
+        "bootstrap-coordination"
         "agent-coord-init"
         "agent-coord-clone"
         "agent-coord-status"
@@ -522,7 +523,8 @@
           mkdir -p "$out/share/pi-env"
           cp -R ${./pi-skill-templates} "$out/share/pi-env/pi-skill-templates"
           cp -R ${./scripts} "$out/share/pi-env/scripts"
-          chmod +x "$out/share/pi-env/scripts"/agent-coord-*
+          chmod +x "$out/share/pi-env/scripts"/agent-coord-* \
+            "$out/share/pi-env/scripts/bootstrap-coordination"
         '';
 
       mkAgentCoordCommand = pkgs: name:

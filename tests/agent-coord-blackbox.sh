@@ -15,7 +15,7 @@ mkdir -p "$HOME" "$workspace_dir"
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
-unset PI_COORD_ROOT
+unset PI_COORD_ROOT PI_COORD_WORKSPACE PI_COORD_DIR PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY
 mkdir -p "$tmp/default-root"
 cd "$tmp/default-root"
 git init -q
@@ -31,6 +31,81 @@ if [ -d /workspace ] && [ "$(realpath -m /workspace)" = "$(realpath -m "$repo_ro
   workspace_default_root="$(cd "$repo_root" && unset PI_COORD_ROOT && . "$PI_ENV_COORD_LIB" && coord_default_root)"
   test "$workspace_default_root" = "/workspace/agent-remotes"
 fi
+
+bootstrap_project_dir="$tmp/bootstrap-project"
+mkdir -p "$bootstrap_project_dir"
+git -C "$bootstrap_project_dir" init -q
+git -C "$bootstrap_project_dir" remote add origin git@example.invalid:example/other-project.git
+cd "$tmp"
+bootstrap_plan="$tmp/bootstrap-plan.txt"
+PI_COORD_WORKSPACE=stale-workspace \
+PI_COORD_DIR="$tmp/stale-coordination" \
+PI_COORD_PROJECT=stale-project \
+PI_COORD_PROJECT_KEY=STALE \
+bootstrap-coordination \
+  --project-root "$bootstrap_project_dir" \
+  --root "$tmp/bootstrap-remotes" \
+  --agent-id agent-b \
+  --no-status >"$bootstrap_plan" 2>/dev/null
+
+test -d "$tmp/bootstrap-remotes/other-project-coordination.git"
+test -f "$bootstrap_project_dir/coordination/AGENTS.md"
+test -d "$bootstrap_project_dir/coordination/projects/other-project/issues/open"
+grep -q '^workspace: other-project$' "$bootstrap_project_dir/coordination/WORKSPACE.md"
+grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/coordination/projects/other-project/PROJECT.md"
+grep -q "Clone dir:    $bootstrap_project_dir/coordination" "$bootstrap_plan"
+grep -q 'export PI_COORD_WORKSPACE=other-project' "$bootstrap_plan"
+
+bootstrap_remote="$tmp/bootstrap-remotes/other-project-coordination.git"
+bootstrap_head="$(git -C "$bootstrap_project_dir/coordination" rev-parse HEAD)"
+git -C "$bootstrap_project_dir/coordination" remote remove origin
+rm -rf "$bootstrap_remote"
+bootstrap-coordination \
+  --project-root "$bootstrap_project_dir" \
+  --root "$tmp/bootstrap-remotes" \
+  --agent-id agent-b \
+  --no-status >/dev/null
+
+test -d "$bootstrap_remote"
+test "$(git --git-dir="$bootstrap_remote" rev-parse main)" = "$bootstrap_head"
+test "$(git -C "$bootstrap_project_dir/coordination" remote get-url origin)" = "$bootstrap_remote"
+
+rm -rf "$bootstrap_remote"
+bootstrap-coordination \
+  --project-root "$bootstrap_project_dir" \
+  --root "$tmp/bootstrap-remotes" \
+  --agent-id agent-b \
+  --no-status >/dev/null
+
+test -d "$bootstrap_remote"
+test "$(git --git-dir="$bootstrap_remote" rev-parse main)" = "$bootstrap_head"
+
+print_only_project_dir="$tmp/print-only-project"
+mkdir -p "$print_only_project_dir"
+git -C "$print_only_project_dir" init -q
+git -C "$print_only_project_dir" remote add origin https://example.invalid/org/printed-project.git
+cd "$tmp"
+bootstrap-coordination \
+  --project-root "$print_only_project_dir" \
+  --root "$tmp/print-only-remotes" \
+  --print-only >/dev/null
+
+test ! -e "$tmp/print-only-remotes"
+test ! -e "$print_only_project_dir/coordination"
+
+bare_only_project_dir="$tmp/bare-only-project"
+mkdir -p "$bare_only_project_dir"
+git -C "$bare_only_project_dir" init -q
+git -C "$bare_only_project_dir" remote add origin https://example.invalid/org/bare-project.git
+cd "$tmp"
+bootstrap-coordination \
+  --project-root "$bare_only_project_dir" \
+  --root "$tmp/bare-only-remotes" \
+  --bare-only \
+  --no-status >/dev/null
+
+test -d "$tmp/bare-only-remotes/bare-project-coordination.git"
+test ! -e "$bare_only_project_dir/coordination"
 
 cd "$workspace_dir"
 agent-coord-init \

@@ -61,7 +61,17 @@ This uses the Nix-provided runtime/tools on `PATH`, but does **not** enter the B
 `pi-env` includes opt-in helpers for Git-backed coordination repositories.
 They are plain Git/Markdown tooling and are separate from `pi-start`.
 
-Minimal setup:
+Guided setup with inferred, workspace-specific defaults:
+
+```bash
+bootstrap-coordination
+# inspect another project/workspace from this devshell
+bootstrap-coordination --project-root /path/to/project --print-only
+# or only print the suggested PI_COORD_* environment and init command
+bootstrap-coordination --print-only
+```
+
+Manual minimal setup:
 
 ```bash
 export PI_COORD_ROOT=/workspace/agent-remotes
@@ -71,6 +81,14 @@ export PI_COORD_AGENT_ID=agent-a
 
 agent-coord-init --project pi-env
 ```
+
+`bootstrap-coordination` is a thin wrapper around `agent-coord-init`: it
+prints the inferred root, workspace, clone dir, remote, agent ID, project,
+and project key, then initializes with those explicit values. If the local
+coordination clone already exists but the planned local bare remote is
+missing or empty, it recreates that remote from the clone's committed Git
+history and repairs `origin` when it is absent or points to a missing local
+path.
 
 This creates a bare remote at:
 
@@ -126,6 +144,8 @@ item ID.
 Lifecycle helpers are also available:
 
 ```text
+bootstrap-coordination
+                      infer defaults and initialize via agent-coord-init
 agent-coord-status    show sync status and open/blocked items
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
