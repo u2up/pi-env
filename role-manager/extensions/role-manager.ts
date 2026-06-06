@@ -5,17 +5,27 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import {
+  ROLE_MANAGER_STATE_CUSTOM_TYPE,
   discoverRoleSources,
   findRole,
   formatActiveRoleSystemPrompt,
   loadRoleRegistry,
   resolveActiveRoleName,
+  resolveActiveRoleState,
 } from "../lib/role-loader.mjs";
 import { formatRoleWarning } from "../lib/role-schema.mjs";
 
 const extensionDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(extensionDir, "..");
 const bundledRolesDir = join(packageRoot, "roles");
+const ROLE_STATE_VERSION = 1;
+
+interface RuntimeSettingsSnapshot {
+  provider?: string;
+  model?: string;
+  thinkingLevel?: string;
+  tools?: string[];
+}
 
 function notifyWarning(ctx: ExtensionContext, message: string) {
   try {
@@ -26,6 +36,30 @@ function notifyWarning(ctx: ExtensionContext, message: string) {
     }
   } catch (_error) {
     console.warn(message);
+  }
+}
+
+function notifyInfo(ctx: ExtensionContext, message: string) {
+  try {
+    if (ctx.hasUI) {
+      ctx.ui.notify(message, "info");
+    } else {
+      console.warn(message);
+    }
+  } catch (_error) {
+    console.warn(message);
+  }
+}
+
+function notifyError(ctx: ExtensionContext, message: string) {
+  try {
+    if (ctx.hasUI) {
+      ctx.ui.notify(message, "error");
+    } else {
+      console.error(message);
+    }
+  } catch (_error) {
+    console.error(message);
   }
 }
 
@@ -41,9 +75,35 @@ function getSessionEntries(ctx: ExtensionContext) {
   }
 }
 
+function normalizeText(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function uniqueToolNames(tools: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const tool of tools) {
+    if (seen.has(tool)) continue;
+    seen.add(tool);
+    result.push(tool);
+  }
+  return result;
+}
+
+function sameModel(left: unknown, right: unknown) {
+  const leftModel = left as { provider?: unknown; id?: unknown } | undefined;
+  const rightModel = right as { provider?: unknown; id?: unknown } | undefined;
+  return (
+    leftModel?.provider === rightModel?.provider && leftModel?.id === rightModel?.id
+  );
+}
+
 export default function roleManager(pi: ExtensionAPI) {
   let roleRegistry = loadRoleRegistry([]);
   let warnedMissingActiveRoles = new Set<string>();
+  let activeRoleOriginalSettings: RuntimeSettingsSnapshot | undefined;
 
   function refreshRoles(ctx: ExtensionContext) {
     try {
@@ -64,8 +124,301 @@ export default function roleManager(pi: ExtensionAPI) {
     }
   }
 
+  function snapshotRuntimeSettings(ctx: ExtensionContext): RuntimeSettingsSnapshot {
+    return {
+      provider: normalizeText(ctx.model?.provider),
+      model: normalizeText(ctx.model?.id),
+      thinkingLevel: normalizeText(pi.getThinkingLevel()),
+      tools: pi.getActiveTools(),
+    };
+  }
+
+  function currentRoleState(ctx: ExtensionContext) {
+    return resolveActiveRoleState({
+      entries: getSessionEntries(ctx),
+      env: process.env,
+    });
+  }
+
+  function availableRoleNames() {
+    return roleRegistry.roles.map((role) => role.name).sort((a, b) => a.localeCompare(b));
+  }
+
+  function formatAvailableRoles() {
+    const names = availableRoleNames();
+    return names.length > 0 ? names.join(", ") : "(none loaded)";
+  }
+
+  function resolveRoleModel(role: { name?: string; provider?: string; model?: string }, ctx: ExtensionContext) {
+    const provider = normalizeText(role.provider);
+    const modelId = normalizeText(role.model);
+
+    if (!provider && !modelId) {
+      return { model: undefined, warning: undefined };
+    }
+
+    if (provider && !modelId) {
+      return {
+        model: undefined,
+        warning: `role-manager: role ${role.name ?? JSON.stringify(provider)} specifies provider without model`,
+      };
+    }
+
+    if (provider && modelId) {
+      const model = ctx.modelRegistry.find(provider, modelId);
+      return {
+        model,
+        warning: model
+          ? undefined
+          : `role-manager: model not found for role setting: ${provider}/${modelId}`,
+      };
+    }
+
+    const allModels = ctx.modelRegistry.getAll();
+    const exactMatches = allModels.filter((candidate) => candidate.id === modelId);
+    if (exactMatches.length === 1) {
+      return { model: exactMatches[0], warning: undefined };
+    }
+    if (exactMatches.length > 1) {
+      return {
+        model: undefined,
+        warning: `role-manager: role model ${JSON.stringify(modelId)} is ambiguous; add provider`,
+      };
+    }
+
+    const slashIndex = modelId?.indexOf("/") ?? -1;
+    if (slashIndex > 0 && slashIndex < (modelId?.length ?? 0) - 1) {
+      const parsedProvider = modelId!.slice(0, slashIndex);
+      const parsedModel = modelId!.slice(slashIndex + 1);
+      const model = ctx.modelRegistry.find(parsedProvider, parsedModel);
+      return {
+        model,
+        warning: model
+          ? undefined
+          : `role-manager: model not found for role setting: ${modelId}`,
+      };
+    }
+
+    return {
+      model: undefined,
+      warning: `role-manager: model not found for role setting: ${modelId}`,
+    };
+  }
+
+  async function applyRoleRuntimeSettings(role: any, ctx: ExtensionContext) {
+    if (role.thinking && pi.getThinkingLevel() !== role.thinking) {
+      pi.setThinkingLevel(role.thinking);
+    }
+
+    if (Array.isArray(role.tools) && role.tools.length > 0) {
+      const requestedTools = uniqueToolNames(role.tools);
+      const allToolNames = new Set(pi.getAllTools().map((tool) => tool.name));
+      const validTools = requestedTools.filter((tool) => allToolNames.has(tool));
+      const invalidTools = requestedTools.filter((tool) => !allToolNames.has(tool));
+
+      if (invalidTools.length > 0) {
+        notifyWarning(
+          ctx,
+          `role-manager: role ${role.name} requested unknown tools: ${invalidTools.join(", ")}`,
+        );
+      }
+
+      if (validTools.length > 0) {
+        pi.setActiveTools(validTools);
+      }
+    }
+
+    const modelResolution = resolveRoleModel(role, ctx);
+    if (modelResolution.warning) {
+      notifyWarning(ctx, modelResolution.warning);
+    }
+    if (modelResolution.model && !sameModel(ctx.model, modelResolution.model)) {
+      const success = await pi.setModel(modelResolution.model);
+      if (!success) {
+        notifyWarning(
+          ctx,
+          `role-manager: no API key for role model ${modelResolution.model.provider}/${modelResolution.model.id}`,
+        );
+      }
+    }
+  }
+
+  async function restoreRuntimeSettings(
+    settings: RuntimeSettingsSnapshot | undefined,
+    ctx: ExtensionContext,
+  ) {
+    if (!settings) return false;
+
+    let restoredAny = false;
+
+    if (settings.provider && settings.model) {
+      const model = ctx.modelRegistry.find(settings.provider, settings.model);
+      if (model) {
+        if (!sameModel(ctx.model, model)) {
+          const success = await pi.setModel(model);
+          if (!success) {
+            notifyWarning(
+              ctx,
+              `role-manager: no API key for previous model ${settings.provider}/${settings.model}`,
+            );
+          }
+        }
+        restoredAny = true;
+      } else {
+        notifyWarning(
+          ctx,
+          `role-manager: previous model not found: ${settings.provider}/${settings.model}`,
+        );
+      }
+    }
+
+    if (settings.thinkingLevel) {
+      pi.setThinkingLevel(settings.thinkingLevel as any);
+      restoredAny = true;
+    }
+
+    if (Array.isArray(settings.tools)) {
+      const allToolNames = new Set(pi.getAllTools().map((tool) => tool.name));
+      const validTools = uniqueToolNames(settings.tools).filter((tool) => allToolNames.has(tool));
+      const invalidTools = uniqueToolNames(settings.tools).filter((tool) => !allToolNames.has(tool));
+
+      if (invalidTools.length > 0) {
+        notifyWarning(
+          ctx,
+          `role-manager: previous tool selection contains unknown tools: ${invalidTools.join(", ")}`,
+        );
+      }
+
+      if (validTools.length > 0 || settings.tools.length === 0) {
+        pi.setActiveTools(validTools);
+        restoredAny = true;
+      }
+    }
+
+    return restoredAny;
+  }
+
+  function persistRoleState(
+    roleName: string | null,
+    previousSettings: RuntimeSettingsSnapshot | undefined,
+    extra: Record<string, unknown> = {},
+  ) {
+    pi.appendEntry(ROLE_MANAGER_STATE_CUSTOM_TYPE, {
+      version: ROLE_STATE_VERSION,
+      activeRoleName: roleName,
+      previousSettings,
+      updatedAt: new Date().toISOString(),
+      ...extra,
+    });
+  }
+
+  async function activateRole(roleName: string, ctx: ExtensionContext) {
+    const role = findRole(roleRegistry, roleName);
+    if (!role) {
+      notifyError(
+        ctx,
+        `role-manager: unknown role ${JSON.stringify(roleName)}. Available: ${formatAvailableRoles()}`,
+      );
+      return false;
+    }
+
+    const state = currentRoleState(ctx);
+    const previousSettings = state.roleName
+      ? state.previousSettings ?? activeRoleOriginalSettings ?? snapshotRuntimeSettings(ctx)
+      : snapshotRuntimeSettings(ctx);
+
+    activeRoleOriginalSettings = previousSettings;
+    persistRoleState(role.name, previousSettings, { activatedAt: new Date().toISOString() });
+    await applyRoleRuntimeSettings(role, ctx);
+    notifyInfo(ctx, `role-manager: activated role ${role.name}`);
+    return true;
+  }
+
+  async function clearRole(ctx: ExtensionContext) {
+    const state = currentRoleState(ctx);
+    const previousSettings = state.roleName
+      ? state.previousSettings ?? activeRoleOriginalSettings
+      : activeRoleOriginalSettings;
+
+    persistRoleState(null, previousSettings, { clearedAt: new Date().toISOString() });
+    activeRoleOriginalSettings = undefined;
+
+    const restored = await restoreRuntimeSettings(previousSettings, ctx);
+    if (restored) {
+      notifyInfo(ctx, "role-manager: role cleared and previous settings restored");
+    } else {
+      notifyInfo(ctx, "role-manager: role cleared");
+    }
+  }
+
+  async function restoreActiveRoleFromState(ctx: ExtensionContext) {
+    const state = currentRoleState(ctx);
+    if (!state.roleName) {
+      activeRoleOriginalSettings = undefined;
+      return;
+    }
+
+    const role = findRole(roleRegistry, state.roleName);
+    activeRoleOriginalSettings = state.previousSettings ?? snapshotRuntimeSettings(ctx);
+    if (!role) return;
+
+    await applyRoleRuntimeSettings(role, ctx);
+  }
+
+  pi.registerCommand("role", {
+    description: "Switch the active role",
+    getArgumentCompletions: (prefix: string) => {
+      const normalizedPrefix = prefix.trim().toLowerCase();
+      const items = roleRegistry.roles
+        .filter((role) => role.name.toLowerCase().startsWith(normalizedPrefix))
+        .map((role) => ({
+          value: role.name,
+          label: role.icon ? `${role.icon} ${role.name}` : role.name,
+          description: role.description,
+        }));
+      return items.length > 0 ? items : null;
+    },
+    handler: async (args, ctx) => {
+      await ctx.waitForIdle();
+
+      const requestedRoleName = normalizeText(args);
+      if (requestedRoleName) {
+        await activateRole(requestedRoleName, ctx);
+        return;
+      }
+
+      const names = availableRoleNames();
+      if (names.length === 0) {
+        notifyWarning(ctx, "role-manager: no roles are loaded");
+        return;
+      }
+
+      if (!ctx.hasUI) {
+        notifyInfo(ctx, `role-manager: available roles: ${names.join(", ")}`);
+        return;
+      }
+
+      const selected = await ctx.ui.select("Select role:", names);
+      if (!selected) return;
+      await activateRole(selected, ctx);
+    },
+  });
+
+  pi.registerCommand("role-clear", {
+    description: "Clear the active role and restore previous settings",
+    handler: async (_args, ctx) => {
+      await ctx.waitForIdle();
+      await clearRole(ctx);
+    },
+  });
+
   pi.on("session_start", async (_event, ctx) => {
     refreshRoles(ctx);
+    await restoreActiveRoleFromState(ctx);
+  });
+
+  pi.on("session_tree", async (_event, ctx) => {
+    await restoreActiveRoleFromState(ctx);
   });
 
   pi.on("before_agent_start", async (event, ctx) => {

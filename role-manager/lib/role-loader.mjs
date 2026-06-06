@@ -294,6 +294,36 @@ function normalizeRoleName(value) {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function normalizeStringList(value) {
+  if (!Array.isArray(value)) return undefined;
+  const normalized = value
+    .map((item) => normalizeRoleName(item))
+    .filter((item) => Boolean(item));
+  return normalized;
+}
+
+function normalizeRuntimeSettings(value) {
+  if (!value || typeof value !== "object") return undefined;
+
+  const settings = {
+    provider: normalizeRoleName(value.provider),
+    model: normalizeRoleName(value.model) ?? normalizeRoleName(value.modelId),
+    thinkingLevel: normalizeRoleName(value.thinkingLevel),
+    tools: normalizeStringList(value.tools),
+  };
+
+  if (
+    settings.provider === undefined &&
+    settings.model === undefined &&
+    settings.thinkingLevel === undefined &&
+    settings.tools === undefined
+  ) {
+    return undefined;
+  }
+
+  return settings;
+}
+
 function latestActiveRoleStateFromEntries(entries = []) {
   for (let index = entries.length - 1; index >= 0; index--) {
     const entry = entries[index];
@@ -301,6 +331,11 @@ function latestActiveRoleStateFromEntries(entries = []) {
     if (entry.customType !== ROLE_MANAGER_STATE_CUSTOM_TYPE) continue;
 
     const data = entry.data ?? {};
+    const previousSettings =
+      normalizeRuntimeSettings(data.previousSettings) ??
+      normalizeRuntimeSettings(data.originalSettings) ??
+      normalizeRuntimeSettings(data.previousDefaults);
+
     if (
       data.activeRoleName === null ||
       data.activeRoleName === "" ||
@@ -309,7 +344,12 @@ function latestActiveRoleStateFromEntries(entries = []) {
       data.role === null ||
       data.role === ""
     ) {
-      return { found: true, roleName: undefined };
+      return {
+        found: true,
+        roleName: undefined,
+        previousSettings,
+        source: "session",
+      };
     }
 
     return {
@@ -318,10 +358,16 @@ function latestActiveRoleStateFromEntries(entries = []) {
         normalizeRoleName(data.activeRoleName) ??
         normalizeRoleName(data.activeRole) ??
         normalizeRoleName(data.role),
+      previousSettings,
+      source: "session",
     };
   }
 
-  return { found: false, roleName: undefined };
+  return { found: false, roleName: undefined, previousSettings: undefined, source: undefined };
+}
+
+export function activeRoleStateFromEntries(entries = []) {
+  return latestActiveRoleStateFromEntries(entries);
 }
 
 export function activeRoleNameFromEntries(entries = []) {
@@ -336,8 +382,23 @@ export function activeRoleNameFromEnv(env = process.env) {
   return undefined;
 }
 
-export function resolveActiveRoleName(options = {}) {
+export function resolveActiveRoleState(options = {}) {
   const entryState = latestActiveRoleStateFromEntries(options.entries ?? []);
-  if (entryState.found) return entryState.roleName;
-  return activeRoleNameFromEnv(options.env ?? process.env);
+  if (entryState.found) return entryState;
+
+  const roleName = activeRoleNameFromEnv(options.env ?? process.env);
+  if (roleName) {
+    return {
+      found: true,
+      roleName,
+      previousSettings: undefined,
+      source: "env",
+    };
+  }
+
+  return { found: false, roleName: undefined, previousSettings: undefined, source: undefined };
+}
+
+export function resolveActiveRoleName(options = {}) {
+  return resolveActiveRoleState(options).roleName;
 }

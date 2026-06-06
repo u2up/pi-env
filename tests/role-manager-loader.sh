@@ -12,10 +12,12 @@ import {
   ROLE_MANAGER_STATE_CUSTOM_TYPE,
   ROLE_SOURCE_KINDS,
   activeRoleNameFromEntries,
+  activeRoleStateFromEntries,
   discoverRoleSources,
   formatActiveRoleSystemPrompt,
   loadRoleRegistry,
   resolveActiveRoleName,
+  resolveActiveRoleState,
 } from "./role-manager/lib/role-loader.mjs";
 import { formatRoleWarning } from "./role-manager/lib/role-schema.mjs";
 
@@ -165,10 +167,29 @@ const activeEntries = [
   {
     type: "custom",
     customType: ROLE_MANAGER_STATE_CUSTOM_TYPE,
-    data: { activeRoleName: "developer" },
+    data: {
+      activeRoleName: "developer",
+      previousSettings: {
+        provider: "anthropic",
+        model: "claude-sonnet-4-5",
+        thinkingLevel: "low",
+        tools: ["read", "bash"],
+      },
+    },
   },
 ];
 assert.equal(activeRoleNameFromEntries(activeEntries), "developer");
+assert.deepEqual(activeRoleStateFromEntries(activeEntries), {
+  found: true,
+  roleName: "developer",
+  previousSettings: {
+    provider: "anthropic",
+    model: "claude-sonnet-4-5",
+    thinkingLevel: "low",
+    tools: ["read", "bash"],
+  },
+  source: "session",
+});
 assert.equal(
   resolveActiveRoleName({ entries: activeEntries, env: { PI_ROLE: "architect" } }),
   "developer",
@@ -176,6 +197,15 @@ assert.equal(
 assert.equal(
   resolveActiveRoleName({ entries: [], env: { PI_ROLE_MANAGER_ACTIVE_ROLE: "reviewer" } }),
   "reviewer",
+);
+assert.deepEqual(
+  resolveActiveRoleState({ entries: [], env: { PI_ROLE_MANAGER_ACTIVE_ROLE: "reviewer" } }),
+  {
+    found: true,
+    roleName: "reviewer",
+    previousSettings: undefined,
+    source: "env",
+  },
 );
 assert.equal(
   resolveActiveRoleName({
