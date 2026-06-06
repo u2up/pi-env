@@ -75,7 +75,7 @@ const models = [
   { provider: "anthropic", id: "target", name: "Target", api: "anthropic-messages", baseUrl: "", reasoning: true, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000, maxTokens: 100 },
 ];
 
-function createHarness(initialEntries = []) {
+function createHarness(initialEntries = [], options = {}) {
   const entries = initialEntries;
   const commands = new Map();
   const tools = new Map();
@@ -86,6 +86,11 @@ function createHarness(initialEntries = []) {
   const newSessionSetups = [];
   const replacementNotifications = [];
   const replacementSentUserMessages = [];
+  const statuses = [];
+  const widgets = [];
+  const titles = [];
+  const hasUI = options.hasUI ?? true;
+  const includeRoleUiMethods = options.includeRoleUiMethods ?? true;
   const state = {
     currentModel: models[0],
     thinkingLevel: "low",
@@ -111,6 +116,9 @@ function createHarness(initialEntries = []) {
     },
     sendUserMessage(content, options) {
       sentUserMessages.push({ content, options });
+    },
+    getSessionName() {
+      return state.sessionName;
     },
     getThinkingLevel() {
       return state.thinkingLevel;
@@ -139,12 +147,38 @@ function createHarness(initialEntries = []) {
     },
   };
 
+  const ui = {
+    notify(message, type) {
+      notifications.push({ message, type });
+    },
+    async select(_title, options) {
+      return state.selection ?? options[0];
+    },
+    theme: {
+      fg(_color, text) {
+        return text;
+      },
+    },
+  };
+
+  if (includeRoleUiMethods) {
+    ui.setStatus = (key, text) => {
+      statuses.push({ key, text });
+    };
+    ui.setWidget = (key, content, options) => {
+      widgets.push({ key, content, options });
+    };
+    ui.setTitle = (title) => {
+      titles.push(title);
+    };
+  }
+
   const ctx = {
     get model() {
       return state.currentModel;
     },
     cwd,
-    hasUI: true,
+    hasUI,
     modelRegistry: {
       find(provider, id) {
         return models.find((model) => model.provider === provider && model.id === id);
@@ -164,14 +198,7 @@ function createHarness(initialEntries = []) {
         return state.sessionFile;
       },
     },
-    ui: {
-      notify(message, type) {
-        notifications.push({ message, type });
-      },
-      async select(_title, options) {
-        return state.selection ?? options[0];
-      },
-    },
+    ui,
     isIdle() {
       return true;
     },
@@ -278,6 +305,9 @@ function createHarness(initialEntries = []) {
     newSessionSetups,
     replacementNotifications,
     replacementSentUserMessages,
+    statuses,
+    widgets,
+    titles,
     state,
     ctx,
     emit,
@@ -348,6 +378,11 @@ try {
   assert.equal(harness.state.currentModel.id, "target");
   assert.equal(harness.state.thinkingLevel, "high");
   assert.deepEqual(harness.state.activeTools, ["read", "bash"]);
+  assert.equal(harness.statuses.at(-1).key, "role-manager");
+  assert.match(harness.statuses.at(-1).text, /🧪 role:modeler/);
+  assert.match(harness.titles.at(-1), /role:modeler/);
+  assert.equal(harness.widgets.at(-1).key, "role-manager-cycle");
+  assert.equal(harness.widgets.at(-1).content, undefined);
   assert.ok(
     harness.notifications.some((notice) => notice.message.includes("missing_tool")),
     "unknown role tools are reported",
@@ -365,6 +400,8 @@ try {
   assert.equal(restart.state.currentModel.id, "target");
   assert.equal(restart.state.thinkingLevel, "high");
   assert.deepEqual(restart.state.activeTools, ["read", "bash"]);
+  assert.match(restart.statuses.at(-1).text, /🧪 role:modeler/);
+  assert.match(restart.titles.at(-1), /role:modeler/);
 
   await harness.commands.get("role-clear").handler("", harness.ctx);
   const clearEntry = harness.entries.at(-1);
@@ -372,6 +409,9 @@ try {
   assert.equal(harness.state.currentModel.id, "original");
   assert.equal(harness.state.thinkingLevel, "low");
   assert.deepEqual(harness.state.activeTools, ["read", "edit"]);
+  assert.equal(harness.statuses.at(-1).text, undefined);
+  assert.equal(harness.widgets.at(-1).content, undefined);
+  assert.doesNotMatch(harness.titles.at(-1), /role:/);
   assert.doesNotMatch(await harness.buildSystemPrompt(), /Active Role:/);
 
   harness.state.selection = "developer";
@@ -390,6 +430,7 @@ try {
   assert.equal(cycleEntry.data.roleCycle.mode, "current-session");
   assert.equal(cycleEntry.data.roleCycle.goal, "design role manager");
   assert.equal(typeof cycleEntry.data.roleCycle.startedAt, "string");
+  assert.ok(cycleEntry.data.roleCycle.checklist.includes("PROJECT modeler workflow."));
   assert.equal(cycle.state.currentModel.id, "target");
   assert.equal(cycle.state.thinkingLevel, "high");
   assert.deepEqual(cycle.state.activeTools, ["read", "bash", "role_cycle_done"]);
@@ -400,6 +441,48 @@ try {
   assert.match(cycle.sentUserMessages[0].content, /role_cycle_done/);
   assert.match(cycle.sentUserMessages[0].content, /filesInspected/);
   assert.match(cycle.sentUserMessages[0].content, /testsChecksRun/);
+  assert.equal(cycle.statuses.at(-1).key, "role-manager");
+  assert.match(cycle.statuses.at(-1).text, /🧪 role:modeler/);
+  assert.match(cycle.titles.at(-1), /role:modeler/);
+  assert.equal(cycle.widgets.at(-1).key, "role-manager-cycle");
+  assert.match(cycle.widgets.at(-1).content[0], /Role cycle: 🧪 modeler — design role manager/);
+  assert.ok(
+    cycle.widgets.at(-1).content.some((line) => line.includes("PROJECT modeler workflow.")),
+  );
+
+  const cycleDoneResult = await cycle.tools.get("role_cycle_done").execute(
+    "call-cycle",
+    roleCycleDoneTool.prepareArguments({
+      summary: "Finished cycle UI checks.",
+      filesInspected: [],
+      filesChanged: [],
+      testsChecksRun: ["role manager command tests"],
+      coordinationUpdates: [],
+      recommendedNextRole: "none",
+    }),
+    undefined,
+    undefined,
+    cycle.ctx,
+  );
+  assert.equal(cycleDoneResult.terminate, true);
+  const completedCycleEntry = cycle.entries.at(-1);
+  assert.equal(completedCycleEntry.data.activeRoleName, "modeler");
+  assert.equal(typeof completedCycleEntry.data.roleCycle.completedAt, "string");
+  assert.equal(completedCycleEntry.data.roleCycle.summary, "Finished cycle UI checks.");
+  assert.equal(cycle.widgets.at(-1).key, "role-manager-cycle");
+  assert.equal(cycle.widgets.at(-1).content, undefined);
+
+  const nonInteractive = createHarness([], {
+    hasUI: false,
+    includeRoleUiMethods: false,
+  });
+  await nonInteractive.emit("session_start", { type: "session_start", reason: "startup" });
+  await nonInteractive.commands.get("role").handler("modeler", nonInteractive.ctx);
+  await nonInteractive.commands.get("role-clear").handler("", nonInteractive.ctx);
+  assert.equal(nonInteractive.entries.at(-1).data.activeRoleName, null);
+  assert.deepEqual(nonInteractive.statuses, []);
+  assert.deepEqual(nonInteractive.widgets, []);
+  assert.deepEqual(nonInteractive.titles, []);
 
   const fresh = createHarness([]);
   await fresh.emit("session_start", { type: "session_start", reason: "startup" });

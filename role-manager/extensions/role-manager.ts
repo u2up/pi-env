@@ -1,4 +1,4 @@
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
   ExtensionAPI,
@@ -20,6 +20,9 @@ const packageRoot = join(extensionDir, "..");
 const bundledRolesDir = join(packageRoot, "roles");
 const ROLE_STATE_VERSION = 1;
 const ROLE_CYCLE_DONE_TOOL_NAME = "role_cycle_done";
+const ROLE_UI_STATUS_KEY = "role-manager";
+const ROLE_CYCLE_WIDGET_KEY = "role-manager-cycle";
+const ROLE_CYCLE_SECTION_TITLE = "One-cycle workflow";
 
 const ROLE_CYCLE_DONE_PARAMETERS = {
   type: "object",
@@ -87,6 +90,22 @@ interface RoleCycleDoneInput {
 
 interface RoleCycleDoneDetails extends RoleCycleDoneInput {
   completedAt: string;
+}
+
+interface RoleCycleState {
+  mode?: string;
+  goal?: string;
+  startedAt?: string;
+  completedAt?: string;
+  checklist?: string[];
+  summary?: string;
+  recommendedNextRole?: string;
+}
+
+interface RoleDisplayInfo {
+  name: string;
+  icon?: string;
+  body?: string;
 }
 
 const MAX_ROLE_SESSION_NAME_LENGTH = 80;
@@ -158,6 +177,231 @@ function normalizeStringArray(value: unknown) {
 
   const text = normalizeText(value);
   return text ? [text] : [];
+}
+
+function normalizeRoleCycleState(value: unknown): RoleCycleState | undefined {
+  if (!value || typeof value !== "object") return undefined;
+
+  const data = value as Record<string, unknown>;
+  const checklist = normalizeStringArray(data.checklist);
+  const state: RoleCycleState = {
+    mode: normalizeText(data.mode),
+    goal: normalizeText(data.goal),
+    startedAt: normalizeText(data.startedAt),
+    completedAt: normalizeText(data.completedAt),
+    checklist: checklist.length > 0 ? checklist : undefined,
+    summary: normalizeText(data.summary),
+    recommendedNextRole: normalizeText(data.recommendedNextRole),
+  };
+
+  if (
+    !state.mode &&
+    !state.goal &&
+    !state.startedAt &&
+    !state.completedAt &&
+    !state.summary &&
+    !state.recommendedNextRole &&
+    !state.checklist
+  ) {
+    return undefined;
+  }
+
+  return state;
+}
+
+function isRoleCycleRunning(cycle: RoleCycleState | undefined) {
+  return Boolean(cycle && !cycle.completedAt && (cycle.goal || cycle.startedAt));
+}
+
+function headingText(line: string) {
+  const match = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line.trim());
+  if (!match) return undefined;
+  return { level: match[1].length, title: match[2].trim() };
+}
+
+function extractMarkdownSection(body: string | undefined, title: string) {
+  if (!body) return "";
+
+  const lines = body.split(/\r?\n/);
+  let start = -1;
+  let level = 0;
+
+  for (let index = 0; index < lines.length; index++) {
+    const heading = headingText(lines[index]);
+    if (heading?.title.toLowerCase() === title.toLowerCase()) {
+      start = index;
+      level = heading.level;
+      break;
+    }
+  }
+
+  if (start < 0) return "";
+
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index++) {
+    const heading = headingText(lines[index]);
+    if (heading && heading.level <= level) {
+      end = index;
+      break;
+    }
+  }
+
+  return lines.slice(start + 1, end).join("\n").trim();
+}
+
+function stripMarkdownInline(value: string) {
+  return value
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractRoleCycleChecklist(role: RoleDisplayInfo) {
+  const section = extractMarkdownSection(role.body, ROLE_CYCLE_SECTION_TITLE);
+  const items: string[] = [];
+  let currentIndex = -1;
+
+  for (const line of section.split(/\r?\n/)) {
+    const item = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+)(.+?)\s*$/.exec(line);
+    if (item) {
+      const text = normalizeText(stripMarkdownInline(item[1]));
+      if (text) {
+        items.push(text);
+        currentIndex = items.length - 1;
+      }
+      continue;
+    }
+
+    const continuation = normalizeText(stripMarkdownInline(line));
+    if (currentIndex >= 0 && continuation && /^\s{2,}\S/.test(line)) {
+      items[currentIndex] = `${items[currentIndex]} ${continuation}`;
+    }
+  }
+
+  if (items.length > 0) return items;
+
+  const fallback = normalizeText(stripMarkdownInline(section));
+  if (fallback) return [fallback];
+
+  return [
+    "Follow the role's one-cycle workflow.",
+    `Call ${ROLE_CYCLE_DONE_TOOL_NAME} with the final report.`,
+  ];
+}
+
+function formatRoleStatusText(role: RoleDisplayInfo) {
+  return `${role.icon ? `${role.icon} ` : ""}role:${role.name}`;
+}
+
+function formatRoleTerminalTitle(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  roleName?: string,
+) {
+  const cwdName = basename(ctx.cwd || process.cwd()) || "workspace";
+  const sessionName = normalizeText(pi.getSessionName());
+  const parts = ["π"];
+  if (sessionName) parts.push(sessionName);
+  if (roleName) parts.push(`role:${roleName}`);
+  parts.push(cwdName);
+  return parts.join(" - ");
+}
+
+function themeText(ctx: ExtensionContext, color: string, text: string) {
+  const theme = (ctx.ui as any)?.theme;
+  if (typeof theme?.fg === "function") {
+    try {
+      return theme.fg(color, text);
+    } catch (_error) {
+      return text;
+    }
+  }
+  return text;
+}
+
+function setRoleStatus(ctx: ExtensionContext, text: string | undefined) {
+  if (!ctx.hasUI) return;
+  const setStatus = (ctx.ui as any)?.setStatus;
+  if (typeof setStatus !== "function") return;
+
+  try {
+    setStatus.call(ctx.ui, ROLE_UI_STATUS_KEY, text);
+  } catch (_error) {
+    // UI decoration must never break role commands or non-interactive modes.
+  }
+}
+
+function setRoleWidget(ctx: ExtensionContext, lines: string[] | undefined) {
+  if (!ctx.hasUI) return;
+  const setWidget = (ctx.ui as any)?.setWidget;
+  if (typeof setWidget !== "function") return;
+
+  try {
+    setWidget.call(ctx.ui, ROLE_CYCLE_WIDGET_KEY, lines);
+  } catch (_error) {
+    // UI decoration must never break role commands or non-interactive modes.
+  }
+}
+
+function setRoleTitle(pi: ExtensionAPI, ctx: ExtensionContext, roleName?: string) {
+  if (!ctx.hasUI) return;
+  const setTitle = (ctx.ui as any)?.setTitle;
+  if (typeof setTitle !== "function") return;
+
+  try {
+    setTitle.call(ctx.ui, formatRoleTerminalTitle(pi, ctx, roleName));
+  } catch (_error) {
+    // UI decoration must never break role commands or non-interactive modes.
+  }
+}
+
+function formatRoleCycleWidgetLines(
+  role: RoleDisplayInfo,
+  cycle: RoleCycleState,
+) {
+  const title = `${role.icon ? `${role.icon} ` : ""}${role.name}`;
+  const lines = [
+    `Role cycle: ${title}${cycle.goal ? ` — ${cycle.goal}` : ""}`,
+  ];
+  const checklist = cycle.checklist ?? extractRoleCycleChecklist(role);
+
+  for (const [index, item] of checklist.entries()) {
+    lines.push(`☐ ${index + 1}. ${item}`);
+  }
+
+  return lines;
+}
+
+function applyRoleUI(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  role: RoleDisplayInfo | undefined,
+  cycleValue?: unknown,
+) {
+  if (!role?.name) {
+    clearRoleUI(pi, ctx);
+    return;
+  }
+
+  setRoleStatus(ctx, themeText(ctx, "accent", formatRoleStatusText(role)));
+  setRoleTitle(pi, ctx, role.name);
+
+  const cycle = normalizeRoleCycleState(cycleValue);
+  if (isRoleCycleRunning(cycle)) {
+    setRoleWidget(ctx, formatRoleCycleWidgetLines(role, cycle));
+  } else {
+    setRoleWidget(ctx, undefined);
+  }
+}
+
+function clearRoleUI(pi: ExtensionAPI, ctx: ExtensionContext) {
+  setRoleStatus(ctx, undefined);
+  setRoleWidget(ctx, undefined);
+  setRoleTitle(pi, ctx);
 }
 
 function prepareRoleCycleDoneArguments(args: unknown): RoleCycleDoneInput | unknown {
@@ -358,7 +602,13 @@ export default function roleManager(pi: ExtensionAPI) {
     ],
     parameters: ROLE_CYCLE_DONE_PARAMETERS as any,
     prepareArguments: prepareRoleCycleDoneArguments as any,
-    async execute(_toolCallId, params: RoleCycleDoneInput) {
+    async execute(
+      _toolCallId: string,
+      params: RoleCycleDoneInput,
+      _signal?: AbortSignal,
+      _onUpdate?: unknown,
+      ctx?: ExtensionContext,
+    ) {
       const details: RoleCycleDoneDetails = {
         summary: normalizeText(params.summary) ?? "",
         filesInspected: normalizeStringArray(params.filesInspected),
@@ -368,6 +618,8 @@ export default function roleManager(pi: ExtensionAPI) {
         recommendedNextRole: normalizeText(params.recommendedNextRole) ?? "none",
         completedAt: new Date().toISOString(),
       };
+
+      completeRoleCycle(details, ctx);
 
       return {
         content: [
@@ -643,6 +895,65 @@ export default function roleManager(pi: ExtensionAPI) {
     });
   }
 
+  function latestRoleManagerStateData(ctx: ExtensionContext) {
+    const entries = getSessionEntries(ctx);
+    for (let index = entries.length - 1; index >= 0; index--) {
+      const entry = entries[index] as
+        | { type?: string; customType?: string; data?: Record<string, unknown> }
+        | undefined;
+      if (entry?.type !== "custom") continue;
+      if (entry.customType !== ROLE_MANAGER_STATE_CUSTOM_TYPE) continue;
+      return entry.data;
+    }
+    return undefined;
+  }
+
+  function roleDisplayInfoFor(roleName: string): RoleDisplayInfo {
+    const role = findRole(roleRegistry, roleName);
+    if (role) return role;
+    return { name: roleName };
+  }
+
+  function updateRoleUIForCurrentState(ctx: ExtensionContext, cycleOverride?: unknown) {
+    const state = currentRoleState(ctx);
+    if (!state.roleName) {
+      clearRoleUI(pi, ctx);
+      return;
+    }
+
+    const data = latestRoleManagerStateData(ctx);
+    applyRoleUI(
+      pi,
+      ctx,
+      roleDisplayInfoFor(state.roleName),
+      cycleOverride ?? data?.roleCycle,
+    );
+  }
+
+  function completeRoleCycle(
+    details: RoleCycleDoneDetails,
+    ctx: ExtensionContext | undefined,
+  ) {
+    if (!ctx) return;
+
+    const state = currentRoleState(ctx);
+    if (!state.roleName) return;
+
+    const data = latestRoleManagerStateData(ctx);
+    const existingCycle = normalizeRoleCycleState(data?.roleCycle);
+    if (!isRoleCycleRunning(existingCycle)) return;
+
+    persistRoleState(state.roleName, state.previousSettings ?? activeRoleOriginalSettings, {
+      roleCycle: {
+        ...existingCycle,
+        completedAt: details.completedAt,
+        summary: details.summary,
+        recommendedNextRole: details.recommendedNextRole,
+      },
+    });
+    updateRoleUIForCurrentState(ctx);
+  }
+
   async function activateRole(
     roleName: string,
     ctx: ExtensionContext,
@@ -668,6 +979,7 @@ export default function roleManager(pi: ExtensionAPI) {
       ...extraState,
     });
     await applyRoleRuntimeSettings(role, ctx);
+    updateRoleUIForCurrentState(ctx, extraState.roleCycle);
     notifyInfo(ctx, `role-manager: activated role ${role.name}`);
     return true;
   }
@@ -680,6 +992,7 @@ export default function roleManager(pi: ExtensionAPI) {
 
     persistRoleState(null, previousSettings, { clearedAt: new Date().toISOString() });
     activeRoleOriginalSettings = undefined;
+    clearRoleUI(pi, ctx);
 
     const restored = await restoreRuntimeSettings(previousSettings, ctx);
     if (restored) {
@@ -693,14 +1006,16 @@ export default function roleManager(pi: ExtensionAPI) {
     const state = currentRoleState(ctx);
     if (!state.roleName) {
       activeRoleOriginalSettings = undefined;
+      clearRoleUI(pi, ctx);
       return;
     }
 
     const role = findRole(roleRegistry, state.roleName);
     activeRoleOriginalSettings = state.previousSettings ?? snapshotRuntimeSettings(ctx);
-    if (!role) return;
-
-    await applyRoleRuntimeSettings(role, ctx);
+    if (role) {
+      await applyRoleRuntimeSettings(role, ctx);
+    }
+    updateRoleUIForCurrentState(ctx);
   }
 
   pi.registerCommand("role", {
@@ -767,6 +1082,7 @@ export default function roleManager(pi: ExtensionAPI) {
           mode: "current-session",
           goal: parsed.goal,
           startedAt,
+          checklist: extractRoleCycleChecklist(role),
         },
       });
       if (!activated) return;
@@ -828,6 +1144,10 @@ export default function roleManager(pi: ExtensionAPI) {
 
   pi.on("session_tree", async (_event, ctx) => {
     await restoreActiveRoleFromState(ctx);
+  });
+
+  pi.on("session_shutdown", async (_event, ctx) => {
+    clearRoleUI(pi, ctx);
   });
 
   pi.on("before_agent_start", async (event, ctx) => {

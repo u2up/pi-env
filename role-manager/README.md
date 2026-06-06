@@ -13,8 +13,8 @@ It currently provides:
   and project role files, reports warnings without failing Pi startup,
   provides `/role`, `/role-clear`, `/role-cycle`, and `/role-new`, registers
   the terminating `role_cycle_done` tool, applies active-role
-  model/thinking/tool settings, and injects only the active role body into the
-  system prompt;
+  model/thinking/tool settings, injects only the active role body into the
+  system prompt, and decorates the interactive UI with active-role status;
 - base roles for `architect`, `developer`, `builder`, `tester`, and
   `reviewer`.
 
@@ -47,5 +47,8 @@ one-cycle kickoff prompt in the current session, enables `role_cycle_done` for
 that cycle, and instructs the model to call it as the final action with a
 structured summary. `/role-new` uses Pi's session replacement API, records the
 parent session, names the fresh session with a role prefix, and starts the
-cycle from the replacement-session context. Active-role UI status and
-coordination identity are implemented by later coordination items.
+cycle from the replacement-session context. While a role is active, the
+extension updates the footer status and terminal title; while `/role-cycle` is
+running, it also shows the role's one-cycle checklist above the editor.
+`/role-clear` removes those UI decorations. Coordination identity is
+implemented by a later coordination item.
