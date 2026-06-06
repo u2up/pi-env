@@ -525,6 +525,11 @@ sandbox:
 If `PI_COORD_ROOT` points inside the selected project, the launcher must
 pass it into the sandbox as the corresponding `/workspace/...` path.
 
+If host `/workspace/agent-remotes` exists and is not already provided by
+the selected project mount, the launcher must bind it into the sandbox at
+`/workspace/agent-remotes` so common bare coordination remotes are available
+from inside and outside Bubblewrap through the same path.
+
 If a coordination clone is detected under the selected project, or selected
 with `PI_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set
 `PI_COORD_DIR` inside the sandbox to the sandbox-visible path.

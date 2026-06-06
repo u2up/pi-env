@@ -89,7 +89,7 @@
             PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
             PI_BWRAP_NET=0                Disable network namespace sharing
             PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
-            PI_COORD_ROOT=/workspace/agent-remotes Bare coordination remotes root
+            PI_COORD_ROOT=/workspace/agent-remotes Bare coordination remotes root; auto-bound when available
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
           To pass pi's own -h/--help, use:
@@ -296,6 +296,17 @@
             fi
           fi
 
+          coord_root_bind_args=()
+          host_common_coord_root=""
+          if [ -d /workspace/agent-remotes ]; then
+            host_common_coord_root="$(realpath -m /workspace/agent-remotes)"
+            project_coord_root="$(realpath -m "$project_root/agent-remotes")"
+            if [ "$host_common_coord_root" != "$project_coord_root" ]; then
+              coord_root_bind_args=(--bind "$host_common_coord_root" /workspace/agent-remotes)
+              echo "pi-bwrap: agent remotes available at /workspace/agent-remotes" >&2
+            fi
+          fi
+
           coord_bind_args=()
           sandbox_coord_dir=""
           host_coord_dir=""
@@ -446,6 +457,7 @@
             --symlink ${pkgs.bash}/bin/bash /bin/sh
             --symlink ${pkgs.coreutils}/bin/env /usr/bin/env
             --bind "$project_root" /workspace
+            "''${coord_root_bind_args[@]}"
             --bind "$state_base/home" /home/pi
             --bind "$state_base/agent" /home/pi/.pi/agent
             "''${extension_bind_args[@]}"

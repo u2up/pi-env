@@ -465,6 +465,9 @@ If `PI_COORD_ROOT` is unset, helpers default to a project-visible
 `agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
 resolves to the current project root, that default is
 `/workspace/agent-remotes` rather than the isolated sandbox `$HOME`.
+`pi-bwrap` also auto-binds host `/workspace/agent-remotes` at that same
+sandbox path when it exists and is not already part of the selected project
+mount.
 
 Generated item IDs use a project item key prefix. Project keys are stored
 in `projects/<project>/PROJECT.md` as `item_key`; workspace-level keys are

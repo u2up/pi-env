@@ -273,7 +273,9 @@ When `PI_COORD_ROOT` is unset, helpers should prefer a project-visible
 `agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
 resolves to the current project root, that default should be
 `/workspace/agent-remotes` so the same bare remote is usable from inside
-and outside Bubblewrap.
+and outside Bubblewrap. `pi-bwrap` should auto-bind host
+`/workspace/agent-remotes` at that same sandbox path when it exists and is
+not already part of the selected project mount.
 
 ## 9. Coordination rules installed by `agent-coord-init`
 
