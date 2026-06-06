@@ -78,6 +78,7 @@ const models = [
 function createHarness(initialEntries = []) {
   const entries = initialEntries;
   const commands = new Map();
+  const tools = new Map();
   const handlers = new Map();
   const notifications = [];
   const sentUserMessages = [];
@@ -102,6 +103,9 @@ function createHarness(initialEntries = []) {
     registerCommand(name, options) {
       commands.set(name, options);
     },
+    registerTool(tool) {
+      tools.set(tool.name, tool);
+    },
     appendEntry(customType, data) {
       entries.push({ type: "custom", customType, data });
     },
@@ -118,12 +122,13 @@ function createHarness(initialEntries = []) {
       return [...state.activeTools];
     },
     getAllTools() {
-      return ["read", "bash", "edit", "write", "grep", "find", "ls"].map((name) => ({
+      const builtinTools = ["read", "bash", "edit", "write", "grep", "find", "ls"].map((name) => ({
         name,
         description: name,
         parameters: {},
         sourceInfo: { source: "builtin" },
       }));
+      return [...builtinTools, ...tools.values()];
     },
     setActiveTools(tools) {
       state.activeTools = [...tools];
@@ -265,6 +270,7 @@ function createHarness(initialEntries = []) {
   return {
     entries,
     commands,
+    tools,
     handlers,
     notifications,
     sentUserMessages,
@@ -287,6 +293,45 @@ try {
   assert.ok(harness.commands.has("role-clear"), "/role-clear command is registered");
   assert.ok(harness.commands.has("role-cycle"), "/role-cycle command is registered");
   assert.ok(harness.commands.has("role-new"), "/role-new command is registered");
+  assert.ok(harness.tools.has("role_cycle_done"), "role_cycle_done tool is registered");
+
+  const roleCycleDoneTool = harness.tools.get("role_cycle_done");
+  const preparedDoneArgs = roleCycleDoneTool.prepareArguments({
+    summary: "Implemented the role-cycle done tool.",
+    inspectedFiles: ["role-manager/extensions/role-manager.ts"],
+    changedFiles: "role-manager/extensions/role-manager.ts",
+    checksRun: ["tests/role-manager-commands.sh passed"],
+    coordination: "Claimed PIENV-ROLE-005",
+    nextRole: "reviewer",
+  });
+  const doneResult = await roleCycleDoneTool.execute(
+    "call-1",
+    preparedDoneArgs,
+    undefined,
+    undefined,
+    harness.ctx,
+  );
+  assert.equal(doneResult.terminate, true);
+  assert.equal(doneResult.details.summary, "Implemented the role-cycle done tool.");
+  assert.deepEqual(doneResult.details.filesInspected, [
+    "role-manager/extensions/role-manager.ts",
+  ]);
+  assert.deepEqual(doneResult.details.filesChanged, [
+    "role-manager/extensions/role-manager.ts",
+  ]);
+  assert.deepEqual(doneResult.details.testsChecksRun, [
+    "tests/role-manager-commands.sh passed",
+  ]);
+  assert.deepEqual(doneResult.details.coordinationUpdates, ["Claimed PIENV-ROLE-005"]);
+  assert.equal(doneResult.details.recommendedNextRole, "reviewer");
+  assert.match(
+    roleCycleDoneTool.renderResult(doneResult, { expanded: false }).render(80).join("\n"),
+    /Role cycle complete/,
+  );
+  assert.match(
+    roleCycleDoneTool.renderResult(doneResult, { expanded: true }).render(80).join("\n"),
+    /Tests\/checks run/,
+  );
 
   await harness.commands.get("role").handler("modeler", harness.ctx);
 
@@ -347,12 +392,14 @@ try {
   assert.equal(typeof cycleEntry.data.roleCycle.startedAt, "string");
   assert.equal(cycle.state.currentModel.id, "target");
   assert.equal(cycle.state.thinkingLevel, "high");
-  assert.deepEqual(cycle.state.activeTools, ["read", "bash"]);
+  assert.deepEqual(cycle.state.activeTools, ["read", "bash", "role_cycle_done"]);
   assert.equal(cycle.sentUserMessages.length, 1);
   assert.match(cycle.sentUserMessages[0].content, /Role cycle kickoff/);
   assert.match(cycle.sentUserMessages[0].content, /Goal: design role manager/);
   assert.match(cycle.sentUserMessages[0].content, /exactly one bounded cycle/);
   assert.match(cycle.sentUserMessages[0].content, /role_cycle_done/);
+  assert.match(cycle.sentUserMessages[0].content, /filesInspected/);
+  assert.match(cycle.sentUserMessages[0].content, /testsChecksRun/);
 
   const fresh = createHarness([]);
   await fresh.emit("session_start", { type: "session_start", reason: "startup" });

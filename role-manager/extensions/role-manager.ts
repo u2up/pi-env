@@ -19,6 +19,50 @@ const extensionDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(extensionDir, "..");
 const bundledRolesDir = join(packageRoot, "roles");
 const ROLE_STATE_VERSION = 1;
+const ROLE_CYCLE_DONE_TOOL_NAME = "role_cycle_done";
+
+const ROLE_CYCLE_DONE_PARAMETERS = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "summary",
+    "filesInspected",
+    "filesChanged",
+    "testsChecksRun",
+    "coordinationUpdates",
+    "recommendedNextRole",
+  ],
+  properties: {
+    summary: {
+      type: "string",
+      description: "Concise final summary of the completed role cycle.",
+    },
+    filesInspected: {
+      type: "array",
+      description: "Files or resources inspected during the cycle. Use [] if none.",
+      items: { type: "string" },
+    },
+    filesChanged: {
+      type: "array",
+      description: "Files changed during the cycle. Use [] if none.",
+      items: { type: "string" },
+    },
+    testsChecksRun: {
+      type: "array",
+      description: "Tests or checks run, including result notes. Use [] if none.",
+      items: { type: "string" },
+    },
+    coordinationUpdates: {
+      type: "array",
+      description: "Coordination repo updates made during the cycle. Use [] if none.",
+      items: { type: "string" },
+    },
+    recommendedNextRole: {
+      type: "string",
+      description: "Recommended next role, or \"none\" if no follow-up role is needed.",
+    },
+  },
+} as const;
 
 interface RuntimeSettingsSnapshot {
   provider?: string;
@@ -30,6 +74,19 @@ interface RuntimeSettingsSnapshot {
 interface ParsedRoleCycleArgs {
   roleName: string;
   goal: string;
+}
+
+interface RoleCycleDoneInput {
+  summary: string;
+  filesInspected: string[];
+  filesChanged: string[];
+  testsChecksRun: string[];
+  coordinationUpdates: string[];
+  recommendedNextRole: string;
+}
+
+interface RoleCycleDoneDetails extends RoleCycleDoneInput {
+  completedAt: string;
 }
 
 const MAX_ROLE_SESSION_NAME_LENGTH = 80;
@@ -92,6 +149,115 @@ function collapseWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function normalizeStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeText(item))
+      .filter((item): item is string => Boolean(item));
+  }
+
+  const text = normalizeText(value);
+  return text ? [text] : [];
+}
+
+function prepareRoleCycleDoneArguments(args: unknown): RoleCycleDoneInput | unknown {
+  if (!args || typeof args !== "object") return args;
+
+  const input = args as Record<string, unknown>;
+  return {
+    summary: normalizeText(input.summary ?? input.result ?? input.report) ?? "",
+    filesInspected: normalizeStringArray(
+      input.filesInspected ?? input.inspectedFiles ?? input.files_inspected,
+    ),
+    filesChanged: normalizeStringArray(
+      input.filesChanged ?? input.changedFiles ?? input.files_changed,
+    ),
+    testsChecksRun: normalizeStringArray(
+      input.testsChecksRun ??
+        input.testsRun ??
+        input.checksRun ??
+        input.tests_checks_run ??
+        input.tests ??
+        input.checks,
+    ),
+    coordinationUpdates: normalizeStringArray(
+      input.coordinationUpdates ?? input.coordination ?? input.coordination_updates,
+    ),
+    recommendedNextRole:
+      normalizeText(
+        input.recommendedNextRole ?? input.nextRole ?? input.recommended_next_role,
+      ) ?? "none",
+  };
+}
+
+function formatListCount(label: string, items: string[]) {
+  const count = items.length;
+  return `${label}: ${count}`;
+}
+
+function formatBulletSection(label: string, items: string[]) {
+  if (items.length === 0) return `${label}: none`;
+  return `${label}:\n${items.map((item) => `- ${item}`).join("\n")}`;
+}
+
+function truncateInline(value: string, maxLength = 96) {
+  const normalized = collapseWhitespace(value);
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+function wrapPlainLine(line: string, width: number) {
+  if (line.length <= width) return [line];
+
+  const chunks: string[] = [];
+  let remaining = line;
+  while (remaining.length > width) {
+    chunks.push(remaining.slice(0, width));
+    remaining = remaining.slice(width);
+  }
+  chunks.push(remaining);
+  return chunks;
+}
+
+function textBlock(text: string) {
+  return {
+    render(width: number) {
+      const safeWidth = Number.isFinite(width) && width > 0 ? Math.floor(width) : 80;
+      return text.split("\n").flatMap((line) => wrapPlainLine(line, safeWidth));
+    },
+    invalidate() {},
+  };
+}
+
+function formatRoleCycleDoneCompact(details: RoleCycleDoneDetails) {
+  const counts = [
+    formatListCount("inspected", details.filesInspected),
+    formatListCount("changed", details.filesChanged),
+    formatListCount("checks", details.testsChecksRun),
+    formatListCount("coordination", details.coordinationUpdates),
+  ].join(" • ");
+
+  return [
+    "✓ Role cycle complete",
+    details.summary,
+    counts,
+    `Next role: ${details.recommendedNextRole}`,
+  ].join("\n");
+}
+
+function formatRoleCycleDoneExpanded(details: RoleCycleDoneDetails) {
+  return [
+    "✓ Role cycle complete",
+    `Summary: ${details.summary}`,
+    `Completed: ${details.completedAt}`,
+    formatBulletSection("Files inspected", details.filesInspected),
+    formatBulletSection("Files changed", details.filesChanged),
+    formatBulletSection("Tests/checks run", details.testsChecksRun),
+    formatBulletSection("Coordination updates", details.coordinationUpdates),
+    `Recommended next role: ${details.recommendedNextRole}`,
+  ].join("\n\n");
+}
+
 function parseRoleCycleArgs(args: string): ParsedRoleCycleArgs | undefined {
   const trimmed = args.trim();
   if (!trimmed) return undefined;
@@ -127,12 +293,14 @@ Operating constraints:
   permitted by the current coordination rules.
 - Use only context available in this session. If this is a fresh session, do
   not assume parent-session conversation details unless they are included here.
-- Finish with the role's expected final report and then stop. Do not begin a
-  second role cycle.
-- If a \`role_cycle_done\` tool is available, call it as the final action with
-  the cycle summary, files inspected, files changed, checks run, coordination
-  updates, and recommended next role. If the tool is not available, include
-  those fields in the final report instead.
+- Finish by calling \`role_cycle_done\` as the final action of the cycle.
+  Treat that structured tool report as the role's expected final report.
+- Populate every \`role_cycle_done\` field: \`summary\`, \`filesInspected\`,
+  \`filesChanged\`, \`testsChecksRun\`, \`coordinationUpdates\`, and
+  \`recommendedNextRole\`. Use empty arrays for list fields with no entries,
+  and use \`none\` when there is no recommended next role.
+- After calling \`role_cycle_done\`, stop. Do not emit another assistant
+  response and do not begin a second role cycle.
 `;
 }
 
@@ -177,6 +345,64 @@ function sameModel(left: unknown, right: unknown) {
 }
 
 export default function roleManager(pi: ExtensionAPI) {
+  pi.registerTool({
+    name: ROLE_CYCLE_DONE_TOOL_NAME,
+    label: "Role Cycle Done",
+    description:
+      "Terminate a role cycle with a structured completion report. Use this as the final action for /role-cycle or /role-new work after the bounded cycle is complete.",
+    promptSnippet: "Finish a role cycle with a structured report and terminate",
+    promptGuidelines: [
+      "Use role_cycle_done as the final action of a role cycle after all required work, checks, and coordination updates are complete.",
+      "When calling role_cycle_done, populate summary, filesInspected, filesChanged, testsChecksRun, coordinationUpdates, and recommendedNextRole; use [] for none and \"none\" for no next role.",
+      "After calling role_cycle_done, do not emit another assistant response in the same turn.",
+    ],
+    parameters: ROLE_CYCLE_DONE_PARAMETERS as any,
+    prepareArguments: prepareRoleCycleDoneArguments as any,
+    async execute(_toolCallId, params: RoleCycleDoneInput) {
+      const details: RoleCycleDoneDetails = {
+        summary: normalizeText(params.summary) ?? "",
+        filesInspected: normalizeStringArray(params.filesInspected),
+        filesChanged: normalizeStringArray(params.filesChanged),
+        testsChecksRun: normalizeStringArray(params.testsChecksRun),
+        coordinationUpdates: normalizeStringArray(params.coordinationUpdates),
+        recommendedNextRole: normalizeText(params.recommendedNextRole) ?? "none",
+        completedAt: new Date().toISOString(),
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Role cycle complete. Summary: ${details.summary}`,
+          },
+        ],
+        details,
+        terminate: true,
+      };
+    },
+    renderCall(args: Partial<RoleCycleDoneInput> | undefined) {
+      const summary = normalizeText(args?.summary);
+      return textBlock(
+        summary
+          ? `${ROLE_CYCLE_DONE_TOOL_NAME} — ${truncateInline(summary)}`
+          : ROLE_CYCLE_DONE_TOOL_NAME,
+      );
+    },
+    renderResult(result, { expanded }: { expanded: boolean }) {
+      const details = result.details as RoleCycleDoneDetails | undefined;
+      if (!details) {
+        const first = result.content?.[0];
+        return textBlock(first?.type === "text" ? first.text : "Role cycle complete");
+      }
+
+      return textBlock(
+        expanded
+          ? formatRoleCycleDoneExpanded(details)
+          : formatRoleCycleDoneCompact(details),
+      );
+    },
+  });
+
   let roleRegistry = loadRoleRegistry([]);
   let warnedMissingActiveRoles = new Set<string>();
   let activeRoleOriginalSettings: RuntimeSettingsSnapshot | undefined;
@@ -294,6 +520,20 @@ export default function roleManager(pi: ExtensionAPI) {
       model: undefined,
       warning: `role-manager: model not found for role setting: ${modelId}`,
     };
+  }
+
+  function ensureRoleCycleDoneToolActive(ctx: ExtensionContext) {
+    const allToolNames = new Set(pi.getAllTools().map((tool) => tool.name));
+    if (!allToolNames.has(ROLE_CYCLE_DONE_TOOL_NAME)) {
+      notifyWarning(ctx, `role-manager: ${ROLE_CYCLE_DONE_TOOL_NAME} tool is not registered`);
+      return false;
+    }
+
+    const activeTools = pi.getActiveTools();
+    if (!activeTools.includes(ROLE_CYCLE_DONE_TOOL_NAME)) {
+      pi.setActiveTools([...activeTools, ROLE_CYCLE_DONE_TOOL_NAME]);
+    }
+    return true;
   }
 
   async function applyRoleRuntimeSettings(role: any, ctx: ExtensionContext) {
@@ -530,6 +770,7 @@ export default function roleManager(pi: ExtensionAPI) {
         },
       });
       if (!activated) return;
+      ensureRoleCycleDoneToolActive(ctx);
 
       pi.sendUserMessage(formatRoleCyclePrompt(role, parsed.goal));
     },
