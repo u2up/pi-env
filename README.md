@@ -183,10 +183,11 @@ tests/agent-coord-blackbox.sh
 tests/agent-coord-concurrency.sh
 ```
 
-Role-manager schema/template smoke test:
+Role-manager schema/template and loader smoke tests:
 
 ```bash
 tests/role-manager-schema.sh
+tests/role-manager-loader.sh
 ```
 
 See `AGENT_COORDINATION_DESIGN.md` for the full design.
