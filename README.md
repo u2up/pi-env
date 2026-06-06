@@ -183,6 +183,12 @@ tests/agent-coord-blackbox.sh
 tests/agent-coord-concurrency.sh
 ```
 
+Role-manager schema/template smoke test:
+
+```bash
+tests/role-manager-schema.sh
+```
+
 See `AGENT_COORDINATION_DESIGN.md` for the full design.
 
 ## Role templates architecture (planned)
@@ -204,9 +210,10 @@ Planned commands include:
 
 Base roles will come from the role-manager package, while project-specific
 roles can live in `.pi/roles/` next to project Pi extensions, skills, and
-prompts. Common roles can live in a shared agent resource directory when role
-support is implemented. See `ROLE_TEMPLATES_DESIGN.md` for the architecture and
-the `PIENV-ROLE-*` coordination items for the implementation roadmap.
+prompts. The initial schema, validator, and built-in role templates live under
+`role-manager/`. Common roles can live in a shared agent resource directory when
+role support is implemented. See `ROLE_TEMPLATES_DESIGN.md` for the architecture
+and the `PIENV-ROLE-*` coordination items for the implementation roadmap.
 
 ## Bubblewrap safety defaults
 

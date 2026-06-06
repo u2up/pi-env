@@ -1,0 +1,13 @@
+{
+  "name": "pi-env-role-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "keywords": ["pi-package", "pi-role-manager"],
+  "pi": {
+    "extensions": ["./extensions/role-manager.ts"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}

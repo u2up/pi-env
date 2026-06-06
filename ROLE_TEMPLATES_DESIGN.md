@@ -73,7 +73,7 @@ Understand the system, identify trade-offs, and produce a clear design.
 6. Stop after the cycle report.
 ```
 
-Recommended fields:
+Recommended fields are formalized in `role-manager/ROLE_FILE_SCHEMA.md`:
 
 | Field | Required | Purpose |
 |-------|----------|---------|
