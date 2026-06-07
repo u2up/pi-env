@@ -66,27 +66,62 @@ if agent-coord-claim \
   exit 1
 fi
 
-if agent-coord-close \
+if agent-coord-done \
   --coord-dir agent-b \
   --agent-id agent-b \
   "$item_id" >/dev/null 2>&1; then
-  printf 'expected close by non-owner to fail\n' >&2
+  printf 'expected done by non-owner to fail\n' >&2
   exit 1
 fi
 
-closed_path="$(agent-coord-close \
+done_path="$(agent-coord-done \
   --coord-dir agent-a \
   --agent-id agent-a \
-  --result "Closed by owning agent." \
+  --result "Done by owning agent." \
   "$item_id" | tail -n 1)"
 
-test -f "agent-a/$closed_path"
-grep -q '^status: closed$' "agent-a/$closed_path"
-grep -q '^owner: agent-a$' "agent-a/$closed_path"
+test -f "agent-a/$done_path"
+grep -q '^status: done$' "agent-a/$done_path"
+grep -q '^owner: agent-a$' "agent-a/$done_path"
 
-agent-coord-pull --coord-dir agent-b >/dev/null
+if agent-coord-close \
+  --coord-dir agent-a \
+  --agent-id agent-a \
+  "$item_id" >/dev/null 2>&1; then
+  printf 'expected close before review/verification to fail\n' >&2
+  exit 1
+fi
+
+agent-coord-review \
+  --coord-dir agent-b \
+  --agent-id reviewer-b \
+  --role reviewer \
+  --pass \
+  "$item_id" >/dev/null
+
+agent-coord-verify \
+  --coord-dir agent-b \
+  --agent-id tester-b \
+  --role tester \
+  --pass \
+  "$item_id" >/dev/null
+
+closed_path="$(agent-coord-close \
+  --coord-dir agent-b \
+  --agent-id tester-b \
+  --role tester \
+  --result "Closed after review and verification." \
+  "$item_id" | tail -n 1)"
+
 test -f "agent-b/$closed_path"
 grep -q '^status: closed$' "agent-b/$closed_path"
+grep -q '^owner: agent-a$' "agent-b/$closed_path"
+grep -q '^reviewed: true$' "agent-b/$closed_path"
+grep -q '^verified: true$' "agent-b/$closed_path"
+
+agent-coord-pull --coord-dir agent-a >/dev/null
+test -f "agent-a/$closed_path"
+grep -q '^status: closed$' "agent-a/$closed_path"
 
 printf 'subject length check\n' >agent-b/workspace/decisions/subject-length.md
 long_subject="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

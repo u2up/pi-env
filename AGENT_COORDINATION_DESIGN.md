@@ -91,6 +91,7 @@ coordination/
       issues/
         open/
         blocked/
+        done/
         closed/
       decisions/
       notes/
@@ -99,6 +100,7 @@ coordination/
       issues/
         open/
         blocked/
+        done/
         closed/
       decisions/
       notes/
@@ -106,6 +108,7 @@ coordination/
     issues/
       open/
       blocked/
+      done/
       closed/
     decisions/
     architecture/
@@ -168,7 +171,10 @@ owner: null
 priority: medium
 created: 2026-06-05T14:30:22Z
 updated: 2026-06-05T14:30:22Z
+done: null
 closed: null
+reviewed: false
+verified: false
 related: []
 current:
   event: evt-0001
@@ -195,19 +201,29 @@ messages:
       - [ ] README explains sandbox `pi-bwrap -- config`
 ```
 
-Separate open and closed work by directory and keep current `status` in the
-YAML file:
+Keep work in developer-centric state directories and keep current `status`
+in the YAML file:
 
 ```text
 issues/open/
 issues/blocked/
+issues/done/
 issues/closed/
 ```
 
-When closing an issue, move it with `git mv`, set `status: closed`, set
-`closed:`, update `current:`, and append a `closed` event/message. Close or
-link events should include structured implementation refs when possible:
-`repo: pi-env`, `branch: main`, and the full `commit` hash.
+The state names are developer-centric: `open` means developer work is needed,
+`blocked` means developer work cannot proceed, `done` means the developer
+believes implementation is complete, and `closed` means final acceptance after
+review and verification. New items start with `reviewed: false` and
+`verified: false`.
+
+When marking an issue done, move it with `git mv`, set `status: done`, set
+`done:`, reset `reviewed: false` and `verified: false`, update `current:`,
+and append a `done` event/message. Done or link events should include
+structured implementation refs when possible: `repo: pi-env`, `branch: main`,
+and the full `commit` hash. When final-closing an issue after review and
+verification, move it to `closed/`, set `status: closed`, set `closed:`, and
+append a final `closed` event/message.
 
 ## 6. Git synchronization protocol
 
@@ -260,7 +276,10 @@ agent-coord-pull      run git pull --rebase in the coordination clone
 agent-coord-push      commit/push coordination changes
 agent-coord-new       create a new templated item
 agent-coord-claim     claim an item
-agent-coord-close     close an item and move it to closed/
+agent-coord-done      mark developer work done and move it to done/
+agent-coord-review    mark review pass/fail and reopen on failure
+agent-coord-verify    mark verification pass/fail and reopen on failure
+agent-coord-close     final-close a reviewed and verified done item
 agent-coord-upgrade-rules
                       preview/apply rule template updates
 ```
@@ -353,13 +372,13 @@ The installed files are the workspace's authoritative rules. `pi-env` templates 
 The generated `coordination/AGENTS.md` should instruct agents:
 
 1. Treat the coordination repository as the only shared synchronization source for agent work state.
-2. Pull/rebase before inspecting, selecting, creating, claiming, blocking, closing, or otherwise modifying items.
+2. Pull/rebase before inspecting, selecting, creating, claiming, blocking, marking done, reviewing, verifying, closing, or otherwise modifying items.
 3. Commit and push coordination changes immediately after changing shared state.
-4. Never force-push, rewrite public history, delete closed items, or renumber item IDs.
+4. Never force-push, rewrite public history, delete done or closed items, or renumber item IDs.
 5. Prefer one claimed item per agent unless explicitly instructed otherwise.
 6. Do not edit another agent's claimed item except to resolve a Git conflict, add clearly relevant factual information, or when workspace rules define it as stale/abandoned.
 7. Record all meaningful state transitions as chronological item events with linked Markdown messages.
-8. Link completed work to concrete structured implementation refs with `repo`, `branch`, and full `commit` fields.
+8. Link developer-completed work to concrete structured implementation refs with `repo`, `branch`, and full `commit` fields.
 9. Keep coordination changes small and reviewable.
 10. Keep all Git commit, tag, and other Git message text readable in standard terminals: subject/summary lines should be at most 72 characters, and body paragraphs should be hard-wrapped at 72 characters where practical.
 11. If a push/rebase conflict occurs, resolve it conservatively and preserve both agents' factual updates when possible.
@@ -368,11 +387,14 @@ The generated `coordination/AGENTS.md` should instruct agents:
 
 Agents should use these state transitions:
 
-- create: add a new YAML item under `issues/open/` or the appropriate typed directory, with an `opened` event/message;
+- create: add a new YAML item under `issues/open/` or the appropriate typed directory, with `reviewed: false`, `verified: false`, and an `opened` event/message;
 - claim: set `status: claimed`, set `owner: <agent-id>`, update `current:`, append a `claimed` event/message, commit, push;
 - block: move to `blocked/` when needed, set `status: blocked`, document blocker and owner expectations in a `blocked` event/message;
 - resume/unblock: move back to `open/` or keep claimed if the same agent continues, and append `reopened` or `updated` history;
-- close: use `git mv` into `closed/`, set `status: closed`, set `closed: <timestamp>`, append a `closed` event/message with structured implementation refs;
+- done: use `git mv` into `done/`, set `status: done`, set `done: <timestamp>`, reset `reviewed: false` and `verified: false`, append a `done` event/message with structured implementation refs;
+- review pass/fail: set `reviewed: true` on pass, or move back to `open/` and append a `review_failed` event on failure;
+- verify pass/fail: set `verified: true` on pass, or move back to `open/` and append a `verification_failed` event on failure;
+- close: after `status: done`, `reviewed: true`, and `verified: true`, use `git mv` into `closed/`, set `status: closed`, set `closed: <timestamp>`, and append a final `closed` event/message;
 - split: create new linked items and mark the relationship in `related:` / `split_from:` fields and an `updated` event;
 - supersede: leave the old item in place, mark `status: closed` or `superseded`, and link to the replacement.
 
@@ -394,20 +416,23 @@ The coordination repository is the only synchronization source for agent task st
 ## Required protocol
 
 1. `cd coordination && git pull --rebase` before reading or modifying coordination state.
-2. Inspect open/claimed/blocked YAML items relevant to the current workspace/project.
+2. Inspect open/claimed/blocked/done YAML items relevant to the current workspace/project.
 3. Claim at most one item unless instructed otherwise.
 4. Commit and push immediately after claiming or changing status.
 5. Do project work in the project repository.
-6. Return to the coordination repo, pull/rebase, append an event/message with results and implementation refs, then commit and push.
+6. Return to the coordination repo, pull/rebase, mark developer-completed work as done with results and implementation refs, then commit and push.
+7. Reviewers and testers update `reviewed` and `verified` flags on done items; failures reopen developer work.
+8. Move items to closed only after they are done, reviewed, and verified.
 
 ## Safety rules
 
 - Never force-push.
 - Never rewrite coordination history.
 - Never renumber IDs.
-- Never delete closed items.
+- Never delete done or closed items.
 - Keep Git commit/tag message subject lines at or below 72 characters and hard-wrap body text at 72 characters where practical.
 - Preserve other agents' factual updates during conflict resolution.
+- Do not weaken unrelated previously passing tests to make a new done item pass verification.
 - Ask the user when ownership, stale claims, or conflicts are ambiguous.
 ```
 
@@ -433,7 +458,7 @@ Possible safe integrations:
 - provide an optional prompt/context snippet explaining the Git sync protocol;
 - allow users to mount/select the coordination repository explicitly when it is outside the project root.
 
-Any automatic claim, close, commit, or push behavior should be opt-in and implemented outside the default `pi-start` path.
+Any automatic claim, mark-done, review, verify, close, commit, or push behavior should be opt-in and implemented outside the default `pi-start` path.
 
 ## 11. Non-goals
 

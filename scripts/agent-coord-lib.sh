@@ -275,6 +275,53 @@ coord_repo_path() {
   realpath -m --relative-to="$(pwd -P)" "$path" 2>/dev/null || printf '%s\n' "$path"
 }
 
+coord_move_issue_item_to_status() {
+  local item_path target_status target_path
+  item_path="$1"
+  target_status="$2"
+  target_path="$item_path"
+
+  case "$item_path" in
+    */issues/open/*)
+      target_path="${item_path/\/issues\/open\//\/issues\/$target_status\/}"
+      ;;
+    */issues/blocked/*)
+      target_path="${item_path/\/issues\/blocked\//\/issues\/$target_status\/}"
+      ;;
+    */issues/done/*)
+      target_path="${item_path/\/issues\/done\//\/issues\/$target_status\/}"
+      ;;
+    */issues/closed/*)
+      target_path="${item_path/\/issues\/closed\//\/issues\/$target_status\/}"
+      ;;
+  esac
+
+  if [ "$target_path" != "$item_path" ]; then
+    mkdir -p "$(dirname "$target_path")"
+    if git ls-files --error-unmatch -- "$item_path" >/dev/null 2>&1; then
+      git mv "$item_path" "$target_path"
+    else
+      mv "$item_path" "$target_path"
+    fi
+    item_path="$target_path"
+  fi
+
+  printf '%s\n' "$item_path"
+}
+
+coord_item_flag_true() {
+  local file key value
+  file="$1"
+  key="$2"
+  value="$(coord_item_value "$file" "$key" | tr '[:upper:]' '[:lower:]')"
+  case "$value" in
+    true|yes|1)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 coord_yaml_quote() {
   local value
   value="$(printf '%s' "$1" | sed "s/'/''/g")"

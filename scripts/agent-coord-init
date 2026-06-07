@@ -159,11 +159,13 @@ mkdir -p \
   ".pi/skills/agent-coordination" \
   "projects/$project_dir/issues/open" \
   "projects/$project_dir/issues/blocked" \
+  "projects/$project_dir/issues/done" \
   "projects/$project_dir/issues/closed" \
   "projects/$project_dir/decisions" \
   "projects/$project_dir/notes" \
   workspace/issues/open \
   workspace/issues/blocked \
+  workspace/issues/done \
   workspace/issues/closed \
   workspace/decisions \
   workspace/architecture \
@@ -183,6 +185,11 @@ $workspace workspace.
 
 Use normal Git pull, commit, and push operations to synchronize state.
 Read AGENTS.md and docs/SYNC_PROTOCOL.md before changing shared items.
+
+Issue state group names are developer-centric: \`open\` means developer work
+is needed, \`blocked\` means developer work cannot proceed, \`done\` means the
+developer believes implementation is complete, and \`closed\` means final
+accepted after review and verification.
 EOF_README
 
 cat >WORKSPACE.md <<EOF_WORKSPACE

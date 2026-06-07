@@ -12,7 +12,7 @@ fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-close - close a coordination item
+agent-coord-close - final-close a reviewed and verified coordination item
 
 Usage:
   agent-coord-close [options] ITEM
@@ -26,8 +26,11 @@ Options:
                                may be repeated
   --no-pull                   Do not pull/rebase before closing
   --no-push                   Commit but do not push after closing
-  --force                     Allow closing an item owned by another agent
+  --force                     Bypass done/reviewed/verified checks
   -h, --help                  Show this help
+
+Items are normally closed only after developer work is done and both
+reviewed=true and verified=true are recorded on the item.
 USAGE
 }
 
@@ -106,7 +109,7 @@ fi
 
 item_path="$(coord_repo_path "$(coord_find_item "$item_query")")"
 item_id="$(coord_item_value "$item_path" id || true)"
-owner="$(coord_item_value "$item_path" owner || true)"
+status="$(coord_item_value "$item_path" status || true)"
 if [ -z "$item_id" ]; then
   item_id="$(basename "$item_path")"
   item_id="${item_id%.yaml}"
@@ -114,8 +117,20 @@ if [ -z "$item_id" ]; then
   item_id="${item_id%.md}"
 fi
 
-if [ -n "$owner" ] && [ "$owner" != "$agent_id" ] && [ "$force" != "1" ]; then
-  coord_die "item is owned by $owner; use --force to close it"
+if [ "$status" = "closed" ]; then
+  coord_die "item is already closed: $item_id"
+fi
+
+if [ "$force" != "1" ]; then
+  if [ "$status" != "done" ]; then
+    coord_die "item must be done before final close: $item_id"
+  fi
+  if ! coord_item_flag_true "$item_path" reviewed; then
+    coord_die "item must be reviewed before final close: $item_id"
+  fi
+  if ! coord_item_flag_true "$item_path" verified; then
+    coord_die "item must be verified before final close: $item_id"
+  fi
 fi
 
 for ref in "${implementation_refs[@]}"; do
@@ -123,21 +138,7 @@ for ref in "${implementation_refs[@]}"; do
   coord_write_implementation_ref_yaml "" "$ref" >/dev/null
 done
 
-target_path="$item_path"
-case "$item_path" in
-  */issues/open/*)
-    target_path="${item_path/\/issues\/open\//\/issues\/closed\/}"
-    ;;
-  */issues/blocked/*)
-    target_path="${item_path/\/issues\/blocked\//\/issues\/closed\/}"
-    ;;
-esac
-
-if [ "$target_path" != "$item_path" ]; then
-  mkdir -p "$(dirname "$target_path")"
-  git mv "$item_path" "$target_path"
-  item_path="$target_path"
-fi
+item_path="$(coord_move_issue_item_to_status "$item_path" closed)"
 
 now="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
@@ -147,7 +148,6 @@ message_id="$(coord_message_id_for_event "$event_id")"
 coord_set_item_values \
   "$item_path" \
   "status=closed" \
-  "owner=$agent_id" \
   "updated=$now" \
   "closed=$now"
 coord_set_current_pointers "$item_path" "$event_id" "$message_id"

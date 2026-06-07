@@ -35,8 +35,8 @@ interactive UI.
 
 ## Non-goals
 
-- Do not make `pi-start` automatically claim, close, commit, push, or otherwise
-  mutate coordination state.
+- Do not make `pi-start` automatically claim, mark done, review, verify,
+  close, commit, push, or otherwise mutate coordination state.
 - Do not make every role always visible in the model context.
 - Do not change the project repository Git committer identity just because a
   role is active.

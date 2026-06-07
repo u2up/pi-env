@@ -516,6 +516,9 @@
         "agent-coord-push"
         "agent-coord-new"
         "agent-coord-claim"
+        "agent-coord-done"
+        "agent-coord-review"
+        "agent-coord-verify"
         "agent-coord-close"
         "agent-coord-upgrade-rules"
       ];

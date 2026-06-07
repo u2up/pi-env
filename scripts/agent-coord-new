@@ -227,7 +227,10 @@ owner: $(coord_yaml_scalar "$owner")
 priority: $priority
 created: $created
 updated: $created
+done: null
 closed: null
+reviewed: false
+verified: false
 related: []
 current:
   event: evt-0001

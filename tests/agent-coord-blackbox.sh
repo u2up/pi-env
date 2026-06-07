@@ -129,6 +129,7 @@ test -f coordination/docs/SYNC_PROTOCOL.md
 test -f coordination/docs/ITEM_FORMAT.md
 test -f coordination/.pi/skills/agent-coordination/SKILL.md
 test -d coordination/projects/pi-env/issues/open
+test -d coordination/projects/pi-env/issues/done
 grep -q '^item_key: PIENV$' coordination/projects/pi-env/PROJECT.md
 grep -q '^item_key: PIENVTEST$' coordination/WORKSPACE.md
 git -C coordination config --get pull.rebase | grep -qx true
@@ -156,6 +157,9 @@ test -f "$workspace_dir/coordination/$action_path"
 grep -q '^id: PIENV-[0-9]\{8\}-[0-9]\{6\}$' \
   "$workspace_dir/coordination/$action_path"
 grep -q '^status: open$' "$workspace_dir/coordination/$action_path"
+grep -q '^done: null$' "$workspace_dir/coordination/$action_path"
+grep -q '^reviewed: false$' "$workspace_dir/coordination/$action_path"
+grep -q '^verified: false$' "$workspace_dir/coordination/$action_path"
 grep -q '^project: pi-env$' "$workspace_dir/coordination/$action_path"
 grep -q "^title: 'Document pi config behavior'$" \
   "$workspace_dir/coordination/$action_path"
@@ -207,26 +211,78 @@ grep -q '^      Claimed\.$' "$workspace_dir/coordination/$action_path"
 test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "agent-a/developer <agent-a+developer@coordination.local>|agent-a/developer <agent-a+developer@coordination.local>"
 
-closed_path="$(PI_COORD_ROLE=tester agent-coord-close \
+done_path="$(agent-coord-done \
   --coord-dir "$workspace_dir/coordination" \
   --agent-id agent-a \
-  --result "Completed in test." \
+  --role developer \
+  --result "Implemented in test." \
   --implementation-ref \
   "pi-env:main@0123456789abcdef0123456789abcdef01234567" \
+  "$item_id" | tail -n 1)"
+
+test -f "$workspace_dir/coordination/$done_path"
+grep -q '^status: done$' "$workspace_dir/coordination/$done_path"
+grep -q '^done: 20' "$workspace_dir/coordination/$done_path"
+grep -q '^closed: null$' "$workspace_dir/coordination/$done_path"
+grep -q '^reviewed: false$' "$workspace_dir/coordination/$done_path"
+grep -q '^verified: false$' "$workspace_dir/coordination/$done_path"
+grep -q '^    type: done$' "$workspace_dir/coordination/$done_path"
+grep -q '^      role: developer$' "$workspace_dir/coordination/$done_path"
+grep -q '^      - repo: pi-env$' "$workspace_dir/coordination/$done_path"
+grep -q '^        branch: main$' "$workspace_dir/coordination/$done_path"
+grep -q '^        commit: 0123456789abcdef0123456789abcdef01234567$' \
+  "$workspace_dir/coordination/$done_path"
+grep -q '^      Implemented in test\.$' "$workspace_dir/coordination/$done_path"
+test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
+  "agent-a/developer <agent-a+developer@coordination.local>|agent-a/developer <agent-a+developer@coordination.local>"
+
+review_path="$(agent-coord-review \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id reviewer-a \
+  --role reviewer \
+  --pass \
+  --result "Review passed." \
+  "$item_id" | tail -n 1)"
+
+test "$review_path" = "$done_path"
+grep -q '^reviewed: true$' "$workspace_dir/coordination/$done_path"
+grep -q '^    type: reviewed$' "$workspace_dir/coordination/$done_path"
+grep -q '^      role: reviewer$' "$workspace_dir/coordination/$done_path"
+grep -q '^      Review passed\.$' "$workspace_dir/coordination/$done_path"
+test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
+  "reviewer-a/reviewer <reviewer-a+reviewer@coordination.local>|reviewer-a/reviewer <reviewer-a+reviewer@coordination.local>"
+
+verify_path="$(PI_COORD_ROLE=tester agent-coord-verify \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id tester-a \
+  --pass \
+  --result "Verification passed." \
+  "$item_id" | tail -n 1)"
+
+test "$verify_path" = "$done_path"
+grep -q '^verified: true$' "$workspace_dir/coordination/$done_path"
+grep -q '^    type: verified$' "$workspace_dir/coordination/$done_path"
+grep -q '^      role: tester$' "$workspace_dir/coordination/$done_path"
+grep -q '^      Verification passed\.$' "$workspace_dir/coordination/$done_path"
+test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
+  "tester-a/tester <tester-a+tester@coordination.local>|tester-a/tester <tester-a+tester@coordination.local>"
+
+closed_path="$(PI_COORD_ROLE=tester agent-coord-close \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id tester-a \
+  --result "Closed after review and verification." \
   "$item_id" | tail -n 1)"
 
 test -f "$workspace_dir/coordination/$closed_path"
 grep -q '^status: closed$' "$workspace_dir/coordination/$closed_path"
 grep -q '^closed: 20' "$workspace_dir/coordination/$closed_path"
+grep -q '^reviewed: true$' "$workspace_dir/coordination/$closed_path"
+grep -q '^verified: true$' "$workspace_dir/coordination/$closed_path"
 grep -q '^    type: closed$' "$workspace_dir/coordination/$closed_path"
 grep -q '^      role: tester$' "$workspace_dir/coordination/$closed_path"
-grep -q '^      - repo: pi-env$' "$workspace_dir/coordination/$closed_path"
-grep -q '^        branch: main$' "$workspace_dir/coordination/$closed_path"
-grep -q '^        commit: 0123456789abcdef0123456789abcdef01234567$' \
-  "$workspace_dir/coordination/$closed_path"
-grep -q '^      Completed in test\.$' "$workspace_dir/coordination/$closed_path"
+grep -q '^      Closed after review and verification\.$' "$workspace_dir/coordination/$closed_path"
 test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
-  "agent-a/tester <agent-a+tester@coordination.local>|agent-a/tester <agent-a+tester@coordination.local>"
+  "tester-a/tester <tester-a+tester@coordination.local>|tester-a/tester <tester-a+tester@coordination.local>"
 
 head_before="$(git -C "$workspace_dir/coordination" rev-parse HEAD)"
 agent-coord-upgrade-rules \

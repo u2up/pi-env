@@ -500,6 +500,12 @@ in `projects/<project>/PROJECT.md` as `item_key`; workspace-level keys are
 stored in `WORKSPACE.md` as `item_key`. Agents should use those stored keys
 instead of inventing new ones.
 
+Issue state group names are developer-centric: `open` means developer work
+is needed, `blocked` means developer work cannot proceed, `done` means the
+developer believes implementation is complete, and `closed` means final
+accepted after the item is reviewed and verified. Reviewers and testers work
+from `done/`; failures move items back to `open/` with evidence.
+
 `agent-coord-new` resolves keys in this order: `--project-key`, stored
 metadata, `PI_COORD_PROJECT_KEY`, derived project name, then derived
 workspace directory for workspace-level items. Derived keys are uppercased
@@ -512,7 +518,10 @@ Agents can inspect and update item state with:
 agent-coord-status
 agent-coord-pull
 agent-coord-claim PI-ENV-20260605-143022
-agent-coord-close PI-ENV-20260605-143022 --result "Implemented."
+agent-coord-done PI-ENV-20260605-143022 --result "Implemented."
+agent-coord-review PI-ENV-20260605-143022 --pass
+agent-coord-verify PI-ENV-20260605-143022 --pass
+agent-coord-close PI-ENV-20260605-143022
 agent-coord-upgrade-rules --preview
 ```
 
@@ -529,12 +538,12 @@ agent-coord-clone
 `pi-skill-templates/agent-coordination/` into `AGENTS.md`, protocol
 documentation, item-format documentation, and
 `.pi/skills/agent-coordination/SKILL.md`. Those generated files define the
-workspace-specific rules for claiming, updating, blocking, closing, and
-conflict-resolving coordination items.
+workspace-specific rules for claiming, updating, blocking, marking done,
+reviewing, verifying, closing, and conflict-resolving coordination items.
 
 This use case remains opt-in. Default `pi-start` behavior must not create,
-claim, close, commit, push, or otherwise mutate coordination state
-automatically. When a coordination clone is outside the project root, mount
+claim, mark done, review, verify, close, commit, push, or otherwise mutate
+coordination state automatically. When a coordination clone is outside the project root, mount
 it explicitly for sandboxed Pi runs:
 
 ```bash

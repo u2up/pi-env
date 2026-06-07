@@ -12,18 +12,21 @@ fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-claim - claim a coordination item
+agent-coord-review - mark coordination item review result
 
 Usage:
-  agent-coord-claim [options] ITEM
+  agent-coord-review [options] ITEM
 
 Options:
   --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE       Coordination role; default: PI_COORD_ROLE
-  --no-pull         Do not pull/rebase before claiming
-  --no-push         Commit but do not push after claiming
-  --force           Allow claiming an item owned by another agent
+  --pass            Mark review passed; default
+  --fail            Mark review failed and reopen developer work
+  --result TEXT     Review message text
+  --no-pull         Do not pull/rebase before updating review
+  --no-push         Commit but do not push after updating review
+  --force           Allow reviewing an item that is not in done state
   -h, --help        Show this help
 USAGE
 }
@@ -31,6 +34,8 @@ USAGE
 coord_dir_opt=""
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
+result=""
+review_passed=1
 pull_first=1
 push_after=1
 force=0
@@ -51,6 +56,19 @@ while [ "$#" -gt 0 ]; do
     --role)
       [ "$#" -ge 2 ] || coord_die "--role requires a value"
       role="$2"
+      shift 2
+      ;;
+    --pass)
+      review_passed=1
+      shift
+      ;;
+    --fail)
+      review_passed=0
+      shift
+      ;;
+    --result)
+      [ "$#" -ge 2 ] || coord_die "--result requires a value"
+      result="$2"
       shift 2
       ;;
     --no-pull)
@@ -92,7 +110,6 @@ fi
 item_path="$(coord_repo_path "$(coord_find_item "$item_query")")"
 item_id="$(coord_item_value "$item_path" id || true)"
 status="$(coord_item_value "$item_path" status || true)"
-owner="$(coord_item_value "$item_path" owner || true)"
 if [ -z "$item_id" ]; then
   item_id="$(basename "$item_path")"
   item_id="${item_id%.yaml}"
@@ -101,15 +118,11 @@ if [ -z "$item_id" ]; then
 fi
 
 if [ "$status" = "closed" ]; then
-  coord_die "cannot claim a closed item: $item_id"
+  coord_die "cannot review a closed item: $item_id"
 fi
 
-if [ "$status" = "done" ] && [ "$force" != "1" ]; then
-  coord_die "cannot claim a done item pending review/verification: $item_id"
-fi
-
-if [ -n "$owner" ] && [ "$owner" != "$agent_id" ] && [ "$force" != "1" ]; then
-  coord_die "item is owned by $owner; use --force to override"
+if [ "$status" != "done" ] && [ "$force" != "1" ]; then
+  coord_die "review normally applies to done items; use --force to override"
 fi
 
 now="$(coord_timestamp_iso)"
@@ -117,29 +130,46 @@ actor="$(coord_effective_actor "$agent_id" "$role")"
 event_id="$(coord_next_event_id "$item_path")"
 message_id="$(coord_message_id_for_event "$event_id")"
 
-coord_set_item_values \
-  "$item_path" \
-  "status=claimed" \
-  "owner=$agent_id" \
-  "updated=$now"
+if [ "$review_passed" = "1" ]; then
+  [ -n "$result" ] || result="Reviewed."
+  event_type="reviewed"
+  coord_set_item_values \
+    "$item_path" \
+    "reviewed=true" \
+    "updated=$now"
+  message="Review $item_id"
+else
+  [ -n "$result" ] || result="Review failed; returned to open developer work."
+  event_type="review_failed"
+  item_path="$(coord_move_issue_item_to_status "$item_path" open)"
+  coord_set_item_values \
+    "$item_path" \
+    "status=open" \
+    "updated=$now" \
+    "done=null" \
+    "closed=null" \
+    "reviewed=false" \
+    "verified=false"
+  message="Reject review $item_id"
+fi
+
 coord_set_current_pointers "$item_path" "$event_id" "$message_id"
 coord_append_item_event_message \
   "$item_path" \
   "$event_id" \
-  "claimed" \
+  "$event_type" \
   "$now" \
   "$agent_id" \
   "$role" \
   "$message_id" \
-  "Claimed."
+  "$result"
 
 git add "$item_path"
 if coord_git_has_staged_changes; then
-  message="Claim $item_id"
   coord_validate_subject "$message"
   coord_git_commit "$actor" -m "$message"
 else
-  coord_note "item was already claimed by $agent_id"
+  coord_note "review state was already recorded for: $item_id"
 fi
 
 if [ "$push_after" = "1" ]; then

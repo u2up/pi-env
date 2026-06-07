@@ -12,29 +12,34 @@ fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-claim - claim a coordination item
+agent-coord-done - mark developer work done pending review/verification
 
 Usage:
-  agent-coord-claim [options] ITEM
+  agent-coord-done [options] ITEM
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
-  --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
-  --role ROLE       Coordination role; default: PI_COORD_ROLE
-  --no-pull         Do not pull/rebase before claiming
-  --no-push         Commit but do not push after claiming
-  --force           Allow claiming an item owned by another agent
-  -h, --help        Show this help
+  --coord-dir DIR             Coordination clone; default: PI_COORD_DIR or ./coordination
+  --agent-id ID               Agent identity; default: PI_COORD_AGENT_ID or USER
+  --role ROLE                 Coordination role; default: PI_COORD_ROLE
+  --result TEXT               Result/message text; default: Done.
+  --implementation-ref REF    Implementation ref in repo:branch@full-commit form;
+                               may be repeated
+  --no-pull                   Do not pull/rebase before marking done
+  --no-push                   Commit but do not push after marking done
+  --force                     Allow marking an item owned by another agent done
+  -h, --help                  Show this help
 USAGE
 }
 
 coord_dir_opt=""
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
+result="Done."
 pull_first=1
 push_after=1
 force=0
 item_query=""
+implementation_refs=()
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -51,6 +56,16 @@ while [ "$#" -gt 0 ]; do
     --role)
       [ "$#" -ge 2 ] || coord_die "--role requires a value"
       role="$2"
+      shift 2
+      ;;
+    --result)
+      [ "$#" -ge 2 ] || coord_die "--result requires a value"
+      result="$2"
+      shift 2
+      ;;
+    --implementation-ref)
+      [ "$#" -ge 2 ] || coord_die "--implementation-ref requires a value"
+      implementation_refs+=("$2")
       shift 2
       ;;
     --no-pull)
@@ -101,16 +116,19 @@ if [ -z "$item_id" ]; then
 fi
 
 if [ "$status" = "closed" ]; then
-  coord_die "cannot claim a closed item: $item_id"
-fi
-
-if [ "$status" = "done" ] && [ "$force" != "1" ]; then
-  coord_die "cannot claim a done item pending review/verification: $item_id"
+  coord_die "cannot mark a closed item done: $item_id"
 fi
 
 if [ -n "$owner" ] && [ "$owner" != "$agent_id" ] && [ "$force" != "1" ]; then
-  coord_die "item is owned by $owner; use --force to override"
+  coord_die "item is owned by $owner; use --force to mark it done"
 fi
+
+for ref in "${implementation_refs[@]}"; do
+  [ -n "$ref" ] || continue
+  coord_write_implementation_ref_yaml "" "$ref" >/dev/null
+done
+
+item_path="$(coord_move_issue_item_to_status "$item_path" done)"
 
 now="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
@@ -119,27 +137,32 @@ message_id="$(coord_message_id_for_event "$event_id")"
 
 coord_set_item_values \
   "$item_path" \
-  "status=claimed" \
+  "status=done" \
   "owner=$agent_id" \
-  "updated=$now"
+  "updated=$now" \
+  "done=$now" \
+  "closed=null" \
+  "reviewed=false" \
+  "verified=false"
 coord_set_current_pointers "$item_path" "$event_id" "$message_id"
 coord_append_item_event_message \
   "$item_path" \
   "$event_id" \
-  "claimed" \
+  "done" \
   "$now" \
   "$agent_id" \
   "$role" \
   "$message_id" \
-  "Claimed."
+  "$result" \
+  "${implementation_refs[@]}"
 
 git add "$item_path"
 if coord_git_has_staged_changes; then
-  message="Claim $item_id"
+  message="Mark $item_id done"
   coord_validate_subject "$message"
   coord_git_commit "$actor" -m "$message"
 else
-  coord_note "item was already claimed by $agent_id"
+  coord_note "item was already done: $item_id"
 fi
 
 if [ "$push_after" = "1" ]; then

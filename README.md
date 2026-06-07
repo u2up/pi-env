@@ -146,21 +146,28 @@ Lifecycle helpers are also available:
 ```text
 bootstrap-coordination
                       infer defaults and initialize via agent-coord-init
-agent-coord-status    show sync status and open/blocked items
+agent-coord-status    show sync status and open/blocked/done items
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
 agent-coord-new       create a templated item
 agent-coord-claim     claim an item, commit, and push
-agent-coord-close     close an item, commit, and push
+agent-coord-done      mark developer work done, commit, and push
+agent-coord-review    mark review pass/fail, commit, and push
+agent-coord-verify    mark verification pass/fail, commit, and push
+agent-coord-close     final-close reviewed+verified done items
 agent-coord-upgrade-rules --preview
                       preview/apply bundled rule template updates
 ```
 
 Items are YAML files with chronological `events` and linked Markdown
-`messages`. Stored implementation refs are structured objects with `repo`,
-`branch`, and full `commit` fields. `agent-coord-close --implementation-ref
-pi-env:main@<full-hash>` accepts the compact CLI form and writes the structured
-YAML form.
+`messages`. State group names are developer-centric: `open` means developer
+work is needed, `blocked` means developer work cannot proceed, `done` means
+the developer believes implementation is complete, and `closed` means final
+accepted after review and verification. Stored implementation refs are
+structured objects with `repo`, `branch`, and full `commit` fields.
+`agent-coord-done --implementation-ref pi-env:main@<full-hash>` accepts the
+compact CLI form and writes the structured YAML form. `agent-coord-close`
+finalizes only items that are done, reviewed, and verified unless forced.
 
 Commands that create item events or coordination commits accept `--role ROLE`
 and read `PI_COORD_ROLE`. Item events store actor ID/role metadata explicitly;
@@ -178,8 +185,8 @@ agent-coord-upgrade-rules --preview
 agent-coord-upgrade-rules
 ```
 
-The helpers do not make `pi-start` create, claim, close, commit, or push
-coordination state automatically. If a coordination clone is under the
+The helpers do not make `pi-start` create, claim, mark done, review, verify,
+close, commit, or push coordination state automatically. If a coordination clone is under the
 mounted project, `pi-bwrap` only exposes it as normal project files and sets
 `PI_COORD_DIR` to the sandbox path. For a coordination clone outside the
 project, opt in explicitly:

@@ -8,7 +8,7 @@ This document is derived from the current source tree and git history of `pi-env
 
 An optional extension for Git-backed multi-agent coordination is described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). That design is intentionally separate from the current required runtime/sandbox contract unless requirements in this document explicitly reference it.
 
-Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.
+Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.
 
 The project must keep two responsibilities separate:
 
@@ -72,6 +72,9 @@ For each supported system the flake must expose packages:
 - `agent-coord-pull`
 - `agent-coord-push`
 - `agent-coord-claim`
+- `agent-coord-done`
+- `agent-coord-review`
+- `agent-coord-verify`
 - `agent-coord-close`
 - `agent-coord-upgrade-rules`
 
@@ -179,6 +182,9 @@ The flake/devshell must provide these opt-in coordination commands:
 - `agent-coord-push`
 - `agent-coord-new`
 - `agent-coord-claim`
+- `agent-coord-done`
+- `agent-coord-review`
+- `agent-coord-verify`
 - `agent-coord-close`
 - `agent-coord-upgrade-rules`
 
@@ -199,7 +205,8 @@ current branch, it must restore that bare remote from committed clone
 history, adding `origin` when absent and updating `origin` only when it
 points to a missing local path.
 `--print-only`/`--dry-run` must not create or restore anything. It must not
-claim, close, or otherwise mutate item state automatically.
+claim, mark done, review, verify, close, or otherwise mutate item state
+automatically.
 
 ### CMD-010 `agent-coord-init`
 
@@ -232,9 +239,10 @@ workspace directory and configure the clone with `pull.rebase=true` and
 ### CMD-012 `agent-coord-new`
 
 `agent-coord-new` must create a YAML item with timestamp-based ID,
-top-level current-state fields, title, acceptance-criteria placeholder,
-chronological `events`, and linked Markdown `messages`. It must not commit
-or push automatically.
+top-level current-state fields, `done: null`, `closed: null`,
+`reviewed: false`, `verified: false`, title, acceptance-criteria
+placeholder, chronological `events`, and linked Markdown `messages`. It must
+not commit or push automatically.
 
 The generated item ID prefix must resolve in this order:
 
@@ -257,7 +265,7 @@ Project item keys must be stored in `projects/<project>/PROJECT.md` as
 The lifecycle helpers must remain thin wrappers around Git and YAML item
 file edits:
 
-- `agent-coord-status` shows Git status and open/blocked item summaries;
+- `agent-coord-status` shows Git status and open/blocked/done item summaries;
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
 - coordination commands that create item events or commits accept
@@ -267,11 +275,24 @@ file edits:
 - `agent-coord-claim` pulls, sets `status: claimed`, sets `owner:`, updates
   `current:`, appends a `claimed` event/message, commits, and pushes unless
   disabled by options;
-- `agent-coord-close` pulls, moves issue items to `closed/`, sets closed
-  YAML current-state fields, appends a `closed` event/message with optional
+- `agent-coord-done` pulls, moves issue items to `done/`, sets
+  `status: done`, `done: <timestamp>`, `closed: null`, `reviewed: false`,
+  and `verified: false`, appends a `done` event/message with optional
   structured implementation refs (`repo`, `branch`, full `commit`), commits,
   and pushes unless disabled by options. Its `--implementation-ref` option may
-  accept `repo:branch@full-commit` as a compact CLI input format.
+  accept `repo:branch@full-commit` as a compact CLI input format;
+- `agent-coord-review` pulls, marks done items reviewed on pass, or moves
+  them back to `open/` with `reviewed: false`, `verified: false`, and a
+  `review_failed` event on failure, then commits and pushes unless disabled
+  by options;
+- `agent-coord-verify` pulls, marks done items verified on pass, or moves
+  them back to `open/` with `reviewed: false`, `verified: false`, and a
+  `verification_failed` event on failure, then commits and pushes unless
+  disabled by options;
+- `agent-coord-close` pulls, requires `status: done`, `reviewed: true`, and
+  `verified: true` unless forced, moves issue items to `closed/`, sets closed
+  YAML current-state fields, appends a `closed` event/message, commits, and
+  pushes unless disabled by options.
 
 Commands that create commits must reject subject lines longer than 72
 characters.
@@ -655,6 +676,9 @@ nix build .#agent-coord-status
 nix build .#agent-coord-pull
 nix build .#agent-coord-push
 nix build .#agent-coord-claim
+nix build .#agent-coord-done
+nix build .#agent-coord-review
+nix build .#agent-coord-verify
 nix build .#agent-coord-close
 nix build .#agent-coord-upgrade-rules
 ```
@@ -890,8 +914,8 @@ Expected:
 - clone Git settings enable rebase and autostash;
 - `agent-coord-clone` can clone the same domain;
 - `agent-coord-new` creates a timestamp-ID YAML item;
-- status, push, claim, and close helpers perform the expected file and Git
-  state transitions;
+- status, push, claim, done, review, verify, and close helpers perform the
+  expected file and Git state transitions;
 - rule upgrade preview runs without mutating coordination state.
 
 ### TEST-030 Coordination conflict hardening
@@ -901,8 +925,12 @@ Run `tests/agent-coord-concurrency.sh` from the repository root.
 Expected:
 
 - a stale no-pull claim cannot push over another agent's claim;
-- a pulled clone refuses to claim or close an item owned by another agent;
-- the owning agent can close the item and other clones can pull the result;
+- a pulled clone refuses to claim or mark done an item owned by another
+  agent;
+- a done item cannot be final-closed before both review and verification
+  pass;
+- reviewers/testers can record pass/fail evidence and other clones can pull
+  the final closed result;
 - helper-generated commit subjects longer than 72 characters are rejected.
 
 ### TEST-031 Role-manager package and commands
@@ -934,7 +962,7 @@ Git-backed coordination support, when enabled, must keep the same design boundar
 - coordination repositories are plain Git repositories containing Markdown and small metadata blocks;
 - helper commands are thin wrappers around Git and file scaffolding/editing;
 - `pi-start` may only provide safe context, reminders, or mounts for coordination repositories;
-- `pi-start` must not create, claim, close, commit, push, or otherwise mutate coordination state automatically;
+- `pi-start` must not create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically;
 - no daemon, database, background push, force-push, hidden lock service, or non-Git synchronization mechanism may be introduced for coordination state.
 
 Coordination behavior becomes mandatory only when a requirement in this document names a concrete command, file, or environment variable.

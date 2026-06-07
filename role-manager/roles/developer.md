@@ -26,7 +26,7 @@ while preserving existing behavior outside the requested area.
 - Do not redesign unrelated architecture without asking or handing off to an
   architect role.
 - Do not skip validation when a practical test or check exists.
-- Do not claim or close coordination items on behalf of another owner.
+- Do not claim or mark coordination items done on behalf of another owner.
 - Do not introduce broad dependency, formatting, or style churn unrelated to
   the task.
 
@@ -49,6 +49,8 @@ while preserving existing behavior outside the requested area.
 ## Coordination behavior
 
 When working from coordination, pull/rebase before edits, claim only the active
-item, append events/messages for meaningful state changes, and link the result
-to implementation refs or changed files. Use role `developer` for coordination
-actor metadata when role-aware helpers are available.
+item, append events/messages for meaningful state changes, and mark developer
+work `done` with implementation refs or changed files when complete. Remember
+that coordination state names are developer-centric: `done` means ready for
+review/verification, not final acceptance. Use role `developer` for
+coordination actor metadata when role-aware helpers are available.

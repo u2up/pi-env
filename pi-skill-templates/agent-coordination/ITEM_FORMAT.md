@@ -51,7 +51,10 @@ owner: null
 priority: medium
 created: 2026-06-05T14:30:22Z
 updated: 2026-06-05T14:30:22Z
+done: null
 closed: null
+reviewed: false
+verified: false
 related: []
 current:
   event: evt-0001
@@ -91,7 +94,12 @@ where possible:
 - `blocked`: blocker recorded;
 - `reopened`: item returned to active work with the reason or revised
   definition;
-- `closed`: closure with implementation references when available;
+- `done`: developer work completed and ready for review/verification;
+- `reviewed`: independent review passed;
+- `review_failed`: independent review failed and developer work reopened;
+- `verified`: tester or automation verification passed;
+- `verification_failed`: verification failed and developer work reopened;
+- `closed`: final acceptance after done, reviewed, and verified;
 - `updated`: factual update that is not a state transition;
 - `linked`: later addition of implementation, PR, release, or commit refs;
 - `superseded`: item replaced by another item.
@@ -110,7 +118,7 @@ workflow record.
 
 ## Implementation references
 
-Closed or linked events should include structured implementation references:
+Done or linked events should include structured implementation references:
 
 ```yaml
 implementation_refs:
@@ -120,30 +128,47 @@ implementation_refs:
 ```
 
 Use the long-lived branch that contains the result, normally `main`, and the
-full commit hash. If multiple closures or reopenings occur, record each
-close/reopen as its own event. Multiple references are allowed on one event.
+full commit hash. If multiple done/review/verify/reopen cycles occur, record
+each transition as its own event. Multiple references are allowed on one
+event.
 
 ## Messages
 
 Messages are chronological and read like a dialog between actors. The first
 message normally contains the original item definition. Reopen or update
-messages may carry revised definitions. Close messages should summarize the
-result and point to the implementation refs stored on the same event.
+messages may carry revised definitions. Done messages should summarize the
+implementation and point to the implementation refs stored on the same
+event. Review and verification messages should record pass/fail evidence.
 
 Keep Markdown inside `body: |-` readable as normal Markdown. Do not add a
 separate `## Activity` section; that would duplicate the YAML event history.
 
 ## Directories and status
 
-Keep open, blocked, and closed work in separate directories and also keep
-current status in the YAML field:
+Issue directory names are intentionally developer-centric. Keep active,
+blocked, developer-done, and finally closed work in separate directories and
+also keep current status in the YAML field:
 
 ```text
 issues/open/
 issues/blocked/
+issues/done/
 issues/closed/
 ```
 
-When closing an issue, use `git mv` into `closed/`, set `status: closed`,
-set `closed: <timestamp>`, update `current`, and append a `closed` event
-with a linked message and implementation refs where possible.
+State meanings:
+
+- `open`: developer work is available or required.
+- `blocked`: developer work is required but cannot proceed yet.
+- `done`: developer believes implementation is complete; review and
+  verification remain pending until flags say otherwise.
+- `closed`: final accepted state after `reviewed: true` and
+  `verified: true`.
+
+New items start with `done: null`, `closed: null`, `reviewed: false`, and
+`verified: false`. When marking an issue done, use `git mv` into `done/`,
+set `status: done`, set `done: <timestamp>`, reset review/verification
+flags to false, update `current`, and append a `done` event with a linked
+message and implementation refs where possible. When final-closing an issue,
+use `git mv` into `closed/`, set `status: closed`, set
+`closed: <timestamp>`, update `current`, and append a `closed` event.
