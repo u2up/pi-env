@@ -231,9 +231,10 @@ workspace directory and configure the clone with `pull.rebase=true` and
 
 ### CMD-012 `agent-coord-new`
 
-`agent-coord-new` must create a Markdown item with timestamp-based ID,
-frontmatter, title, acceptance-criteria placeholder, and activity entry. It
-must not commit or push automatically.
+`agent-coord-new` must create a YAML item with timestamp-based ID,
+top-level current-state fields, title, acceptance-criteria placeholder,
+chronological `events`, and linked Markdown `messages`. It must not commit
+or push automatically.
 
 The generated item ID prefix must resolve in this order:
 
@@ -253,21 +254,24 @@ Project item keys must be stored in `projects/<project>/PROJECT.md` as
 
 ### CMD-013 Coordination lifecycle helpers
 
-The lifecycle helpers must remain thin wrappers around Git and Markdown
+The lifecycle helpers must remain thin wrappers around Git and YAML item
 file edits:
 
 - `agent-coord-status` shows Git status and open/blocked item summaries;
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
-- coordination commands that create activity entries or commits accept
-  `--role ROLE`, read `PI_COORD_ROLE`, render effective actors such as
-  `pi/architect`, and use per-command Git identity overrides for
-  coordination commits;
-- `agent-coord-claim` pulls, sets `status: claimed`, sets `owner:`,
-  appends activity, commits, and pushes unless disabled by options;
+- coordination commands that create item events or commits accept
+  `--role ROLE`, read `PI_COORD_ROLE`, store actor ID/role metadata in
+  events, and use per-command Git identity overrides for coordination
+  commits;
+- `agent-coord-claim` pulls, sets `status: claimed`, sets `owner:`, updates
+  `current:`, appends a `claimed` event/message, commits, and pushes unless
+  disabled by options;
 - `agent-coord-close` pulls, moves issue items to `closed/`, sets closed
-  frontmatter, appends activity, commits, and pushes unless disabled by
-  options.
+  YAML current-state fields, appends a `closed` event/message with optional
+  structured implementation refs (`repo`, `branch`, full `commit`), commits,
+  and pushes unless disabled by options. Its `--implementation-ref` option may
+  accept `repo:branch@full-commit` as a compact CLI input format.
 
 Commands that create commits must reject subject lines longer than 72
 characters.
@@ -885,7 +889,7 @@ Expected:
 - generated rules, docs, Pi skill files, and key metadata files exist;
 - clone Git settings enable rebase and autostash;
 - `agent-coord-clone` can clone the same domain;
-- `agent-coord-new` creates a timestamp-ID Markdown item;
+- `agent-coord-new` creates a timestamp-ID YAML item;
 - status, push, claim, and close helpers perform the expected file and Git
   state transitions;
 - rule upgrade preview runs without mutating coordination state.

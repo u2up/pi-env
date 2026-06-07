@@ -49,6 +49,6 @@ clear architecture guidance that another role can safely implement.
 ## Coordination behavior
 
 When coordination is in scope, pull/rebase before changing shared state. Claim
-only the item being worked, record meaningful activity updates, and use the
-actor suffix `pi/architect` for coordination notes or commits when role-aware
+only the item being worked, record meaningful item events/messages, and use the
+actor role `architect` for coordination events or commits when role-aware
 helpers are available.

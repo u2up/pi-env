@@ -22,10 +22,10 @@ Options:
   --project KEY       Create under projects/<key>/issues/open
   --project-key KEY   Item ID prefix; overrides stored/default project key
   --workspace-item    Create under workspace/issues/open
-  --type TYPE         Frontmatter type; default: issue
+  --type TYPE         Item type; default: issue
   --priority VALUE    Priority value; default: medium
   --owner ID          Initial owner; default: empty
-  --agent-id ID       Activity actor's agent ID; default: PI_COORD_AGENT_ID or USER
+  --agent-id ID       Event actor's agent ID; default: PI_COORD_AGENT_ID or USER
   --role ROLE         Coordination role; default: PI_COORD_ROLE
   --id ID             Explicit item ID; default: timestamp ID
   -h, --help          Show this help
@@ -211,37 +211,47 @@ else
   item_id="$id_prefix-$(coord_timestamp_id)"
 fi
 
-path="$item_root/$item_id-$slug.md"
+path="$item_root/$item_id-$slug.yaml"
 if [ -e "$path" ]; then
   coord_die "item already exists: $path"
 fi
 
 cat >"$path" <<EOF_ITEM
----
+schema: coordination-item/v1
 id: $item_id
 type: $item_type
 status: open
 project: $project_value
-owner: $owner
+title: $(coord_yaml_scalar "$title")
+owner: $(coord_yaml_scalar "$owner")
 priority: $priority
 created: $created
 updated: $created
-closed:
+closed: null
 related: []
----
+current:
+  event: evt-0001
+  message: msg-0001
+events:
+  - id: evt-0001
+    type: opened
+    at: $created
+    actor:
+      id: $(coord_yaml_scalar "$agent_id")
+      role: $(coord_yaml_scalar "$role")
+    message: msg-0001
+messages:
+  - id: msg-0001
+    event: evt-0001
+    body: |-
+      # $title
 
-# $title
+      ## Context
 
-## Context
+      ## Acceptance criteria
 
-## Acceptance criteria
-
-- [ ] Define acceptance criteria.
-
-## Activity
-
-- $created $actor: Created.
+      - [ ] Define acceptance criteria.
 EOF_ITEM
 
-coord_note "created item: $path"
+coord_note "created item: $path by $actor"
 printf '%s\n' "$path"

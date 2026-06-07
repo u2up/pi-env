@@ -18,14 +18,16 @@ Usage:
   agent-coord-close [options] ITEM
 
 Options:
-  --coord-dir DIR     Coordination clone; default: PI_COORD_DIR or ./coordination
-  --agent-id ID       Agent identity; default: PI_COORD_AGENT_ID or USER
-  --role ROLE         Coordination role; default: PI_COORD_ROLE
-  --result TEXT       Result/activity text; default: Closed.
-  --no-pull           Do not pull/rebase before closing
-  --no-push           Commit but do not push after closing
-  --force             Allow closing an item owned by another agent
-  -h, --help          Show this help
+  --coord-dir DIR             Coordination clone; default: PI_COORD_DIR or ./coordination
+  --agent-id ID               Agent identity; default: PI_COORD_AGENT_ID or USER
+  --role ROLE                 Coordination role; default: PI_COORD_ROLE
+  --result TEXT               Result/message text; default: Closed.
+  --implementation-ref REF    Implementation ref in repo:branch@full-commit form;
+                               may be repeated
+  --no-pull                   Do not pull/rebase before closing
+  --no-push                   Commit but do not push after closing
+  --force                     Allow closing an item owned by another agent
+  -h, --help                  Show this help
 USAGE
 }
 
@@ -37,6 +39,7 @@ pull_first=1
 push_after=1
 force=0
 item_query=""
+implementation_refs=()
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -58,6 +61,11 @@ while [ "$#" -gt 0 ]; do
     --result)
       [ "$#" -ge 2 ] || coord_die "--result requires a value"
       result="$2"
+      shift 2
+      ;;
+    --implementation-ref)
+      [ "$#" -ge 2 ] || coord_die "--implementation-ref requires a value"
+      implementation_refs+=("$2")
       shift 2
       ;;
     --no-pull)
@@ -97,14 +105,23 @@ if [ "$pull_first" = "1" ]; then
 fi
 
 item_path="$(coord_repo_path "$(coord_find_item "$item_query")")"
-item_id="$(coord_frontmatter_value "$item_path" id || true)"
-status="$(coord_frontmatter_value "$item_path" status || true)"
-owner="$(coord_frontmatter_value "$item_path" owner || true)"
-[ -n "$item_id" ] || item_id="$(basename "$item_path" .md)"
+item_id="$(coord_item_value "$item_path" id || true)"
+owner="$(coord_item_value "$item_path" owner || true)"
+if [ -z "$item_id" ]; then
+  item_id="$(basename "$item_path")"
+  item_id="${item_id%.yaml}"
+  item_id="${item_id%.yml}"
+  item_id="${item_id%.md}"
+fi
 
 if [ -n "$owner" ] && [ "$owner" != "$agent_id" ] && [ "$force" != "1" ]; then
   coord_die "item is owned by $owner; use --force to close it"
 fi
+
+for ref in "${implementation_refs[@]}"; do
+  [ -n "$ref" ] || continue
+  coord_write_implementation_ref_yaml "" "$ref" >/dev/null
+done
 
 target_path="$item_path"
 case "$item_path" in
@@ -124,13 +141,26 @@ fi
 
 now="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
-coord_set_frontmatter \
+event_id="$(coord_next_event_id "$item_path")"
+message_id="$(coord_message_id_for_event "$event_id")"
+
+coord_set_item_values \
   "$item_path" \
   "status=closed" \
   "owner=$agent_id" \
   "updated=$now" \
   "closed=$now"
-coord_append_activity "$item_path" "$now" "$actor" "$result"
+coord_set_current_pointers "$item_path" "$event_id" "$message_id"
+coord_append_item_event_message \
+  "$item_path" \
+  "$event_id" \
+  "closed" \
+  "$now" \
+  "$agent_id" \
+  "$role" \
+  "$message_id" \
+  "$result" \
+  "${implementation_refs[@]}"
 
 git add "$item_path"
 if coord_git_has_staged_changes; then

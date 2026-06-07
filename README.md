@@ -59,7 +59,7 @@ This uses the Nix-provided runtime/tools on `PATH`, but does **not** enter the B
 ## Agent coordination helpers
 
 `pi-env` includes opt-in helpers for Git-backed coordination repositories.
-They are plain Git/Markdown tooling and are separate from `pi-start`.
+They are plain Git/text-file tooling and are separate from `pi-start`.
 
 Guided setup with inferred, workspace-specific defaults:
 
@@ -156,14 +156,19 @@ agent-coord-upgrade-rules --preview
                       preview/apply bundled rule template updates
 ```
 
-Commands that create activity entries or coordination commits accept
-`--role ROLE` and read `PI_COORD_ROLE`. When both an agent ID and role are
-available, activity uses an effective actor such as `pi/architect` and helper
-commits use per-command Git identity overrides such as
-`pi/architect <pi+architect@coordination.local>`. These overrides are scoped to
-the helper's coordination-repository `git commit`; normal project repository
-commits keep the user's imported Git identity unless the user explicitly opts in
-to another identity.
+Items are YAML files with chronological `events` and linked Markdown
+`messages`. Stored implementation refs are structured objects with `repo`,
+`branch`, and full `commit` fields. `agent-coord-close --implementation-ref
+pi-env:main@<full-hash>` accepts the compact CLI form and writes the structured
+YAML form.
+
+Commands that create item events or coordination commits accept `--role ROLE`
+and read `PI_COORD_ROLE`. Item events store actor ID/role metadata explicitly;
+helper commits use per-command Git identity overrides such as `pi/architect
+<pi+architect@coordination.local>`. These overrides are scoped to the helper's
+coordination-repository `git commit`; normal project repository commits keep the
+user's imported Git identity unless the user explicitly opts in to another
+identity.
 
 Existing coordination repositories are not silently overwritten. Rule
 upgrades are explicit and diffable:
@@ -294,7 +299,7 @@ Pi can terminate the cycle without an extra follow-up turn.
 When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
 Pi subprocesses to the role's `coordCommitter` value, or to the role name when
 `coordCommitter` is omitted. Coordination helper commands use that value only
-for coordination activity actors and per-command coordination Git identity;
+for coordination item event actors and per-command coordination Git identity;
 project repository commits keep the normal imported Git identity unless the user
 explicitly changes it.
 
@@ -343,7 +348,7 @@ PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gi
 PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
 PI_COORD_ROOT=/workspace/agent-remotes   # bare coordination remotes; default is project-visible agent-remotes
-PI_COORD_ROLE=architect                  # active coordination role for helper commits/activity
+PI_COORD_ROLE=architect                  # active coordination role for helper commits/events
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_NET=0                          # disable network sharing
 PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name

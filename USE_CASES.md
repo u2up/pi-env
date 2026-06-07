@@ -4,7 +4,7 @@
 
 This document summarizes the practical ways the current project can be used.
 
-A possible opt-in use case for Git-backed multi-agent task synchronization is described separately in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). Coordination helpers must remain explicit Git/Markdown tooling and must not make `pi-start` mutate shared coordination state automatically.
+A possible opt-in use case for Git-backed multi-agent task synchronization is described separately in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). Coordination helpers must remain explicit Git/text-file tooling and must not make `pi-start` mutate shared coordination state automatically.
 
 An optional role-template layer is described in
 [Role Template Architecture](ROLE_TEMPLATES_DESIGN.md). It lets users select

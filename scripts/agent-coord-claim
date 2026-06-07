@@ -90,10 +90,15 @@ if [ "$pull_first" = "1" ]; then
 fi
 
 item_path="$(coord_repo_path "$(coord_find_item "$item_query")")"
-item_id="$(coord_frontmatter_value "$item_path" id || true)"
-status="$(coord_frontmatter_value "$item_path" status || true)"
-owner="$(coord_frontmatter_value "$item_path" owner || true)"
-[ -n "$item_id" ] || item_id="$(basename "$item_path" .md)"
+item_id="$(coord_item_value "$item_path" id || true)"
+status="$(coord_item_value "$item_path" status || true)"
+owner="$(coord_item_value "$item_path" owner || true)"
+if [ -z "$item_id" ]; then
+  item_id="$(basename "$item_path")"
+  item_id="${item_id%.yaml}"
+  item_id="${item_id%.yml}"
+  item_id="${item_id%.md}"
+fi
 
 if [ "$status" = "closed" ]; then
   coord_die "cannot claim a closed item: $item_id"
@@ -105,12 +110,24 @@ fi
 
 now="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
-coord_set_frontmatter \
+event_id="$(coord_next_event_id "$item_path")"
+message_id="$(coord_message_id_for_event "$event_id")"
+
+coord_set_item_values \
   "$item_path" \
   "status=claimed" \
   "owner=$agent_id" \
   "updated=$now"
-coord_append_activity "$item_path" "$now" "$actor" "Claimed."
+coord_set_current_pointers "$item_path" "$event_id" "$message_id"
+coord_append_item_event_message \
+  "$item_path" \
+  "$event_id" \
+  "claimed" \
+  "$now" \
+  "$agent_id" \
+  "$role" \
+  "$message_id" \
+  "Claimed."
 
 git add "$item_path"
 if coord_git_has_staged_changes; then

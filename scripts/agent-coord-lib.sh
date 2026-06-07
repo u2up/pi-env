@@ -155,16 +155,6 @@ coord_workspace_dir_key() {
   printf '%s\n' "$key"
 }
 
-coord_metadata_item_key() {
-  local file value
-  file="$1"
-  value=""
-  if [ -f "$file" ]; then
-    value="$(coord_frontmatter_value "$file" item_key || true)"
-  fi
-  printf '%s\n' "$value"
-}
-
 coord_slug() {
   local slug
   slug="$(printf '%s' "$1" \
@@ -285,11 +275,49 @@ coord_repo_path() {
   realpath -m --relative-to="$(pwd -P)" "$path" 2>/dev/null || printf '%s\n' "$path"
 }
 
+coord_yaml_quote() {
+  local value
+  value="$(printf '%s' "$1" | sed "s/'/''/g")"
+  printf "'%s'" "$value"
+}
+
+coord_yaml_scalar() {
+  local value
+  value="$1"
+  if [ -z "$value" ]; then
+    printf 'null'
+  elif printf '%s' "$value" | grep -Eq '^[A-Za-z0-9_.@/+:-]+$'; then
+    printf '%s' "$value"
+  else
+    coord_yaml_quote "$value"
+  fi
+}
+
+coord_yaml_unquote() {
+  local value first last
+  value="$(coord_trim "$1")"
+  case "$value" in
+    ""|null|Null|NULL|~)
+      printf '\n'
+      return
+      ;;
+  esac
+  first="${value:0:1}"
+  last="${value: -1}"
+  if [ "$first" = "'" ] && [ "$last" = "'" ] && [ "${#value}" -ge 2 ]; then
+    value="${value:1:${#value}-2}"
+    value="$(printf '%s' "$value" | sed "s/''/'/g")"
+  elif [ "$first" = '"' ] && [ "$last" = '"' ] && [ "${#value}" -ge 2 ]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s\n' "$value"
+}
+
 coord_frontmatter_value() {
-  local file key
+  local file key value
   file="$1"
   key="$2"
-  awk -v key="$key" '
+  value="$(awk -v key="$key" '
     NR == 1 && $0 == "---" { fm = 1; next }
     fm && $0 == "---" { exit }
     fm && index($0, key ":") == 1 {
@@ -297,7 +325,40 @@ coord_frontmatter_value() {
       print
       exit
     }
-  ' "$file"
+  ' "$file")"
+  coord_yaml_unquote "$value"
+}
+
+coord_item_value() {
+  local file key value
+  file="$1"
+  key="$2"
+  value="$(awk -v key="$key" '
+    NR == 1 && $0 == "---" { fm = 1; next }
+    fm && $0 == "---" { exit }
+    fm && index($0, key ":") == 1 {
+      sub("^[^:]+:[[:space:]]*", "")
+      print
+      exit
+    }
+    NR == 1 && $0 != "---" { top = 1 }
+    top && index($0, key ":") == 1 {
+      sub("^[^:]+:[[:space:]]*", "")
+      print
+      exit
+    }
+  ' "$file")"
+  coord_yaml_unquote "$value"
+}
+
+coord_metadata_item_key() {
+  local file value
+  file="$1"
+  value=""
+  if [ -f "$file" ]; then
+    value="$(coord_frontmatter_value "$file" item_key || true)"
+  fi
+  printf '%s\n' "$value"
 }
 
 coord_set_frontmatter() {
@@ -358,6 +419,236 @@ coord_set_frontmatter() {
   mv "$tmp" "$file"
 }
 
+coord_set_item_values() {
+  local file tmp sep keys values pair key value
+  file="$1"
+  shift
+  sep=$(printf '\037')
+  keys=""
+  values=""
+  for pair in "$@"; do
+    key="${pair%%=*}"
+    value="${pair#*=}"
+    keys="${keys}${sep}${key}"
+    values="${values}${sep}${value}"
+  done
+  keys="${keys#${sep}}"
+  values="${values#${sep}}"
+  tmp="$(mktemp)"
+  awk -v keys="$keys" -v values="$values" -v sep="$sep" '
+    BEGIN {
+      n = split(keys, key_list, sep)
+      split(values, value_list, sep)
+      for (i = 1; i <= n; i++) {
+        wanted[key_list[i]] = value_list[i]
+        found[key_list[i]] = 0
+      }
+    }
+    !inserted && ($0 == "current:" || $0 == "events:" || $0 == "messages:") {
+      for (i = 1; i <= n; i++) {
+        key = key_list[i]
+        if (!found[key]) {
+          print key ": " wanted[key]
+          found[key] = 1
+        }
+      }
+      inserted = 1
+    }
+    {
+      for (i = 1; i <= n; i++) {
+        key = key_list[i]
+        if (index($0, key ":") == 1) {
+          print key ": " wanted[key]
+          found[key] = 1
+          next
+        }
+      }
+      print
+    }
+    END {
+      if (!inserted) {
+        for (i = 1; i <= n; i++) {
+          key = key_list[i]
+          if (!found[key]) {
+            print key ": " wanted[key]
+          }
+        }
+      }
+    }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+coord_set_current_pointers() {
+  local file event_id message_id tmp
+  file="$1"
+  event_id="$2"
+  message_id="$3"
+  tmp="$(mktemp)"
+  awk -v event_id="$event_id" -v message_id="$message_id" '
+    /^current:[[:space:]]*$/ {
+      in_current = 1
+      saw_current = 1
+      saw_event = 0
+      saw_message = 0
+      print
+      next
+    }
+    in_current && /^  event:/ {
+      print "  event: " event_id
+      saw_event = 1
+      next
+    }
+    in_current && /^  message:/ {
+      print "  message: " message_id
+      saw_message = 1
+      next
+    }
+    in_current && /^[^[:space:]]/ {
+      if (!saw_event) print "  event: " event_id
+      if (!saw_message) print "  message: " message_id
+      in_current = 0
+    }
+    !saw_current && ($0 == "events:" || $0 == "messages:") {
+      print "current:"
+      print "  event: " event_id
+      print "  message: " message_id
+      saw_current = 1
+    }
+    { print }
+    END {
+      if (in_current) {
+        if (!saw_event) print "  event: " event_id
+        if (!saw_message) print "  message: " message_id
+      } else if (!saw_current) {
+        print "current:"
+        print "  event: " event_id
+        print "  message: " message_id
+      }
+    }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+coord_next_event_id() {
+  local file
+  file="$1"
+  awk '
+    /^[[:space:]]*- id: evt-[0-9]+/ {
+      value = $0
+      sub(/^.*evt-/, "", value)
+      sub(/[^0-9].*$/, "", value)
+      n = value + 0
+      if (n > max) max = n
+    }
+    END { printf "evt-%04d\n", max + 1 }
+  ' "$file"
+}
+
+coord_message_id_for_event() {
+  local event_id number
+  event_id="$1"
+  number="${event_id#evt-}"
+  printf 'msg-%s\n' "$number"
+}
+
+coord_write_implementation_ref_yaml() {
+  local indent ref repo rest branch commit
+  indent="$1"
+  ref="$2"
+
+  repo="${ref%%:*}"
+  if [ "$repo" = "$ref" ]; then
+    coord_die "invalid implementation ref, expected repo:branch@full-commit: $ref"
+  fi
+  rest="${ref#*:}"
+  branch="${rest%@*}"
+  commit="${rest##*@}"
+  if [ "$branch" = "$rest" ]; then
+    coord_die "invalid implementation ref, expected repo:branch@full-commit: $ref"
+  fi
+  if [ -z "$repo" ] || [ -z "$branch" ] || [ -z "$commit" ]; then
+    coord_die "invalid implementation ref, expected repo:branch@full-commit: $ref"
+  fi
+  if ! [[ "$commit" =~ ^[0-9A-Fa-f]{40}$ ]]; then
+    coord_die "implementation ref commit must be a full 40-character hash: $ref"
+  fi
+
+  printf '%s- repo: %s\n' "$indent" "$(coord_yaml_scalar "$repo")"
+  printf '%s  branch: %s\n' "$indent" "$(coord_yaml_scalar "$branch")"
+  printf '%s  commit: %s\n' "$indent" "$(coord_yaml_scalar "$commit")"
+}
+
+coord_append_item_event_message() {
+  local file event_id event_type timestamp agent_id role message_id body tmp event_tmp message_tmp ref
+  file="$1"
+  event_id="$2"
+  event_type="$3"
+  timestamp="$4"
+  agent_id="$5"
+  role="$6"
+  message_id="$7"
+  body="$8"
+  shift 8
+
+  event_tmp="$(mktemp)"
+  message_tmp="$(mktemp)"
+  tmp="$(mktemp)"
+
+  {
+    printf '  - id: %s\n' "$event_id"
+    printf '    type: %s\n' "$event_type"
+    printf '    at: %s\n' "$timestamp"
+    printf '    actor:\n'
+    printf '      id: %s\n' "$(coord_yaml_scalar "$agent_id")"
+    printf '      role: %s\n' "$(coord_yaml_scalar "$role")"
+    printf '    message: %s\n' "$message_id"
+    if [ "$event_type" = "claimed" ]; then
+      printf '    owner: %s\n' "$(coord_yaml_scalar "$agent_id")"
+    fi
+    if [ "$#" -gt 0 ]; then
+      printf '    implementation_refs:\n'
+      for ref in "$@"; do
+        [ -n "$ref" ] || continue
+        coord_write_implementation_ref_yaml "      " "$ref"
+      done
+    fi
+  } >"$event_tmp"
+
+  {
+    printf '  - id: %s\n' "$message_id"
+    printf '    event: %s\n' "$event_id"
+    printf '    body: |-\n'
+    if [ -n "$body" ]; then
+      printf '%s\n' "$body" | sed -e 's/^/      /' -e 's/^      $//'
+    else
+      printf '      \n'
+    fi
+  } >"$message_tmp"
+
+  awk -v event_file="$event_tmp" -v message_file="$message_tmp" '
+    /^messages:[[:space:]]*$/ && !inserted_event {
+      while ((getline line < event_file) > 0) print line
+      close(event_file)
+      inserted_event = 1
+    }
+    { print }
+    END {
+      if (!inserted_event) {
+        print "events:"
+        while ((getline line < event_file) > 0) print line
+        close(event_file)
+        print "messages:"
+      }
+      while ((getline line < message_file) > 0) print line
+      close(message_file)
+    }
+  ' "$file" >"$tmp"
+
+  mv "$tmp" "$file"
+  rm -f "$event_tmp" "$message_tmp"
+}
+
 coord_append_activity() {
   local file timestamp agent message
   file="$1"
@@ -369,6 +660,13 @@ coord_append_activity() {
     printf '\n## Activity\n' >>"$file"
   fi
   printf '\n- %s %s: %s\n' "$timestamp" "$agent" "$message" >>"$file"
+}
+
+coord_item_find_files() {
+  find workspace projects \
+    -type f \
+    \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) \
+    2>/dev/null | sort
 }
 
 coord_find_item() {
@@ -383,21 +681,22 @@ coord_find_item() {
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     case "$(basename "$file")" in
-      "$query"|"$query".md|"$query"-*)
+      "$query"|"$query".md|"$query".yaml|"$query".yml|"$query"-*)
         matches="${matches}${file}"$'\n'
         continue
         ;;
     esac
-    id_value="$(coord_frontmatter_value "$file" id || true)"
+    id_value="$(coord_item_value "$file" id || true)"
     if [ "$id_value" = "$query" ]; then
       matches="${matches}${file}"$'\n'
     fi
-  done < <(find workspace projects -type f -name '*.md' 2>/dev/null | sort)
+  done < <(coord_item_find_files)
 
   match_count="$(printf '%s' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
   if [ "$match_count" = "0" ]; then
     coord_die "item not found: $query"
   fi
+
   if [ "$match_count" != "1" ]; then
     printf 'agent-coord: multiple items match %s:\n%s' "$query" "$matches" >&2
     exit 1

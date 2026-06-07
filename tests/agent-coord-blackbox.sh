@@ -157,8 +157,12 @@ grep -q '^id: PIENV-[0-9]\{8\}-[0-9]\{6\}$' \
   "$workspace_dir/coordination/$action_path"
 grep -q '^status: open$' "$workspace_dir/coordination/$action_path"
 grep -q '^project: pi-env$' "$workspace_dir/coordination/$action_path"
-grep -q ' agent-a/architect: Created\.$' "$workspace_dir/coordination/$action_path"
-grep -q '^# Document pi config behavior$' \
+grep -q "^title: 'Document pi config behavior'$" \
+  "$workspace_dir/coordination/$action_path"
+grep -q '^    type: opened$' "$workspace_dir/coordination/$action_path"
+grep -q '^      id: agent-a$' "$workspace_dir/coordination/$action_path"
+grep -q '^      role: architect$' "$workspace_dir/coordination/$action_path"
+grep -q '^      # Document pi config behavior$' \
   "$workspace_dir/coordination/$action_path"
 
 explicit_key_path="$(cd "$workspace_dir" && agent-coord-new \
@@ -197,7 +201,9 @@ agent-coord-claim \
 
 grep -q '^status: claimed$' "$workspace_dir/coordination/$action_path"
 grep -q '^owner: agent-a$' "$workspace_dir/coordination/$action_path"
-grep -q ' agent-a/developer: Claimed\.$' "$workspace_dir/coordination/$action_path"
+grep -q '^    type: claimed$' "$workspace_dir/coordination/$action_path"
+grep -q '^      role: developer$' "$workspace_dir/coordination/$action_path"
+grep -q '^      Claimed\.$' "$workspace_dir/coordination/$action_path"
 test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "agent-a/developer <agent-a+developer@coordination.local>|agent-a/developer <agent-a+developer@coordination.local>"
 
@@ -205,12 +211,20 @@ closed_path="$(PI_COORD_ROLE=tester agent-coord-close \
   --coord-dir "$workspace_dir/coordination" \
   --agent-id agent-a \
   --result "Completed in test." \
+  --implementation-ref \
+  "pi-env:main@0123456789abcdef0123456789abcdef01234567" \
   "$item_id" | tail -n 1)"
 
 test -f "$workspace_dir/coordination/$closed_path"
 grep -q '^status: closed$' "$workspace_dir/coordination/$closed_path"
 grep -q '^closed: 20' "$workspace_dir/coordination/$closed_path"
-grep -q ' agent-a/tester: Completed in test\.$' "$workspace_dir/coordination/$closed_path"
+grep -q '^    type: closed$' "$workspace_dir/coordination/$closed_path"
+grep -q '^      role: tester$' "$workspace_dir/coordination/$closed_path"
+grep -q '^      - repo: pi-env$' "$workspace_dir/coordination/$closed_path"
+grep -q '^        branch: main$' "$workspace_dir/coordination/$closed_path"
+grep -q '^        commit: 0123456789abcdef0123456789abcdef01234567$' \
+  "$workspace_dir/coordination/$closed_path"
+grep -q '^      Completed in test\.$' "$workspace_dir/coordination/$closed_path"
 test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "agent-a/tester <agent-a+tester@coordination.local>|agent-a/tester <agent-a+tester@coordination.local>"
 

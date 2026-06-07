@@ -49,6 +49,6 @@ while preserving existing behavior outside the requested area.
 ## Coordination behavior
 
 When working from coordination, pull/rebase before edits, claim only the active
-item, append activity for meaningful state changes, and link the result to
-commits or changed files. Use `pi/developer` as the coordination actor when
-role-aware helpers are available.
+item, append events/messages for meaningful state changes, and link the result
+to implementation refs or changed files. Use role `developer` for coordination
+actor metadata when role-aware helpers are available.

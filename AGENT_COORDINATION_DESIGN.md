@@ -2,7 +2,7 @@
 
 This document describes a proposed optional `pi-env` layer for creating and maintaining Git-backed agent coordination repositories.
 
-The goal is to make multi-agent workspaces easy to establish while keeping synchronization plain, inspectable, and tool-independent: Git plus Markdown files.
+The goal is to make multi-agent workspaces easy to establish while keeping synchronization plain, inspectable, and tool-independent: Git plus YAML item files with Markdown message bodies.
 
 ## 1. Concept
 
@@ -13,7 +13,7 @@ An agent coordination repository is a dedicated Git repository that stores share
 - bugs;
 - decisions;
 - notes;
-- agent activity logs;
+- chronological agent event histories;
 - cross-project coordination state.
 
 For multi-agent work, the coordination repository is the only synchronization mechanism. Agents pull, edit, commit, and push coordination state just like source code.
@@ -31,7 +31,7 @@ For same-machine use, the shared remote can be a local bare Git repository.
 - environment variables for selecting a coordination domain;
 - optional instructions that tell agents where the coordination repo is and how to sync it.
 
-The coordination repositories themselves should remain normal Git repositories containing plain Markdown and small metadata blocks.
+The coordination repositories themselves should remain normal Git repositories containing plain text: YAML coordination items, Markdown message bodies, and small metadata files.
 
 ## 3. Coordination domains
 
@@ -124,7 +124,7 @@ Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions`
 Use stable IDs in filenames. For high-concurrency agent-created items, prefer timestamp IDs to avoid number allocation races:
 
 ```text
-<PROJECTKEY>-<YYYYMMDD-HHMMSS>-<slug>.md
+<PROJECTKEY>-<YYYYMMDD-HHMMSS>-<slug>.yaml
 ```
 
 `PROJECTKEY` should be uppercase alphanumeric text. Project item keys are
@@ -145,46 +145,58 @@ backslashes, and other non-alphanumeric characters are removed.
 Example:
 
 ```text
-PIENV-20260605-143022-document-pi-config.md
+PIENV-20260605-143022-document-pi-config.yaml
 ```
 
 For smaller human-managed repositories, sequential IDs are also acceptable:
 
 ```text
-PIENV-0001-document-pi-config.md
+PIENV-0001-document-pi-config.yaml
 ```
 
-Each item should repeat the ID and status in frontmatter:
+Each item should be a YAML file with top-level current state, chronological
+events, and Markdown message bodies linked to those events:
 
-```markdown
----
+```yaml
+schema: coordination-item/v1
 id: PIENV-20260605-143022
 type: issue
 status: open
 project: pi-env
-owner:
+title: Document pi config behavior
+owner: null
 priority: medium
 created: 2026-06-05T14:30:22Z
 updated: 2026-06-05T14:30:22Z
-closed:
+closed: null
 related: []
----
+current:
+  event: evt-0001
+  message: msg-0001
+events:
+  - id: evt-0001
+    type: opened
+    at: 2026-06-05T14:30:22Z
+    actor:
+      id: agent-a
+      role: architect
+    message: msg-0001
+messages:
+  - id: msg-0001
+    event: evt-0001
+    body: |-
+      # Document pi config behavior
 
-# Document pi config behavior
+      ## Context
 
-## Context
+      ## Acceptance criteria
 
-## Acceptance criteria
-
-- [ ] README explains host `pi config`
-- [ ] README explains sandbox `pi-bwrap -- config`
-
-## Activity
-
-- 2026-06-05T14:30:22Z agent-a: Created.
+      - [ ] README explains host `pi config`
+      - [ ] README explains sandbox `pi-bwrap -- config`
 ```
 
-Separate open and closed work by directory and keep status in frontmatter:
+Separate open and closed work by directory and keep current `status` in the
+YAML file:
 
 ```text
 issues/open/
@@ -192,7 +204,10 @@ issues/blocked/
 issues/closed/
 ```
 
-When closing an issue, move it with `git mv`, set `status: closed`, and set `closed:`.
+When closing an issue, move it with `git mv`, set `status: closed`, set
+`closed:`, update `current:`, and append a `closed` event/message. Close or
+link events should include structured implementation refs when possible:
+`repo: pi-env`, `branch: main`, and the full `commit` hash.
 
 ## 6. Git synchronization protocol
 
@@ -200,12 +215,13 @@ Agents should use a simple protocol:
 
 ```text
 1. pull/rebase before reading or selecting work;
-2. claim one item by editing its frontmatter;
-3. commit and push the claim immediately;
-4. do project work in the relevant project clone;
-5. pull/rebase the coordination repo again;
-6. update progress, links, result, or status;
-7. commit and push immediately.
+2. claim one item by editing current YAML fields;
+3. append a claimed event and linked Markdown message;
+4. commit and push the claim immediately;
+5. do project work in the relevant project clone;
+6. pull/rebase the coordination repo again;
+7. append progress, link, result, or status events/messages;
+8. commit and push immediately.
 ```
 
 Example claim flow:
@@ -213,8 +229,10 @@ Example claim flow:
 ```bash
 cd coordination
 git pull --rebase
-# edit item: status: claimed, owner: agent-a
-git add projects/pi-env/issues/open/PIENV-20260605-143022-document-pi-config.md
+# edit item: status: claimed, owner: agent-a, current: evt-0002/msg-0002
+# append a claimed event and message
+path=projects/pi-env/issues/open/PIENV-20260605-143022-document-pi-config.yaml
+git add "$path"
 git commit -m "Claim PIENV-20260605-143022"
 git push
 ```
@@ -263,7 +281,7 @@ Everything else can remain normal Git commands until real usage proves that more
 PI_COORD_ROOT=/workspace/agent-remotes # where bare coordination remotes live
 PI_COORD_WORKSPACE=piws                # coordination domain/workspace id
 PI_COORD_DIR=coordination              # clone directory in each workspace
-PI_COORD_AGENT_ID=agent-a              # agent identity for ownership/activity logs
+PI_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
 PI_COORD_ROLE=architect                # optional active role for role-aware commits
 PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
 ```
@@ -291,9 +309,9 @@ not already part of the selected project mount.
 
 If a role-template extension is active, coordination helpers may use
 `PI_COORD_ROLE` or an explicit `--role ROLE` option to make coordination
-actions attributable to the role that performed them. The effective actor can
-be rendered as `<agent-id>/<role>`, for example `pi/architect`, in item activity
-logs. Coordination commits can use per-command Git identity overrides such
+actions attributable to the role that performed them. Item events store the
+agent ID and role explicitly; helper Git commits can still use an effective
+actor such as `pi/architect` through per-command identity overrides such
 as:
 
 ```bash
@@ -340,8 +358,8 @@ The generated `coordination/AGENTS.md` should instruct agents:
 4. Never force-push, rewrite public history, delete closed items, or renumber item IDs.
 5. Prefer one claimed item per agent unless explicitly instructed otherwise.
 6. Do not edit another agent's claimed item except to resolve a Git conflict, add clearly relevant factual information, or when workspace rules define it as stale/abandoned.
-7. Record all meaningful state transitions in the item's `## Activity` section.
-8. Link completed work to concrete project commits, branches, PRs, or file paths where possible.
+7. Record all meaningful state transitions as chronological item events with linked Markdown messages.
+8. Link completed work to concrete structured implementation refs with `repo`, `branch`, and full `commit` fields.
 9. Keep coordination changes small and reviewable.
 10. Keep all Git commit, tag, and other Git message text readable in standard terminals: subject/summary lines should be at most 72 characters, and body paragraphs should be hard-wrapped at 72 characters where practical.
 11. If a push/rebase conflict occurs, resolve it conservatively and preserve both agents' factual updates when possible.
@@ -350,12 +368,12 @@ The generated `coordination/AGENTS.md` should instruct agents:
 
 Agents should use these state transitions:
 
-- create: add a new Markdown item under `issues/open/` or the appropriate typed directory;
-- claim: set `status: claimed`, set `owner: <agent-id>`, append activity, commit, push;
-- block: move to `blocked/` when needed, set `status: blocked`, document blocker and owner expectations;
-- resume/unblock: move back to `open/` or keep claimed if the same agent continues;
-- close: use `git mv` into `closed/`, set `status: closed`, set `closed: <timestamp>`, append result and links;
-- split: create new linked items and mark the relationship in `related:` / `split_from:` fields;
+- create: add a new YAML item under `issues/open/` or the appropriate typed directory, with an `opened` event/message;
+- claim: set `status: claimed`, set `owner: <agent-id>`, update `current:`, append a `claimed` event/message, commit, push;
+- block: move to `blocked/` when needed, set `status: blocked`, document blocker and owner expectations in a `blocked` event/message;
+- resume/unblock: move back to `open/` or keep claimed if the same agent continues, and append `reopened` or `updated` history;
+- close: use `git mv` into `closed/`, set `status: closed`, set `closed: <timestamp>`, append a `closed` event/message with structured implementation refs;
+- split: create new linked items and mark the relationship in `related:` / `split_from:` fields and an `updated` event;
 - supersede: leave the old item in place, mark `status: closed` or `superseded`, and link to the replacement.
 
 Do not encode important state only in a commit message. The file content must remain understandable from a checkout.
@@ -376,11 +394,11 @@ The coordination repository is the only synchronization source for agent task st
 ## Required protocol
 
 1. `cd coordination && git pull --rebase` before reading or modifying coordination state.
-2. Inspect open/claimed/blocked items relevant to the current workspace/project.
+2. Inspect open/claimed/blocked YAML items relevant to the current workspace/project.
 3. Claim at most one item unless instructed otherwise.
 4. Commit and push immediately after claiming or changing status.
 5. Do project work in the project repository.
-6. Return to the coordination repo, pull/rebase, update the item with results and links, then commit and push.
+6. Return to the coordination repo, pull/rebase, append an event/message with results and implementation refs, then commit and push.
 
 ## Safety rules
 

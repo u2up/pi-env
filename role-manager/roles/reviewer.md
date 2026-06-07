@@ -49,6 +49,6 @@ maintainability, security, test adequacy, and user-visible risk.
 ## Coordination behavior
 
 When coordination is in scope, pull/rebase before reading shared state, add
-factual review activity to the active item when permitted, and leave ownership
-unchanged unless explicitly assigned. Use `pi/reviewer` as the coordination
-actor when role-aware helpers are available.
+factual review events/messages to the active item when permitted, and leave
+ownership unchanged unless explicitly assigned. Use role `reviewer` for
+coordination actor metadata when role-aware helpers are available.

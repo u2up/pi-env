@@ -52,12 +52,18 @@ found=0
 while IFS= read -r file; do
   [ -n "$file" ] || continue
   found=1
-  id="$(coord_frontmatter_value "$file" id || true)"
-  status="$(coord_frontmatter_value "$file" status || true)"
-  owner="$(coord_frontmatter_value "$file" owner || true)"
-  priority="$(coord_frontmatter_value "$file" priority || true)"
-  title="$(grep -m 1 '^# ' "$file" | sed 's/^# //' || true)"
-  [ -n "$id" ] || id="$(basename "$file" .md)"
+  id="$(coord_item_value "$file" id || true)"
+  status="$(coord_item_value "$file" status || true)"
+  owner="$(coord_item_value "$file" owner || true)"
+  priority="$(coord_item_value "$file" priority || true)"
+  title="$(coord_item_value "$file" title || true)"
+  if [ -z "$title" ]; then
+    title="$(grep -m 1 '^# ' "$file" | sed 's/^# //' || true)"
+  fi
+  [ -n "$id" ] || id="$(basename "$file")"
+  id="${id%.yaml}"
+  id="${id%.yml}"
+  id="${id%.md}"
   [ -n "$status" ] || status="unknown"
   [ -n "$owner" ] || owner="-"
   [ -n "$priority" ] || priority="-"
@@ -67,7 +73,8 @@ while IFS= read -r file; do
 done < <(
   find workspace/issues/open workspace/issues/blocked \
     projects/*/issues/open projects/*/issues/blocked \
-    -type f -name '*.md' 2>/dev/null | sort
+    -type f \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) \
+    2>/dev/null | sort
 )
 
 if [ "$found" = "0" ]; then

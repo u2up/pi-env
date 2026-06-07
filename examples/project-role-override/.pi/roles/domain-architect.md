@@ -47,5 +47,5 @@ integration boundaries.
 ## Coordination behavior
 
 When coordination is in scope, pull/rebase before editing shared state and use
-the actor suffix `pi/domain-architect` for coordination helper activity and
-commits when role-aware helpers are available.
+role `domain-architect` for coordination item events and helper commits when
+role-aware helpers are available.

@@ -14,22 +14,38 @@ workspace rules say otherwise.
 
 1. `cd coordination && git pull --rebase` before reading or modifying
    coordination state.
-2. Inspect open, claimed, and blocked items relevant to the current
+2. Inspect open, claimed, and blocked YAML items relevant to the current
    workspace or project.
 3. Claim at most one item unless instructed otherwise.
 4. When an active role is in effect, preserve it for coordination helpers
-   with `--role ROLE` or `PI_COORD_ROLE=ROLE`; activity should show the
-   effective actor, for example `pi/architect`.
+   with `--role ROLE` or `PI_COORD_ROLE=ROLE`; item events should store the
+   actor ID and role explicitly.
 5. Commit and push immediately after claiming or changing status.
 6. Do project work in the project repository.
-7. Return to the coordination repo, pull/rebase, update the item with
-   results and links, then commit and push.
+7. Return to the coordination repo, pull/rebase, update the item with a new
+   event/message and implementation refs, then commit and push.
 
 ## Item keys
 
 Use stored `item_key` metadata when creating items. Project item keys live
 in `projects/<project>/PROJECT.md`; workspace-level item keys live in
 `WORKSPACE.md`. Do not invent or silently change keys.
+
+## Item history
+
+Coordination items are YAML files. Top-level fields show current state;
+chronological `events:` entries define the authoritative history; linked
+`messages:` entries contain Markdown text. Do not add a separate
+`## Activity` section.
+
+For completed work, prefer structured implementation refs:
+
+```yaml
+implementation_refs:
+  - repo: pi-env
+    branch: main
+    commit: 32225e01ffebef26b1aeca098e7081ff913066cc
+```
 
 ## Safety rules
 

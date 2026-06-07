@@ -184,7 +184,8 @@ state, those commits should be attributable to the role. The implemented
 behavior is:
 
 - coordination helpers accept `--role ROLE` and read `PI_COORD_ROLE`;
-- activity entries use the effective actor, for example `pi/architect`;
+- coordination item events store actor ID and role explicitly, and helper
+  commits may use an effective actor such as `pi/architect`;
 - coordination commits use a role-specific Git identity through per-command
   `git -c` options, for example:
 
