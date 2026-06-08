@@ -264,17 +264,25 @@ slashes, backslashes, and other non-alphanumeric characters removed. Unless
 <PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
 ```
 
-Built-in type codes must include `ISS` for `issue`, `REQ` for
-`requirement`, `DEC` for `decision`, and `NOTE` for `note`. The `NNN` suffix
-must start at `001` for each timestamp and increment to avoid collisions in
-the local coordination checkout. Filenames for new generated items must use
-the item ID only. `--id` must override the whole item ID.
+Built-in type codes must include `ISS` for `issue`, `FRQ` for
+`functional-requirement`, `QRQ` for `quality-requirement`, `CRQ` for
+`constraint-requirement`, `DEC` for `decision`, and `NOTE` for `note`.
+Generic `REQ` IDs for `requirement` are legacy-only unless an explicit
+supersession or migration decision says otherwise. The `NNN` suffix must start
+at `001` for each timestamp and increment to avoid collisions in the local
+coordination checkout. Filenames for new generated items must use the item ID
+only. `--id` must override the whole item ID.
 
 Project item keys must be stored in `projects/<project>/PROJECT.md` as
 `item_key`; workspace-level item keys must be stored in `WORKSPACE.md` as
-`item_key`. Issue items must be created under `issues/open`; requirement,
-decision, note, and custom item types must be created under semantic type
-directories by default.
+`item_key`. Issue items must be created under `issues/open`. Functional,
+quality, and constraint requirements must be created under
+`functional-requirements/`, `quality-requirements/`, and
+`constraint-requirements/` respectively for both project and workspace items.
+Legacy generic `requirement` items remain under `requirements/`. Decision,
+note, and custom item types must be created under semantic type directories by
+default. Existing historical items must not be silently renumbered, rewritten,
+or moved only to satisfy newer naming conventions.
 
 ### CMD-013 Coordination lifecycle helpers
 
@@ -282,8 +290,8 @@ The lifecycle helpers must remain thin wrappers around Git and YAML item
 file edits:
 
 - `agent-coord-status` shows Git status and open/blocked/done item summaries;
-- `agent-coord-list` lists issue, decision, or requirement IDs, statuses,
-  and titles, optionally filtered by status;
+- `agent-coord-list` lists issue, decision, legacy requirement, or
+  requirement-class IDs, statuses, and titles, optionally filtered by status;
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
 - coordination commands that create item events or commits accept
@@ -326,9 +334,12 @@ orphan scripts under `tests/items`. Its `--require-done-or-closed` option
 must fail when any issue item is not `done` or `closed`.
 
 Item-matched tests must live in the project repository under paths such as
-`tests/items/projects/<project>/issues/<item-id>.sh` and
-`tests/items/projects/<project>/requirements/<item-id>.sh`; they must not
-mirror issue status directories.
+`tests/items/projects/<project>/issues/<item-id>.sh`,
+`tests/items/projects/<project>/functional-requirements/<item-id>.sh`,
+`tests/items/projects/<project>/quality-requirements/<item-id>.sh`, and
+`tests/items/projects/<project>/constraint-requirements/<item-id>.sh`; they
+must not mirror issue status directories. Legacy generic `REQ` items may keep
+`tests/items/projects/<project>/requirements/<item-id>.sh`.
 
 ### CMD-015 `agent-coord-upgrade-rules`
 

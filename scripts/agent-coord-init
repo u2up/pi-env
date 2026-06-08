@@ -161,6 +161,9 @@ mkdir -p \
   "projects/$project_dir/issues/blocked" \
   "projects/$project_dir/issues/done" \
   "projects/$project_dir/issues/closed" \
+  "projects/$project_dir/functional-requirements" \
+  "projects/$project_dir/quality-requirements" \
+  "projects/$project_dir/constraint-requirements" \
   "projects/$project_dir/requirements" \
   "projects/$project_dir/decisions" \
   "projects/$project_dir/notes" \
@@ -168,6 +171,9 @@ mkdir -p \
   workspace/issues/blocked \
   workspace/issues/done \
   workspace/issues/closed \
+  workspace/functional-requirements \
+  workspace/quality-requirements \
+  workspace/constraint-requirements \
   workspace/requirements \
   workspace/decisions \
   workspace/architecture \

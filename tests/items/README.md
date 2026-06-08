@@ -7,7 +7,10 @@ Project item tests mirror project and item type, not issue status:
 
 ```text
 tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/requirements/<item-id>.sh
+tests/items/projects/<project>/functional-requirements/<item-id>.sh
+tests/items/projects/<project>/quality-requirements/<item-id>.sh
+tests/items/projects/<project>/constraint-requirements/<item-id>.sh
+tests/items/projects/<project>/requirements/<item-id>.sh  # legacy REQ items
 ```
 
 Workspace item tests use:

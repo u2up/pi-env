@@ -18,7 +18,9 @@ Usage:
   agent-coord-list [options] TYPE [STATUS]
 
 Arguments:
-  TYPE          Item type to list: issues, decisions, or requirements
+  TYPE          Item type to list, for example issues, decisions,
+                functional-requirements, quality-requirements,
+                constraint-requirements, or legacy requirements
   STATUS        Optional status filter, for example open, closed, or accepted
 
 Options:
@@ -71,10 +73,10 @@ fi
 
 item_type="$(coord_item_type_canonical "${positional[0]}")"
 case "$item_type" in
-  issue|decision|requirement)
+  issue|decision|requirement|functional-requirement|quality-requirement|constraint-requirement)
     ;;
   *)
-    coord_die "item type must be issues, decisions, or requirements"
+    coord_die "item type must be issues, decisions, requirements, functional-requirements, quality-requirements, or constraint-requirements"
     ;;
 esac
 

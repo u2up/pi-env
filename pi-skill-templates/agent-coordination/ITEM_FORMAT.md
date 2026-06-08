@@ -16,7 +16,7 @@ Examples:
 
 ```text
 PIENV-ISS-20260607-204155-001.yaml
-PIENV-REQ-20260607-204155-002.yaml
+PIENV-FRQ-20260607-204155-002.yaml
 ```
 
 `PROJECTKEY` is uppercase alphanumeric text. Project item keys are stored in
@@ -26,7 +26,11 @@ stored in top-level `WORKSPACE.md` as `item_key`.
 `TYPECODE` is an uppercase item-type abbreviation. Built-in mappings are:
 
 - `ISS`: `issue`;
-- `REQ`: `requirement`;
+- `FRQ`: `functional-requirement`;
+- `QRQ`: `quality-requirement`;
+- `CRQ`: `constraint-requirement`;
+- `REQ`: legacy generic `requirement` (do not use for new requirements
+  unless an explicit supersession or migration decision says otherwise);
 - `DEC`: `decision`;
 - `NOTE`: `note`.
 
@@ -111,16 +115,28 @@ workspace/issues/closed/
 ```
 
 Other item types live under their semantic type directory and do not mirror
-issue status directories by default:
+issue status directories by default. Requirement classes have distinct
+project-level and workspace-level directories:
 
 ```text
-projects/<project>/requirements/
+projects/<project>/functional-requirements/
+projects/<project>/quality-requirements/
+projects/<project>/constraint-requirements/
+projects/<project>/requirements/        # legacy generic REQ items only
 projects/<project>/decisions/
 projects/<project>/notes/
-workspace/requirements/
+workspace/functional-requirements/
+workspace/quality-requirements/
+workspace/constraint-requirements/
+workspace/requirements/                 # legacy generic REQ items only
 workspace/decisions/
 workspace/notes/
 ```
+
+Generic `REQ` requirement IDs and `requirements/` directories are legacy-only
+unless an explicit supersession or migration decision says otherwise. Preserve
+historical IDs and filenames; do not silently renumber, rewrite, or move old
+items just to satisfy the FRQ/QRQ/CRQ taxonomy.
 
 Projects may define additional type-specific status values, but should avoid
 moving test scripts when an item's lifecycle status changes.
@@ -170,7 +186,10 @@ issue status directories:
 
 ```text
 tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/requirements/<item-id>.sh
+tests/items/projects/<project>/functional-requirements/<item-id>.sh
+tests/items/projects/<project>/quality-requirements/<item-id>.sh
+tests/items/projects/<project>/constraint-requirements/<item-id>.sh
+tests/items/projects/<project>/requirements/<item-id>.sh  # legacy REQ items
 tests/items/workspace/issues/<item-id>.sh
 ```
 
@@ -180,8 +199,8 @@ Examples:
 coordination/projects/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml
 tests/items/projects/pi-env/issues/PIENV-ISS-20260607-204155-001.sh
 
-coordination/projects/pi-env/requirements/PIENV-REQ-20260607-204155-001.yaml
-tests/items/projects/pi-env/requirements/PIENV-REQ-20260607-204155-001.sh
+coordination/projects/pi-env/functional-requirements/PIENV-FRQ-20260607-204155-001.yaml
+tests/items/projects/pi-env/functional-requirements/PIENV-FRQ-20260607-204155-001.sh
 ```
 
 A verification event should record the exact test command(s) and result. The

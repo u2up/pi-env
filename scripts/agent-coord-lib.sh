@@ -178,6 +178,15 @@ coord_item_type_canonical() {
     issue|issues|task|tasks)
       canonical="issue"
       ;;
+    functional-requirement|functional-requirements|functional_requirement|functional_requirements|frq|frqs)
+      canonical="functional-requirement"
+      ;;
+    quality-requirement|quality-requirements|quality_requirement|quality_requirements|qrq|qrqs)
+      canonical="quality-requirement"
+      ;;
+    constraint-requirement|constraint-requirements|constraint_requirement|constraint_requirements|crq|crqs)
+      canonical="constraint-requirement"
+      ;;
     requirement|requirements|req|reqs)
       canonical="requirement"
       ;;
@@ -201,6 +210,15 @@ coord_item_type_code() {
   case "$type" in
     issue|issues|task|tasks)
       code="ISS"
+      ;;
+    functional-requirement|functional-requirements)
+      code="FRQ"
+      ;;
+    quality-requirement|quality-requirements)
+      code="QRQ"
+      ;;
+    constraint-requirement|constraint-requirements)
+      code="CRQ"
       ;;
     requirement|requirements|req|reqs)
       code="REQ"
@@ -228,6 +246,15 @@ coord_item_type_dir() {
   case "$type" in
     issue|issues|task|tasks)
       dir="issues"
+      ;;
+    functional-requirement|functional-requirements)
+      dir="functional-requirements"
+      ;;
+    quality-requirement|quality-requirements)
+      dir="quality-requirements"
+      ;;
+    constraint-requirement|constraint-requirements)
+      dir="constraint-requirements"
       ;;
     requirement|requirements|req|reqs)
       dir="requirements"

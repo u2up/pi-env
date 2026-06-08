@@ -502,8 +502,11 @@ timestamp, and a three-digit collision/order suffix:
 <PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
 ```
 
-For example, issues use `ISS` and requirements use `REQ`; the suffix starts
-at `001` for each timestamp. Project keys are stored in
+For example, issues use `ISS`, functional requirements use `FRQ`, quality
+requirements use `QRQ`, and constraint requirements use `CRQ`; the suffix
+starts at `001` for each timestamp. Generic `REQ` requirement IDs are
+legacy-only unless an explicit supersession or migration decision says
+otherwise. Project keys are stored in
 `projects/<project>/PROJECT.md` as `item_key`; workspace-level keys are
 stored in `WORKSPACE.md` as `item_key`. Agents should use those stored keys
 instead of inventing new ones.
@@ -513,8 +516,14 @@ is needed, `blocked` means developer work cannot proceed, `done` means the
 developer believes implementation is complete, and `closed` means final
 accepted after the item is reviewed and verified. Reviewers and testers work
 from `done/`; failures move items back to `open/` with evidence.
-Requirement, decision, note, and other non-issue items live under semantic
-type directories such as `requirements/`, `decisions/`, and `notes/`.
+Functional, quality, and constraint requirements live under
+`functional-requirements/`, `quality-requirements/`, and
+`constraint-requirements/` for both project and workspace items. The generic
+`requirements/` directory is legacy-only for historical `REQ` items unless an
+explicit migration decision says otherwise. Decision, note, and other non-issue
+items live under semantic type directories such as `decisions/` and `notes/`.
+Historical items must not be silently renumbered, rewritten, or moved only to
+satisfy newer conventions.
 
 `agent-coord-new` resolves keys in this order: `--project-key`, stored
 metadata, `PI_COORD_PROJECT_KEY`, derived project name, then derived

@@ -132,8 +132,11 @@ number allocation races while preserving creation-time information:
 ```
 
 `PROJECTKEY` should be uppercase alphanumeric text. Built-in type codes are
-`ISS` for issue, `REQ` for requirement, `DEC` for decision, and `NOTE` for
-note. `NNN` is a three-digit collision/order suffix for the exact UTC
+`ISS` for issue, `FRQ` for functional requirement, `QRQ` for quality
+requirement, `CRQ` for constraint requirement, `DEC` for decision, and `NOTE`
+for note. Generic `REQ` requirement IDs are legacy-only unless an explicit
+supersession or migration decision says otherwise. `NNN` is a three-digit
+collision/order suffix for the exact UTC
 timestamp and starts at `001`. Project item keys are stored in
 `projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
 stored in top-level `WORKSPACE.md` as `item_key`.
@@ -153,7 +156,7 @@ Examples:
 
 ```text
 PIENV-ISS-20260605-143022-001.yaml
-PIENV-REQ-20260605-143022-002.yaml
+PIENV-FRQ-20260605-143022-002.yaml
 ```
 
 Historical items may keep legacy IDs and slug filenames. Do not rename or
@@ -216,7 +219,13 @@ issues/closed/
 ```
 
 Other item types live under semantic type directories such as
-`requirements/`, `decisions/`, and `notes/`.
+`functional-requirements/`, `quality-requirements/`,
+`constraint-requirements/`, `decisions/`, and `notes/`. The same layout is used
+under both `projects/<project>/` and `workspace/`. The generic `requirements/`
+directory is legacy-only for historical `REQ` items unless an explicit
+supersession or migration decision says otherwise. Preserve historical IDs and
+filenames; do not silently renumber, rewrite, or move old items just to satisfy
+a newer taxonomy.
 
 The state names are developer-centric: `open` means developer work is needed,
 `blocked` means developer work cannot proceed, `done` means the developer
@@ -283,7 +292,7 @@ bootstrap-coordination
 agent-coord-init      create a local bare coordination remote
 agent-coord-clone     clone a coordination remote into the current workspace
 agent-coord-status    show sync status and current open/claimed items
-agent-coord-list      list issues, decisions, or requirements by status
+agent-coord-list      list issues, decisions, or requirement classes by status
 agent-coord-pull      run git pull --rebase in the coordination clone
 agent-coord-push      commit/push coordination changes
 agent-coord-new       create a new templated item

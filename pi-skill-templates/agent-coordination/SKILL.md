@@ -43,9 +43,12 @@ New item IDs and filenames use:
 <PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>.yaml
 ```
 
-Use `ISS` for issue, `REQ` for requirement, `DEC` for decision, and `NOTE` for
-note. The `NNN` suffix starts at `001` for each UTC timestamp. Historical items
-may keep legacy IDs; do not rename or renumber them unless explicitly directed.
+Use `ISS` for issue, `FRQ` for functional requirement, `QRQ` for quality
+requirement, `CRQ` for constraint requirement, `DEC` for decision, and `NOTE`
+for note. Generic `REQ` requirement IDs are legacy-only unless an explicit
+supersession or migration decision says otherwise. The `NNN` suffix starts at
+`001` for each UTC timestamp. Historical items may keep legacy IDs; do not
+rename, renumber, rewrite, or move them unless explicitly directed.
 
 ## Item history
 
@@ -79,7 +82,7 @@ project/workspace plus item type, not issue status:
 
 ```text
 tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/requirements/<item-id>.sh
+tests/items/projects/<project>/functional-requirements/<item-id>.sh
 tests/items/workspace/issues/<item-id>.sh
 ```
 

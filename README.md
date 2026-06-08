@@ -129,8 +129,8 @@ timestamp, and a three-digit collision/order suffix that starts at `001`:
 ```
 
 For example, an issue can be created as
-`PIENV-ISS-20260607-204155-001.yaml`; a requirement can be created as
-`PIENV-REQ-20260607-204155-001.yaml`. Use
+`PIENV-ISS-20260607-204155-001.yaml`; a functional requirement can be created
+as `PIENV-FRQ-20260607-204155-001.yaml`. Use
 `agent-coord-init --project-key PIENV` to set the initial project's stored
 key during scaffolding. Project keys are stored in the coordination repo at
 `projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
@@ -148,8 +148,11 @@ Key resolution for `agent-coord-new` is:
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
 backslashes, and other non-alphanumeric characters are removed. For
 example, `pi-env_test` becomes `PIENVTEST`. `--id ID` overrides the whole
-item ID. Built-in type codes are `ISS` for `issue`, `REQ` for
-`requirement`, `DEC` for `decision`, and `NOTE` for `note`.
+item ID. Built-in type codes are `ISS` for `issue`, `FRQ` for
+`functional-requirement`, `QRQ` for `quality-requirement`, `CRQ` for
+`constraint-requirement`, `DEC` for `decision`, and `NOTE` for `note`.
+Generic `REQ` requirement IDs are legacy-only unless an explicit supersession
+or migration decision says otherwise.
 
 Lifecycle helpers are also available:
 
@@ -157,7 +160,7 @@ Lifecycle helpers are also available:
 bootstrap-coordination
                       infer defaults and initialize via agent-coord-init
 agent-coord-status    show sync status and open/blocked/done items
-agent-coord-list      list issues, decisions, or requirements by status
+agent-coord-list      list issues, decisions, or requirement classes by status
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
 agent-coord-new       create a templated item
@@ -175,9 +178,12 @@ Items are YAML files with chronological `events` and linked Markdown
 `messages`. Issue state group names are developer-centric: `open` means
 developer work is needed, `blocked` means developer work cannot proceed,
 `done` means the developer believes implementation is complete, and `closed`
-means final accepted after review and verification. Requirement, decision,
-note, and other non-issue item types live under their semantic type
-directories. Stored implementation refs are structured objects with `repo`,
+means final accepted after review and verification. Functional, quality, and constraint requirements use
+`functional-requirements/`, `quality-requirements/`, and
+`constraint-requirements/` under both `projects/<project>/` and `workspace/`.
+The generic `requirements/` directory remains only for legacy `REQ` items
+unless an explicit migration decision says otherwise. Decision, note, and other
+non-issue item types live under their semantic type directories. Stored implementation refs are structured objects with `repo`,
 `branch`, and full `commit` fields.
 `agent-coord-done --implementation-ref pi-env:main@<full-hash>` accepts the
 compact CLI form and writes the structured YAML form. `agent-coord-close`
