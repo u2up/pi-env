@@ -338,7 +338,7 @@ try {
     inspectedFiles: ["role-manager/extensions/role-manager.ts"],
     changedFiles: "role-manager/extensions/role-manager.ts",
     checksRun: ["tests/role-manager-commands.sh passed"],
-    coordination: "Claimed PIENV-ROLE-005",
+    coordination: "Claimed PIENV-ISS-20260606-140754-005",
     nextRole: "reviewer",
   });
   const doneResult = await roleCycleDoneTool.execute(
@@ -359,7 +359,7 @@ try {
   assert.deepEqual(doneResult.details.testsChecksRun, [
     "tests/role-manager-commands.sh passed",
   ]);
-  assert.deepEqual(doneResult.details.coordinationUpdates, ["Claimed PIENV-ROLE-005"]);
+  assert.deepEqual(doneResult.details.coordinationUpdates, ["Claimed PIENV-ISS-20260606-140754-005"]);
   assert.equal(doneResult.details.recommendedNextRole, "reviewer");
   assert.match(
     roleCycleDoneTool.renderResult(doneResult, { expanded: false }).render(80).join("\n"),
