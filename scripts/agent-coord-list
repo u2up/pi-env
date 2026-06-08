@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-list - list coordination items by type and optional status
+
+Usage:
+  agent-coord-list [options] TYPE [STATUS]
+
+Arguments:
+  TYPE          Item type to list: issues, decisions, or requirements
+  STATUS        Optional status filter, for example open, closed, or accepted
+
+Options:
+  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
+  -h, --help        Show this help
+
+Output columns are tab-separated:
+  item id, status, title
+USAGE
+}
+
+coord_dir_opt=""
+positional=()
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --coord-dir)
+      [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      while [ "$#" -gt 0 ]; do
+        positional+=("$1")
+        shift
+      done
+      ;;
+    --*)
+      coord_die "unknown option: $1"
+      ;;
+    *)
+      positional+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [ "${#positional[@]}" -lt 1 ]; then
+  coord_die "item type is required"
+fi
+
+if [ "${#positional[@]}" -gt 2 ]; then
+  coord_die "unexpected extra argument: ${positional[2]}"
+fi
+
+item_type="$(coord_item_type_canonical "${positional[0]}")"
+case "$item_type" in
+  issue|decision|requirement)
+    ;;
+  *)
+    coord_die "item type must be issues, decisions, or requirements"
+    ;;
+esac
+
+status_filter="${positional[1]:-}"
+status_filter_cmp="$(printf '%s' "$status_filter" | tr '[:upper:]' '[:lower:]')"
+
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+cd "$coord_dir"
+
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+
+  raw_type="$(coord_item_value "$file" type || true)"
+  [ -n "$raw_type" ] || continue
+  file_type="$(coord_item_type_canonical "$raw_type")"
+  [ "$file_type" = "$item_type" ] || continue
+
+  status="$(coord_item_value "$file" status || true)"
+  [ -n "$status" ] || status="unknown"
+  status_cmp="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
+  if [ -n "$status_filter" ] && [ "$status_cmp" != "$status_filter_cmp" ]; then
+    continue
+  fi
+
+  id="$(coord_item_value "$file" id || true)"
+  if [ -z "$id" ]; then
+    id="$(basename "$file")"
+    id="${id%.yaml}"
+    id="${id%.yml}"
+    id="${id%.md}"
+  fi
+
+  title="$(coord_item_value "$file" title || true)"
+  if [ -z "$title" ]; then
+    title="$(grep -m 1 '^# ' "$file" | sed 's/^# //' || true)"
+  fi
+  [ -n "$title" ] || title="(untitled)"
+
+  printf '%s\t%s\t%s\n' "$id" "$status" "$title"
+done < <(coord_item_find_files)

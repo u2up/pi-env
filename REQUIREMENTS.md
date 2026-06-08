@@ -69,6 +69,7 @@ For each supported system the flake must expose packages:
 - `agent-coord-clone`
 - `agent-coord-new`
 - `agent-coord-status`
+- `agent-coord-list`
 - `agent-coord-lint`
 - `agent-coord-pull`
 - `agent-coord-push`
@@ -179,6 +180,7 @@ The flake/devshell must provide these opt-in coordination commands:
 - `agent-coord-init`
 - `agent-coord-clone`
 - `agent-coord-status`
+- `agent-coord-list`
 - `agent-coord-pull`
 - `agent-coord-push`
 - `agent-coord-new`
@@ -280,6 +282,8 @@ The lifecycle helpers must remain thin wrappers around Git and YAML item
 file edits:
 
 - `agent-coord-status` shows Git status and open/blocked/done item summaries;
+- `agent-coord-list` lists issue, decision, or requirement IDs, statuses,
+  and titles, optionally filtered by status;
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
 - coordination commands that create item events or commits accept
@@ -702,6 +706,7 @@ nix build .#agent-coord-init
 nix build .#agent-coord-clone
 nix build .#agent-coord-new
 nix build .#agent-coord-status
+nix build .#agent-coord-list
 nix build .#agent-coord-pull
 nix build .#agent-coord-push
 nix build .#agent-coord-claim

@@ -283,6 +283,7 @@ bootstrap-coordination
 agent-coord-init      create a local bare coordination remote
 agent-coord-clone     clone a coordination remote into the current workspace
 agent-coord-status    show sync status and current open/claimed items
+agent-coord-list      list issues, decisions, or requirements by status
 agent-coord-pull      run git pull --rebase in the coordination clone
 agent-coord-push      commit/push coordination changes
 agent-coord-new       create a new templated item

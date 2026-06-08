@@ -208,7 +208,39 @@ case "$requirement_path" in
   *) printf 'unexpected requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
 esac
 
+requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$requirement_path" | sed 's/^id: //')"
+
+decision_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type decision \
+  --status accepted \
+  --testable no \
+  --testability-note "Decision item covered by list helper smoke tests." \
+  "Use coordination list helper" | tail -n 1)"
+grep -q '^id: PIENV-DEC-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "$workspace_dir/coordination/$decision_path"
+grep -q '^type: decision$' "$workspace_dir/coordination/$decision_path"
+grep -q '^status: accepted$' "$workspace_dir/coordination/$decision_path"
+case "$decision_path" in
+  projects/pi-env/decisions/*.yaml) ;;
+  *) printf 'unexpected decision path: %s\n' "$decision_path" >&2; exit 1 ;;
+esac
+
+decision_id="$(grep '^id: ' "$workspace_dir/coordination/$decision_path" | sed 's/^id: //')"
 item_id="$(grep '^id: ' "$workspace_dir/coordination/$action_path" | sed 's/^id: //')"
+
+issue_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" issues open)"
+printf '%s\n' "$issue_list" \
+  | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
+requirement_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" requirements accepted)"
+printf '%s\n' "$requirement_list" \
+  | grep -Eq "^$requirement_id[[:space:]]+accepted[[:space:]]+Requirement item naming$"
+decision_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" decisions accepted)"
+printf '%s\n' "$decision_list" \
+  | grep -Eq "^$decision_id[[:space:]]+accepted[[:space:]]+Use coordination list helper$"
 
 agent-coord-status --coord-dir "$workspace_dir/coordination" >/dev/null
 agent-coord-push \
@@ -305,6 +337,10 @@ grep -q '^      role: tester$' "$workspace_dir/coordination/$closed_path"
 grep -q '^      Closed after review and verification\.$' "$workspace_dir/coordination/$closed_path"
 test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "tester-a/tester <tester-a+tester@coordination.local>|tester-a/tester <tester-a+tester@coordination.local>"
+
+closed_issue_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" issues closed)"
+printf '%s\n' "$closed_issue_list" \
+  | grep -Eq "^$item_id[[:space:]]+closed[[:space:]]+Document pi config behavior$"
 
 head_before="$(git -C "$workspace_dir/coordination" rev-parse HEAD)"
 agent-coord-upgrade-rules \

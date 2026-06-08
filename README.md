@@ -157,6 +157,7 @@ Lifecycle helpers are also available:
 bootstrap-coordination
                       infer defaults and initialize via agent-coord-init
 agent-coord-status    show sync status and open/blocked/done items
+agent-coord-list      list issues, decisions, or requirements by status
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
 agent-coord-new       create a templated item
