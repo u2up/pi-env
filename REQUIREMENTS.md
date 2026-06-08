@@ -69,6 +69,7 @@ For each supported system the flake must expose packages:
 - `agent-coord-clone`
 - `agent-coord-new`
 - `agent-coord-status`
+- `agent-coord-lint`
 - `agent-coord-pull`
 - `agent-coord-push`
 - `agent-coord-claim`
@@ -186,6 +187,7 @@ The flake/devshell must provide these opt-in coordination commands:
 - `agent-coord-review`
 - `agent-coord-verify`
 - `agent-coord-close`
+- `agent-coord-lint`
 - `agent-coord-upgrade-rules`
 
 `bootstrap-coordination` must remain a thin wrapper around
@@ -238,11 +240,11 @@ workspace directory and configure the clone with `pull.rebase=true` and
 
 ### CMD-012 `agent-coord-new`
 
-`agent-coord-new` must create a YAML item with timestamp-based ID,
+`agent-coord-new` must create a YAML item with a type-coded timestamp ID,
 top-level current-state fields, `done: null`, `closed: null`,
-`reviewed: false`, `verified: false`, title, acceptance-criteria
-placeholder, chronological `events`, and linked Markdown `messages`. It must
-not commit or push automatically.
+`reviewed: false`, `verified: false`, `testable: yes|no`, title,
+acceptance-criteria placeholder, chronological `events`, and linked Markdown
+`messages`. It must not commit or push automatically.
 
 The generated item ID prefix must resolve in this order:
 
@@ -253,12 +255,24 @@ The generated item ID prefix must resolve in this order:
 5. derived workspace directory name for workspace-level items.
 
 Derived keys must be uppercased with delimiters, whitespace, pipes,
-slashes, backslashes, and other non-alphanumeric characters removed.
-`--id` must override the whole item ID.
+slashes, backslashes, and other non-alphanumeric characters removed. Unless
+`--id` is provided, generated IDs must use:
+
+```text
+<PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
+```
+
+Built-in type codes must include `ISS` for `issue`, `REQ` for
+`requirement`, `DEC` for `decision`, and `NOTE` for `note`. The `NNN` suffix
+must start at `001` for each timestamp and increment to avoid collisions in
+the local coordination checkout. Filenames for new generated items must use
+the item ID only. `--id` must override the whole item ID.
 
 Project item keys must be stored in `projects/<project>/PROJECT.md` as
 `item_key`; workspace-level item keys must be stored in `WORKSPACE.md` as
-`item_key`.
+`item_key`. Issue items must be created under `issues/open`; requirement,
+decision, note, and custom item types must be created under semantic type
+directories by default.
 
 ### CMD-013 Coordination lifecycle helpers
 
@@ -297,7 +311,22 @@ file edits:
 Commands that create commits must reject subject lines longer than 72
 characters.
 
-### CMD-014 `agent-coord-upgrade-rules`
+### CMD-014 `agent-coord-lint`
+
+`agent-coord-lint` must inspect coordination items and item-matched tests. It
+must check issue status-directory consistency, closed issue review and
+verification flags, new-format item ID/type-code consistency, item filename
+stems for new-format IDs, `testable: yes|no`, required `testability_note` for
+`testable: no`, required executable test scripts for `testable: yes`, and
+orphan scripts under `tests/items`. Its `--require-done-or-closed` option
+must fail when any issue item is not `done` or `closed`.
+
+Item-matched tests must live in the project repository under paths such as
+`tests/items/projects/<project>/issues/<item-id>.sh` and
+`tests/items/projects/<project>/requirements/<item-id>.sh`; they must not
+mirror issue status directories.
+
+### CMD-015 `agent-coord-upgrade-rules`
 
 `agent-coord-upgrade-rules --preview` must show template diffs without
 changing files. Without `--preview`, it must require a clean worktree, copy
@@ -305,7 +334,7 @@ bundled coordination rule templates into their installed locations, and
 commit the changes when any template differs. It must not push unless
 `--push` is used.
 
-### CMD-015 Role-manager package
+### CMD-016 Role-manager package
 
 The role-manager resources must be packaged as an installable Pi package or
 equivalent local resource bundle. The package must include:
@@ -680,6 +709,7 @@ nix build .#agent-coord-done
 nix build .#agent-coord-review
 nix build .#agent-coord-verify
 nix build .#agent-coord-close
+nix build .#agent-coord-lint
 nix build .#agent-coord-upgrade-rules
 ```
 
@@ -913,7 +943,8 @@ Expected:
 - generated rules, docs, Pi skill files, and key metadata files exist;
 - clone Git settings enable rebase and autostash;
 - `agent-coord-clone` can clone the same domain;
-- `agent-coord-new` creates a timestamp-ID YAML item;
+- `agent-coord-new` creates a type-coded timestamp-ID YAML item;
+- `agent-coord-lint` checks item metadata and item-matched test linkage;
 - status, push, claim, done, review, verify, and close helpers perform the
   expected file and Git state transitions;
 - rule upgrade preview runs without mutating coordination state.

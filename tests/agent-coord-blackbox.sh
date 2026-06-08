@@ -60,6 +60,7 @@ bootstrap-coordination \
 test -d "$tmp/bootstrap-remotes/other-project-coordination.git"
 test -f "$bootstrap_project_dir/coordination/AGENTS.md"
 test -d "$bootstrap_project_dir/coordination/projects/other-project/issues/open"
+test -d "$bootstrap_project_dir/coordination/projects/other-project/requirements"
 grep -q '^workspace: other-project$' "$bootstrap_project_dir/coordination/WORKSPACE.md"
 grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/coordination/projects/other-project/PROJECT.md"
 grep -q "Clone dir:    $bootstrap_project_dir/coordination" "$bootstrap_plan"
@@ -130,6 +131,7 @@ test -f coordination/docs/ITEM_FORMAT.md
 test -f coordination/.pi/skills/agent-coordination/SKILL.md
 test -d coordination/projects/pi-env/issues/open
 test -d coordination/projects/pi-env/issues/done
+test -d coordination/projects/pi-env/requirements
 grep -q '^item_key: PIENV$' coordination/projects/pi-env/PROJECT.md
 grep -q '^item_key: PIENVTEST$' coordination/WORKSPACE.md
 git -C coordination config --get pull.rebase | grep -qx true
@@ -154,12 +156,14 @@ action_path="$(cd "$workspace_dir" && agent-coord-new \
   "Document pi config behavior" | tail -n 1)"
 
 test -f "$workspace_dir/coordination/$action_path"
-grep -q '^id: PIENV-[0-9]\{8\}-[0-9]\{6\}$' \
+grep -q '^id: PIENV-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$action_path"
 grep -q '^status: open$' "$workspace_dir/coordination/$action_path"
 grep -q '^done: null$' "$workspace_dir/coordination/$action_path"
 grep -q '^reviewed: false$' "$workspace_dir/coordination/$action_path"
 grep -q '^verified: false$' "$workspace_dir/coordination/$action_path"
+grep -q '^testable: yes$' "$workspace_dir/coordination/$action_path"
+grep -q '^testability_note: null$' "$workspace_dir/coordination/$action_path"
 grep -q '^project: pi-env$' "$workspace_dir/coordination/$action_path"
 grep -q "^title: 'Document pi config behavior'$" \
   "$workspace_dir/coordination/$action_path"
@@ -174,7 +178,7 @@ explicit_key_path="$(cd "$workspace_dir" && agent-coord-new \
   --project other-project \
   --project-key 'my_key | test/foo\bar' \
   "Explicit project key item" | tail -n 1)"
-grep -q '^id: MYKEYTESTFOOBAR-[0-9]\{8\}-[0-9]\{6\}$' \
+grep -q '^id: MYKEYTESTFOOBAR-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$explicit_key_path"
 grep -q '^item_key: MYKEYTESTFOOBAR$' \
   "$workspace_dir/coordination/projects/other-project/PROJECT.md"
@@ -183,8 +187,26 @@ workspace_item_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --workspace-item \
   "Workspace coordination item" | tail -n 1)"
-grep -q '^id: PIENVTEST-[0-9]\{8\}-[0-9]\{6\}$' \
+grep -q '^id: PIENVTEST-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$workspace_item_path"
+
+requirement_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type requirement \
+  --status accepted \
+  --testable no \
+  --testability-note "Covered by coordination helper smoke tests." \
+  "Requirement item naming" | tail -n 1)"
+grep -q '^id: PIENV-REQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "$workspace_dir/coordination/$requirement_path"
+grep -q '^type: requirement$' "$workspace_dir/coordination/$requirement_path"
+grep -q '^status: accepted$' "$workspace_dir/coordination/$requirement_path"
+grep -q '^testable: no$' "$workspace_dir/coordination/$requirement_path"
+case "$requirement_path" in
+  projects/pi-env/requirements/*.yaml) ;;
+  *) printf 'unexpected requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
+esac
 
 item_id="$(grep '^id: ' "$workspace_dir/coordination/$action_path" | sed 's/^id: //')"
 

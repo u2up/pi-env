@@ -192,7 +192,7 @@ behavior is:
   ```bash
   git -c user.name="pi/architect" \
       -c user.email="pi+architect@coordination.local" \
-      commit -m "Claim PIENV-1234"
+      commit -m "Claim PIENV-ISS-20260605-143022-001"
   ```
 
 The role manager propagates the active role to coordination commands by setting

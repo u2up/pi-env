@@ -18,23 +18,32 @@ Usage:
   agent-coord-new [options] "Item title"
 
 Options:
-  --coord-dir DIR     Coordination clone; default: PI_COORD_DIR or ./coordination
-  --project KEY       Create under projects/<key>/issues/open
-  --project-key KEY   Item ID prefix; overrides stored/default project key
-  --workspace-item    Create under workspace/issues/open
-  --type TYPE         Item type; default: issue
-  --priority VALUE    Priority value; default: medium
-  --owner ID          Initial owner; default: empty
-  --agent-id ID       Event actor's agent ID; default: PI_COORD_AGENT_ID or USER
-  --role ROLE         Coordination role; default: PI_COORD_ROLE
-  --id ID             Explicit item ID; default: timestamp ID
-  -h, --help          Show this help
+  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or ./coordination
+  --project KEY            Create under projects/<key>/<type-directory>
+  --project-key KEY        Project/workspace key portion of generated IDs
+  --workspace-item         Create under workspace/<type-directory>
+  --type TYPE              Item type; default: issue
+  --status STATUS          Initial status; default: open for issues, active otherwise
+  --priority VALUE         Priority value; default: medium
+  --owner ID               Initial owner; default: empty
+  --agent-id ID            Event actor's agent ID; default: PI_COORD_AGENT_ID or USER
+  --role ROLE              Coordination role; default: PI_COORD_ROLE
+  --testable yes|no        Whether an item-matched test is required; default: yes
+  --testability-note TEXT  Required rationale when --testable no
+  --id ID                  Explicit item ID; default: timestamp ID with type code
+  -h, --help               Show this help
 
 If --project is omitted, PI_COORD_PROJECT is used when set. Otherwise the
 item is created as a workspace-level item. The item key is resolved from
 --project-key, stored project/workspace metadata, PI_COORD_PROJECT_KEY, or
 a derived project/workspace name. It is uppercased and all non-alphanumeric
 characters are removed for item IDs.
+
+Generated IDs use:
+  <PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
+
+The NNN collision/order suffix starts at 001 for each timestamp. Filenames
+use the item ID only, for example PIENV-ISS-20260607-204155-001.yaml.
 USAGE
 }
 
@@ -44,10 +53,13 @@ project_id_key_arg=""
 project_id_key_env="${PI_COORD_PROJECT_KEY:-}"
 workspace_item=0
 item_type="issue"
+status_arg=""
 priority="medium"
 owner=""
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
+testable="yes"
+testability_note=""
 explicit_id=""
 title_parts=()
 
@@ -79,6 +91,11 @@ while [ "$#" -gt 0 ]; do
       item_type="$2"
       shift 2
       ;;
+    --status)
+      [ "$#" -ge 2 ] || coord_die "--status requires a value"
+      status_arg="$2"
+      shift 2
+      ;;
     --priority)
       [ "$#" -ge 2 ] || coord_die "--priority requires a value"
       priority="$2"
@@ -97,6 +114,16 @@ while [ "$#" -gt 0 ]; do
     --role)
       [ "$#" -ge 2 ] || coord_die "--role requires a value"
       role="$2"
+      shift 2
+      ;;
+    --testable)
+      [ "$#" -ge 2 ] || coord_die "--testable requires a value"
+      testable="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
+      shift 2
+      ;;
+    --testability-note)
+      [ "$#" -ge 2 ] || coord_die "--testability-note requires a value"
+      testability_note="$2"
       shift 2
       ;;
     --id)
@@ -119,6 +146,40 @@ if [ "${#title_parts[@]}" -eq 0 ]; then
   coord_die "item title is required"
 fi
 
+case "$testable" in
+  yes|true|1)
+    testable="yes"
+    ;;
+  no|false|0)
+    testable="no"
+    ;;
+  *)
+    coord_die "--testable must be yes or no"
+    ;;
+esac
+
+if [ "$testable" = "no" ] && [ -z "$(coord_trim "$testability_note")" ]; then
+  coord_die "--testability-note is required when --testable no"
+fi
+
+if [ -z "$(coord_trim "$item_type")" ]; then
+  coord_die "--type must not be empty"
+fi
+
+if [ -z "$status_arg" ]; then
+  if coord_item_type_uses_issue_status_dirs "$item_type"; then
+    status_arg="open"
+  else
+    status_arg="active"
+  fi
+fi
+
+if coord_item_type_uses_issue_status_dirs "$item_type" && [ "$status_arg" != "open" ]; then
+  coord_die "new issue items must start with --status open"
+fi
+
+item_type="$(coord_item_type_canonical "$item_type")"
+type_dir="$(coord_item_type_dir "$item_type")"
 title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
 cd "$coord_dir"
@@ -131,7 +192,11 @@ created="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
 
 if [ "$workspace_item" = "1" ]; then
-  item_root="workspace/issues/open"
+  if coord_item_type_uses_issue_status_dirs "$item_type"; then
+    item_root="workspace/$type_dir/open"
+  else
+    item_root="workspace/$type_dir"
+  fi
   project_value="workspace"
   metadata_file="WORKSPACE.md"
   stored_key="$(coord_metadata_item_key "$metadata_file")"
@@ -166,7 +231,11 @@ EOF_WORKSPACE
 else
   project_dir="$(coord_sanitize_path_part "$project_key")"
   [ -n "$project_dir" ] || coord_die "project key produced an empty path"
-  item_root="projects/$project_dir/issues/open"
+  if coord_item_type_uses_issue_status_dirs "$item_type"; then
+    item_root="projects/$project_dir/$type_dir/open"
+  else
+    item_root="projects/$project_dir/$type_dir"
+  fi
   project_value="$project_dir"
   metadata_file="projects/$project_dir/PROJECT.md"
   stored_key="$(coord_metadata_item_key "$metadata_file")"
@@ -203,15 +272,17 @@ EOF_PROJECT
 fi
 
 mkdir -p "$item_root"
-slug="$(coord_slug "$title")"
 
 if [ -n "$explicit_id" ]; then
   item_id="$explicit_id"
+  if coord_item_id_exists "$item_id"; then
+    coord_die "item already exists: $item_id"
+  fi
 else
-  item_id="$id_prefix-$(coord_timestamp_id)"
+  item_id="$(coord_next_item_id "$id_prefix" "$item_type" "$(coord_timestamp_id)")"
 fi
 
-path="$item_root/$item_id-$slug.yaml"
+path="$item_root/$item_id.yaml"
 if [ -e "$path" ]; then
   coord_die "item already exists: $path"
 fi
@@ -220,7 +291,7 @@ cat >"$path" <<EOF_ITEM
 schema: coordination-item/v1
 id: $item_id
 type: $item_type
-status: open
+status: $status_arg
 project: $project_value
 title: $(coord_yaml_scalar "$title")
 owner: $(coord_yaml_scalar "$owner")
@@ -231,6 +302,8 @@ done: null
 closed: null
 reviewed: false
 verified: false
+testable: $testable
+testability_note: $(coord_yaml_scalar "$testability_note")
 related: []
 current:
   event: evt-0001

@@ -462,7 +462,7 @@ Guided bootstrap flow:
 
 ```bash
 bootstrap-coordination
-agent-coord-new --project pi-env "Document pi config behavior"
+agent-coord-new --project pi-env --type issue "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
 
@@ -475,7 +475,7 @@ export PI_COORD_DIR=coordination
 export PI_COORD_AGENT_ID=agent-a
 
 agent-coord-init --project pi-env
-agent-coord-new --project pi-env "Document pi config behavior"
+agent-coord-new --project pi-env --type issue "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
 
@@ -495,8 +495,16 @@ resolves to the current project root, that default is
 sandbox path when it exists and is not already part of the selected project
 mount.
 
-Generated item IDs use a project item key prefix. Project keys are stored
-in `projects/<project>/PROJECT.md` as `item_key`; workspace-level keys are
+Generated item IDs use a project item key prefix, a type code, a UTC
+timestamp, and a three-digit collision/order suffix:
+
+```text
+<PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
+```
+
+For example, issues use `ISS` and requirements use `REQ`; the suffix starts
+at `001` for each timestamp. Project keys are stored in
+`projects/<project>/PROJECT.md` as `item_key`; workspace-level keys are
 stored in `WORKSPACE.md` as `item_key`. Agents should use those stored keys
 instead of inventing new ones.
 
@@ -505,6 +513,8 @@ is needed, `blocked` means developer work cannot proceed, `done` means the
 developer believes implementation is complete, and `closed` means final
 accepted after the item is reviewed and verified. Reviewers and testers work
 from `done/`; failures move items back to `open/` with evidence.
+Requirement, decision, note, and other non-issue items live under semantic
+type directories such as `requirements/`, `decisions/`, and `notes/`.
 
 `agent-coord-new` resolves keys in this order: `--project-key`, stored
 metadata, `PI_COORD_PROJECT_KEY`, derived project name, then derived
@@ -517,11 +527,12 @@ Agents can inspect and update item state with:
 ```bash
 agent-coord-status
 agent-coord-pull
-agent-coord-claim PI-ENV-20260605-143022
-agent-coord-done PI-ENV-20260605-143022 --result "Implemented."
-agent-coord-review PI-ENV-20260605-143022 --pass
-agent-coord-verify PI-ENV-20260605-143022 --pass
-agent-coord-close PI-ENV-20260605-143022
+agent-coord-claim PIENV-ISS-20260607-204155-001
+agent-coord-done PIENV-ISS-20260607-204155-001 --result "Implemented."
+agent-coord-review PIENV-ISS-20260607-204155-001 --pass
+agent-coord-verify PIENV-ISS-20260607-204155-001 --pass
+agent-coord-close PIENV-ISS-20260607-204155-001
+agent-coord-lint --coord-dir coordination --project-root .
 agent-coord-upgrade-rules --preview
 ```
 

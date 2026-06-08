@@ -171,6 +171,136 @@ coord_timestamp_id() {
   date -u +%Y%m%d-%H%M%S
 }
 
+coord_item_type_canonical() {
+  local type canonical
+  type="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "$type" in
+    issue|issues|task|tasks)
+      canonical="issue"
+      ;;
+    requirement|requirements|req|reqs)
+      canonical="requirement"
+      ;;
+    decision|decisions|dec)
+      canonical="decision"
+      ;;
+    note|notes)
+      canonical="note"
+      ;;
+    *)
+      canonical="$(coord_sanitize_path_part "$type")"
+      [ -n "$canonical" ] || canonical="item"
+      ;;
+  esac
+  printf '%s\n' "$canonical"
+}
+
+coord_item_type_code() {
+  local type code
+  type="$(coord_item_type_canonical "$1")"
+  case "$type" in
+    issue|issues|task|tasks)
+      code="ISS"
+      ;;
+    requirement|requirements|req|reqs)
+      code="REQ"
+      ;;
+    decision|decisions|dec)
+      code="DEC"
+      ;;
+    note|notes)
+      code="NOTE"
+      ;;
+    *)
+      code="$(printf '%s' "$type" \
+        | tr '[:lower:]' '[:upper:]' \
+        | sed -E 's/[^A-Z0-9]+//g' \
+        | cut -c1-4)"
+      [ -n "$code" ] || code="ITEM"
+      ;;
+  esac
+  printf '%s\n' "$code"
+}
+
+coord_item_type_dir() {
+  local type dir
+  type="$(coord_item_type_canonical "$1")"
+  case "$type" in
+    issue|issues|task|tasks)
+      dir="issues"
+      ;;
+    requirement|requirements|req|reqs)
+      dir="requirements"
+      ;;
+    decision|decisions|dec)
+      dir="decisions"
+      ;;
+    note|notes)
+      dir="notes"
+      ;;
+    *)
+      dir="$(coord_sanitize_path_part "$type")"
+      [ -n "$dir" ] || dir="items"
+      case "$dir" in
+        *s) ;;
+        *) dir="${dir}s" ;;
+      esac
+      ;;
+  esac
+  printf '%s\n' "$dir"
+}
+
+coord_item_type_uses_issue_status_dirs() {
+  local type
+  type="$(coord_item_type_canonical "$1")"
+  case "$type" in
+    issue|issues|task|tasks)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+coord_item_id_exists() {
+  local candidate file id_value stem
+  candidate="$1"
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    id_value="$(coord_item_value "$file" id || true)"
+    if [ "$id_value" = "$candidate" ]; then
+      return 0
+    fi
+    stem="$(basename "$file")"
+    stem="${stem%.yaml}"
+    stem="${stem%.yml}"
+    stem="${stem%.md}"
+    if [ "$stem" = "$candidate" ]; then
+      return 0
+    fi
+  done < <(coord_item_find_files)
+  return 1
+}
+
+coord_next_item_id() {
+  local key type timestamp code base n suffix candidate
+  key="$1"
+  type="$2"
+  timestamp="$3"
+  code="$(coord_item_type_code "$type")"
+  base="$key-$code-$timestamp"
+  n=1
+  while [ "$n" -le 999 ]; do
+    suffix="$(printf '%03d' "$n")"
+    candidate="$base-$suffix"
+    if ! coord_item_id_exists "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    n=$((n + 1))
+  done
+  coord_die "no unused item ID suffix below 1000 for $base"
+}
+
 coord_timestamp_iso() {
   date -u +%Y-%m-%dT%H:%M:%SZ
 }

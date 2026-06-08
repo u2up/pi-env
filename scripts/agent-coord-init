@@ -161,12 +161,14 @@ mkdir -p \
   "projects/$project_dir/issues/blocked" \
   "projects/$project_dir/issues/done" \
   "projects/$project_dir/issues/closed" \
+  "projects/$project_dir/requirements" \
   "projects/$project_dir/decisions" \
   "projects/$project_dir/notes" \
   workspace/issues/open \
   workspace/issues/blocked \
   workspace/issues/done \
   workspace/issues/closed \
+  workspace/requirements \
   workspace/decisions \
   workspace/architecture \
   workspace/cross-project-todos \
@@ -190,6 +192,10 @@ Issue state group names are developer-centric: \`open\` means developer work
 is needed, \`blocked\` means developer work cannot proceed, \`done\` means the
 developer believes implementation is complete, and \`closed\` means final
 accepted after review and verification.
+
+New item IDs use \`<KEY>-<TYPE>-<YYYYMMDD-HHMMSS>-<NNN>\`, with \`NNN\`
+starting at \`001\` for each timestamp. Testable items are linked to project
+repo scripts by matching item and test filename stems.
 EOF_README
 
 cat >WORKSPACE.md <<EOF_WORKSPACE

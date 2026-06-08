@@ -124,15 +124,19 @@ Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions`
 
 ## 5. Item IDs and state
 
-Use stable IDs in filenames. For high-concurrency agent-created items, prefer timestamp IDs to avoid number allocation races:
+Use stable ID-only filenames. New items use type-coded timestamp IDs to avoid
+number allocation races while preserving creation-time information:
 
 ```text
-<PROJECTKEY>-<YYYYMMDD-HHMMSS>-<slug>.yaml
+<PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>.yaml
 ```
 
-`PROJECTKEY` should be uppercase alphanumeric text. Project item keys are
-stored in `projects/<project>/PROJECT.md` as `item_key`. Workspace-level
-item keys are stored in top-level `WORKSPACE.md` as `item_key`.
+`PROJECTKEY` should be uppercase alphanumeric text. Built-in type codes are
+`ISS` for issue, `REQ` for requirement, `DEC` for decision, and `NOTE` for
+note. `NNN` is a three-digit collision/order suffix for the exact UTC
+timestamp and starts at `001`. Project item keys are stored in
+`projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
+stored in top-level `WORKSPACE.md` as `item_key`.
 
 Default key resolution for `agent-coord-new` should be:
 
@@ -145,24 +149,22 @@ Default key resolution for `agent-coord-new` should be:
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
 backslashes, and other non-alphanumeric characters are removed.
 
-Example:
+Examples:
 
 ```text
-PIENV-20260605-143022-document-pi-config.yaml
+PIENV-ISS-20260605-143022-001.yaml
+PIENV-REQ-20260605-143022-002.yaml
 ```
 
-For smaller human-managed repositories, sequential IDs are also acceptable:
-
-```text
-PIENV-0001-document-pi-config.yaml
-```
+Historical items may keep legacy IDs and slug filenames. Do not rename or
+renumber existing items only to satisfy a newer naming convention.
 
 Each item should be a YAML file with top-level current state, chronological
 events, and Markdown message bodies linked to those events:
 
 ```yaml
 schema: coordination-item/v1
-id: PIENV-20260605-143022
+id: PIENV-ISS-20260605-143022-001
 type: issue
 status: open
 project: pi-env
@@ -175,6 +177,8 @@ done: null
 closed: null
 reviewed: false
 verified: false
+testable: yes
+testability_note: null
 related: []
 current:
   event: evt-0001
@@ -201,8 +205,8 @@ messages:
       - [ ] README explains sandbox `pi-bwrap -- config`
 ```
 
-Keep work in developer-centric state directories and keep current `status`
-in the YAML file:
+Keep issue work in developer-centric state directories and keep current
+`status` in the YAML file:
 
 ```text
 issues/open/
@@ -211,11 +215,18 @@ issues/done/
 issues/closed/
 ```
 
+Other item types live under semantic type directories such as
+`requirements/`, `decisions/`, and `notes/`.
+
 The state names are developer-centric: `open` means developer work is needed,
 `blocked` means developer work cannot proceed, `done` means the developer
 believes implementation is complete, and `closed` means final acceptance after
 review and verification. New items start with `reviewed: false` and
-`verified: false`.
+`verified: false`, and declare `testable: yes` or `testable: no` with a
+`testability_note` when direct item-matched testing is not required.
+Item-matched tests live in the project repository under `tests/items/`, mirror
+project/workspace and item type, and match the item ID by filename stem. They
+intentionally do not mirror issue status directories.
 
 When marking an issue done, move it with `git mv`, set `status: done`, set
 `done:`, reset `reviewed: false` and `verified: false`, update `current:`,
@@ -247,9 +258,9 @@ cd coordination
 git pull --rebase
 # edit item: status: claimed, owner: agent-a, current: evt-0002/msg-0002
 # append a claimed event and message
-path=projects/pi-env/issues/open/PIENV-20260605-143022-document-pi-config.yaml
+path=projects/pi-env/issues/open/PIENV-ISS-20260605-143022-001.yaml
 git add "$path"
-git commit -m "Claim PIENV-20260605-143022"
+git commit -m "Claim PIENV-ISS-20260605-143022-001"
 git push
 ```
 
@@ -275,6 +286,7 @@ agent-coord-status    show sync status and current open/claimed items
 agent-coord-pull      run git pull --rebase in the coordination clone
 agent-coord-push      commit/push coordination changes
 agent-coord-new       create a new templated item
+agent-coord-lint      lint item IDs, status, and item-matched tests
 agent-coord-claim     claim an item
 agent-coord-done      mark developer work done and move it to done/
 agent-coord-review    mark review pass/fail and reopen on failure
@@ -336,7 +348,7 @@ as:
 ```bash
 git -c user.name=pi/architect \
     -c user.email=pi+architect@coordination.local \
-    commit -m "Claim PIENV-1234"
+    commit -m "Claim PIENV-ISS-20260605-143022-001"
 ```
 
 Role-aware identity should apply to the coordination repository only. It should

@@ -1,0 +1,264 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-lint - lint coordination items and item-matched tests
+
+Usage:
+  agent-coord-lint [options]
+
+Options:
+  --coord-dir DIR            Coordination clone; default: PI_COORD_DIR or ./coordination
+  --project-root DIR         Project repo containing tests/items; default: parent of coord dir
+  --require-done-or-closed   Fail when any issue item is not done or closed
+  --warn-legacy-ids          Warn about IDs that predate the new ID format
+  -h, --help                 Show this help
+
+Checks:
+  - item status and issue status-directory consistency;
+  - closed issues have reviewed: true and verified: true;
+  - new-format IDs match <KEY>-<TYPE>-<YYYYMMDD-HHMMSS>-<NNN>;
+  - new-format filenames are ID-only stems;
+  - type-code IDs match the YAML item type;
+  - every item declares testable: yes or testable: no;
+  - testable: yes has a matching tests/items/**/*.sh script;
+  - testable: no has a non-empty testability_note;
+  - every tests/items/**/*.sh script matches an existing item ID.
+
+Issue status directories are not mirrored under tests/items; the expected
+project-item test path is:
+  tests/items/projects/<project>/<type-dir>/<item-id>.sh
+USAGE
+}
+
+coord_dir_opt=""
+project_root_opt=""
+require_done_or_closed=0
+warn_legacy_ids=0
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --coord-dir)
+      [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    --project-root)
+      [ "$#" -ge 2 ] || coord_die "--project-root requires a value"
+      project_root_opt="$2"
+      shift 2
+      ;;
+    --require-done-or-closed)
+      require_done_or_closed=1
+      shift
+      ;;
+    --warn-legacy-ids)
+      warn_legacy_ids=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      coord_die "unknown argument: $1"
+      ;;
+  esac
+done
+
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+if [ -n "$project_root_opt" ]; then
+  project_root="$(coord_abs "$project_root_opt")"
+else
+  project_root="$(dirname "$coord_dir")"
+fi
+
+cd "$coord_dir"
+
+failures=0
+warnings=0
+items_seen=0
+
+lint_fail() {
+  printf 'agent-coord-lint: FAIL: %s\n' "$*" >&2
+  failures=$((failures + 1))
+}
+
+lint_warn() {
+  printf 'agent-coord-lint: WARN: %s\n' "$*" >&2
+  warnings=$((warnings + 1))
+}
+
+item_yaml_files() {
+  find workspace projects \
+    -type f \
+    \( -name '*.yaml' -o -name '*.yml' \) \
+    2>/dev/null | sort
+}
+
+item_status_dir() {
+  local file
+  file="$1"
+  case "$file" in
+    */issues/open/*) printf 'open\n' ;;
+    */issues/blocked/*) printf 'blocked\n' ;;
+    */issues/done/*) printf 'done\n' ;;
+    */issues/closed/*) printf 'closed\n' ;;
+    *) printf '\n' ;;
+  esac
+}
+
+expected_test_path() {
+  local file id rest owner type_dir status_part
+  file="$1"
+  id="$2"
+  case "$file" in
+    projects/*/*)
+      owner="${file#projects/}"
+      owner="${owner%%/*}"
+      rest="${file#projects/$owner/}"
+      type_dir="${rest%%/*}"
+      if [ "$type_dir" = "issues" ]; then
+        status_part="${rest#issues/}"
+        status_part="${status_part%%/*}"
+        case "$status_part" in
+          open|blocked|done|closed)
+            ;;
+          *)
+            type_dir="issues"
+            ;;
+        esac
+      fi
+      printf '%s/tests/items/projects/%s/%s/%s.sh\n' \
+        "$project_root" "$owner" "$type_dir" "$id"
+      ;;
+    workspace/*)
+      rest="${file#workspace/}"
+      type_dir="${rest%%/*}"
+      printf '%s/tests/items/workspace/%s/%s.sh\n' \
+        "$project_root" "$type_dir" "$id"
+      ;;
+    *)
+      printf '%s/tests/items/%s.sh\n' "$project_root" "$id"
+      ;;
+  esac
+}
+
+normalize_bool() {
+  local value
+  value="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "$value" in
+    yes|true|1) printf 'yes\n' ;;
+    no|false|0) printf 'no\n' ;;
+    *) printf '\n' ;;
+  esac
+}
+
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  items_seen=$((items_seen + 1))
+
+  id="$(coord_item_value "$file" id || true)"
+  type="$(coord_item_value "$file" type || true)"
+  status="$(coord_item_value "$file" status || true)"
+  reviewed="$(coord_item_value "$file" reviewed || true)"
+  verified="$(coord_item_value "$file" verified || true)"
+  testable_raw="$(coord_item_value "$file" testable || true)"
+  testability_note="$(coord_item_value "$file" testability_note || true)"
+
+  [ -n "$id" ] || lint_fail "$file is missing id"
+  [ -n "$type" ] || lint_fail "$file is missing type"
+  [ -n "$status" ] || lint_fail "$file is missing status"
+
+  stem="$(basename "$file")"
+  stem="${stem%.yaml}"
+  stem="${stem%.yml}"
+
+  if printf '%s' "$id" | grep -Eq '^[A-Z0-9]+-[A-Z0-9]{1,4}-[0-9]{8}-[0-9]{6}-[0-9]{3}$'; then
+    if [ "$stem" != "$id" ]; then
+      lint_fail "$file filename stem must equal new-format id $id"
+    fi
+    id_code="$(printf '%s' "$id" | cut -d- -f2)"
+    expected_code="$(coord_item_type_code "$type")"
+    if [ "$id_code" != "$expected_code" ]; then
+      lint_fail "$file id type code $id_code does not match type $type ($expected_code)"
+    fi
+  elif [ "$warn_legacy_ids" = "1" ]; then
+    lint_warn "$file uses legacy item id $id"
+  fi
+
+  if coord_item_type_uses_issue_status_dirs "$type"; then
+    dir_status="$(item_status_dir "$file")"
+    if [ -z "$dir_status" ]; then
+      lint_fail "$file issue item is not under an issues status directory"
+    elif [ "$dir_status" = "open" ]; then
+      case "$status" in
+        open|claimed) ;;
+        *) lint_fail "$file status $status does not match issues/open" ;;
+      esac
+    elif [ "$status" != "$dir_status" ]; then
+      lint_fail "$file status $status does not match issues/$dir_status"
+    fi
+
+    if [ "$require_done_or_closed" = "1" ]; then
+      case "$status" in
+        done|closed) ;;
+        *) lint_fail "$file is not done or closed (status: $status)" ;;
+      esac
+    fi
+
+    if [ "$status" = "closed" ]; then
+      [ "$(normalize_bool "$reviewed")" = "yes" ] \
+        || lint_fail "$file is closed but reviewed is not true"
+      [ "$(normalize_bool "$verified")" = "yes" ] \
+        || lint_fail "$file is closed but verified is not true"
+    fi
+  fi
+
+  testable="$(normalize_bool "$testable_raw")"
+  if [ -z "$testable" ]; then
+    lint_fail "$file must declare testable: yes or testable: no"
+  elif [ "$testable" = "yes" ]; then
+    expected_test="$(expected_test_path "$file" "$id")"
+    if [ ! -f "$expected_test" ]; then
+      lint_fail "$file is testable but missing $expected_test"
+    elif [ ! -x "$expected_test" ]; then
+      lint_fail "$expected_test must be executable"
+    fi
+  else
+    if [ -z "$(coord_trim "$testability_note")" ]; then
+      lint_fail "$file has testable: no but no testability_note"
+    fi
+  fi
+done < <(item_yaml_files)
+
+items_tests_dir="$project_root/tests/items"
+if [ -d "$items_tests_dir" ]; then
+  while IFS= read -r test_file; do
+    [ -n "$test_file" ] || continue
+    test_id="$(basename "$test_file")"
+    test_id="${test_id%.sh}"
+    if ! coord_item_id_exists "$test_id"; then
+      lint_fail "$test_file does not match any coordination item id"
+    fi
+  done < <(find "$items_tests_dir" -type f -name '*.sh' 2>/dev/null | sort)
+fi
+
+if [ "$failures" -gt 0 ]; then
+  printf 'agent-coord-lint: %d failure(s), %d warning(s), %d item(s) checked\n' \
+    "$failures" "$warnings" "$items_seen" >&2
+  exit 1
+fi
+
+printf 'agent-coord-lint: ok (%d item(s), %d warning(s))\n' \
+  "$items_seen" "$warnings"

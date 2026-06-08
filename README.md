@@ -114,19 +114,28 @@ Clone the same coordination domain elsewhere with:
 agent-coord-clone
 ```
 
-Create a timestamp-ID item with:
+Create a type-coded timestamp-ID item with:
 
 ```bash
-agent-coord-new --project pi-env "Document pi config behavior"
+agent-coord-new --project pi-env --type issue "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
 
-Generated item IDs use a project item key prefix. Use
+Generated item IDs use a project item key prefix, a type code, a UTC
+timestamp, and a three-digit collision/order suffix that starts at `001`:
+
+```text
+<PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
+```
+
+For example, an issue can be created as
+`PIENV-ISS-20260607-204155-001.yaml`; a requirement can be created as
+`PIENV-REQ-20260607-204155-001.yaml`. Use
 `agent-coord-init --project-key PIENV` to set the initial project's stored
-key during scaffolding. Project keys are stored
-in the coordination repo at `projects/<project>/PROJECT.md` as `item_key`.
-Workspace-level item keys are stored in `WORKSPACE.md` as `item_key`.
-Agents should use those stored keys instead of inventing new ones.
+key during scaffolding. Project keys are stored in the coordination repo at
+`projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
+stored in `WORKSPACE.md` as `item_key`. Agents should use those stored keys
+instead of inventing new ones.
 
 Key resolution for `agent-coord-new` is:
 
@@ -139,7 +148,8 @@ Key resolution for `agent-coord-new` is:
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
 backslashes, and other non-alphanumeric characters are removed. For
 example, `pi-env_test` becomes `PIENVTEST`. `--id ID` overrides the whole
-item ID.
+item ID. Built-in type codes are `ISS` for `issue`, `REQ` for
+`requirement`, `DEC` for `decision`, and `NOTE` for `note`.
 
 Lifecycle helpers are also available:
 
@@ -155,16 +165,19 @@ agent-coord-done      mark developer work done, commit, and push
 agent-coord-review    mark review pass/fail, commit, and push
 agent-coord-verify    mark verification pass/fail, commit, and push
 agent-coord-close     final-close reviewed+verified done items
+agent-coord-lint      lint item IDs, status, and item-matched tests
 agent-coord-upgrade-rules --preview
                       preview/apply bundled rule template updates
 ```
 
 Items are YAML files with chronological `events` and linked Markdown
-`messages`. State group names are developer-centric: `open` means developer
-work is needed, `blocked` means developer work cannot proceed, `done` means
-the developer believes implementation is complete, and `closed` means final
-accepted after review and verification. Stored implementation refs are
-structured objects with `repo`, `branch`, and full `commit` fields.
+`messages`. Issue state group names are developer-centric: `open` means
+developer work is needed, `blocked` means developer work cannot proceed,
+`done` means the developer believes implementation is complete, and `closed`
+means final accepted after review and verification. Requirement, decision,
+note, and other non-issue item types live under their semantic type
+directories. Stored implementation refs are structured objects with `repo`,
+`branch`, and full `commit` fields.
 `agent-coord-done --implementation-ref pi-env:main@<full-hash>` accepts the
 compact CLI form and writes the structured YAML form. `agent-coord-close`
 finalizes only items that are done, reviewed, and verified unless forced.
@@ -203,6 +216,23 @@ Coordination helper smoke tests:
 ```bash
 tests/agent-coord-blackbox.sh
 tests/agent-coord-concurrency.sh
+tests/agent-coord-lint.sh
+tests/coordination-items-closed-or-done.sh
+```
+
+Run the whole project test suite with:
+
+```bash
+tests/run.sh
+```
+
+Item-matched tests live in the project repository under `tests/items/`,
+mirror project/workspace and item type, and match the item ID by filename
+stem. They intentionally do not mirror issue lifecycle status directories:
+
+```text
+coordination/projects/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml
+tests/items/projects/pi-env/issues/PIENV-ISS-20260607-204155-001.sh
 ```
 
 Role-manager package, schema/template, loader, and command smoke tests:
