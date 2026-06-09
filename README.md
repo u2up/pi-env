@@ -160,7 +160,7 @@ Lifecycle helpers are also available:
 bootstrap-coordination
                       infer defaults and initialize via agent-coord-init
 agent-coord-status    show sync status and open/blocked/done items
-agent-coord-list      list issues, decisions, or requirement classes by status
+agent-coord-list      list issues, decisions, requirements, or classes by status
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
 agent-coord-new       create a templated item
@@ -182,7 +182,11 @@ means final accepted after review and verification. Functional, quality, and con
 `functional-requirements/`, `quality-requirements/`, and
 `constraint-requirements/` under both `projects/<project>/` and `workspace/`.
 The generic `requirements/` directory remains only for legacy `REQ` items
-unless an explicit migration decision says otherwise. Decision, note, and other
+unless an explicit migration decision says otherwise. The
+`agent-coord-list requirements` command reports functional, quality,
+constraint, and legacy requirement items; use `functional`, `quality`,
+`constraint`, or `legacy-requirements` for class-specific listings. Decision,
+note, and other
 non-issue item types live under their semantic type directories. Stored implementation refs are structured objects with `repo`,
 `branch`, and full `commit` fields.
 `agent-coord-done --implementation-ref pi-env:main@<full-hash>` accepts the

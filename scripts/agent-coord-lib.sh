@@ -178,13 +178,13 @@ coord_item_type_canonical() {
     issue|issues|task|tasks)
       canonical="issue"
       ;;
-    functional-requirement|functional-requirements|functional_requirement|functional_requirements|frq|frqs)
+    functional|functionals|functional-req|functional-reqs|functional_req|functional_reqs|functional-requirement|functional-requirements|functional_requirement|functional_requirements|frq|frqs)
       canonical="functional-requirement"
       ;;
-    quality-requirement|quality-requirements|quality_requirement|quality_requirements|qrq|qrqs)
+    quality|qualities|quality-req|quality-reqs|quality_req|quality_reqs|quality-requirement|quality-requirements|quality_requirement|quality_requirements|qrq|qrqs)
       canonical="quality-requirement"
       ;;
-    constraint-requirement|constraint-requirements|constraint_requirement|constraint_requirements|crq|crqs)
+    constraint|constraints|constraint-req|constraint-reqs|constraint_req|constraint_reqs|constraint-requirement|constraint-requirements|constraint_requirement|constraint_requirements|crq|crqs)
       canonical="constraint-requirement"
       ;;
     requirement|requirements|req|reqs)

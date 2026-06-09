@@ -79,6 +79,35 @@ grep -q '^id: PIENV-FRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "coordination/$requirement_path"
 grep -q '^status: active$' "coordination/$requirement_path"
 
+quality_requirement_path="$(agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type quality \
+  --testable no \
+  --testability-note "Reviewed as a quality requirement." \
+  "Lint quality requirement item" | tail -n 1)"
+constraint_requirement_path="$(agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type constraint \
+  --testable no \
+  --testability-note "Reviewed as a constraint requirement." \
+  "Lint constraint requirement item" | tail -n 1)"
+legacy_requirement_path="$(agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type requirement \
+  --testable no \
+  --testability-note "Legacy requirement compatibility check." \
+  "Lint legacy requirement item" | tail -n 1)"
+
+grep -q '^id: PIENV-QRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "coordination/$quality_requirement_path"
+grep -q '^id: PIENV-CRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "coordination/$constraint_requirement_path"
+grep -q '^id: PIENV-REQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "coordination/$legacy_requirement_path"
+
 agent-coord-lint \
   --coord-dir coordination \
   --project-root . >/dev/null

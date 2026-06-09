@@ -19,8 +19,11 @@ Usage:
 
 Arguments:
   TYPE          Item type to list, for example issues, decisions,
-                functional-requirements, quality-requirements,
-                constraint-requirements, or legacy requirements
+                requirements, functional-requirements,
+                quality-requirements, or constraint-requirements.
+                requirements lists functional, quality, constraint, and
+                legacy requirement items; legacy-requirements lists only
+                generic legacy requirement items.
   STATUS        Optional status filter, for example open, closed, or accepted
 
 Options:
@@ -71,12 +74,26 @@ if [ "${#positional[@]}" -gt 2 ]; then
   coord_die "unexpected extra argument: ${positional[2]}"
 fi
 
-item_type="$(coord_item_type_canonical "${positional[0]}")"
+raw_item_type="${positional[0]}"
+raw_item_type_lc="$(printf '%s' "$raw_item_type" | tr '[:upper:]' '[:lower:]')"
+list_all_requirement_classes=0
+case "$raw_item_type_lc" in
+  legacy-requirement|legacy-requirements|legacy_requirement|legacy_requirements)
+    item_type="requirement"
+    ;;
+  requirement|requirements|req|reqs)
+    item_type="requirement"
+    list_all_requirement_classes=1
+    ;;
+  *)
+    item_type="$(coord_item_type_canonical "$raw_item_type")"
+    ;;
+esac
 case "$item_type" in
   issue|decision|requirement|functional-requirement|quality-requirement|constraint-requirement)
     ;;
   *)
-    coord_die "item type must be issues, decisions, requirements, functional-requirements, quality-requirements, or constraint-requirements"
+    coord_die "item type must be issues, decisions, requirements, legacy-requirements, functional-requirements, quality-requirements, or constraint-requirements"
     ;;
 esac
 
@@ -92,7 +109,17 @@ while IFS= read -r file; do
   raw_type="$(coord_item_value "$file" type || true)"
   [ -n "$raw_type" ] || continue
   file_type="$(coord_item_type_canonical "$raw_type")"
-  [ "$file_type" = "$item_type" ] || continue
+  if [ "$list_all_requirement_classes" = "1" ]; then
+    case "$file_type" in
+      requirement|functional-requirement|quality-requirement|constraint-requirement)
+        ;;
+      *)
+        continue
+        ;;
+    esac
+  else
+    [ "$file_type" = "$item_type" ] || continue
+  fi
 
   status="$(coord_item_value "$file" status || true)"
   [ -n "$status" ] || status="unknown"

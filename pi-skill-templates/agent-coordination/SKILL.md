@@ -50,6 +50,10 @@ supersession or migration decision says otherwise. The `NNN` suffix starts at
 `001` for each UTC timestamp. Historical items may keep legacy IDs; do not
 rename, renumber, rewrite, or move them unless explicitly directed.
 
+`agent-coord-list requirements` reports functional, quality, constraint, and
+legacy requirement items. Use `functional`, `quality`, `constraint`, or
+`legacy-requirements` for class-specific listings.
+
 ## Item history
 
 Coordination items are YAML files. Top-level fields show current state;

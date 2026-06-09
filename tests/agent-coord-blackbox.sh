@@ -199,7 +199,7 @@ grep -q '^id: PIENVTEST-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
 requirement_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --project pi-env \
-  --type functional-requirement \
+  --type functional \
   --status accepted \
   --testable no \
   --testability-note "Covered by coordination helper smoke tests." \
@@ -217,7 +217,7 @@ esac
 quality_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --project pi-env \
-  --type quality-requirement \
+  --type quality \
   --status accepted \
   --testable no \
   --testability-note "Covered by coordination helper smoke tests." \
@@ -233,7 +233,7 @@ esac
 constraint_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --project pi-env \
-  --type constraint-requirement \
+  --type constraint \
   --status accepted \
   --testable no \
   --testability-note "Covered by coordination helper smoke tests." \
@@ -246,7 +246,26 @@ case "$constraint_requirement_path" in
   *) printf 'unexpected constraint requirement path: %s\n' "$constraint_requirement_path" >&2; exit 1 ;;
 esac
 
+legacy_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type requirement \
+  --status accepted \
+  --testable no \
+  --testability-note "Covered by coordination helper smoke tests." \
+  "Legacy requirement item naming" | tail -n 1)"
+grep -q '^id: PIENV-REQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "$workspace_dir/coordination/$legacy_requirement_path"
+grep -q '^type: requirement$' "$workspace_dir/coordination/$legacy_requirement_path"
+case "$legacy_requirement_path" in
+  projects/pi-env/requirements/*.yaml) ;;
+  *) printf 'unexpected legacy requirement path: %s\n' "$legacy_requirement_path" >&2; exit 1 ;;
+esac
+
 requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$requirement_path" | sed 's/^id: //')"
+quality_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$quality_requirement_path" | sed 's/^id: //')"
+constraint_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$constraint_requirement_path" | sed 's/^id: //')"
+legacy_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$legacy_requirement_path" | sed 's/^id: //')"
 
 decision_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
@@ -275,6 +294,24 @@ requirement_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" functional-requirements accepted)"
 printf '%s\n' "$requirement_list" \
   | grep -Eq "^$requirement_id[[:space:]]+accepted[[:space:]]+Functional requirement item naming$"
+all_requirement_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" requirements accepted)"
+printf '%s\n' "$all_requirement_list" \
+  | grep -Eq "^$requirement_id[[:space:]]+accepted[[:space:]]+Functional requirement item naming$"
+printf '%s\n' "$all_requirement_list" \
+  | grep -Eq "^$quality_requirement_id[[:space:]]+accepted[[:space:]]+Quality requirement item naming$"
+printf '%s\n' "$all_requirement_list" \
+  | grep -Eq "^$constraint_requirement_id[[:space:]]+accepted[[:space:]]+Constraint requirement item naming$"
+printf '%s\n' "$all_requirement_list" \
+  | grep -Eq "^$legacy_requirement_id[[:space:]]+accepted[[:space:]]+Legacy requirement item naming$"
+legacy_requirement_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" legacy-requirements accepted)"
+printf '%s\n' "$legacy_requirement_list" \
+  | grep -Eq "^$legacy_requirement_id[[:space:]]+accepted[[:space:]]+Legacy requirement item naming$"
+if printf '%s\n' "$legacy_requirement_list" | grep -q "$requirement_id"; then
+  printf 'legacy requirement list included class requirement\n' >&2
+  exit 1
+fi
 decision_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" decisions accepted)"
 printf '%s\n' "$decision_list" \
