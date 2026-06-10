@@ -185,8 +185,12 @@ The generic `requirements/` directory remains only for legacy `REQ` items
 unless an explicit migration decision says otherwise. The
 `agent-coord-list requirements` command reports functional, quality,
 constraint, and legacy requirement items; use `functional`, `quality`,
-`constraint`, or `legacy-requirements` for class-specific listings. Decision,
-note, and other
+`constraint`, or `legacy-requirements` for class-specific listings. Imported
+requirement items record traceability in a top-level `source_refs` list using
+stable strings such as old requirement IDs, `REQUIREMENTS.md#heading`, and
+`USE_CASES.md#section`; lint checks imported FRQ/QRQ/CRQ items for non-empty
+source references plus the standard `testable` metadata. Decision, note, and
+other
 non-issue item types live under their semantic type directories. Stored implementation refs are structured objects with `repo`,
 `branch`, and full `commit` fields.
 `agent-coord-done --implementation-ref pi-env:main@<full-hash>` accepts the

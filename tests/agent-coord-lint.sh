@@ -86,6 +86,21 @@ quality_requirement_path="$(agent-coord-new \
   --testable no \
   --testability-note "Reviewed as a quality requirement." \
   "Lint quality requirement item" | tail -n 1)"
+imported_requirement_path="$(agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type quality \
+  --testable no \
+  --testability-note "Imported from REQUIREMENTS.md; reviewed as policy." \
+  "Lint imported quality requirement" | tail -n 1)"
+if agent-coord-lint \
+  --coord-dir coordination \
+  --project-root . >/dev/null 2>&1; then
+  printf 'expected lint to fail for imported requirement without source_refs\n' >&2
+  exit 1
+fi
+printf 'source_refs:\n  - "REQUIREMENTS.md#lint-imported-quality-requirement"\n' \
+  >>"coordination/$imported_requirement_path"
 constraint_requirement_path="$(agent-coord-new \
   --coord-dir coordination \
   --project pi-env \
@@ -103,6 +118,8 @@ legacy_requirement_path="$(agent-coord-new \
 
 grep -q '^id: PIENV-QRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "coordination/$quality_requirement_path"
+grep -q '^id: PIENV-QRQ-[0-9]\{8\}-[0-9]\{6\}-[0-9]\{3\}$' \
+  "coordination/$imported_requirement_path"
 grep -q '^id: PIENV-CRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "coordination/$constraint_requirement_path"
 grep -q '^id: PIENV-REQ-[0-9]\{8\}-[0-9]\{6\}-001$' \

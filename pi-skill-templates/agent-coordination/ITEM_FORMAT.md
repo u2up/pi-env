@@ -207,6 +207,25 @@ A verification event should record the exact test command(s) and result. The
 test script itself should remain in the project repo so it evolves with the
 code commit it verifies.
 
+## Source references
+
+Imported requirement items should record where they came from in a top-level
+`source_refs` list. Use stable, human-readable strings for old requirement IDs,
+document headings, and use-case sections, for example:
+
+```yaml
+source_refs:
+  - "REQ-012"
+  - "REQUIREMENTS.md#4-agent-coordination"
+  - "USE_CASES.md#22-safer-code-review-and-automation-workflows"
+```
+
+For FRQ/QRQ/CRQ migrations, include at least one `REQUIREMENTS.md#...` or
+`USE_CASES.md#...` reference when the item came from those documents. Legacy
+numbered IDs may be included as additional entries when available. The lint
+helper treats FRQ/QRQ/CRQ items marked as imported as missing metadata unless
+`source_refs` contains at least one list entry.
+
 ## Events
 
 Events are chronological and define item history. Every meaningful item change

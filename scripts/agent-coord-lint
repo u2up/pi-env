@@ -33,6 +33,7 @@ Checks:
   - every item declares testable: yes or testable: no;
   - testable: yes has a matching tests/items/**/*.sh script;
   - testable: no has a non-empty testability_note;
+  - imported FRQ/QRQ/CRQ items have non-empty source_refs;
   - every tests/items/**/*.sh script matches an existing item ID.
 
 Issue status directories are not mirrored under tests/items; the expected
@@ -164,6 +165,28 @@ normalize_bool() {
   esac
 }
 
+item_has_source_refs() {
+  local file
+  file="$1"
+  awk '
+    /^source_refs:[[:space:]]*$/ { in_refs = 1; next }
+    in_refs && /^[^[:space:]-]/ { in_refs = 0 }
+    in_refs && /^[[:space:]]*-[[:space:]]*[^[:space:]]/ { found = 1 }
+    END { exit found ? 0 : 1 }
+  ' "$file"
+}
+
+item_is_imported_requirement() {
+  local file type
+  file="$1"
+  type="$2"
+  case "$(coord_item_type_canonical "$type")" in
+    functional-requirement|quality-requirement|constraint-requirement) ;;
+    *) return 1 ;;
+  esac
+  grep -Eq 'Imported from (REQUIREMENTS|USE_CASES)\.md|source_refs:' "$file"
+}
+
 while IFS= read -r file; do
   [ -n "$file" ] || continue
   items_seen=$((items_seen + 1))
@@ -239,6 +262,10 @@ while IFS= read -r file; do
     if [ -z "$(coord_trim "$testability_note")" ]; then
       lint_fail "$file has testable: no but no testability_note"
     fi
+  fi
+
+  if item_is_imported_requirement "$file" "$type" && ! item_has_source_refs "$file"; then
+    lint_fail "$file is an imported requirement but has no source_refs entries"
   fi
 done < <(item_yaml_files)
 
