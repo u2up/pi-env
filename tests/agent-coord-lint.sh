@@ -101,6 +101,21 @@ if agent-coord-lint \
 fi
 printf 'source_refs:\n  - "REQUIREMENTS.md#lint-imported-quality-requirement"\n' \
   >>"coordination/$imported_requirement_path"
+imported_note_requirement_path="$(agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type functional-requirement \
+  --testable no \
+  --testability-note "Imported requirement is review-only for now." \
+  "Lint imported note wording" | tail -n 1)"
+if agent-coord-lint \
+  --coord-dir coordination \
+  --project-root . >/dev/null 2>&1; then
+  printf 'expected lint to fail for imported requirement note without source_refs\n' >&2
+  exit 1
+fi
+printf 'source_refs:\n  - "USE_CASES.md#lint-imported-note-wording"\n' \
+  >>"coordination/$imported_note_requirement_path"
 constraint_requirement_path="$(agent-coord-new \
   --coord-dir coordination \
   --project pi-env \

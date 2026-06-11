@@ -184,7 +184,7 @@ item_is_imported_requirement() {
     functional-requirement|quality-requirement|constraint-requirement) ;;
     *) return 1 ;;
   esac
-  grep -Eq 'Imported from (REQUIREMENTS|USE_CASES)\.md|source_refs:' "$file"
+  grep -Eiq 'Imported[[:space:]]+(from|requirement)|REQUIREMENTS\.md|USE_CASES\.md|source_refs:' "$file"
 }
 
 while IFS= read -r file; do
