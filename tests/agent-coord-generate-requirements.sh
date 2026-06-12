@@ -29,9 +29,26 @@ grep -F '#### TEST-031' "$stdout_file" >/dev/null
 grep -F '#### CRQ-009' "$stdout_file" >/dev/null
 grep -F 'projects/<project>/requirements/' "$stdout_file" >/dev/null
 
-# The canonical manual document remains the source used to recreate items; the
-# generator should preserve its stable public requirement keys even if static
-# introductory prose differs.
+for heading in \
+  '### 3.2 Flake and package requirements' \
+  '## 4. Quality requirements' \
+  '## 5. Constraint requirements'
+do
+  if [ "$(grep -F -c "$heading" "$stdout_file")" != 1 ]; then
+    echo "generated requirements should render heading exactly once: $heading" >&2
+    exit 1
+  fi
+done
+
+if grep -F 'functional/quality/constraint requirement tests' "$stdout_file" >/dev/null; then
+  echo "generated requirements contain stale class-specific test text" >&2
+  exit 1
+fi
+if grep -F 'functional/quality/constraint requirement items' "$stdout_file" >/dev/null; then
+  echo "generated requirements contain stale class-specific item text" >&2
+  exit 1
+fi
+
 for key in UC-001 UC-023 FLAKE-001 CMD-016 TEST-031 CRQ-009; do
   grep -F "#### $key" REQUIREMENTS.md >/dev/null
   grep -F "#### $key" "$stdout_file" >/dev/null

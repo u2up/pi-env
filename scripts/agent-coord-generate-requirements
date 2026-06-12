@@ -95,25 +95,32 @@ const items = fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).map(f => {
 }).filter(i => i.status === 'active' && i.key && i.body)
   .sort((a,b) => a.order - b.order || a.key.localeCompare(b.key));
 
+function renderBody(markdown) {
+  return markdown
+    .split('\n')
+    .filter(line => !/^## [345]\. /.test(line) && !/^### [345]\.\d+ /.test(line))
+    .join('\n')
+    .replace(/\s+$/, '') + '\n';
+}
 function print(s='') { process.stdout.write(s + '\n'); }
 print('# pi-env Requirements');
 print();
-print('This is the canonical requirements document for `pi-env`, rendered from coordination requirement items. It combines the former implementation contract in `REQUIREMENTS.legacy.md` with the workflow descriptions in `USE_CASES.legacy.md`.');
+print('This is the canonical human-authored requirements document for `pi-env`. It combines the former implementation contract in `REQUIREMENTS.legacy.md` with the workflow descriptions in `USE_CASES.legacy.md`.');
 print();
-print('Each requirement has a stable key such as `UC-001`, `CMD-004`, or `FS-010`. Coordination item IDs remain stable item records, while generated documentation preserves the stable keys as public requirement identifiers.');
+print('The document is structured so it can later be represented as coordination requirement items and regenerated with minimal textual drift. Each requirement has a stable key such as `UC-001`, `CMD-004`, or `FS-010`. Future coordination items may have timestamped item IDs, but generated documentation should preserve these stable keys as the public requirement identifiers.');
 print();
 print('## 1. Product scope');
 print();
 print('`pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`.');
 print();
-print('The project has two primary responsibilities:');
+print('An optional extension for Git-backed multi-agent coordination is described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). That design is intentionally separate from the current required runtime/sandbox contract unless requirements in this document explicitly reference it.');
+print();
+print('Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.');
+print();
+print('The project must keep two responsibilities separate:');
 print();
 print('- **Nix devshell/runtime:** reproducibly provide command-line tools on `PATH`.');
 print('- **Bubblewrap launcher:** isolate the `pi` process from the host filesystem and environment while still allowing controlled access to the current project and selected Pi state.');
-print();
-print('Optional Git-backed multi-agent coordination is an opt-in layer. Coordination helpers are explicit Git/text-file tools. `pi-start` must not automatically create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state.');
-print();
-print('Optional role-management support is extension/package based and opt-in.');
 print();
 print('## 2. History-derived intent');
 print();
@@ -126,7 +133,7 @@ print('4. The runtime became self-contained and no longer depends on a local `co
 print('5. Bubblewrap isolation became the primary runtime boundary.');
 print('6. Project-specific Pi sessions were intentionally exposed inside the sandbox, but only for the active project/path.');
 print('7. The flake is intended for reuse by other projects through `lib.mkPiShell` or packages.');
-print('8. Common Pi rules, skills, prompts, and roles are imported from an external user-controlled directory, not shipped by `pi-env`.');
+print('8. Common Pi rules/skills/prompts/roles are imported from an external user-controlled directory, not shipped by `pi-env`.');
 print('9. Host Git configuration is copied into the sandbox by default, but credentials, SSH keys, and host home are not mounted.');
 print();
 const topFor = cls => cls === 'quality' ? '## 4. Quality requirements' : cls === 'constraint' ? '## 5. Constraint requirements' : '## 3. Functional requirements';
@@ -142,15 +149,67 @@ for (const item of items) {
       print('Workflow-level requirements describe user goals that the detailed requirements must support. They are functional requirements with requirement kind `workflow`.');
       print();
     } else if (item.section === '4.2 Blackbox verification requirements') {
-      print('The following quality requirements define a blackbox test blueprint. Tests should be run from outside implementation internals where possible, using a temporary project and temporary host home/agent directories.');
+      print('These tests should be run from outside implementation internals where possible, using a temporary project and temporary host home/agent directories. A fake `pi` executable can be placed early on `PATH` to record argv, cwd, environment, and visible files.');
       print();
     }
   }
-  process.stdout.write(item.body + '\n');
+  process.stdout.write(renderBody(item.body) + '\n');
 }
 print('## 6. Coordination requirement item structure');
 print();
 print('Requirement coordination items live under `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`.');
+print();
+print('Required fields for functional, quality, and constraint requirement items:');
+print();
+print('```yaml');
+print('schema: coordination-item/v1');
+print('id: PIENV-FRQ-YYYYMMDD-HHMMSS-NNN');
+print('type: functional-requirement');
+print('requirement_key: CMD-004');
+print('requirement_kind: detailed-behavior');
+print('domain: commands');
+print('status: active');
+print('project: pi-env');
+print('title: "`pi-bwrap` default invocation"');
+print('source_refs:');
+print('  - "REQUIREMENTS.md#CMD-004"');
+print('related_workflows:');
+print('  - UC-002');
+print('related_requirements: []');
+print('related_tests:');
+print('  - TEST-005');
+print('testable: yes');
+print('testability_note: null');
+print('```');
+print();
+print('Workflow-level requirements should use:');
+print();
+print('```yaml');
+print('type: functional-requirement');
+print('requirement_key: UC-001');
+print('requirement_kind: workflow');
+print('domain: user-workflows');
+print('```');
+print();
+print('Quality verification requirements should use:');
+print();
+print('```yaml');
+print('type: quality-requirement');
+print('requirement_key: TEST-001');
+print('requirement_kind: blackbox-test');
+print('domain: verification');
+print('```');
+print();
+print('Constraint requirements should use:');
+print();
+print('```yaml');
+print('type: constraint-requirement');
+print('requirement_key: CRQ-001');
+print('requirement_kind: architecture-boundary');
+print('domain: constraints');
+print('```');
+print();
+print('The initial Markdown message body for each requirement item must contain the renderable body for that requirement, including the stable heading, metadata, requirement text, acceptance criteria, and verification notes when applicable. Generated documentation renders stable requirement keys as the primary visible identifiers and may include coordination item IDs as secondary metadata.');
 NODE
 
 if [ -n "$output" ] && [ "$output" != "-" ]; then
