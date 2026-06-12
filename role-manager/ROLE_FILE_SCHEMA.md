@@ -10,7 +10,7 @@ name: architect
 description: Designs architecture and implementation plans
 icon: 🧭
 thinking: high
-tools: ["read", "grep", "find", "ls"]
+tools: ["read", "grep", "find", "ls", "bash", "edit", "write"]
 coordCommitter: architect
 ---
 
