@@ -287,6 +287,38 @@ if [ -e "$path" ]; then
   coord_die "item already exists: $path"
 fi
 
+requirement_metadata=""
+case "$item_type" in
+  functional-requirement)
+    requirement_metadata="requirement_key: $item_id
+requirement_class: functional
+requirement_kind: detailed-behavior
+domain: requirements
+"
+    ;;
+  quality-requirement)
+    requirement_metadata="requirement_key: $item_id
+requirement_class: quality
+requirement_kind: quality
+domain: requirements
+"
+    ;;
+  constraint-requirement)
+    requirement_metadata="requirement_key: $item_id
+requirement_class: constraint
+requirement_kind: constraint
+domain: requirements
+"
+    ;;
+  requirement)
+    requirement_metadata="requirement_key: $item_id
+requirement_class: legacy
+requirement_kind: legacy
+domain: requirements
+"
+    ;;
+esac
+
 cat >"$path" <<EOF_ITEM
 schema: coordination-item/v1
 id: $item_id
@@ -302,7 +334,7 @@ done: null
 closed: null
 reviewed: false
 verified: false
-testable: $testable
+${requirement_metadata}testable: $testable
 testability_note: $(coord_yaml_scalar "$testability_note")
 related: []
 current:

@@ -72,7 +72,7 @@ requirement_path="$(agent-coord-new \
 requirement_id="$(grep '^id: ' "coordination/$requirement_path" | sed 's/^id: //')"
 
 case "$requirement_path" in
-  projects/pi-env/functional-requirements/"$requirement_id".yaml) ;;
+  projects/pi-env/requirements/"$requirement_id".yaml) ;;
   *) printf 'unexpected requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
 esac
 grep -q '^id: PIENV-FRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \

@@ -219,8 +219,9 @@ issues/closed/
 ```
 
 Other item types live under semantic type directories such as
-`functional-requirements/`, `quality-requirements/`,
-`constraint-requirements/`, `decisions/`, and `notes/`. The same layout is used
+`requirements/`, `decisions/`, and `notes/`. Functional, quality, constraint,
+and legacy requirement items share `requirements/` while preserving their item
+ID type codes. The same layout is used
 under both `projects/<project>/` and `workspace/`. The generic `requirements/`
 directory is legacy-only for historical `REQ` items unless an explicit
 supersession or migration decision says otherwise. Preserve historical IDs and

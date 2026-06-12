@@ -522,6 +522,7 @@
         "agent-coord-verify"
         "agent-coord-close"
         "agent-coord-lint"
+        "agent-coord-generate-requirements"
         "agent-coord-upgrade-rules"
       ];
 

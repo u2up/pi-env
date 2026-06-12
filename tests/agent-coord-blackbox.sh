@@ -60,9 +60,9 @@ bootstrap-coordination \
 test -d "$tmp/bootstrap-remotes/other-project-coordination.git"
 test -f "$bootstrap_project_dir/coordination/AGENTS.md"
 test -d "$bootstrap_project_dir/coordination/projects/other-project/issues/open"
-test -d "$bootstrap_project_dir/coordination/projects/other-project/functional-requirements"
-test -d "$bootstrap_project_dir/coordination/projects/other-project/quality-requirements"
-test -d "$bootstrap_project_dir/coordination/projects/other-project/constraint-requirements"
+test ! -e "$bootstrap_project_dir/coordination/projects/other-project/functional-requirements"
+test ! -e "$bootstrap_project_dir/coordination/projects/other-project/quality-requirements"
+test ! -e "$bootstrap_project_dir/coordination/projects/other-project/constraint-requirements"
 test -d "$bootstrap_project_dir/coordination/projects/other-project/requirements"
 grep -q '^workspace: other-project$' "$bootstrap_project_dir/coordination/WORKSPACE.md"
 grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/coordination/projects/other-project/PROJECT.md"
@@ -134,9 +134,9 @@ test -f coordination/docs/ITEM_FORMAT.md
 test -f coordination/.pi/skills/agent-coordination/SKILL.md
 test -d coordination/projects/pi-env/issues/open
 test -d coordination/projects/pi-env/issues/done
-test -d coordination/projects/pi-env/functional-requirements
-test -d coordination/projects/pi-env/quality-requirements
-test -d coordination/projects/pi-env/constraint-requirements
+test ! -e coordination/projects/pi-env/functional-requirements
+test ! -e coordination/projects/pi-env/quality-requirements
+test ! -e coordination/projects/pi-env/constraint-requirements
 test -d coordination/projects/pi-env/requirements
 grep -q '^item_key: PIENV$' coordination/projects/pi-env/PROJECT.md
 grep -q '^item_key: PIENVTEST$' coordination/WORKSPACE.md
@@ -210,7 +210,7 @@ grep -q '^type: functional-requirement$' "$workspace_dir/coordination/$requireme
 grep -q '^status: accepted$' "$workspace_dir/coordination/$requirement_path"
 grep -q '^testable: no$' "$workspace_dir/coordination/$requirement_path"
 case "$requirement_path" in
-  projects/pi-env/functional-requirements/*.yaml) ;;
+  projects/pi-env/requirements/*.yaml) ;;
   *) printf 'unexpected requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
 esac
 
@@ -226,7 +226,7 @@ grep -q '^id: PIENV-QRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$quality_requirement_path"
 grep -q '^type: quality-requirement$' "$workspace_dir/coordination/$quality_requirement_path"
 case "$quality_requirement_path" in
-  projects/pi-env/quality-requirements/*.yaml) ;;
+  projects/pi-env/requirements/*.yaml) ;;
   *) printf 'unexpected quality requirement path: %s\n' "$quality_requirement_path" >&2; exit 1 ;;
 esac
 
@@ -242,7 +242,7 @@ grep -q '^id: PIENV-CRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$constraint_requirement_path"
 grep -q '^type: constraint-requirement$' "$workspace_dir/coordination/$constraint_requirement_path"
 case "$constraint_requirement_path" in
-  projects/pi-env/constraint-requirements/*.yaml) ;;
+  projects/pi-env/requirements/*.yaml) ;;
   *) printf 'unexpected constraint requirement path: %s\n' "$constraint_requirement_path" >&2; exit 1 ;;
 esac
 

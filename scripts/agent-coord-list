@@ -21,9 +21,11 @@ Arguments:
   TYPE          Item type to list, for example issues, decisions,
                 requirements, functional-requirements,
                 quality-requirements, or constraint-requirements.
-                requirements lists functional, quality, constraint, and
-                legacy requirement items; legacy-requirements lists only
-                generic legacy requirement items.
+                All requirement classes are stored under the single
+                requirements directory; requirements lists functional,
+                quality, constraint, and legacy requirement items;
+                legacy-requirements lists only generic legacy requirement
+                items.
   STATUS        Optional status filter, for example open, closed, or accepted
 
 Options:

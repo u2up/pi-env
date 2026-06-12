@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+agent-coord-generate-requirements - render REQUIREMENTS.md from coordination items
+
+Usage:
+  agent-coord-generate-requirements [--project NAME] [--coordination-dir DIR] [--output PATH]
+  agent-coord-generate-requirements --help
+
+Renders active requirement items from the coordination repository's single
+projects/<project>/requirements directory as a deterministic Markdown
+requirements document. Requirement items keep coordination item-ID filenames;
+the public requirement key is read from requirement_key metadata.
+USAGE
+}
+
+project="${PI_COORD_PROJECT:-pi-env}"
+coord_dir="${PI_COORD_DIR:-coordination}"
+output=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --project)
+      [ "$#" -ge 2 ] || { echo "missing value for --project" >&2; exit 2; }
+      project="$2"
+      shift 2
+      ;;
+    --coordination-dir|--coord-dir)
+      [ "$#" -ge 2 ] || { echo "missing value for $1" >&2; exit 2; }
+      coord_dir="$2"
+      shift 2
+      ;;
+    --output|-o)
+      [ "$#" -ge 2 ] || { echo "missing value for --output" >&2; exit 2; }
+      output="$2"
+      shift 2
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+requirements_dir="$coord_dir/projects/$project/requirements"
+if [ ! -d "$requirements_dir" ]; then
+  echo "requirements directory not found: $requirements_dir" >&2
+  exit 1
+fi
+
+tmp="$(mktemp)"
+cleanup() { rm -f "$tmp"; }
+trap cleanup EXIT
+
+node "$0.node" "$requirements_dir" > "$tmp" 2>/dev/null || node - "$requirements_dir" > "$tmp" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const dir = process.argv[2];
+function unquote(v) {
+  v = (v || '').trim();
+  if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
+    v = v.slice(1, -1);
+  }
+  return v.replace(/''/g, "'");
+}
+function field(text, name) {
+  const re = new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':\\s*(.*)$', 'm');
+  const m = text.match(re);
+  return m ? unquote(m[1]) : '';
+}
+function body(text) {
+  const marker = /^  - id: msg-0001\n    event: evt-0001\n    body: \|-\n/m;
+  const m = marker.exec(text);
+  if (!m) return '';
+  return text.slice(m.index + m[0].length).split('\n').map(line => line.startsWith('      ') ? line.slice(6) : line).join('\n').replace(/\s+$/, '') + '\n';
+}
+const items = fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).map(f => {
+  const text = fs.readFileSync(path.join(dir, f), 'utf8');
+  return {
+    file: f,
+    key: field(text, 'requirement_key'),
+    cls: field(text, 'requirement_class'),
+    order: Number(field(text, 'render_order') || '999999'),
+    section: field(text, 'render_section'),
+    status: field(text, 'status'),
+    body: body(text),
+  };
+}).filter(i => i.status === 'active' && i.key && i.body)
+  .sort((a,b) => a.order - b.order || a.key.localeCompare(b.key));
+
+function print(s='') { process.stdout.write(s + '\n'); }
+print('# pi-env Requirements');
+print();
+print('This is the canonical requirements document for `pi-env`, rendered from coordination requirement items. It combines the former implementation contract in `REQUIREMENTS.legacy.md` with the workflow descriptions in `USE_CASES.legacy.md`.');
+print();
+print('Each requirement has a stable key such as `UC-001`, `CMD-004`, or `FS-010`. Coordination item IDs remain stable item records, while generated documentation preserves the stable keys as public requirement identifiers.');
+print();
+print('## 1. Product scope');
+print();
+print('`pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`.');
+print();
+print('The project has two primary responsibilities:');
+print();
+print('- **Nix devshell/runtime:** reproducibly provide command-line tools on `PATH`.');
+print('- **Bubblewrap launcher:** isolate the `pi` process from the host filesystem and environment while still allowing controlled access to the current project and selected Pi state.');
+print();
+print('Optional Git-backed multi-agent coordination is an opt-in layer. Coordination helpers are explicit Git/text-file tools. `pi-start` must not automatically create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state.');
+print();
+print('Optional role-management support is extension/package based and opt-in.');
+print();
+print('## 2. History-derived intent');
+print();
+print('The git history establishes these product requirements:');
+print();
+print('1. The project started as a Nix flake providing a Pi agent runtime devshell.');
+print('2. A startup command was added for running `pi` with an explicit tool allowlist and `--continue`.');
+print('3. The launcher evolved from an ad-hoc script to flake-generated commands.');
+print('4. The runtime became self-contained and no longer depends on a local `common-nix-runtime` flake.');
+print('5. Bubblewrap isolation became the primary runtime boundary.');
+print('6. Project-specific Pi sessions were intentionally exposed inside the sandbox, but only for the active project/path.');
+print('7. The flake is intended for reuse by other projects through `lib.mkPiShell` or packages.');
+print('8. Common Pi rules, skills, prompts, and roles are imported from an external user-controlled directory, not shipped by `pi-env`.');
+print('9. Host Git configuration is copied into the sandbox by default, but credentials, SSH keys, and host home are not mounted.');
+print();
+const topFor = cls => cls === 'quality' ? '## 4. Quality requirements' : cls === 'constraint' ? '## 5. Constraint requirements' : '## 3. Functional requirements';
+let currentTop = '', currentSection = '';
+for (const item of items) {
+  const top = topFor(item.cls);
+  if (top !== currentTop) {
+    print(top); print(); currentTop = top; currentSection = '';
+  }
+  if (item.section && item.section !== currentSection) {
+    print('### ' + item.section); print(); currentSection = item.section;
+    if (item.section === '3.1 Workflow-level functional requirements') {
+      print('Workflow-level requirements describe user goals that the detailed requirements must support. They are functional requirements with requirement kind `workflow`.');
+      print();
+    } else if (item.section === '4.2 Blackbox verification requirements') {
+      print('The following quality requirements define a blackbox test blueprint. Tests should be run from outside implementation internals where possible, using a temporary project and temporary host home/agent directories.');
+      print();
+    }
+  }
+  process.stdout.write(item.body + '\n');
+}
+print('## 6. Coordination requirement item structure');
+print();
+print('Requirement coordination items live under `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`.');
+NODE
+
+if [ -n "$output" ] && [ "$output" != "-" ]; then
+  mkdir -p "$(dirname "$output")"
+  cp "$tmp" "$output"
+else
+  cat "$tmp"
+fi

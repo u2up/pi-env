@@ -76,13 +76,13 @@ Issue directory names are intentionally developer-centric:
 The completion metric for managers, reviewers, and testers is therefore not
 "done". It is `status: closed` with `reviewed: true` and `verified: true`.
 
-Other item types live under semantic type directories. Requirement classes use
-`functional-requirements/`, `quality-requirements/`, and
-`constraint-requirements/` at both `projects/<project>/` and `workspace/`.
-The generic `requirements/` directory is legacy-only unless an explicit
-supersession or migration decision says otherwise. Do not mirror issue status
-directories in project test paths, and do not silently renumber, rewrite, or
-move historical items to fit newer conventions.
+Other item types live under semantic type directories. All requirement classes
+use the single `requirements/` directory at both `projects/<project>/` and
+`workspace/` while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes.
+Generic `REQ` IDs are legacy-only unless an explicit supersession or migration
+decision says otherwise. Do not mirror issue status directories in project test
+paths, and do not silently renumber or rewrite historical items to fit newer
+conventions.
 
 ## Item format
 
@@ -122,8 +122,9 @@ but not issue lifecycle status:
 
 ```text
 tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/functional-requirements/<item-id>.sh
+tests/items/projects/<project>/requirements/<item-id>.sh
 tests/items/workspace/issues/<item-id>.sh
+tests/items/workspace/requirements/<item-id>.sh
 ```
 
 Verification events should record exact commands run and pass/fail evidence.

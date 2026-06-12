@@ -178,11 +178,9 @@ Items are YAML files with chronological `events` and linked Markdown
 `messages`. Issue state group names are developer-centric: `open` means
 developer work is needed, `blocked` means developer work cannot proceed,
 `done` means the developer believes implementation is complete, and `closed`
-means final accepted after review and verification. Functional, quality, and constraint requirements use
-`functional-requirements/`, `quality-requirements/`, and
-`constraint-requirements/` under both `projects/<project>/` and `workspace/`.
-The generic `requirements/` directory remains only for legacy `REQ` items
-unless an explicit migration decision says otherwise. The
+means final accepted after review and verification. Functional, quality, constraint, and legacy requirements use the single
+`requirements/` directory under both `projects/<project>/` and `workspace/`,
+while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. The
 `agent-coord-list requirements` command reports functional, quality,
 constraint, and legacy requirement items; use `functional`, `quality`,
 `constraint`, or `legacy-requirements` for class-specific listings. Imported

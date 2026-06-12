@@ -86,7 +86,7 @@ project/workspace plus item type, not issue status:
 
 ```text
 tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/functional-requirements/<item-id>.sh
+tests/items/projects/<project>/requirements/<item-id>.sh
 tests/items/workspace/issues/<item-id>.sh
 ```
 

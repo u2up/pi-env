@@ -115,28 +115,22 @@ workspace/issues/closed/
 ```
 
 Other item types live under their semantic type directory and do not mirror
-issue status directories by default. Requirement classes have distinct
-project-level and workspace-level directories:
+issue status directories by default. All requirement classes share a single
+project-level or workspace-level requirements directory while preserving FRQ,
+QRQ, CRQ, and legacy REQ item-ID type codes:
 
 ```text
-projects/<project>/functional-requirements/
-projects/<project>/quality-requirements/
-projects/<project>/constraint-requirements/
-projects/<project>/requirements/        # legacy generic REQ items only
+projects/<project>/requirements/        # functional, quality, constraint, and legacy requirements
 projects/<project>/decisions/
 projects/<project>/notes/
-workspace/functional-requirements/
-workspace/quality-requirements/
-workspace/constraint-requirements/
-workspace/requirements/                 # legacy generic REQ items only
+workspace/requirements/                 # functional, quality, constraint, and legacy requirements
 workspace/decisions/
 workspace/notes/
 ```
 
-Generic `REQ` requirement IDs and `requirements/` directories are legacy-only
-unless an explicit supersession or migration decision says otherwise. Preserve
-historical IDs and filenames; do not silently renumber, rewrite, or move old
-items just to satisfy the FRQ/QRQ/CRQ taxonomy.
+Generic `REQ` requirement IDs are legacy-only unless an explicit supersession or
+migration decision says otherwise. Preserve historical IDs and filenames; do not
+silently renumber or rewrite old items just to satisfy the FRQ/QRQ/CRQ taxonomy.
 
 Projects may define additional type-specific status values, but should avoid
 moving test scripts when an item's lifecycle status changes.
@@ -186,11 +180,9 @@ issue status directories:
 
 ```text
 tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/functional-requirements/<item-id>.sh
-tests/items/projects/<project>/quality-requirements/<item-id>.sh
-tests/items/projects/<project>/constraint-requirements/<item-id>.sh
-tests/items/projects/<project>/requirements/<item-id>.sh  # legacy REQ items
+tests/items/projects/<project>/requirements/<item-id>.sh
 tests/items/workspace/issues/<item-id>.sh
+tests/items/workspace/requirements/<item-id>.sh
 ```
 
 Examples:
@@ -199,8 +191,8 @@ Examples:
 coordination/projects/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml
 tests/items/projects/pi-env/issues/PIENV-ISS-20260607-204155-001.sh
 
-coordination/projects/pi-env/functional-requirements/PIENV-FRQ-20260607-204155-001.yaml
-tests/items/projects/pi-env/functional-requirements/PIENV-FRQ-20260607-204155-001.sh
+coordination/projects/pi-env/requirements/PIENV-FRQ-20260607-204155-001.yaml
+tests/items/projects/pi-env/requirements/PIENV-FRQ-20260607-204155-001.sh
 ```
 
 A verification event should record the exact test command(s) and result. The

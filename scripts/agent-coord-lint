@@ -198,6 +198,10 @@ while IFS= read -r file; do
   verified="$(coord_item_value "$file" verified || true)"
   testable_raw="$(coord_item_value "$file" testable || true)"
   testability_note="$(coord_item_value "$file" testability_note || true)"
+  requirement_key="$(coord_item_value "$file" requirement_key || true)"
+  requirement_class="$(coord_item_value "$file" requirement_class || true)"
+  requirement_kind="$(coord_item_value "$file" requirement_kind || true)"
+  requirement_domain="$(coord_item_value "$file" domain || true)"
 
   [ -n "$id" ] || lint_fail "$file is missing id"
   [ -n "$type" ] || lint_fail "$file is missing type"
@@ -219,6 +223,31 @@ while IFS= read -r file; do
   elif [ "$warn_legacy_ids" = "1" ]; then
     lint_warn "$file uses legacy item id $id"
   fi
+
+  canonical_type="$(coord_item_type_canonical "$type")"
+  case "$canonical_type" in
+    functional-requirement|quality-requirement|constraint-requirement|requirement)
+      case "$file" in
+        projects/*/requirements/*.yaml|projects/*/requirements/*.yml|workspace/requirements/*.yaml|workspace/requirements/*.yml)
+          ;;
+        *) lint_fail "$file requirement item must live under a single requirements directory" ;;
+      esac
+      if [ -z "$(coord_trim "$requirement_key")" ]; then
+        lint_fail "$file requirement item is missing requirement_key"
+      fi
+      if [ -z "$(coord_trim "$requirement_kind")" ]; then
+        lint_fail "$file requirement item is missing requirement_kind"
+      fi
+      if [ -z "$(coord_trim "$requirement_domain")" ]; then
+        lint_fail "$file requirement item is missing domain"
+      fi
+      case "$canonical_type:$requirement_class" in
+        functional-requirement:functional|quality-requirement:quality|constraint-requirement:constraint|requirement:legacy|requirement:generic|requirement:requirement)
+          ;;
+        *) lint_fail "$file requirement_class $requirement_class does not match type $type" ;;
+      esac
+      ;;
+  esac
 
   if coord_item_type_uses_issue_status_dirs "$type"; then
     dir_status="$(item_status_dir "$file")"

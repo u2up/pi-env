@@ -247,16 +247,7 @@ coord_item_type_dir() {
     issue|issues|task|tasks)
       dir="issues"
       ;;
-    functional-requirement|functional-requirements)
-      dir="functional-requirements"
-      ;;
-    quality-requirement|quality-requirements)
-      dir="quality-requirements"
-      ;;
-    constraint-requirement|constraint-requirements)
-      dir="constraint-requirements"
-      ;;
-    requirement|requirements|req|reqs)
+    functional-requirement|functional-requirements|quality-requirement|quality-requirements|constraint-requirement|constraint-requirements|requirement|requirements|req|reqs)
       dir="requirements"
       ;;
     decision|decisions|dec)

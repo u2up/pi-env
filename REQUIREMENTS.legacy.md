@@ -1,8 +1,6 @@
-# pi-env Requirements
+# pi-env Requirements and Blackbox Test Blueprint
 
-This is the canonical human-authored requirements document for `pi-env`. It combines the former implementation contract in `REQUIREMENTS.legacy.md` with the workflow descriptions in `USE_CASES.legacy.md`.
-
-The document is structured so it can later be represented as coordination requirement items and regenerated with minimal textual drift. Each requirement has a stable key such as `UC-001`, `CMD-004`, or `FS-010`. Future coordination items may have timestamped item IDs, but generated documentation should preserve these stable keys as the public requirement identifiers.
+This document is derived from the current source tree and git history of `pi-env`. It is intended to be both an implementation contract and a blackbox testing checklist.
 
 ## 1. Product scope
 
@@ -31,241 +29,9 @@ The git history establishes these product requirements:
 8. Common Pi rules/skills/prompts/roles are imported from an external user-controlled directory, not shipped by `pi-env`.
 9. Host Git configuration is copied into the sandbox by default, but credentials, SSH keys, and host home are not mounted.
 
-## 3. Functional requirements
+## 3. Flake requirements
 
-### 3.1 Workflow-level functional requirements
-
-Workflow-level requirements describe user goals that the detailed requirements must support. They are functional requirements with requirement kind `workflow`.
-
-#### UC-001 — Run Pi in the current repository
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FLAKE-006, CMD-002, CMD-003, CMD-005, PATH-001, PATH-004, PATH-005, AGENT-011
-- Source: USE_CASES.legacy.md#1-run-pi-in-the-current-repository
-
-A user must be able to enter the `pi-env` development shell and run Pi for the current repository:
-
-```bash
-nix develop
-pi-start
-```
-
-`pi-start` must start Pi through Bubblewrap with the default built-in tool allowlist:
-
-```text
-read,bash,edit,write,grep,find,ls
-```
-
-`pi-start` must run Pi with `--continue` so existing scoped sessions for the current project can be resumed.
-
-#### UC-002 — Run Pi with custom arguments
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: CMD-001, CMD-004, CMD-006, CMD-007
-- Source: USE_CASES.legacy.md#2-run-pi-with-custom-arguments
-
-A user must be able to invoke `pi-bwrap` directly when they want to pass custom Pi arguments instead of the default startup arguments:
-
-```bash
-pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
-```
-
-If no arguments are supplied, `pi-bwrap` must default to the invocation in CMD-004. `pi-bwrap --help` must show launcher help. `pi-bwrap -- --help` must pass `--help` to Pi itself.
-
-#### UC-003 — Use a reproducible Pi runtime shell
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FLAKE-006, RUNTIME-001, RUNTIME-002
-- Source: USE_CASES.legacy.md#3-use-a-reproducible-pi-runtime-shell
-
-Inside `nix develop`, `pi-env` must provide a reproducible toolset on `PATH`, including Bash and core GNU utilities, Bubblewrap, Git, Node.js, ripgrep, fd, jq, tar, gzip, find, grep, sed, awk, and CA certificates.
-
-#### UC-004 — Run Pi inside a filesystem sandbox
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: PATH-004, FS-001, FS-007, FS-008, FS-010, ENV-001, ENV-003, NET-001
-- Source: USE_CASES.legacy.md#4-run-pi-inside-a-filesystem-sandbox
-
-A user must be able to run Pi with access to the current project but without exposing the whole host home directory. By default the sandbox mounts the selected project read-write at `/workspace`, uses an isolated sandbox home at `/home/pi`, mounts `/nix/store` read-only, exposes global npm Pi install paths read-only when present, avoids sensitive host mounts, clears the environment, and shares the host network unless disabled.
-
-#### UC-005 — Select what project Pi can see
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: PATH-001, PATH-002, PATH-003, PATH-004, PATH-005
-- Source: USE_CASES.legacy.md#5-select-what-project-pi-can-see
-
-A user must be able to control which project root is exposed in the sandbox. The default selection is the Git repository root when detected, falling back to the current working directory. Users must be able to disable Git-root detection with `PI_BWRAP_USE_GIT_ROOT=0` and provide an explicit project root with `PI_BWRAP_PROJECT_ROOT=/path/to/repo`.
-
-#### UC-006 — Keep per-project sandbox state
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FS-002, FS-003, FS-005, FS-006
-- Source: USE_CASES.legacy.md#6-keep-per-project-sandbox-state
-
-By default, `pi-env` must store persistent sandbox state outside the project under `$XDG_STATE_HOME/pi-env/<project-hash>` or `$HOME/.local/state/pi-env/<project-hash>`. Users must be able to override the state directory with `PI_BWRAP_STATE_DIR=/path/to/state`.
-
-#### UC-007 — Run with an ephemeral sandbox home
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FS-004, AGENT-011, AGENT-012
-- Source: USE_CASES.legacy.md#7-run-with-an-ephemeral-sandbox-home
-
-A user must be able to request disposable sandbox state with `PI_BWRAP_EPHEMERAL_HOME=1`. Project session import must be disabled by default for ephemeral homes unless explicitly enabled.
-
-#### UC-008 — Import Pi model authentication into the sandbox
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: AGENT-002, AGENT-007, AGENT-008, AGENT-009, FS-006
-- Source: USE_CASES.legacy.md#8-import-pi-model-authentication-into-the-sandbox
-
-By default, `pi-bwrap` must copy only selected Pi auth/model files from the host Pi agent directory into sandbox state: `auth.json` and `models.json`. Users must be able to disable this behavior with `PI_BWRAP_IMPORT_AUTH=0` and copy only missing files with `PI_BWRAP_AUTH_SYNC=missing`.
-
-#### UC-009 — Resume only the current project's Pi sessions
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: AGENT-011, AGENT-012, AGENT-013, AGENT-014, AGENT-015
-- Source: USE_CASES.legacy.md#9-resume-only-the-current-projects-pi-sessions
-
-For persistent homes, `pi-env` must bind-mount only the Pi session directory corresponding to the current working directory/project path. Users must be able to disable session import with `PI_BWRAP_IMPORT_SESSIONS=0` and enable it explicitly, including for ephemeral homes, with `PI_BWRAP_IMPORT_SESSIONS=1`.
-
-#### UC-010 — Use common Pi rules, skills, prompts, and roles
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: AGENT-002, AGENT-003, AGENT-004, AGENT-005, AGENT-006
-- Source: USE_CASES.legacy.md#10-use-common-pi-rules-skills-prompts-and-roles
-
-`pi-env` must support importing common user-owned Pi resources into the sandbox agent directory. Only `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, `prompts/`, and `roles/` may be imported as common resources. Users must be able to set `PI_BWRAP_COMMON_AGENT_DIR`, disable import with `PI_BWRAP_IMPORT_COMMON=0`, and use `PI_BWRAP_COMMON_SYNC=missing`.
-
-#### UC-011 — Combine common and project-specific Pi behavior
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: PATH-004, AGENT-004, AGENT-010, AGENT-010a
-- Source: USE_CASES.legacy.md#11-combine-common-and-project-specific-pi-behavior
-
-A user must be able to combine common personal/team rules, skills, prompts, and roles outside the project with project-specific Pi resources committed inside the project. Pi must be able to load imported common/global resources from `/home/pi/.pi/agent` and discover project-specific resources from `/workspace`.
-
-#### UC-012 — Use Pi extensions and packages
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: AGENT-010, AGENT-010a, AGENT-010b, CMD-003, CMD-004, CMD-005
-- Source: USE_CASES.legacy.md#12-use-pi-extensions-and-packages
-
-Project-local extensions and project-installed packages under `.pi/` must be available through `/workspace`. Global Pi extensions and globally installed Pi packages from the host Pi agent directory must be exposed by default according to AGENT-010. Users must be able to disable global extension/package import with `PI_BWRAP_IMPORT_EXTENSIONS=0`.
-
-#### UC-013 — Use host Git preferences without exposing credentials
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: GIT-001, GIT-002, GIT-003, GIT-004, GIT-005, GIT-006, GIT-007, GIT-008
-- Source: USE_CASES.legacy.md#13-use-host-git-preferences-without-exposing-credentials
-
-`pi-env` must copy host Git configuration into the sandbox by default so Git commands use normal identity, aliases, default branch names, and diff preferences. Git credentials, SSH keys, signing keys, credential-helper stores, and referenced secret files must not be imported automatically. Users must be able to disable Git config import and override config source paths.
-
-#### UC-014 — Customize Pi tool access
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: CMD-003, CMD-004, CMD-005
-- Source: USE_CASES.legacy.md#14-customize-pi-tool-access
-
-A user must be able to override the default Pi tool allowlist with `PI_BWRAP_DEFAULT_TOOLS`, for least-privilege runs, tool experiments, or extension/custom tools registered with Pi.
-
-#### UC-015 — Control network and environment exposure
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: ENV-001, ENV-002, ENV-003, ENV-004, ENV-005, NET-001, NET-002
-- Source: USE_CASES.legacy.md#15-control-network-and-environment-exposure
-
-The sandbox must share host networking by default for model provider access, allow users to disable network sharing with `PI_BWRAP_NET=0`, and allow selected extra environment variables through `PI_BWRAP_PASS_ENV`.
-
-#### UC-016 — Use with a globally installed Pi CLI
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FS-008, RUNTIME-002
-- Source: USE_CASES.legacy.md#16-use-with-a-globally-installed-pi-cli
-
-If Pi is installed globally via npm, `pi-bwrap` must be able to run it by mounting `/usr/local/bin` and `/usr/local/lib/node_modules/@earendil-works/pi-coding-agent` read-only when present.
-
-#### UC-017 — Reuse `pi-env` from a new project flake
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FLAKE-001, FLAKE-002, FLAKE-003, FLAKE-006
-- Source: USE_CASES.legacy.md#17-reuse-pi-env-from-a-new-project-flake
-
-A project without an existing flake must be able to add `pi-env` as an input and use `mkPiShell`, then run `nix develop` and `pi-start`.
-
-#### UC-018 — Add Pi wrappers to an existing project devshell
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FLAKE-004, CMD-001, CMD-002
-- Source: USE_CASES.legacy.md#18-add-pi-wrappers-to-an-existing-project-devshell
-
-A project that already has a flake/devshell must be able to keep its existing shell and add the `pi-start` and `pi-bwrap` wrapper packages.
-
-#### UC-019 — Use `pi-env` as a flake package or app
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FLAKE-004, FLAKE-005
-- Source: USE_CASES.legacy.md#19-use-pi-env-as-a-flake-package-or-app
-
-Users must be able to use exposed packages and apps such as `default`, `pi-start`, `pi-bwrap`, and `pi-runtime` through commands like `nix run .#pi-bwrap -- ...` and `nix build .#pi-runtime`.
-
-#### UC-020 — Use the library API in other flakes
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: FLAKE-003
-- Source: USE_CASES.legacy.md#20-use-the-library-api-in-other-flakes
-
-Other flakes must be able to use the `pi-env` library API to construct project-specific shells, packages, or wrappers while reusing the same runtime and Bubblewrap behavior.
-
-#### UC-021 — Test or validate the environment
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: TEST-001 through TEST-031
-- Source: USE_CASES.legacy.md#21-test-or-validate-the-environment
-
-A user must be able to validate `pi-env` through blackbox-style checks including `nix flake show`, package builds, coordination helper tests, role-manager smoke tests, and fake-`pi` sandbox inspections.
-
-#### UC-022 — Safer code-review and automation workflows
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: UC-004, UC-007, UC-014, UC-015, FS-010, GIT-007, NET-002
-- Source: USE_CASES.legacy.md#22-safer-code-review-and-automation-workflows
-
-The isolated launcher must support safer workflows such as reviewing unfamiliar repositories, limiting Pi to a selected workspace, avoiding accidental access to host secrets, using reduced tool allowlists, disabling network, using ephemeral state, and importing only the auth/session/config needed for the current project.
-
-#### UC-023 — Coordinate multiple agents with Git
-
-- Type: Functional requirement
-- Requirement kind: workflow
-- Related requirements: CMD-009 through CMD-015, ENV-006, FS-010
-- Source: USE_CASES.legacy.md#23-coordinate-multiple-agents-with-git
-
-For workspaces where several agents operate in separate project clones, `pi-env` must optionally help establish and maintain a dedicated Git-backed coordination repository. Agents synchronize only by normal Git pull/commit/push operations. This use case remains opt-in, and default `pi-start` behavior must not mutate coordination state automatically.
-
-### 3.2 Flake and package requirements
-
-#### FLAKE-001 Inputs
+### FLAKE-001 Inputs
 
 The flake must declare only these normal inputs:
 
@@ -274,11 +40,11 @@ The flake must declare only these normal inputs:
 
 It must not require a local `common-nix-runtime` or other machine-specific flake input.
 
-#### FLAKE-002 Systems
+### FLAKE-002 Systems
 
 The flake must use `flake-utils.lib.eachDefaultSystem` to expose packages, apps, and devshells for default systems.
 
-#### FLAKE-003 Library API
+### FLAKE-003 Library API
 
 The flake must expose `lib` attributes:
 
@@ -289,7 +55,7 @@ The flake must expose `lib` attributes:
 - `mkPiShell`
 - `mkRoleManagerPackage`
 
-#### FLAKE-004 Packages
+### FLAKE-004 Packages
 
 For each supported system the flake must expose packages:
 
@@ -314,7 +80,7 @@ For each supported system the flake must expose packages:
 - `agent-coord-close`
 - `agent-coord-upgrade-rules`
 
-#### FLAKE-005 Apps
+### FLAKE-005 Apps
 
 For each supported system the flake must expose apps:
 
@@ -322,16 +88,16 @@ For each supported system the flake must expose apps:
 - `pi-start`
 - `pi-bwrap`
 
-#### FLAKE-006 Devshell
+### FLAKE-006 Devshell
 
 The default devshell must include the runtime packages and wrappers and must print a helpful startup message unless `PI_ENV_QUIET` is set.
 
 The shell prompt must be prefixed with `(nix-dev)`. The shell must export
 `PI_ENV_ROLE_MANAGER_PACKAGE` to the Nix-built role-manager Pi package path.
 
-### 3.3 Runtime package requirements
+## 4. Runtime package requirements
 
-#### RUNTIME-001 Included tools
+### RUNTIME-001 Included tools
 
 `mkRuntime` must include at least:
 
@@ -352,21 +118,21 @@ The shell prompt must be prefixed with `(nix-dev)`. The shell must export
 - `ripgrep`
 - `which`
 
-#### RUNTIME-002 Path construction
+### RUNTIME-002 Path construction
 
 `pi-bwrap` must prepend the runtime package bin path to the host `PATH` before checking for `pi`.
 
-### 3.4 Command requirements
+## 5. Command requirements
 
-#### CMD-001 `pi-bwrap` existence
+### CMD-001 `pi-bwrap` existence
 
 The package `pi-bwrap` must install an executable named `pi-bwrap`.
 
-#### CMD-002 `pi-start` existence
+### CMD-002 `pi-start` existence
 
 The package `pi-start` must install an executable named `pi-start`.
 
-#### CMD-003 Default tool allowlist
+### CMD-003 Default tool allowlist
 
 The canonical default Pi tool list is:
 
@@ -374,7 +140,7 @@ The canonical default Pi tool list is:
 read,bash,edit,write,grep,find,ls
 ```
 
-#### CMD-004 `pi-bwrap` default invocation
+### CMD-004 `pi-bwrap` default invocation
 
 When called without Pi arguments, `pi-bwrap` must run Pi with:
 
@@ -384,7 +150,7 @@ pi --tools read,bash,edit,write,grep,find,ls --continue
 
 or with the same structure but replacing the tool list with `PI_BWRAP_DEFAULT_TOOLS` when set.
 
-#### CMD-005 `pi-start` invocation
+### CMD-005 `pi-start` invocation
 
 `pi-start` must run `pi-bwrap` with:
 
@@ -394,19 +160,19 @@ or with the same structure but replacing the tool list with `PI_BWRAP_DEFAULT_TO
 
 where `$tools` is the default tool list or `PI_BWRAP_DEFAULT_TOOLS` when set.
 
-#### CMD-006 Argument separator
+### CMD-006 Argument separator
 
 `pi-bwrap -- <args>` must strip the separator and pass `<args>` to Pi.
 
-#### CMD-007 Help
+### CMD-007 Help
 
 `pi-bwrap -h` and `pi-bwrap --help` must print launcher help and exit successfully without entering Bubblewrap.
 
-#### CMD-008 Missing Pi executable
+### CMD-008 Missing Pi executable
 
 If `pi` is not found on `PATH` before sandbox entry, `pi-bwrap` must exit with code `127` and print an actionable error.
 
-#### CMD-009 Coordination helper commands
+### CMD-009 Coordination helper commands
 
 The flake/devshell must provide these opt-in coordination commands:
 
@@ -446,7 +212,7 @@ points to a missing local path.
 claim, mark done, review, verify, close, or otherwise mutate item state
 automatically.
 
-#### CMD-010 `agent-coord-init`
+### CMD-010 `agent-coord-init`
 
 `agent-coord-init` must create a local bare coordination remote and, unless
 `--bare-only` is used, clone and scaffold a working coordination repository.
@@ -468,13 +234,13 @@ sandbox `$HOME`. If `/workspace` resolves to the current project root, the
 default root must be `/workspace/agent-remotes`; otherwise it must be
 `<project-root>/agent-remotes`.
 
-#### CMD-011 `agent-coord-clone`
+### CMD-011 `agent-coord-clone`
 
 `agent-coord-clone` must clone a coordination remote into the selected
 workspace directory and configure the clone with `pull.rebase=true` and
 `rebase.autoStash=true`.
 
-#### CMD-012 `agent-coord-new`
+### CMD-012 `agent-coord-new`
 
 `agent-coord-new` must create a YAML item with a type-coded timestamp ID,
 top-level current-state fields, `done: null`, `closed: null`,
@@ -509,14 +275,16 @@ only. `--id` must override the whole item ID.
 
 Project item keys must be stored in `projects/<project>/PROJECT.md` as
 `item_key`; workspace-level item keys must be stored in `WORKSPACE.md` as
-`item_key`. Issue items must be created under `issues/open`. Functional, quality, constraint, and legacy generic requirement items must be
-created under the single `requirements/` directory for both project and
-workspace items while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type
-codes. Decision, note, and custom item types must be created under semantic type
-directories by default. Existing historical items must not be silently
-renumbered or rewritten only to satisfy newer naming conventions.
+`item_key`. Issue items must be created under `issues/open`. Functional,
+quality, and constraint requirements must be created under
+`functional-requirements/`, `quality-requirements/`, and
+`constraint-requirements/` respectively for both project and workspace items.
+Legacy generic `requirement` items remain under `requirements/`. Decision,
+note, and custom item types must be created under semantic type directories by
+default. Existing historical items must not be silently renumbered, rewritten,
+or moved only to satisfy newer naming conventions.
 
-#### CMD-013 Coordination lifecycle helpers
+### CMD-013 Coordination lifecycle helpers
 
 The lifecycle helpers must remain thin wrappers around Git and YAML item
 file edits:
@@ -555,7 +323,7 @@ file edits:
 Commands that create commits must reject subject lines longer than 72
 characters.
 
-#### CMD-014 `agent-coord-lint`
+### CMD-014 `agent-coord-lint`
 
 `agent-coord-lint` must inspect coordination items and item-matched tests. It
 must check issue status-directory consistency, closed issue review and
@@ -567,10 +335,13 @@ must fail when any issue item is not `done` or `closed`.
 
 Item-matched tests must live in the project repository under paths such as
 `tests/items/projects/<project>/issues/<item-id>.sh`,
-`tests/items/projects/<project>/requirements/<item-id>.sh`; they must not
-mirror issue status directories.
+`tests/items/projects/<project>/functional-requirements/<item-id>.sh`,
+`tests/items/projects/<project>/quality-requirements/<item-id>.sh`, and
+`tests/items/projects/<project>/constraint-requirements/<item-id>.sh`; they
+must not mirror issue status directories. Legacy generic `REQ` items may keep
+`tests/items/projects/<project>/requirements/<item-id>.sh`.
 
-#### CMD-015 `agent-coord-upgrade-rules`
+### CMD-015 `agent-coord-upgrade-rules`
 
 `agent-coord-upgrade-rules --preview` must show template diffs without
 changing files. Without `--preview`, it must require a clean worktree, copy
@@ -578,7 +349,7 @@ bundled coordination rule templates into their installed locations, and
 commit the changes when any template differs. It must not push unless
 `--push` is used.
 
-#### CMD-016 Role-manager package
+### CMD-016 Role-manager package
 
 The role-manager resources must be packaged as an installable Pi package or
 equivalent local resource bundle. The package must include:
@@ -593,37 +364,37 @@ The flake package `pi-role-manager` must expose this package directory so it
 can be loaded with `pi-start -e "$PI_ENV_ROLE_MANAGER_PACKAGE"` from the
 devshell or installed with `pi-bwrap install -l <path>`.
 
-### 3.5 Project root and working directory requirements
+## 6. Project root and working directory requirements
 
-#### PATH-001 Project root detection
+### PATH-001 Project root detection
 
 Unless `PI_BWRAP_PROJECT_ROOT` is set, `pi-bwrap` must use `git rev-parse --show-toplevel` when `PI_BWRAP_USE_GIT_ROOT` is unset or `1`.
 
 If git-root detection fails or is disabled, it must use `$PWD`.
 
-#### PATH-002 Project root override
+### PATH-002 Project root override
 
 `PI_BWRAP_PROJECT_ROOT=/path` must force the mounted project root.
 
-#### PATH-003 Existing project root
+### PATH-003 Existing project root
 
 If the resolved project root is not a directory, `pi-bwrap` must exit with code `2`.
 
-#### PATH-004 Workspace mount
+### PATH-004 Workspace mount
 
 The selected project root must be mounted read-write at `/workspace`.
 
-#### PATH-005 Sandbox cwd mapping
+### PATH-005 Sandbox cwd mapping
 
 If the host cwd is inside the project root, the sandbox cwd must be the corresponding path under `/workspace`. Otherwise, the sandbox cwd must be `/workspace`.
 
-### 3.6 Sandbox filesystem requirements
+## 7. Sandbox filesystem requirements
 
-#### FS-001 Home isolation
+### FS-001 Home isolation
 
 The sandbox `HOME` must be `/home/pi`; the host home directory must not be mounted wholesale.
 
-#### FS-002 State directory
+### FS-002 State directory
 
 By default, persistent sandbox state must be stored outside the project under:
 
@@ -635,15 +406,15 @@ or `$HOME/.local/state/pi-env/<project-hash>` when `XDG_STATE_HOME` is unset.
 
 `<project-hash>` must be a deterministic hash of the resolved project root, truncated to 16 hex characters.
 
-#### FS-003 Explicit state directory
+### FS-003 Explicit state directory
 
 `PI_BWRAP_STATE_DIR=/path` must override the persistent state directory.
 
-#### FS-004 Ephemeral home
+### FS-004 Ephemeral home
 
 `PI_BWRAP_EPHEMERAL_HOME=1` must use a temporary state directory and remove it when the launcher exits.
 
-#### FS-005 State layout
+### FS-005 State layout
 
 The launcher must create these directories as needed:
 
@@ -653,36 +424,36 @@ The launcher must create these directories as needed:
 - `$state_base/agent/sessions`
 - `$state_base/cache`
 
-#### FS-006 State permissions
+### FS-006 State permissions
 
 Best-effort permissions for private state directories must be `0700`; copied auth and git config files must be best-effort `0600`.
 
-#### FS-007 Nix store
+### FS-007 Nix store
 
 `/nix/store` must be mounted read-only so Nix-provided runtime tools work inside the sandbox.
 
-#### FS-008 Global Pi install support
+### FS-008 Global Pi install support
 
 When present, `/usr/local/bin` and `/usr/local/lib/node_modules/@earendil-works/pi-coding-agent` must be mounted read-only so a global npm-installed `pi` can run.
 
-#### FS-009 System support files
+### FS-009 System support files
 
 The sandbox must make reasonable read-only host support files available when present, including passwd/group, nsswitch, hosts, resolver config, and certificate locations.
 
-#### FS-010 No sensitive host mounts
+### FS-010 No sensitive host mounts
 
 The launcher must not mount host `~/.ssh`, cloud credential directories, Docker sockets, or the host home directory by default.
 
-### 3.7 Pi agent resource requirements
+## 8. Pi agent resource requirements
 
-#### AGENT-001 Agent dir inside sandbox
+### AGENT-001 Agent dir inside sandbox
 
 Inside the sandbox:
 
 - `PI_CODING_AGENT_DIR` must be `/home/pi/.pi/agent`
 - `PI_CODING_AGENT_SESSION_DIR` must be `/home/pi/.pi/agent/sessions`
 
-#### AGENT-002 Host agent directory detection
+### AGENT-002 Host agent directory detection
 
 The host Pi agent directory must be selected in this order:
 
@@ -690,11 +461,11 @@ The host Pi agent directory must be selected in this order:
 2. `PI_CODING_AGENT_DIR`
 3. `$HOME/.pi/agent`
 
-#### AGENT-003 Common agent resource directory
+### AGENT-003 Common agent resource directory
 
 The common resource directory must default to the selected host agent directory and be overridable with `PI_BWRAP_COMMON_AGENT_DIR`.
 
-#### AGENT-004 Common resources imported
+### AGENT-004 Common resources imported
 
 When common import is enabled and the common directory exists, the launcher must import only:
 
@@ -706,34 +477,34 @@ When common import is enabled and the common directory exists, the launcher must
 - `prompts/`
 - `roles/`
 
-#### AGENT-005 Common import disable
+### AGENT-005 Common import disable
 
 `PI_BWRAP_IMPORT_COMMON=0` must disable common resource import.
 
-#### AGENT-006 Common sync policy
+### AGENT-006 Common sync policy
 
 `PI_BWRAP_COMMON_SYNC=always` or unset must refresh common resources each run.
 
 `PI_BWRAP_COMMON_SYNC=missing` must copy only resources that are absent in sandbox state.
 
-#### AGENT-007 Auth files imported
+### AGENT-007 Auth files imported
 
 When auth import is enabled and the host agent directory exists, the launcher must copy only these auth/model files:
 
 - `auth.json`
 - `models.json`
 
-#### AGENT-008 Auth import disable
+### AGENT-008 Auth import disable
 
 `PI_BWRAP_IMPORT_AUTH=0` must prevent copying `auth.json` and `models.json`.
 
-#### AGENT-009 Auth sync policy
+### AGENT-009 Auth sync policy
 
 `PI_BWRAP_AUTH_SYNC=always` or unset must refresh auth/model files each run.
 
 `PI_BWRAP_AUTH_SYNC=missing` must copy only absent auth/model files.
 
-#### AGENT-010 Global extensions and packages
+### AGENT-010 Global extensions and packages
 
 When extension import is enabled and the host agent directory exists, the launcher must make globally available Pi extensions and installed Pi packages usable inside the sandbox:
 
@@ -742,86 +513,86 @@ When extension import is enabled and the host agent directory exists, the launch
 
 Project-local `.pi/extensions`, `.pi/settings.json`, `.pi/npm`, and `.pi/git` are available through the `/workspace` project mount.
 
-#### AGENT-010a Extension import disable
+### AGENT-010a Extension import disable
 
 `PI_BWRAP_IMPORT_EXTENSIONS=0` must prevent copying `settings.json` and exposing host global `extensions/`, `npm/`, and `git/` directories.
 
-#### AGENT-010b Extension sync policy
+### AGENT-010b Extension sync policy
 
 `PI_BWRAP_EXTENSIONS_SYNC=always` or unset must refresh the sandbox copy of `settings.json` each run.
 
 `PI_BWRAP_EXTENSIONS_SYNC=missing` must copy `settings.json` only when it is absent in sandbox state.
 
-#### AGENT-011 Sessions default
+### AGENT-011 Sessions default
 
 Project sessions must be imported/bind-mounted by default for persistent homes, and disabled by default for ephemeral homes.
 
-#### AGENT-012 Sessions override
+### AGENT-012 Sessions override
 
 `PI_BWRAP_IMPORT_SESSIONS=0` must disable session bind mounting.
 
 `PI_BWRAP_IMPORT_SESSIONS=1` must enable session bind mounting, including with ephemeral homes.
 
-#### AGENT-013 Session scope
+### AGENT-013 Session scope
 
 The launcher must bind only the host Pi session directory corresponding to the current host cwd into the sandbox session directory corresponding to the mapped sandbox cwd.
 
 It must not mount all host Pi sessions.
 
-#### AGENT-014 Session naming
+### AGENT-014 Session naming
 
 Session directory names must be derived by normalizing the path, stripping the leading slash, replacing `/` and `:` with `-`, and surrounding the result with `--`.
 
-#### AGENT-015 Session migration
+### AGENT-015 Session migration
 
 Before bind-mounting host sessions, the launcher may copy existing sandbox session `*.jsonl` files into the host project session directory without overwriting existing files.
 
-### 3.8 Git configuration requirements
+## 9. Git configuration requirements
 
-#### GIT-001 Git config import default
+### GIT-001 Git config import default
 
 Host Git configuration import must be enabled by default.
 
-#### GIT-002 Global git config source
+### GIT-002 Global git config source
 
 The global Git config source must default to `$HOME/.gitconfig` and be overridable with `PI_BWRAP_HOST_GITCONFIG`.
 
-#### GIT-003 XDG git config source
+### GIT-003 XDG git config source
 
 The XDG Git config source must default to `$XDG_CONFIG_HOME/git/config` when `XDG_CONFIG_HOME` is set, otherwise `$HOME/.config/git/config`, and be overridable with `PI_BWRAP_HOST_XDG_GIT_CONFIG`.
 
-#### GIT-004 Git config targets
+### GIT-004 Git config targets
 
 Copied Git config files must appear inside the sandbox as:
 
 - `/home/pi/.gitconfig`
 - `/home/pi/.config/git/config`
 
-#### GIT-005 Git config disable
+### GIT-005 Git config disable
 
 `PI_BWRAP_IMPORT_GIT_CONFIG=0` must prevent importing Git config.
 
-#### GIT-006 Git config sync policy
+### GIT-006 Git config sync policy
 
 `PI_BWRAP_GIT_CONFIG_SYNC=always` or unset must refresh copied Git config each run.
 
 `PI_BWRAP_GIT_CONFIG_SYNC=missing` must preserve existing sandbox copies.
 
-#### GIT-007 No credential import
+### GIT-007 No credential import
 
 Git credentials, SSH keys, signing keys, credential helper backing stores, and other referenced files must not be imported automatically.
 
-#### GIT-008 System Git config
+### GIT-008 System Git config
 
 The sandbox must set `GIT_CONFIG_NOSYSTEM=1`.
 
-### 3.9 Environment requirements
+## 10. Environment requirements
 
-#### ENV-001 Clear environment
+### ENV-001 Clear environment
 
 Bubblewrap must be invoked with `--clearenv`.
 
-#### ENV-002 Basic terminal variables
+### ENV-002 Basic terminal variables
 
 The launcher must set or pass through terminal-related variables:
 
@@ -830,15 +601,15 @@ The launcher must set or pass through terminal-related variables:
 - pass `NO_COLOR` when set and non-empty
 - pass `FORCE_COLOR` when set and non-empty
 
-#### ENV-003 Provider credentials
+### ENV-003 Provider credentials
 
 The launcher may pass selected LLM provider variables, including API keys and base URLs listed in `flake.nix`. No arbitrary host environment variable may be passed unless explicitly requested.
 
-#### ENV-004 Extra environment pass-through
+### ENV-004 Extra environment pass-through
 
 `PI_BWRAP_PASS_ENV` must accept extra environment variable names separated by spaces, commas, or colons and pass through only those names when set and non-empty.
 
-#### ENV-005 Sandbox identity/env
+### ENV-005 Sandbox identity/env
 
 Inside the sandbox the launcher must set:
 
@@ -854,7 +625,7 @@ Inside the sandbox the launcher must set:
 - `PI_SKIP_VERSION_CHECK`, defaulting to `1`
 - `PI_TELEMETRY`, defaulting to `0`
 
-#### ENV-006 Coordination context
+### ENV-006 Coordination context
 
 When set, the launcher must pass safe coordination context into the
 sandbox:
@@ -882,25 +653,23 @@ external coordination clone read-write at `/coordination`. The launcher may
 print a reminder when a coordination repository is available, but it must
 not mutate coordination state.
 
-### 3.10 Network requirements
+## 11. Network requirements
 
-#### NET-001 Default network
+### NET-001 Default network
 
 The sandbox must share the host network by default so Pi can reach model providers.
 
-#### NET-002 Disable network
+### NET-002 Disable network
 
 `PI_BWRAP_NET=0` must avoid adding Bubblewrap `--share-net`.
 
-## 4. Quality requirements
+## 12. Documentation requirements
 
-### 4.1 Documentation quality requirements
-
-#### DOC-000 Design documents
+### DOC-000 Design documents
 
 Design proposals that are not yet mandatory runtime behavior must be documented separately and referenced from requirements/use-case documentation. The Git-backed multi-agent coordination design is documented in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). Implemented coordination behavior is limited to explicit requirements for concrete commands, files, and environment variables in this document.
 
-#### DOC-001 README coverage
+### DOC-001 README coverage
 
 `README.md` must document:
 
@@ -917,11 +686,11 @@ Design proposals that are not yet mandatory runtime behavior must be documented 
 - safe coordination context/mount behavior
 - security notes and limitations
 
-### 4.2 Blackbox verification requirements
+## 13. Blackbox test blueprint
 
 These tests should be run from outside implementation internals where possible, using a temporary project and temporary host home/agent directories. A fake `pi` executable can be placed early on `PATH` to record argv, cwd, environment, and visible files.
 
-#### TEST-001 Flake metadata
+### TEST-001 Flake metadata
 
 Command:
 
@@ -935,7 +704,7 @@ Expected:
 - apps include `pi-start`, `pi-bwrap`, and `default`
 - `devShells.default` exists
 
-#### TEST-002 Flake builds
+### TEST-002 Flake builds
 
 Commands:
 
@@ -962,7 +731,7 @@ nix build .#agent-coord-upgrade-rules
 
 Expected: all builds succeed.
 
-#### TEST-003 Help does not require Pi
+### TEST-003 Help does not require Pi
 
 Command with `PATH` excluding real/fake `pi`:
 
@@ -972,7 +741,7 @@ nix run .#pi-bwrap -- --help
 
 Expected: help text is printed and exit code is `0`.
 
-#### TEST-004 Missing Pi
+### TEST-004 Missing Pi
 
 Run `pi-bwrap` where no `pi` executable is on `PATH`.
 
@@ -981,7 +750,7 @@ Expected:
 - exit code `127`
 - stderr says `pi was not found on PATH before entering the sandbox`
 
-#### TEST-005 Default Pi arguments
+### TEST-005 Default Pi arguments
 
 With fake `pi` on `PATH`, run:
 
@@ -995,7 +764,7 @@ Expected fake Pi sees:
 --tools read,bash,edit,write,grep,find,ls --continue
 ```
 
-#### TEST-006 Argument separator
+### TEST-006 Argument separator
 
 With fake `pi`, run:
 
@@ -1009,7 +778,7 @@ Expected fake Pi sees exactly:
 --model test/model hello
 ```
 
-#### TEST-007 `pi-start` preserves extra args
+### TEST-007 `pi-start` preserves extra args
 
 With fake `pi`, run:
 
@@ -1019,7 +788,7 @@ pi-start --model test/model
 
 Expected fake Pi sees `--tools <default-tools> --continue --model test/model`.
 
-#### TEST-008 Default tools override
+### TEST-008 Default tools override
 
 With fake `pi`, run:
 
@@ -1029,7 +798,7 @@ PI_BWRAP_DEFAULT_TOOLS=read,grep pi-start
 
 Expected fake Pi sees `--tools read,grep --continue`.
 
-#### TEST-009 Project root is mounted at `/workspace`
+### TEST-009 Project root is mounted at `/workspace`
 
 Create a git repo with a subdirectory, run from the subdirectory, and have fake Pi record cwd.
 
@@ -1038,7 +807,7 @@ Expected:
 - cwd inside sandbox is `/workspace/<subdir>`
 - files from git root are visible under `/workspace`
 
-#### TEST-010 Disable git-root detection
+### TEST-010 Disable git-root detection
 
 From a subdirectory in a git repo, run:
 
@@ -1048,7 +817,7 @@ PI_BWRAP_USE_GIT_ROOT=0 pi-bwrap -- <fake args>
 
 Expected `/workspace` corresponds to the subdirectory, not the git root.
 
-#### TEST-011 Project root override
+### TEST-011 Project root override
 
 Run with:
 
@@ -1058,25 +827,25 @@ PI_BWRAP_PROJECT_ROOT=/tmp/other-project pi-bwrap
 
 Expected `/workspace` contains `/tmp/other-project`.
 
-#### TEST-012 Missing project root
+### TEST-012 Missing project root
 
 Run with a nonexistent `PI_BWRAP_PROJECT_ROOT`.
 
 Expected exit code `2`.
 
-#### TEST-013 Persistent state location
+### TEST-013 Persistent state location
 
 With temporary `HOME` and `XDG_STATE_HOME`, run `pi-bwrap`.
 
 Expected a deterministic directory is created under `$XDG_STATE_HOME/pi-env/<16-char-hash>` with the required state layout.
 
-#### TEST-014 Explicit state location
+### TEST-014 Explicit state location
 
 Run with `PI_BWRAP_STATE_DIR=/tmp/pi-state`.
 
 Expected state is created under `/tmp/pi-state` and not under the default state parent.
 
-#### TEST-015 Ephemeral state cleanup
+### TEST-015 Ephemeral state cleanup
 
 Run with `PI_BWRAP_EPHEMERAL_HOME=1` and have fake Pi record `$HOME` and create a marker in it.
 
@@ -1086,7 +855,7 @@ Expected:
 - temporary state directory is removed after exit
 - project session import defaults to disabled
 
-#### TEST-016 Common resource import
+### TEST-016 Common resource import
 
 Create host common dir containing all supported common files plus unsupported files.
 
@@ -1097,43 +866,43 @@ Expected inside `/home/pi/.pi/agent`:
 - supported files/dirs are present
 - unsupported files are absent
 
-#### TEST-017 Common import disabled
+### TEST-017 Common import disabled
 
 Run with `PI_BWRAP_IMPORT_COMMON=0`.
 
 Expected no common resources are copied into sandbox state.
 
-#### TEST-018 Common sync missing
+### TEST-018 Common sync missing
 
 Pre-create a sandbox common file, then run with `PI_BWRAP_COMMON_SYNC=missing` and a different host version.
 
 Expected the existing sandbox file is not overwritten.
 
-#### TEST-019 Auth import
+### TEST-019 Auth import
 
 Create host `auth.json` and `models.json` plus unrelated files.
 
 Expected only `auth.json` and `models.json` are copied to the sandbox agent state, mode best-effort `0600`.
 
-#### TEST-020 Auth import disabled
+### TEST-020 Auth import disabled
 
 Run with `PI_BWRAP_IMPORT_AUTH=0`.
 
 Expected no auth/model files are copied.
 
-#### TEST-021 Session scope
+### TEST-021 Session scope
 
 Create several host session directories, including one for the current cwd and one unrelated.
 
 Expected inside sandbox only the mapped current-cwd session directory is visible/bound; unrelated sessions are not visible.
 
-#### TEST-022 Session import disabled
+### TEST-022 Session import disabled
 
 Run with `PI_BWRAP_IMPORT_SESSIONS=0`.
 
 Expected no host session directory is bind-mounted.
 
-#### TEST-023 Git config import
+### TEST-023 Git config import
 
 Create temporary host `.gitconfig` and `.config/git/config`.
 
@@ -1143,19 +912,19 @@ Expected inside sandbox:
 - `/home/pi/.config/git/config` exists with same content
 - `GIT_CONFIG_NOSYSTEM=1`
 
-#### TEST-024 Git config import disabled
+### TEST-024 Git config import disabled
 
 Run with `PI_BWRAP_IMPORT_GIT_CONFIG=0`.
 
 Expected git config files are absent unless already present from prior state.
 
-#### TEST-025 Git config sync missing
+### TEST-025 Git config sync missing
 
 Pre-create sandbox Git config, run with `PI_BWRAP_GIT_CONFIG_SYNC=missing` and different host config.
 
 Expected sandbox config is preserved.
 
-#### TEST-026 Environment clearing
+### TEST-026 Environment clearing
 
 Set arbitrary host variables and selected pass-through variables.
 
@@ -1165,7 +934,7 @@ Expected:
 - selected provider variables are present when non-empty
 - `PI_BWRAP_PASS_ENV` variables are present when non-empty
 
-#### TEST-027 Network flag default and disable
+### TEST-027 Network flag default and disable
 
 Use a fake `bwrap` wrapper or inspect behavior in an environment where Bubblewrap invocation can be recorded.
 
@@ -1174,13 +943,13 @@ Expected:
 - default invocation includes `--share-net`
 - `PI_BWRAP_NET=0` invocation does not include `--share-net`
 
-#### TEST-028 Sensitive host filesystem isolation
+### TEST-028 Sensitive host filesystem isolation
 
 With fake Pi, attempt to read host-only files such as host home markers, `.ssh`, and Docker socket path.
 
 Expected they are not visible unless they are inside the selected project root or explicitly copied by supported import behavior.
 
-#### TEST-029 Coordination MVP helpers
+### TEST-029 Coordination MVP helpers
 
 Run `tests/agent-coord-blackbox.sh` from the repository root.
 
@@ -1196,7 +965,7 @@ Expected:
   expected file and Git state transitions;
 - rule upgrade preview runs without mutating coordination state.
 
-#### TEST-030 Coordination conflict hardening
+### TEST-030 Coordination conflict hardening
 
 Run `tests/agent-coord-concurrency.sh` from the repository root.
 
@@ -1211,7 +980,7 @@ Expected:
   the final closed result;
 - helper-generated commit subjects longer than 72 characters are rejected.
 
-#### TEST-031 Role-manager package and commands
+### TEST-031 Role-manager package and commands
 
 Run the role-manager smoke tests from the repository root:
 
@@ -1232,139 +1001,23 @@ Expected:
   one-cycle termination, UI setup, and role-aware coordination environment
   behavior pass.
 
-## 5. Constraint requirements
+## 14. Coordination implementation guard
 
-#### CRQ-001 — One coordination domain is one bare Git repository
+Git-backed coordination support, when enabled, must keep the same design boundaries:
 
-- Type: Constraint requirement
-- Requirement kind: architecture boundary
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
-
-Git-backed coordination support, when enabled, must keep one bare coordination repository as one coordination domain.
-
-#### CRQ-002 — Coordination state uses plain Git text files
-
-- Type: Constraint requirement
-- Requirement kind: architecture boundary
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
-
-Coordination repositories must be plain Git repositories containing Markdown and small metadata blocks. Helper commands must remain thin wrappers around Git and file scaffolding/editing.
-
-#### CRQ-003 — `pi-start` must not mutate coordination state
-
-- Type: Constraint requirement
-- Requirement kind: safety boundary
-- Related workflows: UC-023
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
-
-`pi-start` may only provide safe context, reminders, or mounts for coordination repositories. It must not create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically.
-
-#### CRQ-004 — No hidden synchronization mechanism
-
-- Type: Constraint requirement
-- Requirement kind: architecture boundary
-- Related workflows: UC-023
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
-
-No daemon, database, background push, force-push, hidden lock service, or non-Git synchronization mechanism may be introduced for coordination state.
-
-#### CRQ-005 — Coordination requirements are explicit only
-
-- Type: Constraint requirement
-- Requirement kind: product boundary
-- Related workflows: UC-023
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
+- one bare coordination repository is one coordination domain;
+- coordination repositories are plain Git repositories containing Markdown and small metadata blocks;
+- helper commands are thin wrappers around Git and file scaffolding/editing;
+- `pi-start` may only provide safe context, reminders, or mounts for coordination repositories;
+- `pi-start` must not create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically;
+- no daemon, database, background push, force-push, hidden lock service, or non-Git synchronization mechanism may be introduced for coordination state.
 
 Coordination behavior becomes mandatory only when a requirement in this document names a concrete command, file, or environment variable.
 
-#### CRQ-006 — Host secrets are not mounted or imported by default
+## 15. Non-goals and caveats
 
-- Type: Constraint requirement
-- Requirement kind: security boundary
-- Related workflows: UC-004, UC-013, UC-022
-- Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
-
-Git credential stores, SSH keys, signing keys, cloud credentials, Docker sockets, and the host home directory must not be mounted or imported by default.
-
-#### CRQ-007 — User-specific common Pi resources are external
-
-- Type: Constraint requirement
-- Requirement kind: product boundary
-- Related workflows: UC-010, UC-011
-- Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
-
-`pi-env` does not ship user-specific common rules, skills, prompts, roles, or extensions. It imports or exposes them from an external user-controlled directory when configured.
-
-#### CRQ-008 — Bubblewrap network isolation is coarse-grained only
-
-- Type: Constraint requirement
-- Requirement kind: limitation
-- Related workflows: UC-015, UC-022
-- Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
-
-Bubblewrap does not provide domain-level network allowlisting. Network behavior is limited to sharing or not sharing the host network namespace.
-
-#### CRQ-009 — Enabled Pi tools are not inherently harmless
-
-- Type: Constraint requirement
-- Requirement kind: limitation
-- Related workflows: UC-014, UC-022
-- Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
-
-If `read` or `bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions may be readable by commands or tools inside the sandbox. Users should use least-privilege API keys, provider proxies, reduced tool allowlists, or `PI_BWRAP_NET=0` when appropriate.
-
-## 6. Coordination requirement item structure
-
-Future coordination requirement items should preserve this document structure by storing enough metadata and Markdown content to regenerate it.
-
-Recommended fields for functional, quality, and constraint requirement items:
-
-```yaml
-schema: coordination-item/v1
-id: PIENV-FRQ-YYYYMMDD-HHMMSS-NNN
-type: functional-requirement
-requirement_key: CMD-004
-requirement_kind: detailed-behavior
-domain: commands
-status: active
-project: pi-env
-title: "`pi-bwrap` default invocation"
-source_refs:
-  - "REQUIREMENTS.md#CMD-004"
-related_workflows:
-  - UC-002
-related_requirements: []
-related_tests:
-  - TEST-005
-testable: yes
-testability_note: null
-```
-
-Workflow-level requirements should use:
-
-```yaml
-type: functional-requirement
-requirement_key: UC-001
-requirement_kind: workflow
-domain: user-workflows
-```
-
-Quality verification requirements should use:
-
-```yaml
-type: quality-requirement
-requirement_key: TEST-001
-requirement_kind: blackbox-test
-domain: verification
-```
-
-Constraint requirements should use:
-
-```yaml
-type: constraint-requirement
-requirement_key: CRQ-001
-requirement_kind: architecture-boundary
-domain: constraints
-```
-
-The initial Markdown message body for each requirement item should contain the renderable body for that requirement, including the stable heading, metadata, requirement text, acceptance criteria, and verification notes when applicable. Generated documentation should render stable requirement keys as the primary visible identifiers and may include coordination item IDs as secondary metadata.
+- Agent coordination repository infrastructure is optional unless implemented and promoted into explicit requirements above.
+- Bubblewrap does not provide domain-level network allowlisting.
+- If `read`/`bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions are readable by commands/tools inside the sandbox.
+- `pi-env` does not ship user-specific common rules, skills, prompts, or extensions; it imports/exposes them from an external directory when configured.
+- Git credential stores and SSH/signing keys are intentionally not imported automatically.
