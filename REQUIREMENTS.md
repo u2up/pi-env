@@ -1315,9 +1315,9 @@ If `read` or `bash` tools are enabled, copied auth files, exposed global extensi
 
 ## 6. Coordination requirement item structure
 
-Future coordination requirement items should preserve this document structure by storing enough metadata and Markdown content to regenerate it.
+Requirement coordination items live under `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`.
 
-Recommended fields for functional, quality, and constraint requirement items:
+Required fields for functional, quality, and constraint requirement items:
 
 ```yaml
 schema: coordination-item/v1
@@ -1367,4 +1367,4 @@ requirement_kind: architecture-boundary
 domain: constraints
 ```
 
-The initial Markdown message body for each requirement item should contain the renderable body for that requirement, including the stable heading, metadata, requirement text, acceptance criteria, and verification notes when applicable. Generated documentation should render stable requirement keys as the primary visible identifiers and may include coordination item IDs as secondary metadata.
+The initial Markdown message body for each requirement item must contain the renderable body for that requirement, including the stable heading, metadata, requirement text, acceptance criteria, and verification notes when applicable. Generated documentation renders stable requirement keys as the primary visible identifiers and may include coordination item IDs as secondary metadata.
