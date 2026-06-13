@@ -62,4 +62,3 @@ for key in UC-001 UC-023 FLAKE-001 CMD-016 CMD-017 TEST-031 CRQ-009 CRQ-010; do
   grep -F "#### $key" "$stdout_file" >/dev/null
 done
 
-test -f USE_CASES.legacy.md
