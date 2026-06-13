@@ -17,7 +17,14 @@ import {
 
 const repoRoot = process.env.REPO_ROOT;
 const rolesDir = join(repoRoot, "role-manager", "roles");
-const expectedRoles = ["architect", "builder", "developer", "reviewer", "tester"];
+const expectedRoleTools = new Map([
+  ["architect", ["read", "grep", "find", "ls", "bash", "edit", "write"]],
+  ["builder", ["read", "grep", "find", "ls", "bash", "edit"]],
+  ["developer", ["read", "grep", "find", "ls", "edit", "write", "bash"]],
+  ["reviewer", ["read", "grep", "find", "ls", "bash"]],
+  ["tester", ["read", "grep", "find", "ls", "bash", "edit", "write"]],
+]);
+const expectedRoles = [...expectedRoleTools.keys()];
 
 const base = validateRoleDirectory(rolesDir, { requireSections: true });
 assert.deepEqual(
@@ -38,8 +45,11 @@ assert.equal(
 
 for (const role of base.roles) {
   assert.ok(role.description.length > 0, `${role.name} has no description`);
-  assert.ok(Array.isArray(role.tools), `${role.name} tools is not a list`);
-  assert.ok(role.tools.length > 0, `${role.name} has no tools`);
+  assert.deepEqual(
+    role.tools,
+    expectedRoleTools.get(role.name),
+    `${role.name} bundled tools do not match CMD-017`,
+  );
   for (const section of REQUIRED_BODY_SECTIONS) {
     assert.ok(
       role.sections.includes(section),

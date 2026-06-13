@@ -1,8 +1,8 @@
 # pi-env Requirements
 
-This is the canonical human-authored requirements document for `pi-env`. It combines the former implementation contract in `REQUIREMENTS.legacy.md` with the workflow descriptions in `USE_CASES.legacy.md`.
+This document is generated reference output for requirements that have active coordination requirement items. Requirement coordination items are the preferred source of truth when present; `REQUIREMENTS.md` is a secondary fallback source only for project or requirement areas that do not yet have coordination items.
 
-The document is structured so it can later be represented as coordination requirement items and regenerated with minimal textual drift. Each requirement has a stable key such as `UC-001`, `CMD-004`, or `FS-010`. Future coordination items may have timestamped item IDs, but generated documentation should preserve these stable keys as the public requirement identifiers.
+Each rendered requirement has a stable public key such as `UC-001`, `CMD-004`, or `FS-010`. Coordination items may have timestamped item IDs, but generated documentation preserves these stable keys as the public requirement identifiers.
 
 ## 1. Product scope
 
@@ -366,13 +366,11 @@ The package `pi-bwrap` must install an executable named `pi-bwrap`.
 
 The package `pi-start` must install an executable named `pi-start`.
 
-#### CMD-003 Default tool allowlist
+#### CMD-003 Default tool allowlist clarification
 
-The canonical default Pi tool list is:
-
-```text
-read,bash,edit,write,grep,find,ls
-```
+This requirement defines the canonical global default Pi tool list only.
+Role-specific tool allowlists are distinct active-role runtime settings
+and are covered by `PIENV-FRQ-20260612-210000-047`.
 
 #### CMD-004 `pi-bwrap` default invocation
 
@@ -578,20 +576,37 @@ bundled coordination rule templates into their installed locations, and
 commit the changes when any template differs. It must not push unless
 `--push` is used.
 
-#### CMD-016 Role-manager package
+#### CMD-016 Built-in role tool allowlists
 
-The role-manager resources must be packaged as an installable Pi package or
-equivalent local resource bundle. The package must include:
+The role-manager package must preserve bundled role metadata, including
+role-specific tool allowlists, when loaded from this repository or as an
+external Pi package. Activating a bundled role must request its declared
+tool set from the host Pi runtime and warn with the missing tool names
+when any requested tool is not registered.
 
-- `package.json` with the `pi-package` keyword and a `pi.extensions` manifest;
-- `extensions/role-manager.ts`;
-- `lib/role-loader.mjs` and `lib/role-schema.mjs`;
-- bundled base roles under `roles/`;
-- schema and user documentation.
+The bundled `architect` role must include `read`, `grep`, `find`, `ls`,
+`bash`, `edit`, and `write` so architecture work can inspect files,
+create/edit Markdown or YAML documents, and run coordination or Git
+commands.
 
-The flake package `pi-role-manager` must expose this package directory so it
-can be loaded with `pi-start -e "$PI_ENV_ROLE_MANAGER_PACKAGE"` from the
-devshell or installed with `pi-bwrap install -l <path>`.
+#### CMD-017 Built-in role tool allowlists
+
+The role-manager package must preserve bundled role metadata, including
+role-specific tool allowlists, when loaded from this repository or as an
+external Pi package. Activating a bundled role must request its declared
+tool set from the host Pi runtime and warn with the missing tool names
+when any requested tool is not registered.
+
+Bundled base roles must declare these tool allowlists:
+
+- `architect`: `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write`
+- `developer`: `read`, `grep`, `find`, `ls`, `edit`, `write`, `bash`
+- `builder`: `read`, `grep`, `find`, `ls`, `bash`, `edit`
+- `tester`: `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write`
+- `reviewer`: `read`, `grep`, `find`, `ls`, `bash`
+
+Custom user roles may declare their own allowlists and must not be
+forced to match bundled role policy.
 
 ### 3.5 Project root and working directory requirements
 
@@ -1312,6 +1327,28 @@ Bubblewrap does not provide domain-level network allowlisting. Network behavior 
 - Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
 
 If `read` or `bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions may be readable by commands or tools inside the sandbox. Users should use least-privilege API keys, provider proxies, reduced tool allowlists, or `PI_BWRAP_NET=0` when appropriate.
+
+#### CRQ-010 — Requirement source of truth precedence
+
+- Type: Constraint requirement
+- Requirement kind: architecture boundary
+
+Requirement coordination items under
+`coordination/projects/<project>/requirements/` are the preferred
+authoritative source of truth for functional, quality, and constraint
+requirements when those items exist. Requirement changes for covered
+areas must be planned and recorded in those items first, including
+stable `requirement_key`, classification, relationships, testability
+metadata, and renderable Markdown body text.
+
+`REQUIREMENTS.md` is normally a generated, human-readable reference
+rendered from active requirement items. When requirement coordination
+items do not yet exist for a project or requirement area,
+`REQUIREMENTS.md` may serve as the secondary source of truth until
+corresponding coordination items are created. Once items exist, any
+generated documentation drift must be resolved by correcting the
+relevant coordination items or the requirements generator, then
+regenerating the document.
 
 ## 6. Coordination requirement item structure
 

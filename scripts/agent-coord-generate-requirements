@@ -75,11 +75,28 @@ function field(text, name) {
   const m = text.match(re);
   return m ? unquote(m[1]) : '';
 }
+function currentMessageId(text) {
+  const m = text.match(/^current:\n(?:  [^\n]*\n)*?  message:\s*(.*)$/m);
+  return m ? unquote(m[1]) : 'msg-0001';
+}
 function body(text) {
-  const marker = /^  - id: msg-0001\n    event: evt-0001\n    body: \|-\n/m;
+  const messageId = currentMessageId(text) || 'msg-0001';
+  const escaped = messageId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const marker = new RegExp('^  - id: ' + escaped + '\\n    event: [^\\n]+\\n    body: \\|-\\n', 'm');
   const m = marker.exec(text);
   if (!m) return '';
-  return text.slice(m.index + m[0].length).split('\n').map(line => line.startsWith('      ') ? line.slice(6) : line).join('\n').replace(/\s+$/, '') + '\n';
+  const lines = text.slice(m.index + m[0].length).split('\n');
+  const out = [];
+  for (const line of lines) {
+    if (line.startsWith('      ')) {
+      out.push(line.slice(6));
+    } else if (line === '') {
+      out.push('');
+    } else {
+      break;
+    }
+  }
+  return out.join('\n').replace(/\s+$/, '') + '\n';
 }
 const items = fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).map(f => {
   const text = fs.readFileSync(path.join(dir, f), 'utf8');
@@ -105,9 +122,9 @@ function renderBody(markdown) {
 function print(s='') { process.stdout.write(s + '\n'); }
 print('# pi-env Requirements');
 print();
-print('This is the canonical human-authored requirements document for `pi-env`. It combines the former implementation contract in `REQUIREMENTS.legacy.md` with the workflow descriptions in `USE_CASES.legacy.md`.');
+print('This document is generated reference output for requirements that have active coordination requirement items. Requirement coordination items are the preferred source of truth when present; `REQUIREMENTS.md` is a secondary fallback source only for project or requirement areas that do not yet have coordination items.');
 print();
-print('The document is structured so it can later be represented as coordination requirement items and regenerated with minimal textual drift. Each requirement has a stable key such as `UC-001`, `CMD-004`, or `FS-010`. Future coordination items may have timestamped item IDs, but generated documentation should preserve these stable keys as the public requirement identifiers.');
+print('Each rendered requirement has a stable public key such as `UC-001`, `CMD-004`, or `FS-010`. Coordination items may have timestamped item IDs, but generated documentation preserves these stable keys as the public requirement identifiers.');
 print();
 print('## 1. Product scope');
 print();

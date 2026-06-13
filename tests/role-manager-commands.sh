@@ -82,6 +82,14 @@ const models = [
   { provider: "anthropic", id: "target", name: "Target", api: "anthropic-messages", baseUrl: "", reasoning: true, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000, maxTokens: 100 },
 ];
 
+const expectedBundledRoleTools = new Map([
+  ["architect", ["read", "grep", "find", "ls", "bash", "edit", "write"]],
+  ["developer", ["read", "grep", "find", "ls", "edit", "write", "bash"]],
+  ["builder", ["read", "grep", "find", "ls", "bash", "edit"]],
+  ["tester", ["read", "grep", "find", "ls", "bash", "edit", "write"]],
+  ["reviewer", ["read", "grep", "find", "ls", "bash"]],
+]);
+
 function createHarness(initialEntries = [], options = {}) {
   const entries = initialEntries;
   const builtinToolNames = options.builtinToolNames ?? [
@@ -379,22 +387,22 @@ try {
     /Tests\/checks run/,
   );
 
-  const architect = createHarness([]);
-  await architect.emit("session_start", { type: "session_start", reason: "startup" });
-  await architect.commands.get("role").handler("architect", architect.ctx);
-  assert.deepEqual(architect.state.activeTools, [
-    "read",
-    "grep",
-    "find",
-    "ls",
-    "bash",
-    "edit",
-    "write",
-  ]);
-  assert.equal(architect.entries.at(-1).data.activeRoleName, "architect");
-  assert.equal(architect.state.thinkingLevel, "high");
-  await architect.commands.get("role-clear").handler("", architect.ctx);
-  assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
+  for (const [roleName, tools] of expectedBundledRoleTools) {
+    const roleHarness = createHarness([]);
+    await roleHarness.emit("session_start", { type: "session_start", reason: "startup" });
+    await roleHarness.commands.get("role").handler(roleName, roleHarness.ctx);
+    assert.deepEqual(
+      roleHarness.state.activeTools,
+      tools,
+      `${roleName} activation tools do not match CMD-017`,
+    );
+    assert.equal(roleHarness.entries.at(-1).data.activeRoleName, roleName);
+    if (roleName === "architect") {
+      assert.equal(roleHarness.state.thinkingLevel, "high");
+    }
+    await roleHarness.commands.get("role-clear").handler("", roleHarness.ctx);
+    assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
+  }
 
   const missingArchitectTool = createHarness([], {
     builtinToolNames: ["read", "grep", "find", "ls", "bash", "edit"],
@@ -416,6 +424,28 @@ try {
     "missing architect tools are reported by name",
   );
   await missingArchitectTool.commands.get("role-clear").handler("", missingArchitectTool.ctx);
+  assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
+
+  const missingDeveloperTool = createHarness([], {
+    builtinToolNames: ["read", "grep", "find", "ls", "edit", "bash"],
+  });
+  await missingDeveloperTool.emit("session_start", { type: "session_start", reason: "startup" });
+  await missingDeveloperTool.commands.get("role").handler("developer", missingDeveloperTool.ctx);
+  assert.deepEqual(missingDeveloperTool.state.activeTools, [
+    "read",
+    "grep",
+    "find",
+    "ls",
+    "edit",
+    "bash",
+  ]);
+  assert.ok(
+    missingDeveloperTool.notifications.some((notice) =>
+      notice.message.includes("requested unknown tools: write"),
+    ),
+    "missing developer tools are reported by name",
+  );
+  await missingDeveloperTool.commands.get("role-clear").handler("", missingDeveloperTool.ctx);
   assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
 
   await harness.commands.get("role").handler("modeler", harness.ctx);

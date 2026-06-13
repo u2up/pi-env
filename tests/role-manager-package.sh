@@ -17,6 +17,13 @@ import { formatRoleWarning, validateRoleFile } from "./role-manager/lib/role-sch
 
 const repoRoot = process.env.REPO_ROOT;
 const packageRoot = join(repoRoot, "role-manager");
+const expectedRoleTools = new Map([
+  ["architect", ["read", "grep", "find", "ls", "bash", "edit", "write"]],
+  ["builder", ["read", "grep", "find", "ls", "bash", "edit"]],
+  ["developer", ["read", "grep", "find", "ls", "edit", "write", "bash"]],
+  ["reviewer", ["read", "grep", "find", "ls", "bash"]],
+  ["tester", ["read", "grep", "find", "ls", "bash", "edit", "write"]],
+]);
 const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
 
 assert.equal(manifest.name, "pi-env-role-manager");
@@ -56,16 +63,12 @@ const sources = discoverRoleSources({
 const registry = loadRoleRegistry(sources);
 const warnings = registry.warnings.map(formatRoleWarning).join("\n");
 assert.equal(registry.invalidRoles.length, 0, warnings);
-assert.ok(registry.rolesByName.has("architect"), warnings);
-assert.deepEqual(registry.rolesByName.get("architect").tools, [
-  "read",
-  "grep",
-  "find",
-  "ls",
-  "bash",
-  "edit",
-  "write",
-]);
+for (const [roleName, tools] of expectedRoleTools) {
+  assert.ok(registry.rolesByName.has(roleName), `${roleName} missing: ${warnings}`);
+  const role = registry.rolesByName.get(roleName);
+  assert.equal(role.source.kind, ROLE_SOURCE_KINDS.BASE, `${roleName} should load from package roles`);
+  assert.deepEqual(role.tools, tools, `${roleName} package tools do not match CMD-017`);
+}
 assert.ok(registry.rolesByName.has("domain-architect"), warnings);
 assert.equal(
   registry.rolesByName.get("domain-architect").source.kind,

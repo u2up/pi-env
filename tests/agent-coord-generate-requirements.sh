@@ -25,8 +25,11 @@ grep -F '## 4. Quality requirements' "$stdout_file" >/dev/null
 grep -F '## 5. Constraint requirements' "$stdout_file" >/dev/null
 grep -F '#### UC-001' "$stdout_file" >/dev/null
 grep -F '#### CMD-004' "$stdout_file" >/dev/null
+grep -F '#### CMD-017' "$stdout_file" >/dev/null
 grep -F '#### TEST-031' "$stdout_file" >/dev/null
 grep -F '#### CRQ-009' "$stdout_file" >/dev/null
+grep -F '#### CRQ-010' "$stdout_file" >/dev/null
+grep -F '#### CRQ-010 — Requirement source of truth precedence' "$stdout_file" >/dev/null
 grep -F 'projects/<project>/requirements/' "$stdout_file" >/dev/null
 
 for heading in \
@@ -49,7 +52,12 @@ if grep -F 'functional/quality/constraint requirement items' "$stdout_file" >/de
   exit 1
 fi
 
-for key in UC-001 UC-023 FLAKE-001 CMD-016 TEST-031 CRQ-009; do
+if grep -F 'message: msg-0002' "$stdout_file" >/dev/null || grep -F 'events:' "$stdout_file" >/dev/null; then
+  echo "generated requirements leaked coordination YAML structure" >&2
+  exit 1
+fi
+
+for key in UC-001 UC-023 FLAKE-001 CMD-016 CMD-017 TEST-031 CRQ-009 CRQ-010; do
   grep -F "#### $key" REQUIREMENTS.md >/dev/null
   grep -F "#### $key" "$stdout_file" >/dev/null
 done

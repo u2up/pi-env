@@ -15,10 +15,12 @@ It currently provides:
   model/thinking/tool settings, injects only the active role body into the
   system prompt, and decorates the interactive UI with active-role status;
 - base roles for `architect`, `developer`, `builder`, `tester`, and
-  `reviewer`, each with its intended tool allowlist. The bundled
-  `architect` role enables `read`, `grep`, `find`, `ls`, `bash`, `edit`, and
-  `write` so architecture sessions can update Markdown/YAML documents and run
-  coordination or Git commands.
+  `reviewer`, each with its intended tool allowlist:
+  - `architect`: `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write`;
+  - `developer`: `read`, `grep`, `find`, `ls`, `edit`, `write`, `bash`;
+  - `builder`: `read`, `grep`, `find`, `ls`, `bash`, `edit`;
+  - `tester`: `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write`;
+  - `reviewer`: `read`, `grep`, `find`, `ls`, `bash`.
 
 Try it locally from this repository with:
 
