@@ -28,17 +28,22 @@ Try it locally from this repository with:
 pi -e ./role-manager
 ```
 
-Inside the `pi-env` devshell, load the Nix-packaged role manager for one run
-with:
+Inside the `pi-env` devshell, `pi-start` loads the Nix-packaged role manager by
+default when the package path exists. The package remains inactive until a role
+is selected, restored from session state, or requested through supported
+environment variables. Opt out for one run with:
 
 ```bash
-pi-start -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
+PI_ENV_ROLE_MANAGER_AUTO=0 pi-start
 ```
 
-Or install that package path into project-local Pi settings:
+You can still install that package path into project-local Pi settings. If you
+use an installed-package workflow and want to avoid also passing the per-run
+extension flag, keep using the opt-out variable:
 
 ```bash
 pi-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
+PI_ENV_ROLE_MANAGER_AUTO=0 pi-start
 ```
 
 Role merge order is base package roles, global agent roles, common agent

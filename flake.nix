@@ -497,6 +497,7 @@
       mkPiStart = pkgs:
         let
           piBwrap = mkPiBwrap pkgs;
+          roleManagerPackage = mkRoleManagerPackage pkgs;
         in
         pkgs.writeShellScriptBin "pi-start" ''
           set -euo pipefail
@@ -504,7 +505,85 @@
           if [ -n "''${PI_BWRAP_DEFAULT_TOOLS:-}" ]; then
             tools="$PI_BWRAP_DEFAULT_TOOLS"
           fi
-          exec ${piBwrap}/bin/pi-bwrap --tools "$tools" --continue "$@"
+
+          role_manager_args=()
+          if [ "''${PI_ENV_ROLE_MANAGER_AUTO:-1}" != "0" ]; then
+            role_manager_package="''${PI_ENV_ROLE_MANAGER_PACKAGE:-${roleManagerPackage}}"
+            if [ -n "$role_manager_package" ] && [ -e "$role_manager_package" ]; then
+              role_manager_args=(-e "$role_manager_package")
+            fi
+          fi
+
+          exec ${piBwrap}/bin/pi-bwrap --tools "$tools" --continue "''${role_manager_args[@]}" "$@"
+        '';
+
+      mkPiEnv = pkgs:
+        let
+          piStart = mkPiStart pkgs;
+          piBwrap = mkPiBwrap pkgs;
+          runtimePath = pkgs.lib.makeBinPath (mkRuntime pkgs);
+        in
+        pkgs.writeShellScriptBin "pi-env" ''
+          set -euo pipefail
+          export PATH="${runtimePath}:''${PATH:-}"
+
+          usage() {
+            cat <<'USAGE'
+          pi-env - run Pi through the pi-env launcher
+
+          Usage:
+            pi-env [pi args...]
+            pi-env --raw -- [pi args...]
+            pi-env --help
+
+          Default mode delegates to pi-start, preserving pi-env defaults.
+          Raw mode delegates to pi-bwrap for fully custom Pi arguments.
+          The packaged command ignores --flake; checkout direct mode uses it
+          before entering nix develop.
+          USAGE
+          }
+
+          raw=0
+          while [ "$#" -gt 0 ]; do
+            case "$1" in
+              -h|--help)
+                usage
+                exit 0
+                ;;
+              --raw)
+                raw=1
+                shift
+                if [ "''${1:-}" = "--" ]; then
+                  shift
+                fi
+                break
+                ;;
+              --flake)
+                shift
+                if [ "$#" -eq 0 ]; then
+                  echo "pi-env: --flake requires an argument" >&2
+                  exit 2
+                fi
+                shift
+                ;;
+              --flake=*)
+                shift
+                ;;
+              --)
+                shift
+                break
+                ;;
+              *)
+                break
+                ;;
+            esac
+          done
+
+          if [ "$raw" = "1" ]; then
+            exec ${piBwrap}/bin/pi-bwrap -- "$@"
+          fi
+
+          exec ${piStart}/bin/pi-start "$@"
         '';
 
       agentCoordCommandNames = [
@@ -565,6 +644,7 @@
         let
           piBwrap = mkPiBwrap pkgs;
           piStart = mkPiStart pkgs;
+          piEnv = mkPiEnv pkgs;
           agentCoordCommands = builtins.attrValues (mkAgentCoordCommands pkgs);
           roleManagerPackage = mkRoleManagerPackage pkgs;
         in
@@ -572,6 +652,7 @@
           packages = (mkRuntime pkgs) ++ [
             piBwrap
             piStart
+            piEnv
           ] ++ agentCoordCommands ++ extraPackages;
 
           shellHook = ''
@@ -579,7 +660,7 @@
             export PI_ENV_ROLE_MANAGER_PACKAGE="${roleManagerPackage}"
             if [ -z "''${PI_ENV_QUIET:-}" ]; then
               echo "Pi agent runtime loaded"
-              echo "Use 'pi-start' for isolated default startup, or 'pi-bwrap -- <pi args>' for custom runs."
+              echo "Use 'pi-env' for default startup, or 'pi-env --raw -- <pi args>' for custom runs."
             fi
           '' + shellHook;
         };
@@ -591,6 +672,7 @@
           mkRuntime
           mkPiBwrap
           mkPiStart
+          mkPiEnv
           agentCoordCommandNames
           mkAgentCoordSupport
           mkAgentCoordCommand
@@ -604,6 +686,7 @@
         pkgs = import nixpkgs { inherit system; };
         piBwrap = mkPiBwrap pkgs;
         piStart = mkPiStart pkgs;
+        piEnv = mkPiEnv pkgs;
         agentCoordCommands = mkAgentCoordCommands pkgs;
         roleManagerPackage = mkRoleManagerPackage pkgs;
         piRuntime = pkgs.buildEnv {
@@ -611,12 +694,14 @@
           paths = (mkRuntime pkgs) ++ [
             piBwrap
             piStart
+            piEnv
           ] ++ builtins.attrValues agentCoordCommands;
         };
       in
       {
         packages = {
-          default = piStart;
+          default = piEnv;
+          pi-env = piEnv;
           pi-start = piStart;
           pi-bwrap = piBwrap;
           pi-runtime = piRuntime;
@@ -626,7 +711,11 @@
         apps = {
           default = {
             type = "app";
-            program = "${piStart}/bin/pi-start";
+            program = "${piEnv}/bin/pi-env";
+          };
+          pi-env = {
+            type = "app";
+            program = "${piEnv}/bin/pi-env";
           };
           pi-start = {
             type = "app";

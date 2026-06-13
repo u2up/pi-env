@@ -7,24 +7,73 @@ This project keeps the Nix devshell role separate from the security boundary:
 - **Nix devshell**: reproducible tools on `PATH` (`node`, `git`, `rg`, `jq`, `fd`, `tar`, etc.).
 - **Bubblewrap**: filesystem/environment isolation for the whole `pi` process.
 
+## Getting started
+
+### Direct use from any project
+
+Use the checkout launcher when you want to run pi-env against an arbitrary
+working tree without first entering this repository:
+
+```bash
+cd /path/to/project
+/path/to/pi-env/pi-env
+/path/to/pi-env/pi-env "Inspect this repo"
+/path/to/pi-env/pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+```
+
+The checkout `pi-env` command uses `nix develop` for the selected pi-env flake
+only when `pi-start` and `pi-bwrap` are not already on `PATH`. It preserves your
+current project as the detected project root; inside the sandbox that project is
+mounted read-write at `/workspace`.
+
+Use direct mode for local, ad hoc, or internal runs where selecting a pi-env
+checkout is enough. `PI_ENV_FLAKE=REF /path/to/pi-env/pi-env` or
+`/path/to/pi-env/pi-env --flake REF` selects a different flake reference.
+
+### Project-integrated use
+
+Use project-integrated mode when a repository should pin pi-env for the team,
+share the same input revision in `flake.lock`, or combine pi-env with
+project-specific Nix dependencies. Add pi-env as a flake input and include its
+package or shell in your devshell, then run:
+
+```bash
+cd /path/to/project
+nix develop
+pi-env
+pi-env "Inspect this repo"
+pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+```
+
+Both direct and project-integrated modes keep the target project as the
+workspace mounted at `/workspace`; the pi-env checkout itself is only the source
+of launcher and runtime policy.
+
+By default, `pi-start` loads the packaged role-manager extension when the
+package path exists. The role manager is inactive until you select a role,
+restore one from session state, or request one through supported environment
+variables. Set `PI_ENV_ROLE_MANAGER_AUTO=0` to omit the automatic per-run
+extension argument, especially if you prefer an installed-package workflow.
+
 ## Commands
 
 Inside `nix develop` the prompt is prefixed with `(nix-dev)`. Start Pi with:
 
 ```bash
-pi-start
+pi-env
 ```
 
-`pi-start` runs:
+`pi-env` delegates to `pi-start`, which runs the sandbox with the default tool
+allowlist, `--continue`, and the default role-manager package when available:
 
 ```bash
-pi-bwrap --tools read,bash,edit,write,grep,find,ls --continue
+pi-bwrap --tools read,bash,edit,write,grep,find,ls --continue -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
 ```
 
 For custom Pi arguments:
 
 ```bash
-pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
 ### Running `pi config`
@@ -269,25 +318,26 @@ See `AGENT_COORDINATION_DESIGN.md` for the full design.
 
 ## Role-manager package
 
-`pi-env` ships an optional Pi role-manager package for agent roles such as
-architect, developer, builder, tester, and reviewer. The package contains a Pi
-extension plus Markdown role definitions under `role-manager/`. It is not
-enabled by default, so `pi-start` behavior is unchanged unless you load or
-install the package.
+`pi-env` ships a Pi role-manager package for agent roles such as architect,
+developer, builder, tester, and reviewer. The package contains a Pi extension
+plus Markdown role definitions under `role-manager/`. `pi-start` loads it by
+default with Pi's per-run extension/package flag when the package path exists;
+this does not modify global or project `settings.json`.
 
 Inside `nix develop`, the shell exports `PI_ENV_ROLE_MANAGER_PACKAGE` to the
-Nix-built role-manager package path. Try it for one run with the usual default
-Pi tool allowlist and session continuation:
+Nix-built role-manager package path. To opt out of default loading for one run:
 
 ```bash
-pi-start -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
+PI_ENV_ROLE_MANAGER_AUTO=0 pi-start
 ```
 
-Or install it into project-local Pi settings so the project loads it normally:
+You can still install it into project-local Pi settings if you want Pi to load
+it normally without the per-run flag. In that workflow, use the opt-out variable
+if you want to avoid loading the same package through both mechanisms:
 
 ```bash
 pi-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
-pi-start
+PI_ENV_ROLE_MANAGER_AUTO=0 pi-start
 ```
 
 The role-manager package can also be built directly:
@@ -410,27 +460,30 @@ PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 
 `pi-env` can be used directly from another project, or wired into that project's own flake.
 
-If the target project does not need additional Nix dependencies, you do not need to create or edit its `flake.nix`. From the target project directory, enter the `pi-env` shell directly:
+If the target project does not need additional Nix dependencies, you do not need to create or edit its `flake.nix`. From the target project directory, use the checkout launcher:
 
 ```bash
 cd /path/to/other-project
-nix develop /home/location/pi-env
-pi-start
+/home/location/pi-env/pi-env
+/home/location/pi-env/pi-env "Inspect this repo"
+/home/location/pi-env/pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
-Or run Pi in one command:
+You can also run through Nix explicitly:
 
 ```bash
 cd /path/to/other-project
-nix develop /home/location/pi-env -c pi-start
+nix develop /home/location/pi-env -c pi-env
 ```
 
-The current working directory remains the target project. `pi-start` / `pi-bwrap` detects the project root from `$PWD` / Git and mounts that project at `/workspace`.
+The current working directory remains the target project. `pi-env` delegates to
+`pi-start` / `pi-bwrap`, which detects the project root from `$PWD` / Git and
+mounts that project at `/workspace`.
 
 Wire `pi-env` into the target project's own flake when you want project-specific Nix dependencies, a committed/shared devshell, shell hooks, or a pinned `pi-env` input in the project's `flake.lock`.
 
 - **Project has no flake yet:** use the full example below as a starting `flake.nix`.
-- **Project already has its own flake:** do not replace it. Add `pi-env` to the existing `inputs`, add `pi-env` to the `outputs = { ... }:` argument list, then either wrap the existing devshell with `mkPiShell` or add the `pi-start` / `pi-bwrap` packages to it.
+- **Project already has its own flake:** do not replace it. Add `pi-env` to the existing `inputs`, add `pi-env` to the `outputs = { ... }:` argument list, then either wrap the existing devshell with `mkPiShell` or add the `pi-env` / `pi-start` / `pi-bwrap` packages to it.
 
 ### New project flake / replace the project's devshell
 
@@ -472,16 +525,18 @@ Then run from the other project:
 
 ```bash
 nix develop
-pi-start
+pi-env
 ```
 
 For custom Pi arguments:
 
 ```bash
-pi-bwrap -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
-`pi-start` starts Pi in the Bubblewrap sandbox with the default tool allowlist and `--continue`. `pi-bwrap -- ...` passes the arguments after `--` directly to Pi.
+`pi-env` starts Pi in the Bubblewrap sandbox with the default tool allowlist and
+`--continue`. `pi-env --raw -- ...` passes the arguments after `--` directly to
+Pi through `pi-bwrap`.
 
 ### Project already has its own flake
 
@@ -512,6 +567,7 @@ If the project already has a devshell, add the wrappers to its package list:
 
 ```nix
 packages = [
+  pi-env.packages.${system}.pi-env
   pi-env.packages.${system}.pi-start
   pi-env.packages.${system}.pi-bwrap
 ];
