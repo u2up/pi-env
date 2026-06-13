@@ -287,6 +287,27 @@ esac
 decision_id="$(grep '^id: ' "$workspace_dir/coordination/$decision_path" | sed 's/^id: //')"
 item_id="$(grep '^id: ' "$workspace_dir/coordination/$action_path" | sed 's/^id: //')"
 
+test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" "$item_id")" = \
+  "$(cat "$workspace_dir/coordination/$action_path")"
+test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" --path "$item_id")" = "$action_path"
+test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" --path "$action_path")" = "$action_path"
+test "$(agent-coord-cat \
+  --coord-dir "$workspace_dir/coordination" \
+  --path "${item_id%-001}")" = "$action_path"
+if agent-coord-cat --coord-dir "$workspace_dir/coordination" MISSING-ITEM \
+  >"$tmp/cat-missing.out" 2>"$tmp/cat-missing.err"; then
+  printf 'agent-coord-cat unexpectedly found missing item\n' >&2
+  exit 1
+fi
+grep -q '^agent-coord: item not found: MISSING-ITEM$' "$tmp/cat-missing.err"
+if agent-coord-cat --coord-dir "$workspace_dir/coordination" PIENV \
+  >"$tmp/cat-ambiguous.out" 2>"$tmp/cat-ambiguous.err"; then
+  printf 'agent-coord-cat unexpectedly resolved ambiguous prefix\n' >&2
+  exit 1
+fi
+grep -q '^agent-coord: multiple items match PIENV:' "$tmp/cat-ambiguous.err"
+grep -q "$action_path" "$tmp/cat-ambiguous.err"
+
 issue_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" issues open)"
 printf '%s\n' "$issue_list" \
   | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"

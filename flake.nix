@@ -513,6 +513,7 @@
         "agent-coord-clone"
         "agent-coord-status"
         "agent-coord-list"
+        "agent-coord-cat"
         "agent-coord-pull"
         "agent-coord-push"
         "agent-coord-new"

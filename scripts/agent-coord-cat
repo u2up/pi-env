@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-cat - print a coordination item by id or path
+
+Usage:
+  agent-coord-cat [options] ITEM
+
+Arguments:
+  ITEM            Item id, direct path, exact filename/stem, or unique
+                  filename prefix resolved by coord_find_item.
+
+Options:
+  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
+  --path            Print only the resolved repo-relative item path
+  -h, --help        Show this help
+USAGE
+}
+
+coord_dir_opt=""
+show_path=0
+query=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --coord-dir)
+      [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    --path)
+      show_path=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      while [ "$#" -gt 0 ]; do
+        if [ -n "$query" ]; then
+          coord_die "unexpected extra argument: $1"
+        fi
+        query="$1"
+        shift
+      done
+      ;;
+    --*)
+      coord_die "unknown option: $1"
+      ;;
+    *)
+      if [ -n "$query" ]; then
+        coord_die "unexpected extra argument: $1"
+      fi
+      query="$1"
+      shift
+      ;;
+  esac
+done
+
+[ -n "$query" ] || coord_die "item is required"
+
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+cd "$coord_dir"
+
+file="$(coord_find_item "$query")"
+if [ "$show_path" = "1" ]; then
+  coord_repo_path "$file"
+else
+  cat -- "$file"
+fi

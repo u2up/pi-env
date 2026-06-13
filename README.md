@@ -161,6 +161,7 @@ bootstrap-coordination
                       infer defaults and initialize via agent-coord-init
 agent-coord-status    show sync status and open/blocked/done items
 agent-coord-list      list issues, decisions, requirements, or classes by status
+agent-coord-cat       print one resolved item's YAML or repo-relative path
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
 agent-coord-new       create a templated item
