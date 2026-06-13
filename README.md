@@ -184,7 +184,8 @@ means final accepted after review and verification. Functional, quality, constra
 while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. The
 `agent-coord-list requirements` command reports functional, quality,
 constraint, and legacy requirement items; use `functional`, `quality`,
-`constraint`, or `legacy-requirements` for class-specific listings. Imported
+`constraint`, or `legacy-requirements` for class-specific listings. Done issue
+listings append review and verification sub-status after the title. Imported
 requirement items record traceability in a top-level `source_refs` list using
 stable strings such as old requirement IDs, `REQUIREMENTS.md#heading`, and
 `USE_CASES.md#section`; lint checks imported FRQ/QRQ/CRQ items for non-empty

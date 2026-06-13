@@ -34,6 +34,9 @@ Options:
 
 Output columns are tab-separated:
   item id, status, title
+
+Done issue titles include review and verification sub-status:
+  title (reviewed:true|false, verified:true|false)
 USAGE
 }
 
@@ -143,6 +146,18 @@ while IFS= read -r file; do
     title="$(grep -m 1 '^# ' "$file" | sed 's/^# //' || true)"
   fi
   [ -n "$title" ] || title="(untitled)"
+
+  if [ "$file_type" = "issue" ] && [ "$status_cmp" = "done" ]; then
+    reviewed="false"
+    verified="false"
+    if coord_item_flag_true "$file" reviewed; then
+      reviewed="true"
+    fi
+    if coord_item_flag_true "$file" verified; then
+      verified="true"
+    fi
+    title="$title (reviewed:$reviewed, verified:$verified)"
+  fi
 
   printf '%s\t%s\t%s\n' "$id" "$status" "$title"
 done < <(coord_item_find_files)

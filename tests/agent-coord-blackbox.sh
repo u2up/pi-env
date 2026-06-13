@@ -386,6 +386,10 @@ grep -q '^      Implemented in test\.$' "$workspace_dir/coordination/$done_path"
 test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "agent-a/developer <agent-a+developer@coordination.local>|agent-a/developer <agent-a+developer@coordination.local>"
 
+done_issue_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" issues done)"
+printf '%s\n' "$done_issue_list" \
+  | grep -Eq "^$item_id[[:space:]]+done[[:space:]]+Document pi config behavior \\(reviewed:false, verified:false\\)$"
+
 review_path="$(agent-coord-review \
   --coord-dir "$workspace_dir/coordination" \
   --agent-id reviewer-a \
@@ -416,6 +420,10 @@ grep -q '^      role: tester$' "$workspace_dir/coordination/$done_path"
 grep -q '^      Verification passed\.$' "$workspace_dir/coordination/$done_path"
 test "$(git -C "$workspace_dir/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "tester-a/tester <tester-a+tester@coordination.local>|tester-a/tester <tester-a+tester@coordination.local>"
+
+reviewed_verified_done_issue_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" issues done)"
+printf '%s\n' "$reviewed_verified_done_issue_list" \
+  | grep -Eq "^$item_id[[:space:]]+done[[:space:]]+Document pi config behavior \\(reviewed:true, verified:true\\)$"
 
 closed_path="$(PI_COORD_ROLE=tester agent-coord-close \
   --coord-dir "$workspace_dir/coordination" \
