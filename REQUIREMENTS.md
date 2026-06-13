@@ -58,6 +58,46 @@ read,bash,edit,write,grep,find,ls
 
 `pi-start` must run Pi with `--continue` so existing scoped sessions for the current project can be resumed.
 
+## 4. Quality requirements
+
+### 4.1 Documentation requirements
+
+#### DOC-002 Getting started workflows
+
+The main `README.md` must include a concise `Getting started` section near
+the top that explains both supported `pi-env` use modes.
+
+The direct-use subsection must show how to start from an arbitrary target
+project without editing that project:
+
+```bash
+cd /path/to/project
+/path/to/pi-env/pi-env
+```
+
+It must also include examples for passing a prompt and for raw custom Pi
+arguments through `pi-env --raw -- ...`.
+
+The project-integrated subsection must describe when to wire `pi-env` into
+a target project's flake, including pinned `pi-env` inputs, shared team
+setup, project-specific Nix dependencies, and running from inside the
+project devshell:
+
+```bash
+nix develop
+pi-env
+```
+
+The getting-started text must also mention that `pi-start`/`pi-env`
+default startup loads the role-manager package when available, while
+`PI_ENV_ROLE_MANAGER_AUTO=0` disables that behavior.
+
+## 3. Functional requirements
+
+### 3.1 Workflow-level functional requirements
+
+Workflow-level requirements describe user goals that the detailed requirements must support. They are functional requirements with requirement kind `workflow`.
+
 #### UC-002 — Run Pi with custom arguments
 
 - Type: Functional requirement
@@ -135,6 +175,42 @@ For persistent homes, `pi-env` must bind-mount only the Pi session directory cor
 - Related requirements: AGENT-002, AGENT-003, AGENT-004, AGENT-005, AGENT-006
 
 `pi-env` must support importing common user-owned Pi resources into the sandbox agent directory. Only `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, `prompts/`, and `roles/` may be imported as common resources. Users must be able to set `PI_BWRAP_COMMON_AGENT_DIR`, disable import with `PI_BWRAP_IMPORT_COMMON=0`, and use `PI_BWRAP_COMMON_SYNC=missing`.
+
+## 5. Constraint requirements
+
+### 3.8 Constraint requirements
+
+#### CRQ-011 pi-env launcher layering constraint
+
+The `pi-env` launcher must remain a thin bootstrapper and must not become
+a second implementation of Pi startup policy or sandbox policy.
+
+Required layering:
+
+```text
+pi-env   = direct/project-integrated UX entrypoint and Nix bootstrap
+pi-start = default Pi invocation policy
+pi-bwrap = sandbox boundary and custom Pi argument passthrough
+```
+
+Consequences:
+
+- `pi-env` must delegate default runs to `pi-start`.
+- `pi-env --raw` must delegate custom runs to `pi-bwrap`.
+- Tool allowlists, role-manager default loading, `--continue`, project
+  root mapping, sandbox mounts, auth/session import, and environment
+  policy must remain owned by `pi-start`/`pi-bwrap`.
+- `pi-env` must not create, claim, mark done, review, verify, close,
+  commit, push, or otherwise mutate coordination state automatically.
+- `pi-env` must preserve the caller's working directory instead of
+  changing into the `pi-env` checkout, so target-project detection stays
+  correct.
+
+## 3. Functional requirements
+
+### 3.1 Workflow-level functional requirements
+
+Workflow-level requirements describe user goals that the detailed requirements must support. They are functional requirements with requirement kind `workflow`.
 
 #### UC-011 — Combine common and project-specific Pi behavior
 
@@ -586,6 +662,37 @@ Bundled base roles must declare these tool allowlists:
 Custom user roles may declare their own allowlists and must not be
 forced to match bundled role policy.
 
+#### CMD-018 pi-env top-level launcher
+
+`pi-env` must provide a simple top-level entrypoint for starting Pi from
+any target project while reusing the existing `pi-start` and `pi-bwrap`
+behavior.
+
+Default invocation from a target project must be equivalent in behavior
+to entering the selected `pi-env` Nix devshell and running `pi-start`:
+
+```bash
+cd /path/to/project
+pi-env
+```
+
+The launcher must preserve the caller's current working directory so
+`pi-bwrap` project-root detection continues to mount the target project
+at `/workspace`.
+
+The launcher must support these direct-use controls:
+
+- `pi-env [args...]` delegates to `pi-start [args...]` after entering
+  the selected devshell.
+- `pi-env --raw -- [pi args...]` delegates to `pi-bwrap -- [pi args...]`
+  for fully custom Pi argument forwarding.
+- `pi-env --flake REF ...` or `PI_ENV_FLAKE=REF pi-env ...` selects the
+  `pi-env` flake to enter for direct use.
+
+The flake must also expose a Nix-provided `pi-env` package/app and include
+it in the default devshell so project-integrated users can run `pi-env`
+after `nix develop` without a separate checkout script.
+
 ### 3.5 Project root and working directory requirements
 
 #### PATH-001 Project root detection
@@ -593,6 +700,36 @@ forced to match bundled role policy.
 Unless `PI_BWRAP_PROJECT_ROOT` is set, `pi-bwrap` must use `git rev-parse --show-toplevel` when `PI_BWRAP_USE_GIT_ROOT` is unset or `1`.
 
 If git-root detection fails or is disabled, it must use `$PWD`.
+
+### 3.4 Command requirements
+
+#### CMD-019 Default role-manager startup integration
+
+`pi-start` must load the pi-env role-manager package by default when the
+package is available, without requiring users to remember an explicit
+`-e "$PI_ENV_ROLE_MANAGER_PACKAGE"` argument for normal startup.
+
+The default integration must:
+
+- load the role-manager as a per-run Pi package/extension, not by
+  mutating global or project Pi settings;
+- preserve the existing default tool allowlist behavior, `--continue`,
+  and caller-supplied Pi arguments;
+- use `PI_ENV_ROLE_MANAGER_PACKAGE` when set, otherwise use the Nix-built
+  role-manager package path known to `pi-start`;
+- skip role-manager loading gracefully when no package path is available
+  or the path does not exist;
+- allow opt-out with `PI_ENV_ROLE_MANAGER_AUTO=0`;
+- avoid duplicate command/tool registration surprises when the package is
+  also installed through Pi settings, either through extension
+  idempotency or by documenting the opt-out path.
+
+Role-manager loading must not activate a role by itself. Role activation
+remains controlled by stored session role state, `/role`, `/role-cycle`,
+`/role-new`, or explicit role environment variables supported by the
+role-manager extension.
+
+### 3.5 Project root and working directory requirements
 
 #### PATH-002 Project root override
 
