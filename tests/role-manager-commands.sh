@@ -84,6 +84,15 @@ const models = [
 
 function createHarness(initialEntries = [], options = {}) {
   const entries = initialEntries;
+  const builtinToolNames = options.builtinToolNames ?? [
+    "read",
+    "bash",
+    "edit",
+    "write",
+    "grep",
+    "find",
+    "ls",
+  ];
   const commands = new Map();
   const tools = new Map();
   const handlers = new Map();
@@ -137,7 +146,7 @@ function createHarness(initialEntries = [], options = {}) {
       return [...state.activeTools];
     },
     getAllTools() {
-      const builtinTools = ["read", "bash", "edit", "write", "grep", "find", "ls"].map((name) => ({
+      const builtinTools = builtinToolNames.map((name) => ({
         name,
         description: name,
         parameters: {},
@@ -369,6 +378,45 @@ try {
     roleCycleDoneTool.renderResult(doneResult, { expanded: true }).render(80).join("\n"),
     /Tests\/checks run/,
   );
+
+  const architect = createHarness([]);
+  await architect.emit("session_start", { type: "session_start", reason: "startup" });
+  await architect.commands.get("role").handler("architect", architect.ctx);
+  assert.deepEqual(architect.state.activeTools, [
+    "read",
+    "grep",
+    "find",
+    "ls",
+    "bash",
+    "edit",
+    "write",
+  ]);
+  assert.equal(architect.entries.at(-1).data.activeRoleName, "architect");
+  assert.equal(architect.state.thinkingLevel, "high");
+  await architect.commands.get("role-clear").handler("", architect.ctx);
+  assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
+
+  const missingArchitectTool = createHarness([], {
+    builtinToolNames: ["read", "grep", "find", "ls", "bash", "edit"],
+  });
+  await missingArchitectTool.emit("session_start", { type: "session_start", reason: "startup" });
+  await missingArchitectTool.commands.get("role").handler("architect", missingArchitectTool.ctx);
+  assert.deepEqual(missingArchitectTool.state.activeTools, [
+    "read",
+    "grep",
+    "find",
+    "ls",
+    "bash",
+    "edit",
+  ]);
+  assert.ok(
+    missingArchitectTool.notifications.some((notice) =>
+      notice.message.includes("requested unknown tools: write"),
+    ),
+    "missing architect tools are reported by name",
+  );
+  await missingArchitectTool.commands.get("role-clear").handler("", missingArchitectTool.ctx);
+  assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
 
   await harness.commands.get("role").handler("modeler", harness.ctx);
 

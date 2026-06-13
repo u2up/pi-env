@@ -53,7 +53,7 @@ name: architect
 description: Designs architecture and produces implementation plans
 icon: 🧭
 thinking: high
-tools: ["read", "grep", "find", "ls"]
+tools: ["read", "grep", "find", "ls", "bash", "edit", "write"]
 coordCommitter: architect
 ---
 
@@ -61,7 +61,9 @@ coordCommitter: architect
 
 ## Mission
 
-Understand the system, identify trade-offs, and produce a clear design.
+Understand the system, identify trade-offs, produce a clear design, update
+architecture or coordination documents when asked, and use shell commands for
+coordination/Git workflows.
 
 ## One-cycle workflow
 
@@ -207,7 +209,7 @@ Initial built-in roles should be small and composable:
 
 | Role | Purpose | Default tools |
 |------|---------|---------------|
-| `architect` | Design, trade-offs, decisions, implementation plans. | `read`, `grep`, `find`, `ls` |
+| `architect` | Design, trade-offs, decisions, implementation plans. | `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write` |
 | `developer` | Focused source changes that implement an accepted plan. | `read`, `grep`, `find`, `ls`, `edit`, `write`, `bash` |
 | `builder` | Build, package, integration, CI and release-prep failures. | `read`, `grep`, `find`, `ls`, `bash`, `edit` |
 | `tester` | Reproduction, tests, verification, coverage gaps. | `read`, `grep`, `find`, `ls`, `bash`, `edit`, `write` |

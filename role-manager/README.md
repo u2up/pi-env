@@ -15,7 +15,10 @@ It currently provides:
   model/thinking/tool settings, injects only the active role body into the
   system prompt, and decorates the interactive UI with active-role status;
 - base roles for `architect`, `developer`, `builder`, `tester`, and
-  `reviewer`.
+  `reviewer`, each with its intended tool allowlist. The bundled
+  `architect` role enables `read`, `grep`, `find`, `ls`, `bash`, `edit`, and
+  `write` so architecture sessions can update Markdown/YAML documents and run
+  coordination or Git commands.
 
 Try it locally from this repository with:
 
@@ -54,7 +57,10 @@ when no session state has been recorded. Use:
 ```
 
 Role activation persists the active role plus the pre-role model, thinking
-level, and tool selection in the Pi session. `/role-cycle` sends a bounded
+level, and tool selection in the Pi session. When a role requests tools, the
+extension activates the requested tools that the host Pi runtime has
+registered and reports a warning naming any missing tools instead of silently
+ignoring them. `/role-cycle` sends a bounded
 one-cycle kickoff prompt in the current session, enables `role_cycle_done` for
 that cycle, and instructs the model to call it as the final action with a
 structured summary. `/role-new` uses Pi's session replacement API, records the

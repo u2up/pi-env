@@ -57,6 +57,15 @@ const registry = loadRoleRegistry(sources);
 const warnings = registry.warnings.map(formatRoleWarning).join("\n");
 assert.equal(registry.invalidRoles.length, 0, warnings);
 assert.ok(registry.rolesByName.has("architect"), warnings);
+assert.deepEqual(registry.rolesByName.get("architect").tools, [
+  "read",
+  "grep",
+  "find",
+  "ls",
+  "bash",
+  "edit",
+  "write",
+]);
 assert.ok(registry.rolesByName.has("domain-architect"), warnings);
 assert.equal(
   registry.rolesByName.get("domain-architect").source.kind,
