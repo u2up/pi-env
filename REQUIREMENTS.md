@@ -1253,7 +1253,6 @@ Expected:
 
 - Type: Constraint requirement
 - Requirement kind: architecture boundary
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
 
 Git-backed coordination support, when enabled, must keep one bare coordination repository as one coordination domain.
 
@@ -1261,7 +1260,6 @@ Git-backed coordination support, when enabled, must keep one bare coordination r
 
 - Type: Constraint requirement
 - Requirement kind: architecture boundary
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
 
 Coordination repositories must be plain Git repositories containing Markdown and small metadata blocks. Helper commands must remain thin wrappers around Git and file scaffolding/editing.
 
@@ -1270,7 +1268,6 @@ Coordination repositories must be plain Git repositories containing Markdown and
 - Type: Constraint requirement
 - Requirement kind: safety boundary
 - Related workflows: UC-023
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
 
 `pi-start` may only provide safe context, reminders, or mounts for coordination repositories. It must not create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically.
 
@@ -1279,7 +1276,6 @@ Coordination repositories must be plain Git repositories containing Markdown and
 - Type: Constraint requirement
 - Requirement kind: architecture boundary
 - Related workflows: UC-023
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
 
 No daemon, database, background push, force-push, hidden lock service, or non-Git synchronization mechanism may be introduced for coordination state.
 
@@ -1288,7 +1284,6 @@ No daemon, database, background push, force-push, hidden lock service, or non-Gi
 - Type: Constraint requirement
 - Requirement kind: product boundary
 - Related workflows: UC-023
-- Source: REQUIREMENTS.legacy.md#14-coordination-implementation-guard
 
 Coordination behavior becomes mandatory only when a requirement in this document names a concrete command, file, or environment variable.
 
@@ -1297,7 +1292,7 @@ Coordination behavior becomes mandatory only when a requirement in this document
 - Type: Constraint requirement
 - Requirement kind: security boundary
 - Related workflows: UC-004, UC-013, UC-022
-- Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
+- Source: USE_CASES.legacy.md#non-goals-and-limitations
 
 Git credential stores, SSH keys, signing keys, cloud credentials, Docker sockets, and the host home directory must not be mounted or imported by default.
 
@@ -1306,7 +1301,7 @@ Git credential stores, SSH keys, signing keys, cloud credentials, Docker sockets
 - Type: Constraint requirement
 - Requirement kind: product boundary
 - Related workflows: UC-010, UC-011
-- Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
+- Source: USE_CASES.legacy.md#non-goals-and-limitations
 
 `pi-env` does not ship user-specific common rules, skills, prompts, roles, or extensions. It imports or exposes them from an external user-controlled directory when configured.
 
@@ -1315,7 +1310,7 @@ Git credential stores, SSH keys, signing keys, cloud credentials, Docker sockets
 - Type: Constraint requirement
 - Requirement kind: limitation
 - Related workflows: UC-015, UC-022
-- Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
+- Source: USE_CASES.legacy.md#non-goals-and-limitations
 
 Bubblewrap does not provide domain-level network allowlisting. Network behavior is limited to sharing or not sharing the host network namespace.
 
@@ -1324,7 +1319,7 @@ Bubblewrap does not provide domain-level network allowlisting. Network behavior 
 - Type: Constraint requirement
 - Requirement kind: limitation
 - Related workflows: UC-014, UC-022
-- Source: REQUIREMENTS.legacy.md#15-non-goals-and-caveats, USE_CASES.legacy.md#non-goals-and-limitations
+- Source: USE_CASES.legacy.md#non-goals-and-limitations
 
 If `read` or `bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions may be readable by commands or tools inside the sandbox. Users should use least-privilege API keys, provider proxies, reduced tool allowlists, or `PI_BWRAP_NET=0` when appropriate.
 
