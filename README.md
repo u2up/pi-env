@@ -1,14 +1,26 @@
 # pi-env
 
-Reusable Nix devshell for `pi-coding-agent` with a Bubblewrap launcher.
+Run Pi Coding Agent in a reproducible, sandboxed workspace instead of giving an
+AI agent direct access to your host environment.
 
-`pi-env` keeps the reproducible runtime separate from the security boundary:
+AI coding agents can inspect files, run commands, edit code, and invoke tools.
+That is powerful, but it also creates risk when the agent process can see your
+whole home directory, SSH keys, cloud credentials, Docker socket, shell config,
+or unrelated project data.
 
-- **Nix devshell/runtime**: supplies tools on `PATH` such as `node`, `git`,
-  `rg`, `jq`, `fd`, `tar`, and the `pi-env` helper commands.
-- **Bubblewrap sandbox**: isolates the whole `pi` process from the host
-  filesystem and environment while mounting the selected project at
-  `/workspace`.
+`pi-env` addresses this with two separate layers:
+
+- **Bubblewrap sandbox**: limits what the agent can see. The selected project is
+  mounted read-write at `/workspace`, `$HOME` is isolated, host credentials are
+  not mounted wholesale, and auth/config import is explicit and configurable.
+- **Nix devshell/runtime**: supplies a pinned toolset on `PATH` such as `node`,
+  `git`, `rg`, `jq`, `fd`, `tar`, and the `pi-env` helper commands, so teams
+  and repeated runs use the same runtime tools.
+
+Nix provides reproducibility; Bubblewrap provides the isolation boundary.
+Optional role-manager and Git-backed coordination helpers are included for
+tracked role-based agent workflows, but the core value is simple: a safer,
+repeatable environment for running Pi against a codebase.
 
 Most users start with one of two workflows:
 
