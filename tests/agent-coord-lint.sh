@@ -78,6 +78,21 @@ esac
 grep -q '^id: PIENV-FRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "coordination/$requirement_path"
 grep -q '^status: active$' "coordination/$requirement_path"
+grep -q '^body: |-$' "coordination/$requirement_path"
+if grep -E '^(current|events|messages):' "coordination/$requirement_path" >/dev/null; then
+  printf 'new requirement item should not contain embedded history\n' >&2
+  exit 1
+fi
+cp "coordination/$requirement_path" "$tmp/requirement.clean.yaml"
+printf 'current:\n  event: evt-0001\n  message: msg-0001\n' \
+  >>"coordination/$requirement_path"
+if agent-coord-lint \
+  --coord-dir coordination \
+  --project-root . >/dev/null 2>&1; then
+  printf 'expected lint to fail for requirement with embedded history\n' >&2
+  exit 1
+fi
+cp "$tmp/requirement.clean.yaml" "coordination/$requirement_path"
 
 quality_requirement_path="$(agent-coord-new \
   --coord-dir coordination \

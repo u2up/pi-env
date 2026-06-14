@@ -1,8 +1,9 @@
 # Coordination Item Format
 
-Coordination items are YAML files with chronological event history and
-Markdown message bodies. The file content, not Git commit messages, is the
-authoritative item record.
+Coordination issue items are YAML files with chronological event history and
+Markdown message bodies. Requirement items are current-state YAML records with
+one renderable top-level `body: |-` block. The file content, not Git commit
+messages, is the authoritative item record.
 
 ## Filename IDs
 
@@ -50,7 +51,7 @@ renumber existing items only to satisfy a newer naming convention.
 
 ## YAML structure
 
-Each item stores current state near the top for quick scanning, followed by
+Issue items store current state near the top for quick scanning, followed by
 append-only `events` and `messages` lists. Messages are Markdown block strings
 linked to events.
 
@@ -98,6 +99,42 @@ messages:
       - [ ] README explains host `pi config`.
       - [ ] README explains sandbox `pi-bwrap -- config`.
 ```
+
+Requirement items are specification records rather than workflow history
+records. Active requirement files under `requirements/` store current metadata
+and a single renderable body:
+
+```yaml
+schema: coordination-item/v1
+id: PIENV-FRQ-20260607-204155-002
+type: functional-requirement
+status: active
+project: pi-env
+title: Example requirement
+requirement_key: CMD-004
+requirement_class: functional
+requirement_kind: detailed-behavior
+domain: commands
+render_order: 1
+render_section: '3.4 Command requirements'
+source_refs:
+  - 'REQUIREMENTS.md#CMD-004'
+related_workflows: []
+related_requirements: []
+related_tests: []
+related: []
+testable: yes
+testability_note: null
+body: |-
+  #### CMD-004 Example requirement
+
+  Requirement text...
+```
+
+Requirement items must not include top-level `current:`, `events:`, or
+`messages:` sections. Do not add requirement design-reference fields such as
+`design_refs`, `covered_by`, or `satisfied_by_design`; design coverage is
+declared by design documents and generated coverage reports.
 
 ## Item types and directories
 
@@ -220,9 +257,10 @@ helper treats FRQ/QRQ/CRQ items marked as imported as missing metadata unless
 
 ## Events
 
-Events are chronological and define item history. Every meaningful item change
-should add one event and one linked message. Use these event types where
-possible:
+Events are chronological and define issue item history. Every meaningful issue
+item change should add one event and one linked message. Requirement item
+changes are represented by the current requirement file content and Git history,
+not embedded `events`/`messages`. Use these event types where possible:
 
 - `opened`: initial item definition;
 - `claimed`: ownership claim;
@@ -269,12 +307,13 @@ each transition as its own event. Multiple references are allowed on one event.
 
 ## Messages
 
-Messages are chronological and read like a dialog between actors. The first
-message normally contains the original item definition. Reopen or update
+Issue messages are chronological and read like a dialog between actors. The
+first message normally contains the original item definition. Reopen or update
 messages may carry revised definitions. Done messages should summarize the
 implementation and point to the implementation refs stored on the same event.
 Review and verification messages should record pass/fail evidence, including
 commands run for item-matched tests where applicable.
 
-Keep Markdown inside `body: |-` readable as normal Markdown. Do not add a
-separate `## Activity` section; that would duplicate the YAML event history.
+For requirements, keep Markdown inside the top-level `body: |-` readable as
+normal Markdown. Do not add a separate `## Activity` section; that would
+duplicate issue YAML event history and is not part of requirement records.

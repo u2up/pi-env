@@ -87,13 +87,16 @@ conventions.
 ## Item format
 
 Coordination items are YAML files under the status or type directories.
-Current state is stored near the top (`status`, `owner`, `updated`, `done`,
-`closed`, `reviewed`, `verified`, `testable`, `testability_note`, and
-`current`), while authoritative history is stored in chronological `events` and
-linked Markdown `messages` entries.
+Issue current state is stored near the top (`status`, `owner`, `updated`,
+`done`, `closed`, `reviewed`, `verified`, `testable`, `testability_note`, and
+`current`), while authoritative issue history is stored in chronological
+`events` and linked Markdown `messages` entries. Requirement items are
+current-state records under `requirements/`: they keep requirement metadata and
+one top-level renderable `body: |-` block, and must not contain top-level
+`current`, `events`, or `messages` sections.
 
 Do not add or maintain a separate Markdown `## Activity` section in item files.
-It duplicates the event list and will drift.
+It duplicates issue event history and will drift.
 
 ## Testability and tests
 

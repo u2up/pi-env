@@ -319,7 +319,38 @@ domain: requirements
     ;;
 esac
 
-cat >"$path" <<EOF_ITEM
+case "$item_type" in
+  functional-requirement|quality-requirement|constraint-requirement|requirement)
+    cat >"$path" <<EOF_ITEM
+schema: coordination-item/v1
+id: $item_id
+type: $item_type
+status: $status_arg
+project: $project_value
+title: $(coord_yaml_scalar "$title")
+owner: $(coord_yaml_scalar "$owner")
+priority: $priority
+created: $created
+updated: $created
+done: null
+closed: null
+reviewed: false
+verified: false
+${requirement_metadata}testable: $testable
+testability_note: $(coord_yaml_scalar "$testability_note")
+related: []
+body: |-
+  # $title
+
+  ## Context
+
+  ## Acceptance criteria
+
+  - [ ] Define acceptance criteria.
+EOF_ITEM
+    ;;
+  *)
+    cat >"$path" <<EOF_ITEM
 schema: coordination-item/v1
 id: $item_id
 type: $item_type
@@ -360,6 +391,8 @@ messages:
 
       - [ ] Define acceptance criteria.
 EOF_ITEM
+    ;;
+esac
 
 coord_note "created item: $path by $actor"
 printf '%s\n' "$path"

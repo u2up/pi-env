@@ -31,6 +31,14 @@ grep -F '#### CRQ-009' "$stdout_file" >/dev/null
 grep -F '#### CRQ-010' "$stdout_file" >/dev/null
 grep -F '#### CRQ-010 — Requirement source of truth precedence' "$stdout_file" >/dev/null
 grep -F 'projects/<project>/requirements/' "$stdout_file" >/dev/null
+grep -F 'one renderable top-level `body: |-` block' "$stdout_file" >/dev/null
+
+sample_requirement="coordination/projects/pi-env/requirements/PIENV-FRQ-20260612-210000-001.yaml"
+grep -F 'body: |-' "$sample_requirement" >/dev/null
+if grep -E '^(current|events|messages):' "$sample_requirement" >/dev/null; then
+  echo "active requirement item still contains embedded history" >&2
+  exit 1
+fi
 
 for heading in \
   '### 3.2 Flake and package requirements' \

@@ -75,21 +75,15 @@ function field(text, name) {
   const m = text.match(re);
   return m ? unquote(m[1]) : '';
 }
-function currentMessageId(text) {
-  const m = text.match(/^current:\n(?:  [^\n]*\n)*?  message:\s*(.*)$/m);
-  return m ? unquote(m[1]) : 'msg-0001';
-}
-function body(text) {
-  const messageId = currentMessageId(text) || 'msg-0001';
-  const escaped = messageId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const marker = new RegExp('^  - id: ' + escaped + '\\n    event: [^\\n]+\\n    body: \\|-\\n', 'm');
+function blockScalar(text, marker, indent) {
   const m = marker.exec(text);
   if (!m) return '';
+  const prefix = ' '.repeat(indent);
   const lines = text.slice(m.index + m[0].length).split('\n');
   const out = [];
   for (const line of lines) {
-    if (line.startsWith('      ')) {
-      out.push(line.slice(6));
+    if (line.startsWith(prefix)) {
+      out.push(line.slice(indent));
     } else if (line === '') {
       out.push('');
     } else {
@@ -97,6 +91,9 @@ function body(text) {
     }
   }
   return out.join('\n').replace(/\s+$/, '') + '\n';
+}
+function body(text) {
+  return blockScalar(text, /^body: \|-\n/m, 2);
 }
 const items = fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).map(f => {
   const text = fs.readFileSync(path.join(dir, f), 'utf8');
@@ -110,7 +107,10 @@ const items = fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).map(f => {
     body: body(text),
   };
 }).filter(i => i.status === 'active' && i.key && i.body)
-  .sort((a,b) => a.order - b.order || a.key.localeCompare(b.key));
+  .sort((a,b) => {
+    const rank = cls => cls === 'quality' ? 1 : cls === 'constraint' ? 2 : 0;
+    return rank(a.cls) - rank(b.cls) || a.order - b.order || a.key.localeCompare(b.key);
+  });
 
 function renderBody(markdown) {
   return markdown
@@ -172,7 +172,7 @@ for (const item of items) {
 }
 print('## 6. Coordination requirement item structure');
 print();
-print('Requirement coordination items live under `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`.');
+print('Requirement coordination items live under `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`. Requirement items are current-state records: they store one renderable top-level `body: |-` block and do not store embedded `current`, `events`, or `messages` history.');
 print();
 print('Required fields for functional, quality, and constraint requirement items:');
 print();
@@ -195,6 +195,10 @@ print('related_tests:');
 print('  - TEST-005');
 print('testable: yes');
 print('testability_note: null');
+print('body: |-');
+print('  #### CMD-004 Example requirement');
+print('');
+print('  Requirement text...');
 print('```');
 print();
 print('Workflow-level requirements should use:');
@@ -224,7 +228,7 @@ print('requirement_kind: architecture-boundary');
 print('domain: constraints');
 print('```');
 print();
-print('The initial Markdown message body for each requirement item must contain the renderable body for that requirement, including the stable heading, metadata, requirement text, acceptance criteria, and verification notes when applicable. Generated documentation renders stable requirement keys as the primary visible identifiers and may include coordination item IDs as secondary metadata.');
+print('The top-level Markdown `body: |-` field for each requirement item must contain the renderable body for that requirement, including the stable heading, metadata, requirement text, acceptance criteria, and verification notes when applicable. Generated documentation renders stable requirement keys as the primary visible identifiers and may include coordination item IDs as secondary metadata.');
 NODE
 
 if [ -n "$output" ] && [ "$output" != "-" ]; then

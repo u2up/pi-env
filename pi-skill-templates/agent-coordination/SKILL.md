@@ -56,9 +56,11 @@ legacy requirement items. Use `functional`, `quality`, `constraint`, or
 
 ## Item history
 
-Coordination items are YAML files. Top-level fields show current state;
-chronological `events:` entries define the authoritative history; linked
-`messages:` entries contain Markdown text. State group names are
+Coordination items are YAML files. Issue item top-level fields show current
+state; chronological `events:` entries define authoritative issue history;
+linked `messages:` entries contain Markdown text. Requirement items are
+current-state records with one top-level `body: |-` block and no embedded
+`current:`, `events:`, or `messages:` sections. State group names are
 developer-centric: `open` means developer work is needed, `blocked` means it
 cannot proceed yet, `done` means the developer believes implementation is
 complete, and `closed` means final acceptance after review and verification. Do
