@@ -9,6 +9,7 @@ scripts=(
   tests/agent-coord-concurrency.sh
   tests/agent-coord-lint.sh
   tests/agent-coord-generate-requirements.sh
+  tests/design-covers.sh
   tests/coordination-items-closed-or-done.sh
   tests/role-manager-package.sh
   tests/role-manager-schema.sh

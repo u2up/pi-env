@@ -7,6 +7,16 @@ The goal is to let a user switch the active agent role, optionally start a
 fresh session for that role, and run exactly one role cycle while keeping
 project-specific role extensions easy to add.
 
+## Covers
+
+| Requirement | Coordination item |
+|-------------|-------------------|
+| CMD-016 | PIENV-FRQ-20260612-210000-047 |
+| CMD-017 | PIENV-FRQ-20260613-090608-001 |
+| CMD-019 | PIENV-FRQ-20260613-183411-001 |
+| DOC-002 | PIENV-QRQ-20260613-183457-001 |
+| TEST-031 | PIENV-QRQ-20260612-210000-033 |
+
 ## Summary
 
 Implement roles as **Markdown role definitions managed by a Pi extension**.
@@ -194,7 +204,7 @@ behavior is:
   ```bash
   git -c user.name="pi/architect" \
       -c user.email="pi+architect@coordination.local" \
-      commit -m "Claim PIENV-ISS-20260605-143022-001"
+      commit -m "Claim <PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>"
   ```
 
 The role manager propagates the active role to coordination commands by setting

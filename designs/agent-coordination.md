@@ -4,6 +4,26 @@ This document describes a proposed optional `pi-env` layer for creating and main
 
 The goal is to make multi-agent workspaces easy to establish while keeping synchronization plain, inspectable, and tool-independent: Git plus YAML item files with Markdown message bodies.
 
+## Covers
+
+| Requirement | Coordination item |
+|-------------|-------------------|
+| UC-023 | PIENV-FRQ-20260612-210000-023 |
+| CMD-009 | PIENV-FRQ-20260612-210000-040 |
+| CMD-010 | PIENV-FRQ-20260612-210000-041 |
+| CMD-011 | PIENV-FRQ-20260612-210000-042 |
+| CMD-012 | PIENV-FRQ-20260612-210000-043 |
+| CMD-013 | PIENV-FRQ-20260612-210000-044 |
+| CMD-014 | PIENV-FRQ-20260612-210000-045 |
+| CMD-015 | PIENV-FRQ-20260612-210000-046 |
+| ENV-006 | PIENV-FRQ-20260612-210000-093 |
+| FS-010 | PIENV-FRQ-20260612-210000-062 |
+| CRQ-001 | PIENV-CRQ-20260612-210000-001 |
+| CRQ-002 | PIENV-CRQ-20260612-210000-002 |
+| CRQ-003 | PIENV-CRQ-20260612-210000-003 |
+| CRQ-004 | PIENV-CRQ-20260612-210000-004 |
+| CRQ-005 | PIENV-CRQ-20260612-210000-005 |
+
 ## 1. Concept
 
 An agent coordination repository is a dedicated Git repository that stores shared agent state for a workspace:
@@ -155,8 +175,8 @@ backslashes, and other non-alphanumeric characters are removed.
 Examples:
 
 ```text
-PIENV-ISS-20260605-143022-001.yaml
-PIENV-FRQ-20260605-143022-002.yaml
+<PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>.yaml
+<PROJECTKEY>-FRQ-<YYYYMMDD-HHMMSS>-<NNN>.yaml
 ```
 
 Historical items may keep legacy IDs and slug filenames. Do not rename or
@@ -167,7 +187,7 @@ events, and Markdown message bodies linked to those events:
 
 ```yaml
 schema: coordination-item/v1
-id: PIENV-ISS-20260605-143022-001
+id: <PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>
 type: issue
 status: open
 project: pi-env
@@ -268,9 +288,9 @@ cd coordination
 git pull --rebase
 # edit item: status: claimed, owner: agent-a, current: evt-0002/msg-0002
 # append a claimed event and message
-path=projects/pi-env/issues/open/PIENV-ISS-20260605-143022-001.yaml
+path=projects/pi-env/issues/open/<PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>.yaml
 git add "$path"
-git commit -m "Claim PIENV-ISS-20260605-143022-001"
+git commit -m "Claim <PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>"
 git push
 ```
 
@@ -359,7 +379,7 @@ as:
 ```bash
 git -c user.name=pi/architect \
     -c user.email=pi+architect@coordination.local \
-    commit -m "Claim PIENV-ISS-20260605-143022-001"
+    commit -m "Claim <PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>"
 ```
 
 Role-aware identity should apply to the coordination repository only. It should
