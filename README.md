@@ -54,7 +54,10 @@ nix run github:why-ex/pi-env -- \
 ```
 
 This runs Pi against the cloned repository with that repository mounted
-read-write at `/workspace` inside the Bubblewrap sandbox.
+read-write at `/workspace` inside the Bubblewrap sandbox. It is intended for
+inspection. If you ask Pi to build or test a project, declare the project's
+build tools in a devshell (recommended) or pass an explicit validated extra
+Nix-store path as described below.
 
 ### Optional: enable local coordination for the example
 
@@ -323,6 +326,39 @@ devShells.default = pi-env.lib.mkPiShell {
 };
 ```
 
+### Project-specific build and test tools
+
+pi-env keeps its default runtime intentionally small. It includes the tools the
+launcher needs, such as `git`, `rg`, `jq`, and Node, but it does not bundle every
+compiler or build system a target repository might need. Nix should supply those
+project tools explicitly; Bubblewrap remains the isolation boundary.
+
+For builds or tests, declare tools in the consuming project's flake:
+
+```nix
+devShells.default = pi-env.lib.mkPiShell {
+  inherit pkgs;
+
+  extraPackages = with pkgs; [
+    gnumake
+    gcc
+    pkg-config
+  ];
+};
+```
+
+`mkPiShell` turns the `extraPackages` `bin` outputs into `PI_BWRAP_EXTRA_PATH`.
+`pi-bwrap` validates those entries before starting the sandbox, accepts only
+canonical `/nix/store` directories, and then appends them after the core pi-env
+runtime path. Since `/nix/store` is already mounted read-only, no host `/bin`,
+host `/usr/bin`, project-writable directory, or scan of the whole store is
+needed. pi-env does not infer tools from a repository automatically.
+
+Advanced users may set `PI_BWRAP_EXTRA_PATH` directly to a colon-separated list
+of command directories, but entries must be absolute existing directories that
+canonicalize under `/nix/store`; unsafe entries such as `/tmp/bin`, `$HOME/bin`,
+`./bin`, `/usr/bin`, or `/bin` are rejected before Pi starts.
+
 #### Add pi-env to an existing devshell
 
 Use this when the project already has a custom `mkShell` and you only want to
@@ -435,7 +471,8 @@ Bubblewrap sandbox. It modifies the host Pi agent config, normally
 `pi-bwrap`:
 
 - mounts the detected project root read-write at `/workspace`;
-- mounts `/nix/store` read-only so devshell tools work;
+- mounts `/nix/store` read-only so declared devshell tools can be exposed
+  through validated extra command paths;
 - mounts `/usr/local/bin` and the global Pi npm package read-only when present,
   so a global npm-installed `pi` works;
 - uses isolated `$HOME=/home/pi`;
@@ -500,6 +537,7 @@ PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clo
 PI_COORD_ROOT=/workspace/agent-remotes  # bare coordination remotes; default is project-visible agent-remotes
 PI_COORD_ROLE=architect                 # active coordination role for helper commits/events
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
+PI_BWRAP_EXTRA_PATH=/nix/store/.../bin   # advanced: validated extra command dirs
 PI_BWRAP_NET=0                          # disable network sharing
 PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 ```

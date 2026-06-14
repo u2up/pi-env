@@ -87,6 +87,7 @@
             PI_BWRAP_HOST_GITCONFIG=/path  Host global git config (default: ~/.gitconfig)
             PI_BWRAP_HOST_XDG_GIT_CONFIG=/path Host XDG git config (default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config)
             PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
+            PI_BWRAP_EXTRA_PATH=/nix/store/.../bin[:...] Add validated Nix-store command dirs after pi-env runtime tools
             PI_BWRAP_NET=0                Disable network namespace sharing
             PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
             PI_COORD_ROOT=/workspace/agent-remotes Bare coordination remotes root; auto-bound when available
@@ -398,6 +399,53 @@
             done
           fi
 
+          validated_extra_path=""
+          append_validated_extra_path() {
+            if [ -z "$validated_extra_path" ]; then
+              validated_extra_path="$1"
+            else
+              validated_extra_path="$validated_extra_path:$1"
+            fi
+          }
+
+          if [ -n "''${PI_BWRAP_EXTRA_PATH:-}" ]; then
+            old_ifs="$IFS"
+            IFS=:
+            for extra_path_entry in $PI_BWRAP_EXTRA_PATH; do
+              IFS="$old_ifs"
+              [ -n "$extra_path_entry" ] || { IFS=:; continue; }
+              case "$extra_path_entry" in
+                /*) ;;
+                *)
+                  echo "pi-bwrap: unsafe PI_BWRAP_EXTRA_PATH entry is not absolute: $extra_path_entry" >&2
+                  exit 2
+                  ;;
+              esac
+              if [ ! -d "$extra_path_entry" ]; then
+                echo "pi-bwrap: unsafe PI_BWRAP_EXTRA_PATH entry is not an existing directory: $extra_path_entry" >&2
+                exit 2
+              fi
+              canonical_extra_path="$(realpath "$extra_path_entry")"
+              case "$canonical_extra_path" in
+                /nix/store/*)
+                  append_validated_extra_path "$canonical_extra_path"
+                  ;;
+                *)
+                  echo "pi-bwrap: unsafe PI_BWRAP_EXTRA_PATH entry outside /nix/store: $extra_path_entry -> $canonical_extra_path" >&2
+                  exit 2
+                  ;;
+              esac
+              IFS=:
+            done
+            IFS="$old_ifs"
+          fi
+
+          sandbox_path="${runtimePath}"
+          if [ -n "$validated_extra_path" ]; then
+            sandbox_path="$sandbox_path:$validated_extra_path"
+          fi
+          sandbox_path="$sandbox_path:/usr/local/bin:/usr/bin:/bin"
+
           if [ -n "''${PI_COORD_ROOT:-}" ]; then
             host_coord_root="$(realpath -m "$PI_COORD_ROOT")"
             case "$host_coord_root" in
@@ -476,7 +524,7 @@
             --setenv PI_CODING_AGENT_SESSION_DIR /home/pi/.pi/agent/sessions
             --setenv XDG_CACHE_HOME /home/pi/.cache
             --setenv TMPDIR /tmp
-            --setenv PATH "${runtimePath}:/usr/local/bin:/usr/bin:/bin"
+            --setenv PATH "$sandbox_path"
             --setenv SSL_CERT_FILE "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
             --setenv NIX_SSL_CERT_FILE "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
             --setenv GIT_CONFIG_NOSYSTEM 1
@@ -647,6 +695,7 @@
           piEnv = mkPiEnv pkgs;
           agentCoordCommands = builtins.attrValues (mkAgentCoordCommands pkgs);
           roleManagerPackage = mkRoleManagerPackage pkgs;
+          extraPackagePath = pkgs.lib.makeBinPath extraPackages;
         in
         pkgs.mkShell {
           packages = (mkRuntime pkgs) ++ [
@@ -658,6 +707,13 @@
           shellHook = ''
             export PS1="(nix-dev) \u@\h:\w$ "
             export PI_ENV_ROLE_MANAGER_PACKAGE="${roleManagerPackage}"
+            if [ -n "${extraPackagePath}" ]; then
+              if [ -n "''${PI_BWRAP_EXTRA_PATH:-}" ]; then
+                export PI_BWRAP_EXTRA_PATH="${extraPackagePath}:$PI_BWRAP_EXTRA_PATH"
+              else
+                export PI_BWRAP_EXTRA_PATH="${extraPackagePath}"
+              fi
+            fi
             if [ -z "''${PI_ENV_QUIET:-}" ]; then
               echo "Pi agent runtime loaded"
               echo "Use 'pi-env' for default startup, or 'pi-env --raw -- <pi args>' for custom runs."
