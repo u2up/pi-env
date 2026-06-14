@@ -8,6 +8,13 @@ cd "$repo_root"
 test_file_exists pi-env
 test_grep "pi-env - enter pi-env" <("./pi-env" --help)
 
+set +e
+missing_flake_output="$("$repo_root/pi-env" --flake 2>&1)"
+missing_flake_status=$?
+set -e
+test_eq 2 "$missing_flake_status" 'pi-env --flake without an argument exits with usage error'
+test_grep 'pi-env: --flake requires an argument' <(printf '%s\n' "$missing_flake_output")
+
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 fakebin="$tmpdir/bin"
@@ -57,6 +64,14 @@ test_grep '^<example/model>$' "$capture"
 test_grep '^<prompt>$' "$capture"
 
 rm "$fakebin/pi-start" "$fakebin/pi-bwrap"
+PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_FLAKE=env-flake "$repo_root/pi-env" "env prompt"
+test_grep '^nix$' "$capture"
+test_grep '^<develop>$' "$capture"
+test_grep '^<env-flake>$' "$capture"
+test_grep '^<-c>$' "$capture"
+test_grep '^<pi-env>$' "$capture"
+test_grep '^<env prompt>$' "$capture"
+
 PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_FLAKE=env-flake "$repo_root/pi-env" --flake cli-flake "prompt"
 test_grep '^nix$' "$capture"
 test_grep '^<develop>$' "$capture"
