@@ -159,6 +159,31 @@ agent-coord-lint \
   --coord-dir coordination \
   --project-root . >/dev/null
 
+mkdir -p designs scripts
+ln -sf "$repo_root/scripts/agent-coord-generate-requirements-coverage" \
+  scripts/agent-coord-generate-requirements-coverage
+requirement_key="$(grep '^requirement_key: ' "coordination/$requirement_path" | sed 's/^requirement_key: //')"
+cat >designs/lint-coverage.md <<EOF_DESIGN
+# Lint coverage
+
+## Covers
+
+| Requirement | Coordination item |
+|-------------|-------------------|
+| $requirement_key | $requirement_id |
+EOF_DESIGN
+agent-coord-lint \
+  --coord-dir coordination \
+  --project-root . >/dev/null
+sed -i "s/$requirement_id/PIENV-FRQ-20260614-000000-999/" designs/lint-coverage.md
+if agent-coord-lint \
+  --coord-dir coordination \
+  --project-root . >/dev/null 2>&1; then
+  printf 'expected lint to fail for stale design Covers item ID\n' >&2
+  exit 1
+fi
+sed -i "s/PIENV-FRQ-20260614-000000-999/$requirement_id/" designs/lint-coverage.md
+
 cat >tests/items/projects/pi-env/issues/ORPHAN-ISS-20260607-204155-001.sh <<'EOF_TEST'
 #!/usr/bin/env bash
 set -euo pipefail

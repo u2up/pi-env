@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+agent-coord-generate-requirements-coverage - render design coverage for requirements
+
+Usage:
+  agent-coord-generate-requirements-coverage [options]
+
+Options:
+  --project NAME            Project name; default: PI_COORD_PROJECT or pi-env
+  --coordination-dir DIR    Coordination clone; default: PI_COORD_DIR or coordination
+  --designs-dir DIR         Design documents directory; default: designs
+  --output PATH, -o PATH    Write Markdown to PATH instead of stdout
+  --check                   Validate inputs without writing Markdown
+  --preview                 Render Markdown and list invalid references without failing
+  -h, --help                Show this help
+USAGE
+}
+
+project="${PI_COORD_PROJECT:-pi-env}"
+coord_dir="${PI_COORD_DIR:-coordination}"
+designs_dir="designs"
+output=""
+check=0
+preview=0
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --project)
+      [ "$#" -ge 2 ] || { echo "missing value for --project" >&2; exit 2; }
+      project="$2"; shift 2 ;;
+    --coordination-dir|--coord-dir)
+      [ "$#" -ge 2 ] || { echo "missing value for $1" >&2; exit 2; }
+      coord_dir="$2"; shift 2 ;;
+    --designs-dir)
+      [ "$#" -ge 2 ] || { echo "missing value for --designs-dir" >&2; exit 2; }
+      designs_dir="$2"; shift 2 ;;
+    --output|-o)
+      [ "$#" -ge 2 ] || { echo "missing value for --output" >&2; exit 2; }
+      output="$2"; shift 2 ;;
+    --check)
+      check=1; shift ;;
+    --preview)
+      preview=1; shift ;;
+    --help|-h)
+      usage; exit 0 ;;
+    *)
+      echo "unknown argument: $1" >&2
+      usage >&2
+      exit 2 ;;
+  esac
+done
+
+requirements_dir="$coord_dir/projects/$project/requirements"
+if [ ! -d "$requirements_dir" ]; then
+  echo "requirements directory not found: $requirements_dir" >&2
+  exit 1
+fi
+if [ ! -d "$designs_dir" ]; then
+  echo "designs directory not found: $designs_dir" >&2
+  exit 1
+fi
+if [ "$check" = "1" ] && [ -n "$output" ]; then
+  echo "--check cannot be combined with --output" >&2
+  exit 2
+fi
+
+tmp="$(mktemp)"
+cleanup() { rm -f "$tmp"; }
+trap cleanup EXIT
+
+node - "$requirements_dir" "$designs_dir" "$check" "$preview" > "$tmp" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const reqDir = process.argv[2];
+const designsDir = process.argv[3];
+const check = process.argv[4] === '1';
+const preview = process.argv[5] === '1';
+
+function unquote(v) {
+  v = (v || '').trim();
+  if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) v = v.slice(1, -1);
+  return v.replace(/''/g, "'");
+}
+function field(text, name) {
+  const re = new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':\\s*(.*)$', 'm');
+  const m = text.match(re);
+  return m ? unquote(m[1]) : '';
+}
+function rel(p) { return p.split(path.sep).join('/'); }
+function fail(errors, file, line, message) {
+  errors.push(line ? `${rel(file)}:${line}: ${message}` : `${rel(file)}: ${message}`);
+}
+function isSep(line) { return /^\|\s*-+\s*\|\s*-+\s*\|\s*$/.test(line); }
+function sortRequirements(a, b) {
+  return a.order - b.order || a.key.localeCompare(b.key) || a.id.localeCompare(b.id);
+}
+
+const requirements = [];
+const byKey = new Map();
+for (const file of fs.readdirSync(reqDir).filter((name) => /\.ya?ml$/.test(name)).sort()) {
+  const text = fs.readFileSync(path.join(reqDir, file), 'utf8');
+  const status = field(text, 'status');
+  const key = field(text, 'requirement_key');
+  const id = field(text, 'id');
+  if (status !== 'active' || !key || !id) continue;
+  const req = { key, id, order: Number(field(text, 'render_order') || '999999') };
+  requirements.push(req);
+  if (byKey.has(key)) {
+    console.error(`duplicate active requirement_key ${key}: ${byKey.get(key).id} and ${id}`);
+    process.exit(1);
+  }
+  byKey.set(key, req);
+}
+requirements.sort(sortRequirements);
+
+const coveredBy = new Map(requirements.map((req) => [req.key, []]));
+const errors = [];
+const designFiles = fs.readdirSync(designsDir).filter((name) => name.endsWith('.md')).sort();
+
+for (const name of designFiles) {
+  const designPath = path.join(designsDir, name);
+  const displayPath = rel(designPath);
+  const lines = fs.readFileSync(designPath, 'utf8').split(/\r?\n/);
+  const covers = [];
+  lines.forEach((line, idx) => { if (line === '## Covers') covers.push(idx); });
+  if (covers.length !== 1) {
+    fail(errors, designPath, null, `expected exactly one ## Covers section, found ${covers.length}`);
+    continue;
+  }
+  const start = covers[0];
+  if (lines[start + 1] !== '' ||
+      lines[start + 2] !== '| Requirement | Coordination item |' ||
+      !isSep(lines[start + 3] || '')) {
+    fail(errors, designPath, start + 1, '## Covers must use a two-column normalized table');
+    continue;
+  }
+  let rows = 0;
+  for (let i = start + 4; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line.startsWith('|')) break;
+    rows += 1;
+    const match = line.match(/^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|$/);
+    if (!match) {
+      fail(errors, designPath, i + 1, 'malformed Covers row');
+      continue;
+    }
+    const key = match[1].trim();
+    const itemId = match[2].trim();
+    const req = byKey.get(key);
+    if (!req) {
+      fail(errors, designPath, i + 1, `unknown or inactive requirement key ${key}`);
+      continue;
+    }
+    if (req.id !== itemId) {
+      fail(errors, designPath, i + 1, `stale coordination item for ${key}: expected ${req.id}, got ${itemId}`);
+      continue;
+    }
+    coveredBy.get(key).push(displayPath);
+  }
+  if (rows === 0) fail(errors, designPath, null, '## Covers table must list at least one requirement');
+}
+
+for (const paths of coveredBy.values()) paths.sort();
+const coveredCount = requirements.filter((req) => coveredBy.get(req.key).length > 0).length;
+
+if (errors.length && !preview) {
+  for (const e of errors) console.error(`agent-coord-generate-requirements-coverage: ${e}`);
+  process.exit(1);
+}
+if (check) process.exit(0);
+
+function print(s = '') { process.stdout.write(s + '\n'); }
+print('# Requirements Coverage');
+print();
+print('This file is generated from active requirement items and `designs/*.md`.');
+print();
+print('## Summary');
+print();
+print(`- Requirements: ${requirements.length}`);
+print(`- Covered by design: ${coveredCount}`);
+print(`- Not covered by design: ${requirements.length - coveredCount}`);
+print();
+print('## Coverage by requirement');
+print();
+print('| Requirement | Coordination item | Covered by |');
+print('|-------------|-------------------|------------|');
+for (const req of requirements) {
+  const paths = coveredBy.get(req.key);
+  print(`| ${req.key} | ${req.id} | ${paths.length ? paths.join(', ') : 'Not covered'} |`);
+}
+if (errors.length) {
+  print();
+  print('## Invalid design references');
+  print();
+  for (const e of errors) print(`- ${e}`);
+}
+NODE
+
+if [ -n "$output" ]; then
+  cp "$tmp" "$output"
+elif [ "$check" != "1" ]; then
+  cat "$tmp"
+fi

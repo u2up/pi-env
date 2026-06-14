@@ -36,7 +36,8 @@ Checks:
   - issue items have embedded current/events/messages history;
   - requirement items have current-state body records without embedded history;
   - imported FRQ/QRQ/CRQ items have non-empty source_refs;
-  - every tests/items/**/*.sh script matches an existing item ID.
+  - every tests/items/**/*.sh script matches an existing item ID;
+  - design ## Covers entries reference active requirement keys and IDs.
 
 Issue status directories are not mirrored under tests/items; the expected
 project-item test path is:
@@ -341,6 +342,28 @@ if [ -d "$items_tests_dir" ]; then
       lint_fail "$test_file does not match any coordination item id"
     fi
   done < <(find "$items_tests_dir" -type f -name '*.sh' 2>/dev/null | sort)
+fi
+
+coverage_generator="$project_root/scripts/agent-coord-generate-requirements-coverage"
+if [ ! -x "$coverage_generator" ]; then
+  coverage_generator="$(command -v agent-coord-generate-requirements-coverage || true)"
+fi
+if [ -n "$coverage_generator" ] && [ -x "$coverage_generator" ] && [ -d "$project_root/designs" ]; then
+  coverage_output="$("$coverage_generator" \
+    --coordination-dir "$coord_dir" \
+    --designs-dir "$project_root/designs" \
+    --check 2>&1)" || {
+      if [ -n "$coverage_output" ]; then
+        while IFS= read -r line; do
+          [ -n "$line" ] || continue
+          lint_fail "requirements coverage: $line"
+        done <<EOF
+$coverage_output
+EOF
+      else
+        lint_fail "requirements coverage check failed"
+      fi
+    }
 fi
 
 if [ "$failures" -gt 0 ]; then
