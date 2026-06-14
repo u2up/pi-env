@@ -5,10 +5,15 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd -P)"
 cd "$repo_root"
 . tests/lib/test-helpers.sh
 
-test_grep '^## Getting started' README.md
-test_grep '/path/to/pi-env/pi-env "Inspect this repo"' README.md
+# Keep these checks tied to the issue acceptance criteria instead of exact
+# README section titles. The onboarding flow has been reorganized over time, but
+# it must still document both direct and project-integrated workflows.
+test_grep 'Direct use' README.md
+test_grep '/pi-env "Inspect this repo"' README.md
 test_grep 'pi-env --raw -- --model' README.md
-test_grep '^### Project-integrated use' README.md
+test_grep 'Flake integration' README.md
+test_grep 'pin pi-env' README.md
+test_grep 'project-specific Nix dependencies' README.md
 test_grep '^nix develop$' README.md
 test_grep '^pi-env$' README.md
 test_grep 'Use direct mode' README.md
