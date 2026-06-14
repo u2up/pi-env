@@ -22,11 +22,62 @@ Optional role-manager and Git-backed coordination helpers are included for
 tracked role-based agent workflows, but the core value is simple: a safer,
 repeatable environment for running Pi against a codebase.
 
+```text
+Without pi-env:
+  Pi -> host environment
+     -> home directory, SSH keys, cloud credentials, Docker socket,
+        shell config, unrelated projects
+
+With pi-env:
+  Pi -> Bubblewrap sandbox
+     -> selected repo at /workspace, isolated HOME,
+        selected auth/config only
+```
+
 Most users start with one of two workflows:
 
 1. **Direct use**: run this checkout's `pi-env` launcher from any project.
 2. **Flake integration**: add `pi-env` as an input to a project's own flake so
    the team shares the same pinned runtime.
+
+## 60-second example
+
+Assuming Linux, Git, Nix with flakes, and a configured host `pi` command are
+already available, try pi-env on an existing public repository:
+
+```bash
+git clone https://github.com/spog/evm.git
+cd evm
+
+nix run github:why-ex/pi-env -- \
+  "Summarize this repository and suggest safe first checks."
+```
+
+This runs Pi against the cloned repository with that repository mounted
+read-write at `/workspace` inside the Bubblewrap sandbox.
+
+### Optional: enable local coordination for the example
+
+For tracked role-based agent work, enter the pi-env shell:
+
+```bash
+cd evm
+nix develop github:why-ex/pi-env
+```
+
+Then bootstrap a local coordination repository for the checkout and run Pi:
+
+```bash
+bootstrap-coordination \
+  --project-root "$PWD" \
+  --project evm \
+  --project-key EVM
+agent-coord-status
+pi-env "Inspect this repository and review its state."
+```
+
+This creates local coordination files/directories for agent task tracking.
+Commit them only if you want that workflow versioned with the project.
 
 ## 1. Host prerequisites
 
