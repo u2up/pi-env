@@ -1,0 +1,73 @@
+# Pi Agent Resource Design
+
+Pi resource import prepares the sandboxed agent with the common and
+project-local files it needs without exposing the entire user home directory.
+Resources are copied or mounted according to purpose and ownership.
+
+## Covers
+
+| Requirement | Coordination item |
+|-------------|-------------------|
+| UC-010 | PIENV-FRQ-20260612-210000-010 |
+| UC-011 | PIENV-FRQ-20260612-210000-011 |
+| UC-012 | PIENV-FRQ-20260612-210000-012 |
+| CRQ-007 | PIENV-CRQ-20260612-210000-007 |
+| AGENT-001 | PIENV-FRQ-20260612-210000-063 |
+| AGENT-002 | PIENV-FRQ-20260612-210000-064 |
+| AGENT-003 | PIENV-FRQ-20260612-210000-065 |
+| AGENT-004 | PIENV-FRQ-20260612-210000-066 |
+| AGENT-005 | PIENV-FRQ-20260612-210000-067 |
+| AGENT-006 | PIENV-FRQ-20260612-210000-068 |
+| AGENT-007 | PIENV-FRQ-20260612-210000-069 |
+| AGENT-008 | PIENV-FRQ-20260612-210000-070 |
+| AGENT-009 | PIENV-FRQ-20260612-210000-071 |
+| AGENT-010 | PIENV-FRQ-20260612-210000-072 |
+| AGENT-010a | PIENV-FRQ-20260612-210000-073 |
+| AGENT-010b | PIENV-FRQ-20260612-210000-074 |
+| AGENT-011 | PIENV-FRQ-20260612-210000-075 |
+| AGENT-012 | PIENV-FRQ-20260612-210000-076 |
+| AGENT-013 | PIENV-FRQ-20260612-210000-077 |
+| AGENT-014 | PIENV-FRQ-20260612-210000-078 |
+| AGENT-015 | PIENV-FRQ-20260612-210000-079 |
+
+## 1. Resource scopes
+
+Common Pi resources come from an external user-controlled Pi configuration and
+support cross-project behavior such as providers, models, themes, extensions,
+and skills. `CRQ-007` means `pi-env` imports or exposes those resources but
+does not ship user-specific content. Project resources come from the current
+workspace and support local instructions, roles, and project-specific packages.
+
+Common resources are imported first, then project resources may add or override
+within documented boundaries. This lets `UC-010` through `UC-012` support both
+portable project behavior and user-level Pi preferences.
+
+## 2. Auth and model data
+
+Authentication and model configuration are treated as sensitive resources. The
+launcher imports only the files and directories required by the Pi runtime
+rather than exposing general shell credentials. Environment variables are not a
+substitute for explicit auth import because the sandbox environment is filtered
+by design.
+
+Model and provider resources follow the same rule: make the intended Pi runtime
+configuration available, but avoid copying unrelated host state.
+
+## 3. Sessions, extensions, and packages
+
+Session state lives in the sandbox home/state area so repeated agent use can be
+stable without writing into the real home directory. Extension and package
+loading combines common and project resources, allowing project-local behavior
+to travel with the repository.
+
+Role resources are imported only through the role selection path. This keeps
+`AGENT-010`, `AGENT-010a`, and `AGENT-010b` from becoming global configuration
+side effects: role prompts, skills, and package additions apply when that role
+is active.
+
+## 4. Precedence and diagnostics
+
+When the same resource name appears in multiple scopes, project-specific data
+wins over common data only in the documented project resource locations. The
+launcher should report missing required resources and continue quietly for
+optional directories that are absent.

@@ -5,54 +5,54 @@ This file is generated from active requirement items and `designs/*.md`.
 ## Summary
 
 - Requirements: 143
-- Covered by design: 20
-- Not covered by design: 123
+- Covered by design: 143
+- Not covered by design: 0
 
 ## Coverage by requirement
 
 | Requirement | Coordination item | Covered by |
 |-------------|-------------------|------------|
-| UC-001 | PIENV-FRQ-20260612-210000-001 | Not covered |
+| UC-001 | PIENV-FRQ-20260612-210000-001 | designs/launcher-layering.md |
 | DOC-002 | PIENV-QRQ-20260613-183457-001 | designs/role-manager.md |
-| UC-002 | PIENV-FRQ-20260612-210000-002 | Not covered |
-| UC-003 | PIENV-FRQ-20260612-210000-003 | Not covered |
-| UC-004 | PIENV-FRQ-20260612-210000-004 | Not covered |
-| UC-005 | PIENV-FRQ-20260612-210000-005 | Not covered |
-| UC-006 | PIENV-FRQ-20260612-210000-006 | Not covered |
-| UC-007 | PIENV-FRQ-20260612-210000-007 | Not covered |
-| UC-008 | PIENV-FRQ-20260612-210000-008 | Not covered |
-| UC-009 | PIENV-FRQ-20260612-210000-009 | Not covered |
-| UC-010 | PIENV-FRQ-20260612-210000-010 | Not covered |
-| CRQ-011 | PIENV-CRQ-20260613-183419-001 | Not covered |
-| UC-011 | PIENV-FRQ-20260612-210000-011 | Not covered |
-| UC-012 | PIENV-FRQ-20260612-210000-012 | Not covered |
-| UC-013 | PIENV-FRQ-20260612-210000-013 | Not covered |
-| UC-014 | PIENV-FRQ-20260612-210000-014 | Not covered |
-| UC-015 | PIENV-FRQ-20260612-210000-015 | Not covered |
-| UC-016 | PIENV-FRQ-20260612-210000-016 | Not covered |
-| UC-017 | PIENV-FRQ-20260612-210000-017 | Not covered |
-| UC-018 | PIENV-FRQ-20260612-210000-018 | Not covered |
-| UC-019 | PIENV-FRQ-20260612-210000-019 | Not covered |
-| UC-020 | PIENV-FRQ-20260612-210000-020 | Not covered |
-| UC-021 | PIENV-FRQ-20260612-210000-021 | Not covered |
-| UC-022 | PIENV-FRQ-20260612-210000-022 | Not covered |
+| UC-002 | PIENV-FRQ-20260612-210000-002 | designs/launcher-layering.md |
+| UC-003 | PIENV-FRQ-20260612-210000-003 | designs/nix-runtime.md |
+| UC-004 | PIENV-FRQ-20260612-210000-004 | designs/bubblewrap-sandbox.md |
+| UC-005 | PIENV-FRQ-20260612-210000-005 | designs/bubblewrap-sandbox.md |
+| UC-006 | PIENV-FRQ-20260612-210000-006 | designs/bubblewrap-sandbox.md |
+| UC-007 | PIENV-FRQ-20260612-210000-007 | designs/bubblewrap-sandbox.md |
+| UC-008 | PIENV-FRQ-20260612-210000-008 | designs/bubblewrap-sandbox.md |
+| UC-009 | PIENV-FRQ-20260612-210000-009 | designs/bubblewrap-sandbox.md |
+| UC-010 | PIENV-FRQ-20260612-210000-010 | designs/pi-agent-resources.md |
+| CRQ-011 | PIENV-CRQ-20260613-183419-001 | designs/launcher-layering.md |
+| UC-011 | PIENV-FRQ-20260612-210000-011 | designs/pi-agent-resources.md |
+| UC-012 | PIENV-FRQ-20260612-210000-012 | designs/pi-agent-resources.md |
+| UC-013 | PIENV-FRQ-20260612-210000-013 | designs/git-config-import.md |
+| UC-014 | PIENV-FRQ-20260612-210000-014 | designs/launcher-layering.md |
+| UC-015 | PIENV-FRQ-20260612-210000-015 | designs/bubblewrap-sandbox.md |
+| UC-016 | PIENV-FRQ-20260612-210000-016 | designs/launcher-layering.md |
+| UC-017 | PIENV-FRQ-20260612-210000-017 | designs/nix-runtime.md |
+| UC-018 | PIENV-FRQ-20260612-210000-018 | designs/nix-runtime.md |
+| UC-019 | PIENV-FRQ-20260612-210000-019 | designs/nix-runtime.md |
+| UC-020 | PIENV-FRQ-20260612-210000-020 | designs/nix-runtime.md |
+| UC-021 | PIENV-FRQ-20260612-210000-021 | designs/verification-strategy.md |
+| UC-022 | PIENV-FRQ-20260612-210000-022 | designs/bubblewrap-sandbox.md |
 | UC-023 | PIENV-FRQ-20260612-210000-023 | designs/agent-coordination.md |
-| FLAKE-001 | PIENV-FRQ-20260612-210000-024 | Not covered |
-| FLAKE-002 | PIENV-FRQ-20260612-210000-025 | Not covered |
-| FLAKE-003 | PIENV-FRQ-20260612-210000-026 | Not covered |
-| FLAKE-004 | PIENV-FRQ-20260612-210000-027 | Not covered |
-| FLAKE-005 | PIENV-FRQ-20260612-210000-028 | Not covered |
-| FLAKE-006 | PIENV-FRQ-20260612-210000-029 | Not covered |
-| RUNTIME-001 | PIENV-FRQ-20260612-210000-030 | Not covered |
-| RUNTIME-002 | PIENV-FRQ-20260612-210000-031 | Not covered |
-| CMD-001 | PIENV-FRQ-20260612-210000-032 | Not covered |
-| CMD-002 | PIENV-FRQ-20260612-210000-033 | Not covered |
-| CMD-003 | PIENV-FRQ-20260612-210000-034 | Not covered |
-| CMD-004 | PIENV-FRQ-20260612-210000-035 | Not covered |
-| CMD-005 | PIENV-FRQ-20260612-210000-036 | Not covered |
-| CMD-006 | PIENV-FRQ-20260612-210000-037 | Not covered |
-| CMD-007 | PIENV-FRQ-20260612-210000-038 | Not covered |
-| CMD-008 | PIENV-FRQ-20260612-210000-039 | Not covered |
+| FLAKE-001 | PIENV-FRQ-20260612-210000-024 | designs/nix-runtime.md |
+| FLAKE-002 | PIENV-FRQ-20260612-210000-025 | designs/nix-runtime.md |
+| FLAKE-003 | PIENV-FRQ-20260612-210000-026 | designs/nix-runtime.md |
+| FLAKE-004 | PIENV-FRQ-20260612-210000-027 | designs/nix-runtime.md |
+| FLAKE-005 | PIENV-FRQ-20260612-210000-028 | designs/nix-runtime.md |
+| FLAKE-006 | PIENV-FRQ-20260612-210000-029 | designs/nix-runtime.md |
+| RUNTIME-001 | PIENV-FRQ-20260612-210000-030 | designs/nix-runtime.md |
+| RUNTIME-002 | PIENV-FRQ-20260612-210000-031 | designs/nix-runtime.md |
+| CMD-001 | PIENV-FRQ-20260612-210000-032 | designs/launcher-layering.md |
+| CMD-002 | PIENV-FRQ-20260612-210000-033 | designs/launcher-layering.md |
+| CMD-003 | PIENV-FRQ-20260612-210000-034 | designs/launcher-layering.md |
+| CMD-004 | PIENV-FRQ-20260612-210000-035 | designs/launcher-layering.md |
+| CMD-005 | PIENV-FRQ-20260612-210000-036 | designs/launcher-layering.md |
+| CMD-006 | PIENV-FRQ-20260612-210000-037 | designs/launcher-layering.md |
+| CMD-007 | PIENV-FRQ-20260612-210000-038 | designs/launcher-layering.md |
+| CMD-008 | PIENV-FRQ-20260612-210000-039 | designs/launcher-layering.md |
 | CMD-009 | PIENV-FRQ-20260612-210000-040 | designs/agent-coordination.md |
 | CMD-010 | PIENV-FRQ-20260612-210000-041 | designs/agent-coordination.md |
 | CMD-011 | PIENV-FRQ-20260612-210000-042 | designs/agent-coordination.md |
@@ -62,96 +62,96 @@ This file is generated from active requirement items and `designs/*.md`.
 | CMD-015 | PIENV-FRQ-20260612-210000-046 | designs/agent-coordination.md |
 | CMD-016 | PIENV-FRQ-20260612-210000-047 | designs/role-manager.md |
 | CMD-017 | PIENV-FRQ-20260613-090608-001 | designs/role-manager.md |
-| CMD-018 | PIENV-FRQ-20260613-183404-001 | Not covered |
-| PATH-001 | PIENV-FRQ-20260612-210000-048 | Not covered |
-| CMD-019 | PIENV-FRQ-20260613-183411-001 | designs/role-manager.md |
-| PATH-002 | PIENV-FRQ-20260612-210000-049 | Not covered |
-| PATH-003 | PIENV-FRQ-20260612-210000-050 | Not covered |
-| PATH-004 | PIENV-FRQ-20260612-210000-051 | Not covered |
-| PATH-005 | PIENV-FRQ-20260612-210000-052 | Not covered |
-| FS-001 | PIENV-FRQ-20260612-210000-053 | Not covered |
-| FS-002 | PIENV-FRQ-20260612-210000-054 | Not covered |
-| FS-003 | PIENV-FRQ-20260612-210000-055 | Not covered |
-| FS-004 | PIENV-FRQ-20260612-210000-056 | Not covered |
-| FS-005 | PIENV-FRQ-20260612-210000-057 | Not covered |
-| FS-006 | PIENV-FRQ-20260612-210000-058 | Not covered |
-| FS-007 | PIENV-FRQ-20260612-210000-059 | Not covered |
-| FS-008 | PIENV-FRQ-20260612-210000-060 | Not covered |
-| FS-009 | PIENV-FRQ-20260612-210000-061 | Not covered |
+| CMD-018 | PIENV-FRQ-20260613-183404-001 | designs/launcher-layering.md |
+| PATH-001 | PIENV-FRQ-20260612-210000-048 | designs/bubblewrap-sandbox.md |
+| CMD-019 | PIENV-FRQ-20260613-183411-001 | designs/launcher-layering.md, designs/role-manager.md |
+| PATH-002 | PIENV-FRQ-20260612-210000-049 | designs/bubblewrap-sandbox.md |
+| PATH-003 | PIENV-FRQ-20260612-210000-050 | designs/bubblewrap-sandbox.md |
+| PATH-004 | PIENV-FRQ-20260612-210000-051 | designs/bubblewrap-sandbox.md |
+| PATH-005 | PIENV-FRQ-20260612-210000-052 | designs/bubblewrap-sandbox.md |
+| FS-001 | PIENV-FRQ-20260612-210000-053 | designs/bubblewrap-sandbox.md |
+| FS-002 | PIENV-FRQ-20260612-210000-054 | designs/bubblewrap-sandbox.md |
+| FS-003 | PIENV-FRQ-20260612-210000-055 | designs/bubblewrap-sandbox.md |
+| FS-004 | PIENV-FRQ-20260612-210000-056 | designs/bubblewrap-sandbox.md |
+| FS-005 | PIENV-FRQ-20260612-210000-057 | designs/bubblewrap-sandbox.md |
+| FS-006 | PIENV-FRQ-20260612-210000-058 | designs/bubblewrap-sandbox.md |
+| FS-007 | PIENV-FRQ-20260612-210000-059 | designs/bubblewrap-sandbox.md |
+| FS-008 | PIENV-FRQ-20260612-210000-060 | designs/bubblewrap-sandbox.md |
+| FS-009 | PIENV-FRQ-20260612-210000-061 | designs/bubblewrap-sandbox.md |
 | FS-010 | PIENV-FRQ-20260612-210000-062 | designs/agent-coordination.md |
-| AGENT-001 | PIENV-FRQ-20260612-210000-063 | Not covered |
-| AGENT-002 | PIENV-FRQ-20260612-210000-064 | Not covered |
-| AGENT-003 | PIENV-FRQ-20260612-210000-065 | Not covered |
-| AGENT-004 | PIENV-FRQ-20260612-210000-066 | Not covered |
-| AGENT-005 | PIENV-FRQ-20260612-210000-067 | Not covered |
-| AGENT-006 | PIENV-FRQ-20260612-210000-068 | Not covered |
-| AGENT-007 | PIENV-FRQ-20260612-210000-069 | Not covered |
-| AGENT-008 | PIENV-FRQ-20260612-210000-070 | Not covered |
-| AGENT-009 | PIENV-FRQ-20260612-210000-071 | Not covered |
-| AGENT-010 | PIENV-FRQ-20260612-210000-072 | Not covered |
-| AGENT-010a | PIENV-FRQ-20260612-210000-073 | Not covered |
-| AGENT-010b | PIENV-FRQ-20260612-210000-074 | Not covered |
-| AGENT-011 | PIENV-FRQ-20260612-210000-075 | Not covered |
-| AGENT-012 | PIENV-FRQ-20260612-210000-076 | Not covered |
-| AGENT-013 | PIENV-FRQ-20260612-210000-077 | Not covered |
-| AGENT-014 | PIENV-FRQ-20260612-210000-078 | Not covered |
-| AGENT-015 | PIENV-FRQ-20260612-210000-079 | Not covered |
-| GIT-001 | PIENV-FRQ-20260612-210000-080 | Not covered |
-| GIT-002 | PIENV-FRQ-20260612-210000-081 | Not covered |
-| GIT-003 | PIENV-FRQ-20260612-210000-082 | Not covered |
-| GIT-004 | PIENV-FRQ-20260612-210000-083 | Not covered |
-| GIT-005 | PIENV-FRQ-20260612-210000-084 | Not covered |
-| GIT-006 | PIENV-FRQ-20260612-210000-085 | Not covered |
-| GIT-007 | PIENV-FRQ-20260612-210000-086 | Not covered |
-| GIT-008 | PIENV-FRQ-20260612-210000-087 | Not covered |
-| ENV-001 | PIENV-FRQ-20260612-210000-088 | Not covered |
-| ENV-002 | PIENV-FRQ-20260612-210000-089 | Not covered |
-| ENV-003 | PIENV-FRQ-20260612-210000-090 | Not covered |
-| ENV-004 | PIENV-FRQ-20260612-210000-091 | Not covered |
-| ENV-005 | PIENV-FRQ-20260612-210000-092 | Not covered |
+| AGENT-001 | PIENV-FRQ-20260612-210000-063 | designs/pi-agent-resources.md |
+| AGENT-002 | PIENV-FRQ-20260612-210000-064 | designs/pi-agent-resources.md |
+| AGENT-003 | PIENV-FRQ-20260612-210000-065 | designs/pi-agent-resources.md |
+| AGENT-004 | PIENV-FRQ-20260612-210000-066 | designs/pi-agent-resources.md |
+| AGENT-005 | PIENV-FRQ-20260612-210000-067 | designs/pi-agent-resources.md |
+| AGENT-006 | PIENV-FRQ-20260612-210000-068 | designs/pi-agent-resources.md |
+| AGENT-007 | PIENV-FRQ-20260612-210000-069 | designs/pi-agent-resources.md |
+| AGENT-008 | PIENV-FRQ-20260612-210000-070 | designs/pi-agent-resources.md |
+| AGENT-009 | PIENV-FRQ-20260612-210000-071 | designs/pi-agent-resources.md |
+| AGENT-010 | PIENV-FRQ-20260612-210000-072 | designs/pi-agent-resources.md |
+| AGENT-010a | PIENV-FRQ-20260612-210000-073 | designs/pi-agent-resources.md |
+| AGENT-010b | PIENV-FRQ-20260612-210000-074 | designs/pi-agent-resources.md |
+| AGENT-011 | PIENV-FRQ-20260612-210000-075 | designs/pi-agent-resources.md |
+| AGENT-012 | PIENV-FRQ-20260612-210000-076 | designs/pi-agent-resources.md |
+| AGENT-013 | PIENV-FRQ-20260612-210000-077 | designs/pi-agent-resources.md |
+| AGENT-014 | PIENV-FRQ-20260612-210000-078 | designs/pi-agent-resources.md |
+| AGENT-015 | PIENV-FRQ-20260612-210000-079 | designs/pi-agent-resources.md |
+| GIT-001 | PIENV-FRQ-20260612-210000-080 | designs/git-config-import.md |
+| GIT-002 | PIENV-FRQ-20260612-210000-081 | designs/git-config-import.md |
+| GIT-003 | PIENV-FRQ-20260612-210000-082 | designs/git-config-import.md |
+| GIT-004 | PIENV-FRQ-20260612-210000-083 | designs/git-config-import.md |
+| GIT-005 | PIENV-FRQ-20260612-210000-084 | designs/git-config-import.md |
+| GIT-006 | PIENV-FRQ-20260612-210000-085 | designs/git-config-import.md |
+| GIT-007 | PIENV-FRQ-20260612-210000-086 | designs/git-config-import.md |
+| GIT-008 | PIENV-FRQ-20260612-210000-087 | designs/git-config-import.md |
+| ENV-001 | PIENV-FRQ-20260612-210000-088 | designs/bubblewrap-sandbox.md |
+| ENV-002 | PIENV-FRQ-20260612-210000-089 | designs/bubblewrap-sandbox.md |
+| ENV-003 | PIENV-FRQ-20260612-210000-090 | designs/bubblewrap-sandbox.md |
+| ENV-004 | PIENV-FRQ-20260612-210000-091 | designs/bubblewrap-sandbox.md |
+| ENV-005 | PIENV-FRQ-20260612-210000-092 | designs/bubblewrap-sandbox.md |
 | ENV-006 | PIENV-FRQ-20260612-210000-093 | designs/agent-coordination.md |
-| NET-001 | PIENV-FRQ-20260612-210000-094 | Not covered |
-| NET-002 | PIENV-FRQ-20260612-210000-095 | Not covered |
-| DOC-000 | PIENV-QRQ-20260612-210000-001 | Not covered |
-| DOC-001 | PIENV-QRQ-20260612-210000-002 | Not covered |
-| TEST-001 | PIENV-QRQ-20260612-210000-003 | Not covered |
-| TEST-002 | PIENV-QRQ-20260612-210000-004 | Not covered |
-| TEST-003 | PIENV-QRQ-20260612-210000-005 | Not covered |
-| TEST-004 | PIENV-QRQ-20260612-210000-006 | Not covered |
-| TEST-005 | PIENV-QRQ-20260612-210000-007 | Not covered |
-| TEST-006 | PIENV-QRQ-20260612-210000-008 | Not covered |
-| TEST-007 | PIENV-QRQ-20260612-210000-009 | Not covered |
-| TEST-008 | PIENV-QRQ-20260612-210000-010 | Not covered |
-| TEST-009 | PIENV-QRQ-20260612-210000-011 | Not covered |
-| TEST-010 | PIENV-QRQ-20260612-210000-012 | Not covered |
-| TEST-011 | PIENV-QRQ-20260612-210000-013 | Not covered |
-| TEST-012 | PIENV-QRQ-20260612-210000-014 | Not covered |
-| TEST-013 | PIENV-QRQ-20260612-210000-015 | Not covered |
-| TEST-014 | PIENV-QRQ-20260612-210000-016 | Not covered |
-| TEST-015 | PIENV-QRQ-20260612-210000-017 | Not covered |
-| TEST-016 | PIENV-QRQ-20260612-210000-018 | Not covered |
-| TEST-017 | PIENV-QRQ-20260612-210000-019 | Not covered |
-| TEST-018 | PIENV-QRQ-20260612-210000-020 | Not covered |
-| TEST-019 | PIENV-QRQ-20260612-210000-021 | Not covered |
-| TEST-020 | PIENV-QRQ-20260612-210000-022 | Not covered |
-| TEST-021 | PIENV-QRQ-20260612-210000-023 | Not covered |
-| TEST-022 | PIENV-QRQ-20260612-210000-024 | Not covered |
-| TEST-023 | PIENV-QRQ-20260612-210000-025 | Not covered |
-| TEST-024 | PIENV-QRQ-20260612-210000-026 | Not covered |
-| TEST-025 | PIENV-QRQ-20260612-210000-027 | Not covered |
-| TEST-026 | PIENV-QRQ-20260612-210000-028 | Not covered |
-| TEST-027 | PIENV-QRQ-20260612-210000-029 | Not covered |
-| TEST-028 | PIENV-QRQ-20260612-210000-030 | Not covered |
-| TEST-029 | PIENV-QRQ-20260612-210000-031 | Not covered |
-| TEST-030 | PIENV-QRQ-20260612-210000-032 | Not covered |
-| TEST-031 | PIENV-QRQ-20260612-210000-033 | designs/role-manager.md |
+| NET-001 | PIENV-FRQ-20260612-210000-094 | designs/bubblewrap-sandbox.md |
+| NET-002 | PIENV-FRQ-20260612-210000-095 | designs/bubblewrap-sandbox.md |
+| DOC-000 | PIENV-QRQ-20260612-210000-001 | designs/requirements-traceability.md |
+| DOC-001 | PIENV-QRQ-20260612-210000-002 | designs/requirements-traceability.md |
+| TEST-001 | PIENV-QRQ-20260612-210000-003 | designs/verification-strategy.md |
+| TEST-002 | PIENV-QRQ-20260612-210000-004 | designs/verification-strategy.md |
+| TEST-003 | PIENV-QRQ-20260612-210000-005 | designs/verification-strategy.md |
+| TEST-004 | PIENV-QRQ-20260612-210000-006 | designs/verification-strategy.md |
+| TEST-005 | PIENV-QRQ-20260612-210000-007 | designs/verification-strategy.md |
+| TEST-006 | PIENV-QRQ-20260612-210000-008 | designs/verification-strategy.md |
+| TEST-007 | PIENV-QRQ-20260612-210000-009 | designs/verification-strategy.md |
+| TEST-008 | PIENV-QRQ-20260612-210000-010 | designs/verification-strategy.md |
+| TEST-009 | PIENV-QRQ-20260612-210000-011 | designs/verification-strategy.md |
+| TEST-010 | PIENV-QRQ-20260612-210000-012 | designs/verification-strategy.md |
+| TEST-011 | PIENV-QRQ-20260612-210000-013 | designs/verification-strategy.md |
+| TEST-012 | PIENV-QRQ-20260612-210000-014 | designs/verification-strategy.md |
+| TEST-013 | PIENV-QRQ-20260612-210000-015 | designs/verification-strategy.md |
+| TEST-014 | PIENV-QRQ-20260612-210000-016 | designs/verification-strategy.md |
+| TEST-015 | PIENV-QRQ-20260612-210000-017 | designs/verification-strategy.md |
+| TEST-016 | PIENV-QRQ-20260612-210000-018 | designs/verification-strategy.md |
+| TEST-017 | PIENV-QRQ-20260612-210000-019 | designs/verification-strategy.md |
+| TEST-018 | PIENV-QRQ-20260612-210000-020 | designs/verification-strategy.md |
+| TEST-019 | PIENV-QRQ-20260612-210000-021 | designs/verification-strategy.md |
+| TEST-020 | PIENV-QRQ-20260612-210000-022 | designs/verification-strategy.md |
+| TEST-021 | PIENV-QRQ-20260612-210000-023 | designs/verification-strategy.md |
+| TEST-022 | PIENV-QRQ-20260612-210000-024 | designs/verification-strategy.md |
+| TEST-023 | PIENV-QRQ-20260612-210000-025 | designs/verification-strategy.md |
+| TEST-024 | PIENV-QRQ-20260612-210000-026 | designs/verification-strategy.md |
+| TEST-025 | PIENV-QRQ-20260612-210000-027 | designs/verification-strategy.md |
+| TEST-026 | PIENV-QRQ-20260612-210000-028 | designs/verification-strategy.md |
+| TEST-027 | PIENV-QRQ-20260612-210000-029 | designs/verification-strategy.md |
+| TEST-028 | PIENV-QRQ-20260612-210000-030 | designs/verification-strategy.md |
+| TEST-029 | PIENV-QRQ-20260612-210000-031 | designs/verification-strategy.md |
+| TEST-030 | PIENV-QRQ-20260612-210000-032 | designs/verification-strategy.md |
+| TEST-031 | PIENV-QRQ-20260612-210000-033 | designs/role-manager.md, designs/verification-strategy.md |
 | CRQ-001 | PIENV-CRQ-20260612-210000-001 | designs/agent-coordination.md |
 | CRQ-002 | PIENV-CRQ-20260612-210000-002 | designs/agent-coordination.md |
 | CRQ-003 | PIENV-CRQ-20260612-210000-003 | designs/agent-coordination.md |
 | CRQ-004 | PIENV-CRQ-20260612-210000-004 | designs/agent-coordination.md |
 | CRQ-005 | PIENV-CRQ-20260612-210000-005 | designs/agent-coordination.md |
-| CRQ-006 | PIENV-CRQ-20260612-210000-006 | Not covered |
-| CRQ-007 | PIENV-CRQ-20260612-210000-007 | Not covered |
-| CRQ-008 | PIENV-CRQ-20260612-210000-008 | Not covered |
-| CRQ-009 | PIENV-CRQ-20260612-210000-009 | Not covered |
-| CRQ-010 | PIENV-CRQ-20260613-090617-001 | Not covered |
+| CRQ-006 | PIENV-CRQ-20260612-210000-006 | designs/bubblewrap-sandbox.md, designs/git-config-import.md |
+| CRQ-007 | PIENV-CRQ-20260612-210000-007 | designs/pi-agent-resources.md |
+| CRQ-008 | PIENV-CRQ-20260612-210000-008 | designs/bubblewrap-sandbox.md |
+| CRQ-009 | PIENV-CRQ-20260612-210000-009 | designs/bubblewrap-sandbox.md |
+| CRQ-010 | PIENV-CRQ-20260613-090617-001 | designs/requirements-traceability.md |

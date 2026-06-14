@@ -1,0 +1,90 @@
+# Bubblewrap Sandbox Design
+
+The Bubblewrap layer creates a constrained execution environment for Pi and
+project commands. Its purpose is practical isolation: predictable project
+paths, filtered environment, controlled host file exposure, and an explicit
+network mode.
+
+## Covers
+
+| Requirement | Coordination item |
+|-------------|-------------------|
+| UC-004 | PIENV-FRQ-20260612-210000-004 |
+| UC-015 | PIENV-FRQ-20260612-210000-015 |
+| UC-022 | PIENV-FRQ-20260612-210000-022 |
+| UC-005 | PIENV-FRQ-20260612-210000-005 |
+| UC-006 | PIENV-FRQ-20260612-210000-006 |
+| UC-007 | PIENV-FRQ-20260612-210000-007 |
+| UC-008 | PIENV-FRQ-20260612-210000-008 |
+| UC-009 | PIENV-FRQ-20260612-210000-009 |
+| PATH-001 | PIENV-FRQ-20260612-210000-048 |
+| PATH-002 | PIENV-FRQ-20260612-210000-049 |
+| PATH-003 | PIENV-FRQ-20260612-210000-050 |
+| PATH-004 | PIENV-FRQ-20260612-210000-051 |
+| PATH-005 | PIENV-FRQ-20260612-210000-052 |
+| FS-001 | PIENV-FRQ-20260612-210000-053 |
+| FS-002 | PIENV-FRQ-20260612-210000-054 |
+| FS-003 | PIENV-FRQ-20260612-210000-055 |
+| FS-004 | PIENV-FRQ-20260612-210000-056 |
+| FS-005 | PIENV-FRQ-20260612-210000-057 |
+| FS-006 | PIENV-FRQ-20260612-210000-058 |
+| FS-007 | PIENV-FRQ-20260612-210000-059 |
+| FS-008 | PIENV-FRQ-20260612-210000-060 |
+| FS-009 | PIENV-FRQ-20260612-210000-061 |
+| ENV-001 | PIENV-FRQ-20260612-210000-088 |
+| ENV-002 | PIENV-FRQ-20260612-210000-089 |
+| ENV-003 | PIENV-FRQ-20260612-210000-090 |
+| ENV-004 | PIENV-FRQ-20260612-210000-091 |
+| ENV-005 | PIENV-FRQ-20260612-210000-092 |
+| NET-001 | PIENV-FRQ-20260612-210000-094 |
+| NET-002 | PIENV-FRQ-20260612-210000-095 |
+| CRQ-006 | PIENV-CRQ-20260612-210000-006 |
+| CRQ-008 | PIENV-CRQ-20260612-210000-008 |
+| CRQ-009 | PIENV-CRQ-20260612-210000-009 |
+
+## 1. Project root and paths
+
+The sandbox starts from a selected project root. Path requirements ensure that
+the root is resolved consistently, mounted at the expected in-sandbox location,
+and used as the working directory unless the caller intentionally chooses a
+subdirectory.
+
+Host paths are not implicitly trusted. Only documented project, runtime, cache,
+and temporary paths should be mounted. When a path is optional, missing host
+state should degrade to an empty or freshly-created sandbox path rather than
+accidentally widening access.
+
+## 2. Home and filesystem state
+
+The sandbox uses an isolated home tree for Pi runtime state. Project files are
+mounted separately from user home state so generated files, sessions, and
+extension caches have clear ownership. Read-only and read-write mounts are
+chosen by purpose: project work needs writes, runtime inputs often do not.
+
+`FS-001` through `FS-009` define the file exposure rules. They are implemented
+as Bubblewrap mount choices, not as application-level checks after startup.
+That makes violations visible in blackbox tests by inspecting the generated
+Bubblewrap command.
+
+## 3. Environment filtering
+
+The launcher constructs an allowlist for environment variables. Variables that
+select runtime behavior or safe terminal behavior may pass through; unrelated
+host secrets should not. Explicit imports for auth or model configuration are
+handled by the agent resource layer rather than broad environment copying.
+
+## 4. Network mode and limits
+
+Network access is explicit. `NET-001` and `NET-002` distinguish the default
+network policy from requested network-enabled execution. `UC-015` combines this
+with environment filtering so users can reduce network and environment exposure
+for a run.
+
+The same controls support `UC-022`: review and automation workflows can narrow
+workspace mounts, tool access, environment variables, network access, and state
+persistence when inspecting unfamiliar code.
+
+The sandbox documents and tests the Bubblewrap flags used, but it is not a
+complete security boundary against a malicious host or kernel. `CRQ-008` and
+`CRQ-009` are therefore safety and disclosure requirements as much as
+implementation requirements.
