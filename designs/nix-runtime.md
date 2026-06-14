@@ -21,6 +21,7 @@ contract for packages, apps, shells, and reusable shell construction.
 | FLAKE-006 | PIENV-FRQ-20260612-210000-029 |
 | RUNTIME-001 | PIENV-FRQ-20260612-210000-030 |
 | RUNTIME-002 | PIENV-FRQ-20260612-210000-031 |
+| RUNTIME-003 | PIENV-FRQ-20260614-180306-001 |
 
 ## 1. Flake outputs
 
@@ -50,6 +51,17 @@ than baked into Nix derivations.
 tool discovery inside the flake-defined environment when users opt into Nix.
 Scripts should still report clear missing-tool errors when run outside that
 environment, but the supported path is the reproducible flake shell.
+
+Project-specific build and test tools are not added to the global pi-env
+runtime by default. Instead, `RUNTIME-003` extends the `mkPiShell` contract:
+callers declare project tools with `extraPackages`, and the shell exports the
+corresponding Nix-store `bin` path for the Bubblewrap launcher to validate and
+include inside the sandbox. This keeps the default runtime small while making
+project-specific tools reproducible and explicit.
+
+The exported path is an interface between the Nix layer and the sandbox layer,
+not a host-path inheritance mechanism. Nix computes package paths;
+`pi-bwrap` decides whether they are safe to admit.
 
 ## 4. Compatibility
 

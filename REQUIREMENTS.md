@@ -331,6 +331,29 @@ The shell prompt must be prefixed with `(nix-dev)`. The shell must export
 
 `pi-bwrap` must prepend the runtime package bin path to the host `PATH` before checking for `pi`.
 
+#### RUNTIME-003 Project-declared Nix tool PATH exposure
+
+`pi-env` must let projects that consume `pi-env.lib.mkPiShell` expose
+their declared Nix `extraPackages` command directories inside the
+Bubblewrap sandbox without expanding host filesystem access.
+
+`mkPiShell` must derive the executable search path for `extraPackages`
+from Nix package outputs, using the package `bin` directories normally
+produced by Nix path construction, and export that list through a
+dedicated pi-env environment variable for `pi-bwrap`.
+
+`pi-bwrap` must add the validated extra command directories to the
+sandbox `PATH` after the core pi-env runtime path and before host/global
+fallback locations such as `/usr/local/bin`, `/usr/bin`, and `/bin`.
+The core pi-env runtime must therefore keep precedence for launcher
+dependencies, while project-declared tools such as `make`, `gcc`,
+`pkg-config`, or `cmake` become discoverable to Pi tool commands.
+
+Direct `nix run github:why-ex/pi-env` usage is not required to infer a
+target project's build tools automatically. Projects that need build or
+test tools inside the sandbox should either integrate pi-env through a
+project flake/devshell or use an explicit, documented extra-path opt-in.
+
 ### 3.4 Command requirements
 
 #### CMD-001 `pi-bwrap` existence
@@ -1001,6 +1024,24 @@ Design proposals that are not yet mandatory runtime behavior must be documented 
 - safe coordination context/mount behavior
 - security notes and limitations
 
+#### DOC-003 Project-specific sandbox tool documentation
+
+The README must explain that pi-env intentionally keeps its default
+runtime small and does not include every compiler, build system, or
+project test dependency by default.
+
+Documentation must show the recommended way to make project-specific
+development tools available inside the sandbox: declare them as Nix
+packages in a consuming project's `mkPiShell { extraPackages = ...; }`
+configuration, then run `pi-env` from that project devshell.
+
+Documentation must also describe the security boundary for this feature:
+extra command directories are explicit Nix-store paths, `/nix/store` is
+mounted read-only, host `/bin` and `/usr/bin` are not mounted as the tool
+source, and direct `nix run` examples are suitable for inspection but may
+lack project build/test tools unless the project integrates pi-env or an
+explicit extra path is provided.
+
 ### 4.2 Blackbox verification requirements
 
 These tests should be run from outside implementation internals where possible, using a temporary project and temporary host home/agent directories. A fake `pi` executable can be placed early on `PATH` to record argv, cwd, environment, and visible files.
@@ -1437,6 +1478,25 @@ corresponding coordination items are created. Once items exist, any
 generated documentation drift must be resolved by correcting the
 relevant coordination items or the requirements generator, then
 regenerating the document.
+
+#### CRQ-012 Extra PATH entries are explicit Nix-store paths
+
+`pi-bwrap` must not discover project build tools by scanning all of
+`/nix/store`, inheriting the host `PATH`, or mounting host `/bin` or
+`/usr/bin` read-only.
+
+Extra command directories admitted into the sandbox `PATH` must come from
+an explicit pi-env input such as `PI_BWRAP_EXTRA_PATH` or from
+`mkPiShell`-derived `extraPackages`. Each admitted path must be
+canonicalized and constrained to `/nix/store` by default. Empty path
+components may be ignored, but unsafe path components such as `/home/*`,
+`/tmp/*`, project-writable directories, host `/bin`, host `/usr/bin`, or
+relative paths must be rejected rather than silently accepted.
+
+This constraint preserves the pi-env security and reproducibility model:
+project-specific tools may be made available, but only as explicit,
+immutable Nix-store tool paths already covered by the read-only
+`/nix/store` mount.
 
 ## 6. Coordination requirement item structure
 

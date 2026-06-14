@@ -4,8 +4,8 @@ This file is generated from active requirement items and `designs/*.md`.
 
 ## Summary
 
-- Requirements: 143
-- Covered by design: 143
+- Requirements: 146
+- Covered by design: 146
 - Not covered by design: 0
 
 ## Coverage by requirement
@@ -45,6 +45,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | FLAKE-006 | PIENV-FRQ-20260612-210000-029 | designs/nix-runtime.md |
 | RUNTIME-001 | PIENV-FRQ-20260612-210000-030 | designs/nix-runtime.md |
 | RUNTIME-002 | PIENV-FRQ-20260612-210000-031 | designs/nix-runtime.md |
+| RUNTIME-003 | PIENV-FRQ-20260614-180306-001 | designs/nix-runtime.md |
 | CMD-001 | PIENV-FRQ-20260612-210000-032 | designs/launcher-layering.md |
 | CMD-002 | PIENV-FRQ-20260612-210000-033 | designs/launcher-layering.md |
 | CMD-003 | PIENV-FRQ-20260612-210000-034 | designs/launcher-layering.md |
@@ -114,6 +115,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | NET-002 | PIENV-FRQ-20260612-210000-095 | designs/bubblewrap-sandbox.md |
 | DOC-000 | PIENV-QRQ-20260612-210000-001 | designs/requirements-traceability.md |
 | DOC-001 | PIENV-QRQ-20260612-210000-002 | designs/requirements-traceability.md |
+| DOC-003 | PIENV-QRQ-20260614-180310-001 | designs/requirements-traceability.md |
 | TEST-001 | PIENV-QRQ-20260612-210000-003 | designs/verification-strategy.md |
 | TEST-002 | PIENV-QRQ-20260612-210000-004 | designs/verification-strategy.md |
 | TEST-003 | PIENV-QRQ-20260612-210000-005 | designs/verification-strategy.md |
@@ -155,3 +157,4 @@ This file is generated from active requirement items and `designs/*.md`.
 | CRQ-008 | PIENV-CRQ-20260612-210000-008 | designs/bubblewrap-sandbox.md |
 | CRQ-009 | PIENV-CRQ-20260612-210000-009 | designs/bubblewrap-sandbox.md |
 | CRQ-010 | PIENV-CRQ-20260613-090617-001 | designs/requirements-traceability.md |
+| CRQ-012 | PIENV-CRQ-20260614-180308-001 | designs/bubblewrap-sandbox.md |

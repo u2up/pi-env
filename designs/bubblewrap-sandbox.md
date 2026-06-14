@@ -39,6 +39,7 @@ network mode.
 | NET-001 | PIENV-FRQ-20260612-210000-094 |
 | NET-002 | PIENV-FRQ-20260612-210000-095 |
 | CRQ-006 | PIENV-CRQ-20260612-210000-006 |
+| CRQ-012 | PIENV-CRQ-20260614-180308-001 |
 | CRQ-008 | PIENV-CRQ-20260612-210000-008 |
 | CRQ-009 | PIENV-CRQ-20260612-210000-009 |
 
@@ -72,6 +73,13 @@ The launcher constructs an allowlist for environment variables. Variables that
 select runtime behavior or safe terminal behavior may pass through; unrelated
 host secrets should not. Explicit imports for auth or model configuration are
 handled by the agent resource layer rather than broad environment copying.
+
+Project-specific tool exposure uses the same allowlist approach. The sandbox
+may accept a dedicated extra-path variable, but every entry must be explicit,
+canonical, and constrained to read-only Nix-store paths by default. The
+launcher must not scan all of `/nix/store`, inherit host `PATH`, or mount host
+`/bin` or `/usr/bin` merely to discover project tools. Unsafe extra path
+entries should fail closed before Pi starts.
 
 ## 4. Network mode and limits
 
