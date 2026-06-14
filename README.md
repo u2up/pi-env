@@ -2,40 +2,159 @@
 
 Reusable Nix devshell for `pi-coding-agent` with a Bubblewrap launcher.
 
-This project keeps the Nix devshell role separate from the security boundary:
+`pi-env` keeps the reproducible runtime separate from the security boundary:
 
-- **Nix devshell**: reproducible tools on `PATH` (`node`, `git`, `rg`, `jq`, `fd`, `tar`, etc.).
-- **Bubblewrap**: filesystem/environment isolation for the whole `pi` process.
+- **Nix devshell/runtime**: supplies tools on `PATH` such as `node`, `git`,
+  `rg`, `jq`, `fd`, `tar`, and the `pi-env` helper commands.
+- **Bubblewrap sandbox**: isolates the whole `pi` process from the host
+  filesystem and environment while mounting the selected project at
+  `/workspace`.
 
-## Getting started
+Most users start with one of two workflows:
 
-### Direct use from any project
+1. **Direct use**: run this checkout's `pi-env` launcher from any project.
+2. **Flake integration**: add `pi-env` as an input to a project's own flake so
+   the team shares the same pinned runtime.
 
-Use the checkout launcher when you want to run pi-env against an arbitrary
-working tree without first entering this repository:
+## 1. Host prerequisites
+
+Install or configure these on the host before using this repository.
+
+### Required host dependencies
+
+- **Linux** with unprivileged user namespaces/Bubblewrap support.
+- **Nix** with flakes enabled. You can either enable the `nix-command` and
+  `flakes` experimental features globally or pass them when running Nix.
+- **`pi-coding-agent`** installed on the host and available as `pi` on `PATH`.
+  `pi-env` does not pin or install Pi itself.
+- **Model credentials** for Pi, either in Pi's normal auth files under
+  `~/.pi/agent` or as provider environment variables such as
+  `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`.
+- **Git** or another way to fetch this repository.
+
+Quick checks:
+
+```bash
+nix --version
+pi --version
+```
+
+If Pi is not installed yet, install it using the upstream package. A common npm
+installation is:
+
+```bash
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
+pi --version
+```
+
+Node/npm are only needed on the host for this Pi installation or upgrade step.
+The pi-env Nix shell provides Node and the runtime tools used inside pi-env.
+
+### Provided by pi-env
+
+When you enter the devshell, run the checkout launcher, or consume pi-env as a
+flake, Nix supplies the runtime tools used by the wrappers:
+
+```text
+bash bubblewrap cacert coreutils fd findutils gawk git gnugrep gnused
+gnutar gzip jq nodejs ripgrep which
+```
+
+You normally do not need to install these separately for pi-env itself.
+
+## 2. Install pi-env
+
+Clone this repository and enter its devshell:
+
+```bash
+git clone https://github.com/why-ex/pi-env.git ~/src/pi-env
+cd ~/src/pi-env
+nix develop
+```
+
+If flakes are not enabled globally, use:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' develop
+```
+
+Verify the commands are available:
+
+```bash
+pi-env --help
+pi-bwrap --help
+```
+
+Inside `nix develop` the prompt is prefixed with `(nix-dev)`. The shell exports
+`PI_ENV_ROLE_MANAGER_PACKAGE` to the Nix-built role-manager package path and
+prints a short reminder unless `PI_ENV_QUIET` is set.
+
+### Optional profile installation
+
+If you want `pi-env`, `pi-start`, `pi-bwrap`, and the coordination helpers on
+`PATH` without entering this checkout first, install the runtime package into a
+Nix profile:
+
+```bash
+nix profile install ~/src/pi-env#pi-runtime
+```
+
+This still does not install `pi-coding-agent`; the host `pi` command must
+already exist.
+
+## 3. Use pi-env directly from any project
+
+Use direct mode for local, ad hoc, or internal runs where selecting a pi-env
+checkout is enough and the target project does not need to pin pi-env in its
+own `flake.lock`.
+
+From the target project directory, run this checkout's launcher:
 
 ```bash
 cd /path/to/project
-/path/to/pi-env/pi-env
-/path/to/pi-env/pi-env "Inspect this repo"
-/path/to/pi-env/pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+~/src/pi-env/pi-env
+~/src/pi-env/pi-env "Inspect this repo"
+~/src/pi-env/pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
-The checkout `pi-env` command uses `nix develop` for the selected pi-env flake
-only when `pi-start` and `pi-bwrap` are not already on `PATH`. It preserves your
+If you installed `#pi-runtime` into a profile, you can run the shorter command:
+
+```bash
+cd /path/to/project
+pi-env
+pi-env "Inspect this repo"
+```
+
+The checkout launcher uses `nix develop` for the selected pi-env flake only
+when `pi-start` and `pi-bwrap` are not already on `PATH`. It preserves the
 current project as the detected project root; inside the sandbox that project is
-mounted read-write at `/workspace`.
+mounted read-write at `/workspace`. The pi-env checkout is only the source of
+launcher code and runtime policy.
 
-Use direct mode for local, ad hoc, or internal runs where selecting a pi-env
-checkout is enough. `PI_ENV_FLAKE=REF /path/to/pi-env/pi-env` or
-`/path/to/pi-env/pi-env --flake REF` selects a different flake reference.
+Use `--raw --` when you want to pass arguments directly to Pi through
+`pi-bwrap` instead of using the `pi-start` defaults:
 
-### Project-integrated use
+```bash
+pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+```
 
-Use project-integrated mode when a repository should pin pi-env for the team,
-share the same input revision in `flake.lock`, or combine pi-env with
-project-specific Nix dependencies. Add pi-env as a flake input and include its
-package or shell in your devshell, then run:
+Select another pi-env flake reference with either form:
+
+```bash
+PI_ENV_FLAKE=github:why-ex/pi-env ~/src/pi-env/pi-env
+~/src/pi-env/pi-env --flake github:why-ex/pi-env
+```
+
+## 4. Use pi-env through a project flake
+
+Use project-integrated mode when a repository should:
+
+- pin pi-env for the team in the repository's `flake.lock`;
+- share the same pi-env revision across machines and CI jobs;
+- combine pi-env with project-specific Nix dependencies; or
+- expose one committed `nix develop` entrypoint for both project tools and Pi.
+
+After integration, the usual workflow is:
 
 ```bash
 cd /path/to/project
@@ -45,19 +164,128 @@ pi-env "Inspect this repo"
 pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
-Both direct and project-integrated modes keep the target project as the
-workspace mounted at `/workspace`; the pi-env checkout itself is only the source
-of launcher and runtime policy.
+Both direct and flake-integrated modes keep the target project as the workspace
+mounted at `/workspace`.
 
-By default, `pi-start` loads the packaged role-manager extension when the
-package path exists. The role manager is inactive until you select a role,
-restore one from session state, or request one through supported environment
-variables. Set `PI_ENV_ROLE_MANAGER_AUTO=0` to omit the automatic per-run
-extension argument, especially if you prefer an installed-package workflow.
+### New project flake
 
-## Commands
+For a project that does not yet have a flake, use this as a starting
+`flake.nix`. Replace the `pi-env.url` with either a local checkout or a Git
+reference that your team can access.
 
-Inside `nix develop` the prompt is prefixed with `(nix-dev)`. Start Pi with:
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    flake-utils.url = "github:numtide/flake-utils";
+
+    # Local checkout example. A shared repo could use github:why-ex/pi-env.
+    pi-env.url = "git+file:///home/me/src/pi-env";
+    pi-env.inputs.nixpkgs.follows = "nixpkgs";
+    pi-env.inputs.flake-utils.follows = "flake-utils";
+  };
+
+  outputs = { nixpkgs, flake-utils, pi-env, ... }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+      in {
+        devShells.default = pi-env.lib.mkPiShell {
+          inherit pkgs;
+
+          extraPackages = with pkgs; [
+            # project-specific tools, for example:
+            # nodejs
+            # python3
+          ];
+
+          shellHook = ''
+            echo "project shell loaded"
+          '';
+        };
+      });
+}
+```
+
+Then run:
+
+```bash
+nix develop
+pi-env
+```
+
+### Existing project flake
+
+If the project already has a `flake.nix`, keep its existing structure and add
+only the pi-env pieces.
+
+Add the input:
+
+```nix
+inputs = {
+  # existing inputs...
+
+  pi-env.url = "git+file:///home/me/src/pi-env";
+  # or: pi-env.url = "github:why-ex/pi-env";
+  pi-env.inputs.nixpkgs.follows = "nixpkgs";
+  pi-env.inputs.flake-utils.follows = "flake-utils";
+};
+```
+
+Include `pi-env` in the outputs arguments:
+
+```nix
+outputs = { self, nixpkgs, flake-utils, pi-env, ... }:
+  # existing outputs...
+```
+
+Then choose one integration style.
+
+#### Wrap the devshell with `mkPiShell`
+
+Use this when you want pi-env to own the shell composition and add your project
+tools through `extraPackages`:
+
+```nix
+devShells.default = pi-env.lib.mkPiShell {
+  inherit pkgs;
+
+  extraPackages = with pkgs; [
+    # existing project tools
+  ];
+
+  shellHook = ''
+    # existing shell hook
+  '';
+};
+```
+
+#### Add pi-env to an existing devshell
+
+Use this when the project already has a custom `mkShell` and you only want to
+add the pi-env commands:
+
+```nix
+packages = existingPackages ++ [
+  pi-env.packages.${system}.pi-runtime
+];
+```
+
+If your shell uses `nativeBuildInputs` or `buildInputs`, add the same package
+there instead. `pi-runtime` includes `pi-env`, `pi-start`, `pi-bwrap`, the
+runtime tools, and the coordination helpers.
+
+Update a consuming project's pinned input with:
+
+```bash
+nix flake update pi-env
+```
+
+## 5. Command reference
+
+### `pi-env`
+
+Start Pi with pi-env defaults:
 
 ```bash
 pi-env
@@ -70,15 +298,41 @@ allowlist, `--continue`, and the default role-manager package when available:
 pi-bwrap --tools read,bash,edit,write,grep,find,ls --continue -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
 ```
 
-For custom Pi arguments:
+For custom Pi arguments, use raw mode:
 
 ```bash
 pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
+### `pi-start`
+
+`pi-start` is the default startup wrapper. It chooses the default tool list from
+`PI_BWRAP_DEFAULT_TOOLS` when set, otherwise uses Pi's built-in tools:
+
+```text
+read,bash,edit,write,grep,find,ls
+```
+
+By default, `pi-start` loads the packaged role-manager extension when the
+package path exists. The role manager is inactive until you select a role,
+restore one from session state, or request one through supported environment
+variables. Set `PI_ENV_ROLE_MANAGER_AUTO=0` to omit the automatic per-run
+extension argument, especially if you prefer an installed-package workflow.
+
+### `pi-bwrap`
+
+`pi-bwrap` runs `pi-coding-agent` inside the Bubblewrap sandbox. Use it directly
+when you want full control over the Pi arguments or when running Pi subcommands:
+
+```bash
+pi-bwrap -- --help
+pi-bwrap -- config
+```
+
 ### Running `pi config`
 
-Pi's `config` subcommand is used to enable or disable extensions, skills, prompt templates, and themes.
+Pi's `config` subcommand enables or disables extensions, skills, prompt
+templates, and themes.
 
 To edit the **sandboxed pi-env config**, run it through Bubblewrap:
 
@@ -88,235 +342,249 @@ pi-bwrap -- config
 pi-bwrap config
 ```
 
-Inside the sandbox, Pi uses `/home/pi/.pi/agent/settings.json`, backed by pi-env's per-project state directory. Project-local config remains the mounted repo's `.pi/settings.json` under `/workspace`.
+Inside the sandbox, Pi uses `/home/pi/.pi/agent/settings.json`, backed by
+pi-env's per-project state directory. Project-local config remains the mounted
+repo's `.pi/settings.json` under `/workspace`.
 
-By default, pi-env copies the host `settings.json` into sandbox state on each run when global extensions/packages are imported. If you want sandbox edits made by `pi-bwrap -- config` to persist instead of being refreshed from the host copy, use:
+By default, pi-env copies the host `settings.json` into sandbox state on each
+run when global extensions/packages are imported. If you want sandbox edits made
+by `pi-bwrap -- config` to persist instead of being refreshed from the host
+copy, use:
 
 ```bash
 PI_BWRAP_EXTENSIONS_SYNC=missing pi-bwrap -- config
 ```
 
-To edit your **real host/global Pi config**, run `pi config` directly after entering the Nix devshell:
+To edit your **real host/global Pi config**, run `pi config` directly after
+entering the Nix devshell:
 
 ```bash
 nix develop
 pi config
 ```
 
-This uses the Nix-provided runtime/tools on `PATH`, but does **not** enter the Bubblewrap sandbox. It modifies the host Pi agent config, normally `~/.pi/agent/settings.json` unless `PI_CODING_AGENT_DIR` points elsewhere.
+This uses the Nix-provided runtime/tools on `PATH`, but does **not** enter the
+Bubblewrap sandbox. It modifies the host Pi agent config, normally
+`~/.pi/agent/settings.json` unless `PI_CODING_AGENT_DIR` points elsewhere.
 
-## Agent coordination helpers
+## 6. Runtime and sandbox behavior
 
-`pi-env` includes opt-in helpers for Git-backed coordination repositories.
-They are plain Git/text-file tooling and are separate from `pi-start`.
+`pi-bwrap`:
 
-Guided setup with inferred, workspace-specific defaults:
+- mounts the detected project root read-write at `/workspace`;
+- mounts `/nix/store` read-only so devshell tools work;
+- mounts `/usr/local/bin` and the global Pi npm package read-only when present,
+  so a global npm-installed `pi` works;
+- uses isolated `$HOME=/home/pi`;
+- stores sandbox Pi state outside the project by default under
+  `$XDG_STATE_HOME/pi-env/<project-hash>`;
+- imports common Pi rules/skills/prompts/roles from the host Pi agent directory
+  by default (`$PI_CODING_AGENT_DIR`, else `~/.pi/agent`), limited to
+  `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`,
+  `prompts/`, and `roles/`;
+- exposes global Pi extensions and installed package directories from the host
+  Pi agent directory by default (`extensions/`, `npm/`, `git/`) and copies
+  `settings.json`, while project-local `.pi/extensions` and `.pi/settings.json`
+  are available through `/workspace`;
+- copies host Git config into the sandbox by default (`~/.gitconfig` and
+  `$XDG_CONFIG_HOME/git/config` / `~/.config/git/config`), but not Git
+  credentials or SSH keys;
+- copies host Pi model auth files (`auth.json`, `models.json`) from
+  `~/.pi/agent` into sandbox state by default;
+- bind-mounts only the host Pi session directory for the current working
+  directory into the sandbox by default (disabled for ephemeral homes), so
+  `/resume` and `--continue` can access sessions for the directory/project
+  without exposing all sessions;
+- passes `PI_COORD_ROOT`, `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`,
+  `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, and coordination directory context
+  when set, mapping project-local coordination paths to `/workspace/...`,
+  auto-binding host `/workspace/agent-remotes` when available, and explicitly
+  mounting an external coordination clone with `PI_BWRAP_COORDINATION_DIR`;
+- does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or
+  Docker sockets;
+- clears the environment, then passes only terminal basics and selected LLM
+  provider variables;
+- shares the host network by default so Pi can reach model providers.
+
+Important: with the `bash`/`read` tools enabled, auth copied into the sandbox
+and project sessions bind-mounted into the sandbox can be read by commands or
+tools inside the sandbox. This is still safer than mounting your whole home, but
+use least-privilege API keys or a provider proxy when possible.
+
+## 7. Configuration reference
+
+Common environment knobs:
 
 ```bash
-bootstrap-coordination
-# inspect another project/workspace from this devshell
-bootstrap-coordination --project-root /path/to/project --print-only
-# or only print the suggested PI_COORD_* environment and init command
-bootstrap-coordination --print-only
+PI_BWRAP_PROJECT_ROOT=/path/to/repo     # default: git root, else $PWD
+PI_BWRAP_USE_GIT_ROOT=0                 # bind only $PWD
+PI_BWRAP_STATE_DIR=/path/to/state       # persistent sandbox home/config
+PI_BWRAP_EPHEMERAL_HOME=1               # temporary home/config for this run
+PI_BWRAP_IMPORT_AUTH=0                  # do not import host ~/.pi/agent auth files
+PI_BWRAP_AUTH_SYNC=missing              # copy auth only if sandbox copy is absent; default is always
+PI_BWRAP_IMPORT_SESSIONS=0              # do not bind host sessions for the current working directory
+PI_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi/agent
+PI_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills/roles dir; default: host Pi agent dir
+PI_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, prompts, or roles
+PI_BWRAP_COMMON_SYNC=missing            # copy common files only if sandbox copy is absent; default is always
+PI_BWRAP_IMPORT_EXTENSIONS=0            # do not expose global Pi extensions/packages from host agent dir
+PI_BWRAP_EXTENSIONS_SYNC=missing        # copy settings.json only if sandbox copy is absent; default is always
+PI_BWRAP_IMPORT_GIT_CONFIG=0            # do not import host ~/.gitconfig and XDG git config
+PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy is absent; default is always
+PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
+PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
+PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
+PI_COORD_ROOT=/workspace/agent-remotes  # bare coordination remotes; default is project-visible agent-remotes
+PI_COORD_ROLE=architect                 # active coordination role for helper commits/events
+PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
+PI_BWRAP_NET=0                          # disable network sharing
+PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 ```
 
-Manual minimal setup:
+Common per-project overrides can be set before running `pi-start` / `pi-bwrap`,
+or exported in the project's shell hook:
 
 ```bash
-export PI_COORD_ROOT=/workspace/agent-remotes
-export PI_COORD_WORKSPACE=piws
-export PI_COORD_DIR=coordination
-export PI_COORD_AGENT_ID=agent-a
-
-agent-coord-init --project pi-env
+PI_BWRAP_PROJECT_ROOT=/path/to/repo pi-start  # mount this repo at /workspace
+PI_BWRAP_USE_GIT_ROOT=0 pi-start              # use $PWD instead of git root
+PI_BWRAP_EPHEMERAL_HOME=1 pi-start            # throw away sandbox home after the run
+PI_BWRAP_IMPORT_AUTH=0 pi-start               # do not copy host Pi auth into sandbox state
+PI_BWRAP_NET=0 pi-start                       # disable network access
 ```
 
-`bootstrap-coordination` is a thin wrapper around `agent-coord-init`: it
-prints the inferred root, workspace, clone dir, remote, agent ID, project,
-and project key, then initializes with those explicit values. If the local
-coordination clone already exists but the planned local bare remote is
-missing or empty, it recreates that remote from the clone's committed Git
-history and repairs `origin` when it is absent or points to a missing local
-path.
+Inside the sandbox, the selected project is mounted read-write at `/workspace`,
+while the sandbox home and Pi config live separately from the host home.
 
-This creates a bare remote at:
+## 8. Common vs project-specific Pi resources
+
+`pi-env` keeps the runtime separate from user-specific agent behavior. It does
+not ship common rules, skills, prompts, or custom roles itself. Instead,
+`pi-bwrap` imports common Pi resources from an external directory into the
+sandbox Pi agent directory.
+
+By default, the common directory is the user's normal Pi agent directory:
+
+```bash
+$PI_CODING_AGENT_DIR   # if set
+~/.pi/agent            # otherwise
+```
+
+From that directory, `pi-bwrap` imports only common agent resources:
 
 ```text
-$PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git
+AGENTS.md
+CLAUDE.md
+SYSTEM.md
+APPEND_SYSTEM.md
+skills/
+prompts/
+roles/
 ```
 
-If `PI_COORD_ROOT` is unset, helpers default to a project-visible
-`agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
-resolves to the current project root, that default is
-`/workspace/agent-remotes` instead of the isolated sandbox `$HOME`.
-`pi-bwrap` also auto-binds host `/workspace/agent-remotes` at the same
-sandbox path when it exists and is not already part of the selected project
-mount.
+It does not import the whole host home, and auth/session handling remains
+controlled separately by `PI_BWRAP_IMPORT_AUTH` and
+`PI_BWRAP_IMPORT_SESSIONS`. Global extension/package exposure is controlled
+separately by `PI_BWRAP_IMPORT_EXTENSIONS`.
 
-It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, `WORKSPACE.md`,
-project `PROJECT.md` metadata, protocol docs, item-format docs, and
-`.pi/skills/agent-coordination/SKILL.md`.
-
-Clone the same coordination domain elsewhere with:
+To keep common rules, skills, prompts, or roles in a separate repo or directory,
+point `PI_BWRAP_COMMON_AGENT_DIR` at it:
 
 ```bash
-agent-coord-clone
+PI_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-start
 ```
 
-Create a type-coded timestamp-ID item with:
-
-```bash
-agent-coord-new --project pi-env --type issue "Document pi config behavior"
-agent-coord-push -m "Add PIENV documentation item"
-```
-
-Generated item IDs use a project item key prefix, a type code, a UTC
-timestamp, and a three-digit collision/order suffix that starts at `001`:
+Expected layout:
 
 ```text
-<PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
+my-pi-common/
+  AGENTS.md
+  skills/
+    common-skill/
+      SKILL.md
+  prompts/
+    review.md
+  roles/
+    domain-architect.md
 ```
 
-For example, an issue can be created as
-`PIENV-ISS-20260607-204155-001.yaml`; a functional requirement can be created
-as `PIENV-FRQ-20260607-204155-001.yaml`. Use
-`agent-coord-init --project-key PIENV` to set the initial project's stored
-key during scaffolding. Project keys are stored in the coordination repo at
-`projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
-stored in `WORKSPACE.md` as `item_key`. Agents should use those stored keys
-instead of inventing new ones.
+Disable common resource import entirely with:
 
-Key resolution for `agent-coord-new` is:
+```bash
+PI_BWRAP_IMPORT_COMMON=0 pi-start
+```
 
-1. `--project-key KEY`;
-2. stored project/workspace `item_key`;
-3. `PI_COORD_PROJECT_KEY` when no stored key exists;
-4. derived `--project` / `PI_COORD_PROJECT` for project items;
-5. derived workspace directory name for workspace-level items.
-
-Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
-backslashes, and other non-alphanumeric characters are removed. For
-example, `pi-env_test` becomes `PIENVTEST`. `--id ID` overrides the whole
-item ID. Built-in type codes are `ISS` for `issue`, `FRQ` for
-`functional-requirement`, `QRQ` for `quality-requirement`, `CRQ` for
-`constraint-requirement`, `DEC` for `decision`, and `NOTE` for `note`.
-Generic `REQ` requirement IDs are legacy-only unless an explicit supersession
-or migration decision says otherwise.
-
-Lifecycle helpers are also available:
+Project-specific rules, skills, roles, and extensions should live in the
+project repository so they are versioned with the project:
 
 ```text
-bootstrap-coordination
-                      infer defaults and initialize via agent-coord-init
-agent-coord-status    show sync status and open/blocked/done items
-agent-coord-list      list issues, decisions, requirements, or classes by status
-agent-coord-cat       print one resolved item's YAML or repo-relative path
-agent-coord-pull      run git pull --rebase --autostash
-agent-coord-push      commit and push coordination changes
-agent-coord-new       create a templated item
-agent-coord-claim     claim an item, commit, and push
-agent-coord-done      mark developer work done, commit, and push
-agent-coord-review    mark review pass/fail, commit, and push
-agent-coord-verify    mark verification pass/fail, commit, and push
-agent-coord-close     final-close reviewed+verified done items
-agent-coord-lint      lint item IDs, status, and item-matched tests
-agent-coord-upgrade-rules --preview
-                      preview/apply bundled rule template updates
+project/
+  AGENTS.md
+  .pi/
+    extensions/
+      project-extension.ts
+    skills/
+      project-skill/
+        SKILL.md
+    prompts/
+    roles/
+      release-builder.md
+    settings.json
 ```
 
-Items are YAML files with chronological `events` and linked Markdown
-`messages`. Issue state group names are developer-centric: `open` means
-developer work is needed, `blocked` means developer work cannot proceed,
-`done` means the developer believes implementation is complete, and `closed`
-means final accepted after review and verification. Functional, quality, constraint, and legacy requirements use the single
-`requirements/` directory under both `projects/<project>/` and `workspace/`,
-while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. The
-`agent-coord-list requirements` command reports functional, quality,
-constraint, and legacy requirement items; use `functional`, `quality`,
-`constraint`, or `legacy-requirements` for class-specific listings. Done issue
-listings append review and verification sub-status after the title. Imported
-requirement items record traceability in a top-level `source_refs` list using
-stable strings such as old requirement IDs, `REQUIREMENTS.md#heading`, and
-`USE_CASES.md#section`; lint checks imported FRQ/QRQ/CRQ items for non-empty
-source references plus the standard `testable` metadata. Decision, note, and
-other
-non-issue item types live under their semantic type directories. Stored implementation refs are structured objects with `repo`,
-`branch`, and full `commit` fields.
-`agent-coord-done --implementation-ref pi-env:main@<full-hash>` accepts the
-compact CLI form and writes the structured YAML form. `agent-coord-close`
-finalizes only items that are done, reviewed, and verified unless forced.
+Pi loads the common/global resources from `/home/pi/.pi/agent` and also
+discovers project resources from `/workspace`, giving a clean split:
 
-Commands that create item events or coordination commits accept `--role ROLE`
-and read `PI_COORD_ROLE`. Item events store actor ID/role metadata explicitly;
-helper commits use per-command Git identity overrides such as `pi/architect
-<pi+architect@coordination.local>`. These overrides are scoped to the helper's
-coordination-repository `git commit`; normal project repository commits keep the
-user's imported Git identity unless the user explicitly opts in to another
-identity.
+- common rules/skills/roles and global extensions/packages: user-owned,
+  reusable across projects;
+- project-specific rules/skills/roles/extensions/packages: committed with the
+  project;
+- `pi-env`: neutral runtime and isolation layer only.
 
-Existing coordination repositories are not silently overwritten. Rule
-upgrades are explicit and diffable:
+## 9. Git config and credentials
 
-```bash
-agent-coord-upgrade-rules --preview
-agent-coord-upgrade-rules
-```
-
-The helpers do not make `pi-start` create, claim, mark done, review, verify,
-close, commit, or push coordination state automatically. If a coordination clone is under the
-mounted project, `pi-bwrap` only exposes it as normal project files and sets
-`PI_COORD_DIR` to the sandbox path. For a coordination clone outside the
-project, opt in explicitly:
-
-```bash
-PI_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
-```
-
-That clone is mounted read-write at `/coordination` and `PI_COORD_DIR` is
-set to `/coordination` inside the sandbox.
-
-Coordination helper smoke tests:
-
-```bash
-tests/agent-coord-blackbox.sh
-tests/agent-coord-concurrency.sh
-tests/agent-coord-lint.sh
-tests/coordination-items-closed-or-done.sh
-```
-
-Run the whole project test suite with:
-
-```bash
-tests/run.sh
-```
-
-Item-matched tests live in the project repository under `tests/items/`,
-mirror project/workspace and item type, and match the item ID by filename
-stem. They intentionally do not mirror issue lifecycle status directories:
+`pi-bwrap` imports the user's host Git config into the isolated sandbox home by
+default:
 
 ```text
-coordination/projects/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml
-tests/items/projects/pi-env/issues/PIENV-ISS-20260607-204155-001.sh
+~/.gitconfig
+$XDG_CONFIG_HOME/git/config, or ~/.config/git/config
 ```
 
-Role-manager package, schema/template, loader, and command smoke tests:
+Inside the sandbox these become:
+
+```text
+/home/pi/.gitconfig
+/home/pi/.config/git/config
+```
+
+This lets Git commands run by Pi use the user's normal identity, aliases,
+default branch settings, diff settings, and other non-secret Git preferences
+while still avoiding a host `$HOME` mount.
+
+Disable this with:
 
 ```bash
-tests/role-manager-package.sh
-tests/role-manager-schema.sh
-tests/role-manager-loader.sh
-tests/role-manager-commands.sh
+PI_BWRAP_IMPORT_GIT_CONFIG=0 pi-start
 ```
 
-When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
-Pi subprocesses to the role's `coordCommitter` value, or to the role name when
-`coordCommitter` is omitted. That environment value is how bash-invoked
-`agent-coord-*` commands inherit the active role without changing project Git
-identity.
+Use a different config source with:
 
-See `designs/agent-coordination.md` for the full design.
+```bash
+PI_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pi-start
+PI_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pi-start
+```
 
-## Role-manager package
+By default the sandbox copy is refreshed on each run. Preserve an existing
+sandbox copy with:
+
+```bash
+PI_BWRAP_GIT_CONFIG_SYNC=missing pi-start
+```
+
+Git credentials, SSH keys, signing keys, credential helpers' backing stores,
+and other files referenced from Git config are not imported automatically.
+
+## 10. Role-manager package
 
 `pi-env` ships a Pi role-manager package for agent roles such as architect,
 developer, builder, tester, and reviewer. The package contains a Pi extension
@@ -371,7 +639,8 @@ Roles are merged by `name`; later sources override earlier ones:
 1. bundled base package roles;
 2. global/common agent roles imported into `/home/pi/.pi/agent/roles`;
 3. common roles from `PI_BWRAP_COMMON_AGENT_DIR/roles` when directly visible;
-4. coordination workspace roles from `$PI_COORD_DIR/roles` or `coordination/roles`;
+4. coordination workspace roles from `$PI_COORD_DIR/roles` or
+   `coordination/roles`;
 5. project roles from `.pi/roles`.
 
 See `role-manager/ROLE_FILE_SCHEMA.md` for the full schema. See
@@ -402,311 +671,197 @@ When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
 Pi subprocesses to the role's `coordCommitter` value, or to the role name when
 `coordCommitter` is omitted. Coordination helper commands use that value only
 for coordination item event actors and per-command coordination Git identity;
-project repository commits keep the normal imported Git identity unless the user
-explicitly changes it.
+project repository commits keep the normal imported Git identity unless the
+user explicitly changes it.
 
 See `designs/role-manager.md` for the architecture.
 
-## Bubblewrap safety defaults
+## 11. Agent coordination helpers
 
+`pi-env` includes opt-in helpers for Git-backed coordination repositories. They
+are plain Git/text-file tooling and are separate from `pi-start`.
+
+Guided setup with inferred, workspace-specific defaults:
+
+```bash
+bootstrap-coordination
+# inspect another project/workspace from this devshell
+bootstrap-coordination --project-root /path/to/project --print-only
+# or only print the suggested PI_COORD_* environment and init command
+bootstrap-coordination --print-only
+```
+
+Manual minimal setup:
+
+```bash
+export PI_COORD_ROOT=/workspace/agent-remotes
+export PI_COORD_WORKSPACE=piws
+export PI_COORD_DIR=coordination
+export PI_COORD_AGENT_ID=agent-a
+
+agent-coord-init --project pi-env
+```
+
+`bootstrap-coordination` is a thin wrapper around `agent-coord-init`: it prints
+the inferred root, workspace, clone dir, remote, agent ID, project, and project
+key, then initializes with those explicit values. If the local coordination
+clone already exists but the planned local bare remote is missing or empty, it
+recreates that remote from the clone's committed Git history and repairs
+`origin` when it is absent or points to a missing local path.
+
+This creates a bare remote at:
+
+```text
+$PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git
+```
+
+If `PI_COORD_ROOT` is unset, helpers default to a project-visible
+`agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
+resolves to the current project root, that default is `/workspace/agent-remotes`
+instead of the isolated sandbox `$HOME`. `pi-bwrap` also auto-binds host
+`/workspace/agent-remotes` at the same sandbox path when it exists and is not
+already part of the selected project mount.
+
+It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, `WORKSPACE.md`,
+project `PROJECT.md` metadata, protocol docs, item-format docs, and
+`.pi/skills/agent-coordination/SKILL.md`.
+
+Clone the same coordination domain elsewhere with:
+
+```bash
+agent-coord-clone
+```
+
+Create a type-coded timestamp-ID item with:
+
+```bash
+agent-coord-new --project pi-env --type issue "Document pi config behavior"
+agent-coord-push -m "Add PIENV documentation item"
+```
+
+Generated item IDs use a project item key prefix, a type code, a UTC timestamp,
+and a three-digit collision/order suffix that starts at `001`:
+
+```text
+<PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
+```
+
+For example, an issue can be created as
+`PIENV-ISS-20260607-204155-001.yaml`; a functional requirement can be created as
+`PIENV-FRQ-20260607-204155-001.yaml`. Use
+`agent-coord-init --project-key PIENV` to set the initial project's stored key
+during scaffolding. Project keys are stored in the coordination repo at
+`projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
+stored in `WORKSPACE.md` as `item_key`. Agents should use those stored keys
+instead of inventing new ones.
+
+Key resolution for `agent-coord-new` is:
+
+1. `--project-key KEY`;
+2. stored project/workspace `item_key`;
+3. `PI_COORD_PROJECT_KEY` when no stored key exists;
+4. derived `--project` / `PI_COORD_PROJECT` for project items;
+5. derived workspace directory name for workspace-level items.
+
+Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
+backslashes, and other non-alphanumeric characters are removed. For example,
+`pi-env_test` becomes `PIENVTEST`. `--id ID` overrides the whole item ID.
+Built-in type codes are `ISS` for `issue`, `FRQ` for `functional-requirement`,
+`QRQ` for `quality-requirement`, `CRQ` for `constraint-requirement`, `DEC` for
+`decision`, and `NOTE` for `note`. Generic `REQ` requirement IDs are
+legacy-only unless an explicit supersession or migration decision says
+otherwise.
+
+Lifecycle helpers are also available:
+
+```text
+bootstrap-coordination
+                      infer defaults and initialize via agent-coord-init
+agent-coord-status    show sync status and open/blocked/done items
+agent-coord-list      list issues, decisions, requirements, or classes by status
+agent-coord-cat       print one resolved item's YAML or repo-relative path
+agent-coord-pull      run git pull --rebase --autostash
+agent-coord-push      commit and push coordination changes
+agent-coord-new       create a templated item
+agent-coord-claim     claim an item, commit, and push
+agent-coord-done      mark developer work done, commit, and push
+agent-coord-review    mark review pass/fail, commit, and push
+agent-coord-verify    mark verification pass/fail, commit, and push
+agent-coord-close     final-close reviewed+verified done items
+agent-coord-lint      lint item IDs, status, and item-matched tests
+agent-coord-upgrade-rules --preview
+                      preview/apply bundled rule template updates
+```
+
+Items are YAML files with chronological `events` and linked Markdown messages.
+Issue state group names are developer-centric: `open` means developer work is
+needed, `blocked` means developer work cannot proceed, `done` means the
+developer believes implementation is complete, and `closed` means final
+accepted after review and verification.
+
+Functional, quality, constraint, and legacy requirements use the single
+`requirements/` directory under both `projects/<project>/` and `workspace/`,
+while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. The
+`agent-coord-list requirements` command reports functional, quality,
+constraint, and legacy requirement items; use `functional`, `quality`,
+`constraint`, or `legacy-requirements` for class-specific listings. Done issue
+listings append review and verification sub-status after the title. Imported
+requirement items record traceability in a top-level `source_refs` list using
+stable strings such as old requirement IDs, `REQUIREMENTS.md#heading`, and
+`USE_CASES.md#section`; lint checks imported FRQ/QRQ/CRQ items for non-empty
+source references plus the standard `testable` metadata.
+
+Decision, note, and other non-issue item types live under their semantic type
+directories. Stored implementation refs are structured objects with `repo`,
+`branch`, and full `commit` fields. `agent-coord-done --implementation-ref
+pi-env:main@<full-hash>` accepts the compact CLI form and writes the structured
+YAML form. `agent-coord-close` finalizes only items that are done, reviewed, and
+verified unless forced.
+
+Commands that create item events or coordination commits accept `--role ROLE`
+and read `PI_COORD_ROLE`. Item events store actor ID/role metadata explicitly;
+helper commits use per-command Git identity overrides such as `pi/architect
+<pi+architect@coordination.local>`. These overrides are scoped to the helper's
+coordination-repository `git commit`; normal project repository commits keep the
+user's imported Git identity unless the user explicitly opts in to another
+identity.
+
+Existing coordination repositories are not silently overwritten. Rule upgrades
+are explicit and diffable:
+
+```bash
+agent-coord-upgrade-rules --preview
+agent-coord-upgrade-rules
+```
+
+The helpers do not make `pi-start` create, claim, mark done, review, verify,
+close, commit, or push coordination state automatically. If a coordination clone
+is under the mounted project, `pi-bwrap` only exposes it as normal project files
+and sets `PI_COORD_DIR` to the sandbox path. For a coordination clone outside
+the project, opt in explicitly:
+
+```bash
+PI_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
+```
+
+That clone is mounted read-write at `/coordination` and `PI_COORD_DIR` is set
+to `/coordination` inside the sandbox.
+
+When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
+Pi subprocesses to the role's `coordCommitter` value, or to the role name when
+`coordCommitter` is omitted. Bash-invoked `agent-coord-*` commands inherit the
+active role without changing project Git identity.
+
+See `designs/agent-coordination.md` for the full design.
+
+## 12. Upgrading
+
+`pi-env` does not pin or install `pi-coding-agent` through Nix. The wrappers
+expect a `pi` executable to already exist on the host `PATH`, then `pi-bwrap`
+bind-mounts the host/global Pi installation read-only into the sandbox.
+
+When a new Pi version is available, upgrade Pi on the host, outside `pi-start` /
 `pi-bwrap`:
-
-- mounts the detected project root read-write at `/workspace`;
-- mounts `/nix/store` read-only so devshell tools work;
-- mounts `/usr/local/bin` and the global Pi npm package read-only when present, so a global npm-installed `pi` works;
-- uses isolated `$HOME=/home/pi`;
-- stores sandbox Pi state outside the project by default under `$XDG_STATE_HOME/pi-env/<project-hash>`;
-- imports common Pi rules/skills/prompts/roles from the host Pi agent directory by default (`$PI_CODING_AGENT_DIR`, else `~/.pi/agent`), limited to `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, `prompts/`, and `roles/`;
-- exposes global Pi extensions and installed package directories from the host Pi agent directory by default (`extensions/`, `npm/`, `git/`) and copies `settings.json`, while project-local `.pi/extensions` and `.pi/settings.json` are available through `/workspace`;
-- copies host Git config into the sandbox by default (`~/.gitconfig` and `$XDG_CONFIG_HOME/git/config` / `~/.config/git/config`), but not Git credentials or SSH keys;
-- copies host Pi model auth files (`auth.json`, `models.json`) from `~/.pi/agent` into sandbox state by default;
-- bind-mounts only the host Pi session directory for the current working directory into the sandbox by default (disabled for ephemeral homes), so `/resume` and `--continue` can access sessions for the directory/project without exposing all sessions;
-- passes `PI_COORD_ROOT`, `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, and coordination directory context when set, mapping project-local coordination paths to `/workspace/...`, auto-binding host `/workspace/agent-remotes` when available, and can explicitly mount an external coordination clone with `PI_BWRAP_COORDINATION_DIR`;
-- does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or Docker sockets;
-- clears the environment, then passes only terminal basics and selected LLM provider variables;
-- shares the host network by default so Pi can reach model providers.
-
-Important: with the `bash`/`read` tools enabled, auth copied into the sandbox and project sessions bind-mounted into the sandbox can be read by commands/tools inside the sandbox. This is still safer than mounting your whole home, but use least-privilege API keys or a provider proxy when possible.
-
-## Useful environment knobs
-
-```bash
-PI_BWRAP_PROJECT_ROOT=/path/to/repo     # default: git root, else $PWD
-PI_BWRAP_USE_GIT_ROOT=0                 # bind only $PWD
-PI_BWRAP_STATE_DIR=/path/to/state       # persistent sandbox home/config
-PI_BWRAP_EPHEMERAL_HOME=1               # temporary home/config for this run
-PI_BWRAP_IMPORT_AUTH=0                  # do not import host ~/.pi/agent auth files
-PI_BWRAP_AUTH_SYNC=missing              # copy auth only if sandbox copy is absent; default is always
-PI_BWRAP_IMPORT_SESSIONS=0              # do not bind host sessions for the current working directory; defaults to 1 unless PI_BWRAP_EPHEMERAL_HOME=1
-PI_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi/agent
-PI_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills/roles dir; default: host Pi agent dir
-PI_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, prompts, or roles
-PI_BWRAP_COMMON_SYNC=missing            # copy common files only if sandbox copy is absent; default is always
-PI_BWRAP_IMPORT_EXTENSIONS=0            # do not expose global Pi extensions/packages from host agent dir
-PI_BWRAP_EXTENSIONS_SYNC=missing        # copy settings.json only if sandbox copy is absent; default is always
-PI_BWRAP_IMPORT_GIT_CONFIG=0            # do not import host ~/.gitconfig and XDG git config
-PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy is absent; default is always
-PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
-PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
-PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
-PI_COORD_ROOT=/workspace/agent-remotes   # bare coordination remotes; default is project-visible agent-remotes
-PI_COORD_ROLE=architect                  # active coordination role for helper commits/events
-PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
-PI_BWRAP_NET=0                          # disable network sharing
-PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
-```
-
-## Use in another project
-
-`pi-env` can be used directly from another project, or wired into that project's own flake.
-
-If the target project does not need additional Nix dependencies, you do not need to create or edit its `flake.nix`. From the target project directory, use the checkout launcher:
-
-```bash
-cd /path/to/other-project
-/home/location/pi-env/pi-env
-/home/location/pi-env/pi-env "Inspect this repo"
-/home/location/pi-env/pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
-```
-
-You can also run through Nix explicitly:
-
-```bash
-cd /path/to/other-project
-nix develop /home/location/pi-env -c pi-env
-```
-
-The current working directory remains the target project. `pi-env` delegates to
-`pi-start` / `pi-bwrap`, which detects the project root from `$PWD` / Git and
-mounts that project at `/workspace`.
-
-Wire `pi-env` into the target project's own flake when you want project-specific Nix dependencies, a committed/shared devshell, shell hooks, or a pinned `pi-env` input in the project's `flake.lock`.
-
-- **Project has no flake yet:** use the full example below as a starting `flake.nix`.
-- **Project already has its own flake:** do not replace it. Add `pi-env` to the existing `inputs`, add `pi-env` to the `outputs = { ... }:` argument list, then either wrap the existing devshell with `mkPiShell` or add the `pi-env` / `pi-start` / `pi-bwrap` packages to it.
-
-### New project flake / replace the project's devshell
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
-    flake-utils.url = "github:numtide/flake-utils";
-
-    # Replace this path with wherever this pi-env repository lives.
-    pi-env.url = "git+file:///home/samo/CODEFAB/PIWS/pi-env";
-    pi-env.inputs.nixpkgs.follows = "nixpkgs";
-    pi-env.inputs.flake-utils.follows = "flake-utils";
-  };
-
-  outputs = { nixpkgs, flake-utils, pi-env, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-      in {
-        devShells.default = pi-env.lib.mkPiShell {
-          inherit pkgs;
-
-          extraPackages = with pkgs; [
-            # project-specific tools, for example:
-            # nodejs
-            # python3
-          ];
-
-          shellHook = ''
-            echo "project shell loaded"
-          '';
-        };
-      });
-}
-```
-
-Then run from the other project:
-
-```bash
-nix develop
-pi-env
-```
-
-For custom Pi arguments:
-
-```bash
-pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
-```
-
-`pi-env` starts Pi in the Bubblewrap sandbox with the default tool allowlist and
-`--continue`. `pi-env --raw -- ...` passes the arguments after `--` directly to
-Pi through `pi-bwrap`.
-
-### Project already has its own flake
-
-If the project already has a `flake.nix`, keep its existing structure and only add the `pi-env` pieces.
-
-First add the input:
-
-```nix
-inputs = {
-  # existing inputs...
-
-  pi-env.url = "git+file:///home/samo/CODEFAB/PIWS/pi-env";
-  pi-env.inputs.nixpkgs.follows = "nixpkgs";
-  pi-env.inputs.flake-utils.follows = "flake-utils";
-};
-```
-
-Then include `pi-env` in the outputs arguments:
-
-```nix
-outputs = { self, nixpkgs, flake-utils, pi-env, ... }:
-  # existing outputs...
-```
-
-#### Add to an existing devshell
-
-If the project already has a devshell, add the wrappers to its package list:
-
-```nix
-packages = [
-  pi-env.packages.${system}.pi-env
-  pi-env.packages.${system}.pi-start
-  pi-env.packages.${system}.pi-bwrap
-];
-```
-
-Or, if your shell uses `nativeBuildInputs` / `buildInputs`, add the same packages there.
-
-### Common per-project overrides
-
-These can be set before running `pi-start` / `pi-bwrap`, or exported in the project's shell hook:
-
-```bash
-PI_BWRAP_PROJECT_ROOT=/path/to/repo pi-start  # mount this repo at /workspace
-PI_BWRAP_USE_GIT_ROOT=0 pi-start              # use $PWD instead of git root
-PI_BWRAP_EPHEMERAL_HOME=1 pi-start            # throw away sandbox home after the run
-PI_BWRAP_IMPORT_AUTH=0 pi-start               # do not copy host Pi auth into sandbox state
-PI_BWRAP_NET=0 pi-start                       # disable network access
-```
-
-Inside the sandbox, the selected project is mounted read-write at `/workspace`, while the sandbox home and Pi config live separately from the host home.
-
-## Common vs project-specific Pi resources
-
-`pi-env` keeps the runtime separate from user-specific agent behavior. It does not ship common rules, skills, prompts, or custom roles itself. Instead, `pi-bwrap` imports common Pi resources from an external directory into the sandbox Pi agent directory.
-
-By default, the common directory is the user's normal Pi agent directory:
-
-```bash
-$PI_CODING_AGENT_DIR   # if set
-~/.pi/agent            # otherwise
-```
-
-From that directory, `pi-bwrap` imports only common agent resources:
-
-```text
-AGENTS.md
-CLAUDE.md
-SYSTEM.md
-APPEND_SYSTEM.md
-skills/
-prompts/
-roles/
-```
-
-It does not import the whole host home, and auth/session handling remains controlled separately by `PI_BWRAP_IMPORT_AUTH` and `PI_BWRAP_IMPORT_SESSIONS`. Global extension/package exposure is controlled separately by `PI_BWRAP_IMPORT_EXTENSIONS`.
-
-To keep common rules, skills, prompts, or roles in a separate repo or directory, point `PI_BWRAP_COMMON_AGENT_DIR` at it:
-
-```bash
-PI_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-start
-```
-
-Expected layout:
-
-```text
-my-pi-common/
-  AGENTS.md
-  skills/
-    common-skill/
-      SKILL.md
-  prompts/
-    review.md
-  roles/
-    domain-architect.md
-```
-
-Disable common resource import entirely with:
-
-```bash
-PI_BWRAP_IMPORT_COMMON=0 pi-start
-```
-
-Project-specific rules, skills, roles, and extensions should live in the project repository so they are versioned with the project:
-
-```text
-project/
-  AGENTS.md
-  .pi/
-    extensions/
-      project-extension.ts
-    skills/
-      project-skill/
-        SKILL.md
-    prompts/
-    roles/
-      release-builder.md
-    settings.json
-```
-
-Pi loads the common/global resources from `/home/pi/.pi/agent` and also discovers project resources from `/workspace`, so this gives a clean split:
-
-- common rules/skills/roles and global extensions/packages: user-owned, reusable across projects;
-- project-specific rules/skills/roles/extensions/packages: committed with the project;
-- `pi-env`: neutral runtime and isolation layer only.
-
-## Git config
-
-`pi-bwrap` imports the user's host Git config into the isolated sandbox home by default:
-
-```text
-~/.gitconfig
-$XDG_CONFIG_HOME/git/config, or ~/.config/git/config
-```
-
-Inside the sandbox these become:
-
-```text
-/home/pi/.gitconfig
-/home/pi/.config/git/config
-```
-
-This lets Git commands run by Pi use the user's normal identity, aliases, default branch settings, diff settings, and other non-secret Git preferences while still avoiding a host `$HOME` mount.
-
-Disable this with:
-
-```bash
-PI_BWRAP_IMPORT_GIT_CONFIG=0 pi-start
-```
-
-Use a different config source with:
-
-```bash
-PI_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pi-start
-PI_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pi-start
-```
-
-By default the sandbox copy is refreshed on each run. Preserve an existing sandbox copy with:
-
-```bash
-PI_BWRAP_GIT_CONFIG_SYNC=missing pi-start
-```
-
-Git credentials, SSH keys, signing keys, credential helpers' backing stores, and other files referenced from Git config are not imported automatically.
-
-## Upgrading pi-coding-agent
-
-`pi-env` does not pin or install `pi-coding-agent` through Nix. The wrappers expect a `pi` executable to already exist on the host `PATH`, then `pi-bwrap` bind-mounts the host/global Pi installation read-only into the sandbox.
-
-When a new Pi version is available, upgrade Pi on the host, outside `pi-start` / `pi-bwrap`:
 
 ```bash
 npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
@@ -720,23 +875,72 @@ nix develop
 pi-start
 ```
 
-Do not run Pi self-updates from inside the Bubblewrap sandbox: `/usr/local/bin` and the global Pi npm package are mounted read-only there.
+Do not run Pi self-updates from inside the Bubblewrap sandbox: `/usr/local/bin`
+and the global Pi npm package are mounted read-only there.
 
-If your current global Pi supports self-update and your user has permission to update the global install, this can also be run on the host:
+If your current global Pi supports self-update and your user has permission to
+update the global install, this can also be run on the host:
 
 ```bash
 pi update --self
 ```
 
-That updates Pi itself. It is separate from updating a project's `pi-env` flake input. If another project consumes this repository as a flake input and `pi-env` changed, update that input in the consuming project with:
+That updates Pi itself. It is separate from updating a project's `pi-env` flake
+input. If another project consumes this repository as a flake input and pi-env
+changed, update that input in the consuming project with:
 
 ```bash
 nix flake update pi-env
 ```
 
-## Notes
+## 13. Development and tests
 
-- Pi's built-in tool list is `read,bash,edit,write,grep,find,ls`. `pi-start` allowlists those by default. If you need extension/custom tools too, include them in `PI_BWRAP_DEFAULT_TOOLS` or call `pi-bwrap` with your own `--tools` list.
-- Global Pi extensions and globally installed Pi packages are exposed read-only from the host agent directory by default. Disable this with `PI_BWRAP_IMPORT_EXTENSIONS=0`. Project-local extensions/packages under `.pi/` are available because the project is mounted at `/workspace`.
-- Use `git` through the `bash` tool unless you install/register a separate Git tool extension.
-- Bubblewrap limits filesystem/environment exposure. It does not provide domain-level network allowlists. For tighter network policy, disable network with `PI_BWRAP_NET=0`, use an external firewall/proxy, or add Pi's sandbox extension as an additional layer for `bash` commands.
+Run the whole project test suite with:
+
+```bash
+tests/run.sh
+```
+
+Coordination helper smoke tests:
+
+```bash
+tests/agent-coord-blackbox.sh
+tests/agent-coord-concurrency.sh
+tests/agent-coord-lint.sh
+tests/coordination-items-closed-or-done.sh
+```
+
+Role-manager package, schema/template, loader, and command smoke tests:
+
+```bash
+tests/role-manager-package.sh
+tests/role-manager-schema.sh
+tests/role-manager-loader.sh
+tests/role-manager-commands.sh
+```
+
+Item-matched tests live in the project repository under `tests/items/`, mirror
+project/workspace and item type, and match the item ID by filename stem. They
+intentionally do not mirror issue lifecycle status directories:
+
+```text
+coordination/projects/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml
+tests/items/projects/pi-env/issues/PIENV-ISS-20260607-204155-001.sh
+```
+
+## 14. Notes
+
+- Pi's built-in tool list is `read,bash,edit,write,grep,find,ls`.
+  `pi-start` allowlists those by default. If you need extension/custom tools
+  too, include them in `PI_BWRAP_DEFAULT_TOOLS` or call `pi-bwrap` with your own
+  `--tools` list.
+- Global Pi extensions and globally installed Pi packages are exposed read-only
+  from the host agent directory by default. Disable this with
+  `PI_BWRAP_IMPORT_EXTENSIONS=0`. Project-local extensions/packages under
+  `.pi/` are available because the project is mounted at `/workspace`.
+- Use `git` through the `bash` tool unless you install/register a separate Git
+  tool extension.
+- Bubblewrap limits filesystem/environment exposure. It does not provide
+  domain-level network allowlists. For tighter network policy, disable network
+  with `PI_BWRAP_NET=0`, use an external firewall/proxy, or add Pi's sandbox
+  extension as an additional layer for `bash` commands.
