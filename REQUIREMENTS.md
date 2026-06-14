@@ -8,8 +8,6 @@ Each rendered requirement has a stable public key such as `UC-001`, `CMD-004`, o
 
 `pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`.
 
-An optional extension for Git-backed multi-agent coordination is described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). That design is intentionally separate from the current required runtime/sandbox contract unless requirements in this document explicitly reference it.
-
 Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.
 
 The project must keep two responsibilities separate:
@@ -1028,7 +1026,7 @@ The sandbox must share the host network by default so Pi can reach model provide
 
 #### DOC-000 Design documents
 
-Design proposals that are not yet mandatory runtime behavior must be documented separately and referenced from requirements/use-case documentation. The Git-backed multi-agent coordination design is documented in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). Implemented coordination behavior is limited to explicit requirements for concrete commands, files, and environment variables in this document.
+Design proposals that are not yet mandatory runtime behavior must be documented separately from requirements/use-case documentation. Implemented coordination behavior is limited to explicit requirements for concrete commands, files, and environment variables in this document.
 
 #### DOC-001 README coverage
 

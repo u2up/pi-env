@@ -314,7 +314,7 @@ Pi subprocesses to the role's `coordCommitter` value, or to the role name when
 `agent-coord-*` commands inherit the active role without changing project Git
 identity.
 
-See `AGENT_COORDINATION_DESIGN.md` for the full design.
+See `designs/agent-coordination.md` for the full design.
 
 ## Role-manager package
 
@@ -405,7 +405,7 @@ for coordination item event actors and per-command coordination Git identity;
 project repository commits keep the normal imported Git identity unless the user
 explicitly changes it.
 
-See `ROLE_TEMPLATES_DESIGN.md` for the architecture.
+See `designs/role-manager.md` for the architecture.
 
 ## Bubblewrap safety defaults
 

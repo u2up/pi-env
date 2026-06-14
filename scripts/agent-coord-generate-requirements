@@ -130,8 +130,6 @@ print('## 1. Product scope');
 print();
 print('`pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`.');
 print();
-print('An optional extension for Git-backed multi-agent coordination is described in [Agent Coordination Repository Design](AGENT_COORDINATION_DESIGN.md). That design is intentionally separate from the current required runtime/sandbox contract unless requirements in this document explicitly reference it.');
-print();
 print('Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.');
 print();
 print('The project must keep two responsibilities separate:');
