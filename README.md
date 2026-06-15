@@ -960,7 +960,9 @@ active role without changing project Git identity.
 one coordination checkout. It holds a local lock under the project's Git
 metadata directory, checks for clean project and coordination working trees,
 pulls/rebases coordination, selects one eligible issue, and launches one fresh
-`pi-env --raw --` role job without `--continue`.
+`pi-env --raw --` role job without `--continue`. Run it from the pi-env
+devshell/profile, or pass `--role-manager` with a Nix-store package path, so
+raw sandbox jobs can load the role-manager package.
 
 Work priority is tester-eligible done items, reviewer-eligible done items, then
 open developer items. Developer items are claimed with `agent-coord-claim`

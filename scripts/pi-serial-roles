@@ -258,6 +258,30 @@ resolve_role_manager() {
   printf '%s\n' "$candidate"
 }
 
+role_manager_arg_for_pi() {
+  local candidate project_root
+  candidate="$1"
+  project_root="$2"
+  case "$candidate" in
+    /nix/store/*)
+      printf '%s\n' "$candidate"
+      ;;
+    "$project_root")
+      printf '/workspace\n'
+      ;;
+    "$project_root"/*)
+      printf '/workspace%s\n' "${candidate#"$project_root"}"
+      ;;
+    *)
+      if [ "$dry_run" = "1" ] || [ -n "$pi_env_cmd_opt" ]; then
+        printf '%s\n' "$candidate"
+      else
+        die "role-manager path is outside the project and /nix/store: $candidate; run pi-serial-roles from the pi-env devshell/profile or pass a Nix-store --role-manager path"
+      fi
+      ;;
+  esac
+}
+
 coord_helper() {
   local name
   name="$1"
@@ -471,7 +495,7 @@ print_dry_run() {
     "PI_BWRAP_PASS_ENV=$pass_env" \
     "$pi_env_cmd" \
     --raw -- \
-    -e "$role_manager_package" \
+    -e "$role_manager_pi_arg" \
     --tools "$tools" \
     -p "$prompt"
 }
@@ -516,7 +540,7 @@ run_pi_job() {
       "PI_BWRAP_PASS_ENV=$pass_env" \
       "$pi_env_cmd" \
       --raw -- \
-      -e "$role_manager_package" \
+      -e "$role_manager_pi_arg" \
       --tools "$tools" \
       -p "$prompt"
   )
@@ -526,6 +550,7 @@ project_root="$(resolve_project_root)"
 coord_dir="$(resolve_coord_dir "$project_root")"
 pi_env_cmd="$(resolve_pi_env_cmd)"
 role_manager_package="$(resolve_role_manager)"
+role_manager_pi_arg="$(role_manager_arg_for_pi "$role_manager_package" "$project_root")"
 
 if [ -n "$lock_file_opt" ]; then
   lock_file="$(resolve_relative_to_project "$lock_file_opt" "$project_root")"
