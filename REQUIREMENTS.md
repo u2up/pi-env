@@ -249,6 +249,36 @@ The flake must declare only these normal inputs:
 
 It must not require a local `common-nix-runtime` or other machine-specific flake input.
 
+### 3.1 Workflow-level functional requirements
+
+Workflow-level requirements describe user goals that the detailed requirements must support. They are functional requirements with requirement kind `workflow`.
+
+#### UC-024 Serial role automation workflow
+
+A user must be able to run one serial automation loop over a single
+project checkout and one coordination checkout. The loop polls the
+coordination repository, selects one eligible issue, runs exactly one
+developer, reviewer, or tester Pi job for that issue, waits for the job to
+finish, and then returns to polling.
+
+The serial workflow must avoid concurrent writes to the project and
+coordination working trees. It is the first automation step before any
+future tmux, multi-clone, or parallel worker design.
+
+Acceptance criteria:
+
+- The documented workflow uses one orchestrator process rather than three
+  parallel terminals.
+- The orchestrator prefers downstream work before new development:
+  tester-eligible items, then reviewer-eligible items, then open developer
+  items.
+- Each selected issue is handled in a fresh Pi session, not by continuing
+  a previous role session.
+- The design explains that tmux and per-role clone locking are deferred
+  until a later parallel-worker phase.
+
+### 3.2 Flake and package requirements
+
 #### FLAKE-002 Systems
 
 The flake must use `flake-utils.lib.eachDefaultSystem` to expose packages, apps, and devshells for default systems.
@@ -680,6 +710,33 @@ role-manager extension.
 
 `PI_BWRAP_PROJECT_ROOT=/path` must force the mounted project root.
 
+### 3.4 Command requirements
+
+#### CMD-020 Serial role automation command
+
+pi-env should provide a serial automation command or script that can be
+run from a project checkout containing, or configured with, a coordination
+checkout. The command must own the polling loop outside Pi and invoke Pi
+only for a concrete selected issue.
+
+The command must:
+
+- acquire a local lockfile before polling so two serial orchestrators do
+  not accidentally operate in the same clone;
+- pull/rebase coordination before selecting work;
+- stop rather than discard or auto-stash unexpected project changes;
+- select tester work from done issues with `reviewed: true` and
+  `verified: false`;
+- select reviewer work from done issues with `reviewed: false`;
+- select developer work from open issues and claim it before launching the
+  developer job;
+- sleep and poll again when no eligible issue exists;
+- allow a bounded or dry-run mode suitable for automated tests.
+
+The command must not require tmux for the serial mode.
+
+### 3.5 Project root and working directory requirements
+
 #### PATH-003 Existing project root
 
 If the resolved project root is not a directory, `pi-bwrap` must exit with code `2`.
@@ -850,6 +907,28 @@ Session directory names must be derived by normalizing the path, stripping the l
 #### AGENT-015 Session migration
 
 Before bind-mounting host sessions, the launcher may copy existing sandbox session `*.jsonl` files into the host project session directory without overwriting existing files.
+
+#### AGENT-016 Fresh role session per serial job
+
+Each serial automation job must start a fresh Pi session for exactly one
+coordination issue and one active role. The automation must not use
+`--continue` for issue jobs and must not let a developer, reviewer, or
+tester job select additional work after the named item is complete.
+
+The job invocation must provide role context for developer, reviewer, and
+tester runs. If environment-based role activation is used through the
+Bubblewrap launcher, the command must pass the relevant role activation
+variable explicitly with `PI_BWRAP_PASS_ENV`, because the sandbox clears the
+ambient host environment by default.
+
+Role prompts must instruct jobs to update coordination through the
+appropriate helpers:
+
+- developer jobs claim open work and mark it done with implementation refs;
+- reviewer jobs pass or fail review with `agent-coord-review`;
+- tester jobs pass or fail verification with `agent-coord-verify`;
+- final close is optional and must only happen after done, reviewed, and
+  verified states are all present.
 
 ### 3.8 Git configuration requirements
 
@@ -1357,6 +1436,26 @@ Expected:
   one-cycle termination, UI setup, and role-aware coordination environment
   behavior pass.
 
+#### TEST-032 Serial automation smoke coverage
+
+The serial automation implementation must have automated coverage that
+exercises work selection and command construction without contacting a real
+model provider.
+
+Verification should use temporary project and coordination repositories and
+a fake `pi` executable or dry-run mode to assert that:
+
+- tester-eligible done/reviewed/unverified work is selected before reviewer
+  or developer work;
+- reviewer-eligible done/unreviewed work is selected before developer work;
+- open developer work is claimed before the developer Pi job is launched;
+- no job is launched when all queues are empty;
+- each Pi invocation omits `--continue` and names exactly one coordination
+  item;
+- the serial lock prevents two orchestrators from running in the same
+  checkout;
+- unexpected dirty project state stops the loop instead of being discarded.
+
 ## 5. Constraint requirements
 
 ### 3.8 Constraint requirements
@@ -1386,6 +1485,21 @@ Consequences:
 - `pi-env` must preserve the caller's working directory instead of
   changing into the `pi-env` checkout, so target-project detection stays
   correct.
+
+#### CRQ-013 Single-clone serial execution boundary
+
+The first automation implementation must operate serially over one project
+working tree and one coordination working tree. It must not introduce
+parallel role execution, tmux orchestration, reviewer/tester leases, or
+shared-clone concurrent Git operations.
+
+The implementation must fail closed when either working tree is in an
+unexpected dirty state. It must not auto-reset, force-push, rewrite
+coordination history, or hide uncommitted source changes in order to keep
+polling.
+
+Later parallel automation must be designed as a separate phase using
+separate clones or worktrees and explicit coordination leases where needed.
 
 #### CRQ-001 — One coordination domain is one bare Git repository
 

@@ -4,8 +4,8 @@ This file is generated from active requirement items and `designs/*.md`.
 
 ## Summary
 
-- Requirements: 146
-- Covered by design: 146
+- Requirements: 151
+- Covered by design: 151
 - Not covered by design: 0
 
 ## Coverage by requirement
@@ -26,6 +26,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | CRQ-011 | PIENV-CRQ-20260613-183419-001 | designs/launcher-layering.md |
 | UC-011 | PIENV-FRQ-20260612-210000-011 | designs/pi-agent-resources.md |
 | UC-012 | PIENV-FRQ-20260612-210000-012 | designs/pi-agent-resources.md |
+| CRQ-013 | PIENV-CRQ-20260615-175840-001 | designs/serial-role-automation.md |
 | UC-013 | PIENV-FRQ-20260612-210000-013 | designs/git-config-import.md |
 | UC-014 | PIENV-FRQ-20260612-210000-014 | designs/launcher-layering.md |
 | UC-015 | PIENV-FRQ-20260612-210000-015 | designs/bubblewrap-sandbox.md |
@@ -38,6 +39,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | UC-022 | PIENV-FRQ-20260612-210000-022 | designs/bubblewrap-sandbox.md |
 | UC-023 | PIENV-FRQ-20260612-210000-023 | designs/agent-coordination.md |
 | FLAKE-001 | PIENV-FRQ-20260612-210000-024 | designs/nix-runtime.md |
+| UC-024 | PIENV-FRQ-20260615-175835-001 | designs/serial-role-automation.md |
 | FLAKE-002 | PIENV-FRQ-20260612-210000-025 | designs/nix-runtime.md |
 | FLAKE-003 | PIENV-FRQ-20260612-210000-026 | designs/nix-runtime.md |
 | FLAKE-004 | PIENV-FRQ-20260612-210000-027 | designs/nix-runtime.md |
@@ -67,6 +69,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | PATH-001 | PIENV-FRQ-20260612-210000-048 | designs/bubblewrap-sandbox.md |
 | CMD-019 | PIENV-FRQ-20260613-183411-001 | designs/launcher-layering.md, designs/role-manager.md |
 | PATH-002 | PIENV-FRQ-20260612-210000-049 | designs/bubblewrap-sandbox.md |
+| CMD-020 | PIENV-FRQ-20260615-175837-001 | designs/serial-role-automation.md |
 | PATH-003 | PIENV-FRQ-20260612-210000-050 | designs/bubblewrap-sandbox.md |
 | PATH-004 | PIENV-FRQ-20260612-210000-051 | designs/bubblewrap-sandbox.md |
 | PATH-005 | PIENV-FRQ-20260612-210000-052 | designs/bubblewrap-sandbox.md |
@@ -97,6 +100,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | AGENT-013 | PIENV-FRQ-20260612-210000-077 | designs/pi-agent-resources.md |
 | AGENT-014 | PIENV-FRQ-20260612-210000-078 | designs/pi-agent-resources.md |
 | AGENT-015 | PIENV-FRQ-20260612-210000-079 | designs/pi-agent-resources.md |
+| AGENT-016 | PIENV-FRQ-20260615-175838-001 | designs/serial-role-automation.md |
 | GIT-001 | PIENV-FRQ-20260612-210000-080 | designs/git-config-import.md |
 | GIT-002 | PIENV-FRQ-20260612-210000-081 | designs/git-config-import.md |
 | GIT-003 | PIENV-FRQ-20260612-210000-082 | designs/git-config-import.md |
@@ -151,6 +155,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | CRQ-002 | PIENV-CRQ-20260612-210000-002 | designs/agent-coordination.md |
 | CRQ-003 | PIENV-CRQ-20260612-210000-003 | designs/agent-coordination.md |
 | CRQ-004 | PIENV-CRQ-20260612-210000-004 | designs/agent-coordination.md |
+| TEST-032 | PIENV-QRQ-20260615-175842-001 | designs/serial-role-automation.md |
 | CRQ-005 | PIENV-CRQ-20260612-210000-005 | designs/agent-coordination.md |
 | CRQ-006 | PIENV-CRQ-20260612-210000-006 | designs/bubblewrap-sandbox.md, designs/git-config-import.md |
 | CRQ-007 | PIENV-CRQ-20260612-210000-007 | designs/pi-agent-resources.md |
