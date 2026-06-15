@@ -109,7 +109,10 @@ state, not uncommitted leftovers.
 
 The orchestrator should render a role-specific prompt that names exactly one
 item and says not to select other work. The prompt should tell the role to use
-coordination helpers for lifecycle transitions:
+sandbox-visible coordination helpers for lifecycle transitions. Packaged runs
+can expose the helper directory with
+`PI_BWRAP_EXTRA_PATH`; source-checkout runs should name paths under the mounted
+`/workspace` when the helpers live in the project checkout:
 
 - developer: `agent-coord-claim` before work, then `agent-coord-done` with
   implementation refs after project commits;

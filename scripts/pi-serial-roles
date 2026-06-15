@@ -67,6 +67,8 @@ dry_run=0
 lock_file_opt=""
 pi_env_cmd_opt=""
 role_manager_opt=""
+coord_helper_pi_dir=""
+coord_helper_extra_path=""
 tools="${PI_BWRAP_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
 
 require_value() {
@@ -282,6 +284,34 @@ role_manager_arg_for_pi() {
   esac
 }
 
+coord_helper_dir_for_pi() {
+  local candidate project_root
+  candidate="$1"
+  project_root="$2"
+  case "$candidate" in
+    /nix/store/*)
+      printf '%s\n' "$candidate"
+      ;;
+    "$project_root")
+      printf '/workspace\n'
+      ;;
+    "$project_root"/*)
+      printf '/workspace%s\n' "${candidate#"$project_root"}"
+      ;;
+    *)
+      if [ "$dry_run" = "1" ] || [ -n "$pi_env_cmd_opt" ]; then
+        printf '%s\n' "$candidate"
+      else
+        die "coordination helper scripts are outside the project and /nix/store: $candidate; run pi-serial-roles from the pi-env devshell/profile or from a checkout mounted as the project root"
+      fi
+      ;;
+  esac
+}
+
+coord_helper_prompt_cmd() {
+  printf '%q' "$coord_helper_pi_dir/$1"
+}
+
 coord_helper() {
   local name
   name="$1"
@@ -426,18 +456,22 @@ select_next_work() {
 }
 
 role_prompt() {
-  local role item
+  local role item claim_helper done_helper review_helper verify_helper
   role="$1"
   item="$2"
   case "$role" in
     developer)
-      printf '/role-cycle developer Implement coordination issue %s only. Do not select other work. The serial orchestrator selected this item and claims it before launch; if coordination shows it unclaimed, run agent-coord-claim for this item only before code changes. Commit project changes, mark the item done with agent-coord-done and structured implementation refs, then stop.\n' "$item"
+      claim_helper="$(coord_helper_prompt_cmd agent-coord-claim)"
+      done_helper="$(coord_helper_prompt_cmd agent-coord-done)"
+      printf '/role-cycle developer Implement coordination issue %s only. Do not select other work. The serial orchestrator selected this item and claims it before launch; if coordination shows it unclaimed, run %s for this item only before code changes. Commit project changes, mark the item done with %s and structured implementation refs, then stop.\n' "$item" "$claim_helper" "$done_helper"
       ;;
     reviewer)
-      printf '/role-cycle reviewer Review coordination issue %s only. Do not select other work. Review the committed project state for this done item, then run agent-coord-review --pass or agent-coord-review --fail for this item and stop.\n' "$item"
+      review_helper="$(coord_helper_prompt_cmd agent-coord-review)"
+      printf '/role-cycle reviewer Review coordination issue %s only. Do not select other work. Review the committed project state for this done item, then run %s --pass or %s --fail for this item and stop.\n' "$item" "$review_helper" "$review_helper"
       ;;
     tester)
-      printf '/role-cycle tester Verify coordination issue %s only. Do not select other work. Run item-appropriate checks for this reviewed done item, then run agent-coord-verify --pass or agent-coord-verify --fail for this item and stop without closing other work.\n' "$item"
+      verify_helper="$(coord_helper_prompt_cmd agent-coord-verify)"
+      printf '/role-cycle tester Verify coordination issue %s only. Do not select other work. Run item-appropriate checks for this reviewed done item, then run %s --pass or %s --fail for this item and stop without closing other work.\n' "$item" "$verify_helper" "$verify_helper"
       ;;
     *)
       die "unknown role: $role"
@@ -449,6 +483,19 @@ merged_pass_env() {
   local value
   value="${PI_BWRAP_PASS_ENV:-}"
   value="${value:+$value }PI_ACTIVE_ROLE PI_ROLE_MANAGER_ACTIVE_ROLE"
+  printf '%s\n' "$value"
+}
+
+merged_extra_path() {
+  local value helper_dir
+  value="${PI_BWRAP_EXTRA_PATH:-}"
+  helper_dir="${coord_helper_extra_path:-}"
+  if [ -n "$helper_dir" ]; then
+    case ":$value:" in
+      *":$helper_dir:"*) ;;
+      *) value="$helper_dir${value:+:$value}" ;;
+    esac
+  fi
   printf '%s\n' "$value"
 }
 
@@ -466,11 +513,12 @@ shell_quote_command() {
 }
 
 print_dry_run() {
-  local role item prompt pass_env
+  local role item prompt pass_env extra_path
   role="$1"
   item="$2"
   prompt="$3"
   pass_env="$(merged_pass_env)"
+  extra_path="$(merged_extra_path)"
 
   printf 'selected role=%s item=%s\n' "$role" "$item"
   if [ "$role" = "developer" ]; then
@@ -493,6 +541,7 @@ print_dry_run() {
     "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
     "PI_BWRAP_PROJECT_ROOT=$project_root" \
     "PI_BWRAP_PASS_ENV=$pass_env" \
+    "PI_BWRAP_EXTRA_PATH=$extra_path" \
     "$pi_env_cmd" \
     --raw -- \
     -e "$role_manager_pi_arg" \
@@ -513,11 +562,12 @@ claim_developer_item() {
 }
 
 run_pi_job() {
-  local role item prompt pass_env
+  local role item prompt pass_env extra_path
   role="$1"
   item="$2"
   prompt="$3"
   pass_env="$(merged_pass_env)"
+  extra_path="$(merged_extra_path)"
 
   if [ "$role" = "developer" ]; then
     claim_developer_item "$item"
@@ -538,6 +588,7 @@ run_pi_job() {
       "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
       "PI_BWRAP_PROJECT_ROOT=$project_root" \
       "PI_BWRAP_PASS_ENV=$pass_env" \
+      "PI_BWRAP_EXTRA_PATH=$extra_path" \
       "$pi_env_cmd" \
       --raw -- \
       -e "$role_manager_pi_arg" \
@@ -551,6 +602,11 @@ coord_dir="$(resolve_coord_dir "$project_root")"
 pi_env_cmd="$(resolve_pi_env_cmd)"
 role_manager_package="$(resolve_role_manager)"
 role_manager_pi_arg="$(role_manager_arg_for_pi "$role_manager_package" "$project_root")"
+coord_helper_pi_dir="$(coord_helper_dir_for_pi "$script_dir" "$project_root")"
+case "$coord_helper_pi_dir" in
+  /nix/store/*) coord_helper_extra_path="$coord_helper_pi_dir" ;;
+  *) coord_helper_extra_path="" ;;
+esac
 
 if [ -n "$lock_file_opt" ]; then
   lock_file="$(resolve_relative_to_project "$lock_file_opt" "$project_root")"

@@ -962,7 +962,10 @@ metadata directory, checks for clean project and coordination working trees,
 pulls/rebases coordination, selects one eligible issue, and launches one fresh
 `pi-env --raw --` role job without `--continue`. Run it from the pi-env
 devshell/profile, or pass `--role-manager` with a Nix-store package path, so
-raw sandbox jobs can load the role-manager package.
+raw sandbox jobs can load the role-manager package. The orchestrator exposes
+its packaged coordination helper directory to raw sandbox jobs through
+`PI_BWRAP_EXTRA_PATH` when it is in the Nix store, and role prompts name
+sandbox-visible helper paths for lifecycle transitions.
 
 Work priority is tester-eligible done items, reviewer-eligible done items, then
 open developer items. Developer items are claimed with `agent-coord-claim`
