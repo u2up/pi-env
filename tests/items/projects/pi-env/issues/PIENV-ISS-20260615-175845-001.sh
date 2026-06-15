@@ -1,0 +1,332 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd -P)"
+cd "$repo_root"
+. tests/lib/test-helpers.sh
+
+export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PATH="$repo_root/scripts:$PATH"
+
+tmp="$(mktemp -d)"
+cleanup() {
+  rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+export HOME="$tmp/home"
+mkdir -p "$HOME"
+git config --global user.name "Serial Roles Test"
+git config --global user.email "serial-roles-test@example.invalid"
+
+serial_script="$repo_root/scripts/pi-serial-roles"
+role_manager="$repo_root/role-manager"
+
+make_fake_pi_env() {
+  local path
+  path="$1"
+  cat >"$path" <<'FAKE_PI_ENV'
+#!/usr/bin/env bash
+set -euo pipefail
+capture="${SERIAL_FAKE_PI_CAPTURE:?}"
+{
+  printf 'env PI_ACTIVE_ROLE=%s\n' "${PI_ACTIVE_ROLE:-}"
+  printf 'env PI_ROLE_MANAGER_ACTIVE_ROLE=%s\n' \
+    "${PI_ROLE_MANAGER_ACTIVE_ROLE:-}"
+  printf 'env PI_COORD_ROLE=%s\n' "${PI_COORD_ROLE:-}"
+  printf 'env PI_COORD_AGENT_ID=%s\n' "${PI_COORD_AGENT_ID:-}"
+  printf 'env PI_BWRAP_PASS_ENV=%s\n' "${PI_BWRAP_PASS_ENV:-}"
+  printf 'env PI_BWRAP_EXTRA_PATH=%s\n' "${PI_BWRAP_EXTRA_PATH:-}"
+  for arg in "$@"; do
+    printf 'arg:%s\n' "$arg"
+  done
+} >>"$capture"
+
+if [ -n "${SERIAL_EXPECT_CLAIMED_ITEM:-}" ]; then
+  item_file="${PI_COORD_DIR:?}/projects/pi-env/issues/open/${SERIAL_EXPECT_CLAIMED_ITEM}.yaml"
+  grep -q '^status: claimed$' "$item_file"
+  grep -q "^owner: ${PI_COORD_AGENT_ID:?}$" "$item_file"
+fi
+FAKE_PI_ENV
+  chmod +x "$path"
+}
+
+new_scenario() {
+  local name scenario project coord remote
+  name="$1"
+  scenario="$tmp/$name"
+  project="$scenario/project"
+  coord="$project/coordination"
+  remote="$scenario/coordination.git"
+
+  mkdir -p "$project"
+  git -C "$project" init -q
+  git -C "$project" checkout -q -b main
+  git -C "$project" config user.name "Serial Project Test"
+  git -C "$project" config user.email "project@example.invalid"
+  printf '/coordination/\n' >"$project/.gitignore"
+  git -C "$project" add .gitignore
+  git -C "$project" commit -q -m "Seed project"
+
+  git init --bare -q "$remote"
+  git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+
+  mkdir -p "$coord"
+  git -C "$coord" init -q
+  git -C "$coord" checkout -q -b main
+  git -C "$coord" config user.name "Serial Coordination Test"
+  git -C "$coord" config user.email "coordination@example.invalid"
+  git -C "$coord" remote add origin "$remote"
+
+  mkdir -p \
+    "$coord/workspace" \
+    "$coord/projects/pi-env/issues/open" \
+    "$coord/projects/pi-env/issues/done" \
+    "$coord/projects/pi-env/issues/blocked" \
+    "$coord/projects/pi-env/issues/closed"
+  printf '# Coordination rules for serial smoke tests\n' >"$coord/AGENTS.md"
+  printf 'workspace: serial-smoke\nitem_key: SERIAL\n' >"$coord/WORKSPACE.md"
+  printf 'project: pi-env\nitem_key: PIENV\n' \
+    >"$coord/projects/pi-env/PROJECT.md"
+
+  SCENARIO_DIR="$scenario"
+  SCENARIO_PROJECT="$project"
+  SCENARIO_COORD="$coord"
+}
+
+add_issue() {
+  local coord id status reviewed verified title dir done_value event_type
+  coord="$1"
+  id="$2"
+  status="$3"
+  reviewed="$4"
+  verified="$5"
+  title="$6"
+
+  case "$status" in
+    done)
+      dir="$coord/projects/pi-env/issues/done"
+      done_value="2026-06-15T00:00:00Z"
+      event_type="done"
+      ;;
+    open|claimed)
+      dir="$coord/projects/pi-env/issues/open"
+      done_value="null"
+      event_type="opened"
+      ;;
+    *)
+      test_fail "unsupported test issue status: $status"
+      ;;
+  esac
+
+  mkdir -p "$dir"
+  cat >"$dir/$id.yaml" <<EOF_ITEM
+schema: coordination-item/v1
+id: $id
+type: issue
+status: $status
+project: pi-env
+title: '$title'
+owner: null
+priority: medium
+created: 2026-06-15T00:00:00Z
+updated: 2026-06-15T00:00:00Z
+done: $done_value
+closed: null
+reviewed: $reviewed
+verified: $verified
+testable: yes
+testability_note: null
+current:
+  event: evt-0001
+  message: msg-0001
+events:
+  - id: evt-0001
+    type: $event_type
+    at: 2026-06-15T00:00:00Z
+    actor:
+      id: serial-test
+      role: architect
+    message: msg-0001
+messages:
+  - id: msg-0001
+    event: evt-0001
+    body: |-
+      # $title
+EOF_ITEM
+}
+
+commit_coord() {
+  local coord
+  coord="$1"
+  git -C "$coord" add .
+  git -C "$coord" commit -q -m "Seed coordination"
+  git -C "$coord" push -q -u origin main
+}
+
+run_serial() {
+  local project coord lock_file
+  project="$1"
+  coord="$2"
+  lock_file="$3"
+  shift 3
+  "$serial_script" \
+    --project-root "$project" \
+    --coord-dir "$coord" \
+    --agent-id serial-agent \
+    --sleep 0 \
+    --lock-file "$lock_file" \
+    --pi-env "$FAKE_PI_ENV" \
+    --role-manager "$role_manager" \
+    "$@"
+}
+
+assert_no_grep() {
+  local pattern path
+  pattern="$1"
+  path="$2"
+  if grep -q -- "$pattern" "$path"; then
+    test_fail "expected $path not to match: $pattern"
+  fi
+}
+
+assert_clean_git() {
+  local dir label status
+  dir="$1"
+  label="$2"
+  status="$(git -C "$dir" status --short)"
+  test_eq "" "$status" "$label working tree is clean"
+}
+
+FAKE_PI_ENV="$tmp/fake-pi-env"
+make_fake_pi_env "$FAKE_PI_ENV"
+
+# Tester work is preferred over reviewer and developer queues, and the dry-run
+# command shows role activation variables that pi-bwrap must pass through.
+new_scenario tester-priority
+add_issue "$SCENARIO_COORD" SERIAL-TESTER-001 done true false \
+  "Tester candidate"
+add_issue "$SCENARIO_COORD" SERIAL-REVIEWER-001 done false false \
+  "Reviewer candidate"
+add_issue "$SCENARIO_COORD" SERIAL-DEVELOPER-001 open false false \
+  "Developer candidate"
+commit_coord "$SCENARIO_COORD"
+priority_out="$SCENARIO_DIR/priority.out"
+run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+  --dry-run --once >"$priority_out" 2>&1
+test_grep '^selected role=tester item=SERIAL-TESTER-001$' "$priority_out"
+test_grep 'would-run: env' "$priority_out"
+test_grep 'PI_ACTIVE_ROLE=tester' "$priority_out"
+test_grep 'PI_ROLE_MANAGER_ACTIVE_ROLE=tester' "$priority_out"
+test_grep 'PI_BWRAP_PASS_ENV=.*PI_ACTIVE_ROLE.*PI_ROLE_MANAGER_ACTIVE_ROLE' \
+  "$priority_out"
+test_grep '/role-cycle.*tester.*Verify.*SERIAL-TESTER-001.*only' \
+  "$priority_out"
+assert_no_grep '--continue' "$priority_out"
+
+# Reviewer work is selected ahead of open developer work when no tester issue is
+# waiting.
+new_scenario reviewer-priority
+add_issue "$SCENARIO_COORD" SERIAL-REVIEWER-002 done false false \
+  "Reviewer candidate"
+add_issue "$SCENARIO_COORD" SERIAL-DEVELOPER-002 open false false \
+  "Developer candidate"
+commit_coord "$SCENARIO_COORD"
+reviewer_out="$SCENARIO_DIR/reviewer.out"
+run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+  --dry-run --once >"$reviewer_out" 2>&1
+test_grep '^selected role=reviewer item=SERIAL-REVIEWER-002$' "$reviewer_out"
+test_grep '/role-cycle.*reviewer.*Review.*SERIAL-REVIEWER-002.*only' \
+  "$reviewer_out"
+assert_no_grep '--continue' "$reviewer_out"
+
+# A developer job claims the selected open issue before launching Pi, starts a
+# fresh raw session, and names exactly one coordination item in the prompt.
+new_scenario developer-claim
+add_issue "$SCENARIO_COORD" SERIAL-DEVELOPER-CLAIM open false false \
+  "Developer claim candidate"
+commit_coord "$SCENARIO_COORD"
+dev_capture="$SCENARIO_DIR/fake-pi.capture"
+dev_out="$SCENARIO_DIR/developer.out"
+SERIAL_FAKE_PI_CAPTURE="$dev_capture" \
+SERIAL_EXPECT_CLAIMED_ITEM=SERIAL-DEVELOPER-CLAIM \
+  run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+    --once >"$dev_out" 2>&1
+test_file_exists "$dev_capture"
+test_grep '^env PI_ACTIVE_ROLE=developer$' "$dev_capture"
+test_grep '^env PI_ROLE_MANAGER_ACTIVE_ROLE=developer$' "$dev_capture"
+test_grep '^env PI_COORD_ROLE=developer$' "$dev_capture"
+test_grep '^arg:--raw$' "$dev_capture"
+test_grep '^arg:--$' "$dev_capture"
+test_grep '^arg:-p$' "$dev_capture"
+test_grep '^arg:/role-cycle developer Implement coordination issue SERIAL-DEVELOPER-CLAIM only\.' \
+  "$dev_capture"
+assert_no_grep '^arg:--continue$' "$dev_capture"
+item_mentions="$(grep -o 'SERIAL-DEVELOPER-CLAIM' "$dev_capture" | wc -l | tr -d ' ')"
+test_eq "1" "$item_mentions" "developer Pi prompt names one selected item"
+test_grep '^status: claimed$' \
+  "$SCENARIO_COORD/projects/pi-env/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
+test_grep '^owner: serial-agent$' \
+  "$SCENARIO_COORD/projects/pi-env/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
+assert_clean_git "$SCENARIO_PROJECT" "project"
+assert_clean_git "$SCENARIO_COORD" "coordination"
+
+# Empty queues exit the bounded loop without invoking Pi.
+new_scenario empty-queue
+commit_coord "$SCENARIO_COORD"
+empty_capture="$SCENARIO_DIR/empty.capture"
+empty_out="$SCENARIO_DIR/empty.out"
+SERIAL_FAKE_PI_CAPTURE="$empty_capture" \
+  run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+    --once >"$empty_out" 2>&1
+test_grep 'idle poll limit reached (1); exiting' "$empty_out"
+if [ -e "$empty_capture" ]; then
+  test_fail 'empty queue invoked fake pi-env'
+fi
+
+# A live lockfile prevents a second serial orchestrator from starting.
+new_scenario lock-contention
+commit_coord "$SCENARIO_COORD"
+lock_file="$SCENARIO_DIR/lock"
+printf '%s\n' "$$" >"$lock_file"
+lock_out="$SCENARIO_DIR/lock.out"
+set +e
+SERIAL_FAKE_PI_CAPTURE="$SCENARIO_DIR/lock.capture" \
+  run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$lock_file" \
+    --dry-run --once >"$lock_out" 2>&1
+lock_status=$?
+set -e
+if [ "$lock_status" -eq 0 ]; then
+  test_fail 'lock contention unexpectedly succeeded'
+fi
+test_grep 'lock is already held' "$lock_out"
+
+# Dirty project state fails closed before polling or launching, and the dirty
+# file is left in place for the user instead of being reset or stashed.
+new_scenario dirty-project
+add_issue "$SCENARIO_COORD" SERIAL-DIRTY-001 done true false \
+  "Dirty project candidate"
+commit_coord "$SCENARIO_COORD"
+printf 'do not remove me\n' >"$SCENARIO_PROJECT/dirty.txt"
+dirty_out="$SCENARIO_DIR/dirty.out"
+set +e
+SERIAL_FAKE_PI_CAPTURE="$SCENARIO_DIR/dirty.capture" \
+  run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+    --dry-run --once >"$dirty_out" 2>&1
+dirty_status=$?
+set -e
+if [ "$dirty_status" -eq 0 ]; then
+  test_fail 'dirty project state unexpectedly succeeded'
+fi
+test_grep 'unexpected dirty project working tree' "$dirty_out"
+test_file_exists "$SCENARIO_PROJECT/dirty.txt"
+test_eq 'do not remove me' "$(cat "$SCENARIO_PROJECT/dirty.txt")" \
+  'dirty project file was preserved'
+project_dirty_status="$(git -C "$SCENARIO_PROJECT" status --short)"
+printf '%s\n' "$project_dirty_status" >"$SCENARIO_DIR/dirty.status"
+test_grep '?? dirty.txt' "$SCENARIO_DIR/dirty.status"
+if [ -e "$SCENARIO_DIR/dirty.capture" ]; then
+  test_fail 'dirty project state invoked fake pi-env'
+fi
+
+printf 'serial role automation smoke tests passed\n'
