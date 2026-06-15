@@ -956,30 +956,78 @@ active role without changing project Git identity.
 
 ### Serial role automation
 
-`pi-serial-roles` is a small serial orchestrator for one project checkout and
-one coordination checkout. It holds a local lock under the project's Git
-metadata directory, checks for clean project and coordination working trees,
-pulls/rebases coordination, selects one eligible issue, and launches one fresh
-`pi-env --raw --` role job without `--continue`. Run it from the pi-env
-devshell/profile, or pass `--role-manager` with a Nix-store package path, so
-raw sandbox jobs can load the role-manager package. The orchestrator exposes
-its packaged coordination helper directory to raw sandbox jobs through
-`PI_BWRAP_EXTRA_PATH` when it is in the Nix store, and role prompts name
-sandbox-visible helper paths for lifecycle transitions.
+`pi-serial-roles` is the first, deliberately serial automation mode for
+coordination-backed role work. Use it when you want one long-lived shell to
+process developer, reviewer, and tester issue jobs over one project clone and
+one coordination clone, without concurrent source edits or competing Git
+operations in that clone. It is useful for initial small automation and prompt
+shake-out before investing in parallel workers.
 
-Work priority is tester-eligible done items, reviewer-eligible done items, then
-open developer items. Developer items are claimed with `agent-coord-claim`
-before Pi is invoked; reviewer and tester prompts name only the selected done
-item and instruct the role to use `agent-coord-review` or `agent-coord-verify`.
-If no item is available, the command sleeps and polls again.
+Serial mode prerequisites:
 
-Bounded and dry-run modes are available for smoke checks:
+- run from a clean Git project root, or pass `--project-root DIR`;
+- provide a writable coordination checkout, either at `./coordination`, through
+  `PI_COORD_DIR`, or with `--coord-dir DIR`;
+- run from the pi-env devshell/profile so `pi-env`, `agent-coord-*` helpers,
+  and `PI_ENV_ROLE_MANAGER_PACKAGE` are available, or pass explicit `--pi-env`
+  and `--role-manager` paths;
+- configure Pi model credentials on the host the same way you do for normal
+  `pi-env` runs, for example host Pi auth files or provider environment
+  variables; and
+- allow the orchestrator to mount the selected coordination clone into each raw
+  sandbox job. It passes `PI_BWRAP_COORDINATION_DIR`, `PI_COORD_DIR`,
+  `PI_COORD_AGENT_ID`, and role context for the job, and exposes packaged
+  lifecycle helpers through `PI_BWRAP_EXTRA_PATH` when they live in the Nix
+  store.
+
+Start the loop from the project root:
+
+```bash
+cd /path/to/project
+pi-serial-roles --sleep 30
+```
+
+Stop it with `Ctrl-C`, or use bounded modes when you want it to exit on its own:
 
 ```bash
 pi-serial-roles --once
+pi-serial-roles --max-jobs 3
+pi-serial-roles --max-idle-polls 1 --sleep 5
 pi-serial-roles --dry-run
-pi-serial-roles --max-jobs 1 --max-idle-polls 1 --sleep 5
 ```
+
+Each poll holds a local lock under the project's Git metadata directory,
+requires clean project and coordination working trees, pulls/rebases
+coordination, selects at most one issue, and then runs one Pi job. Work priority
+is:
+
+1. tester: done issues with `reviewed: true` and `verified: false`;
+2. reviewer: done issues with `reviewed: false`;
+3. developer: open issues that are unowned or already owned by the agent.
+
+Developer items are claimed with `agent-coord-claim` before Pi is invoked.
+Reviewer and tester prompts name only the selected done item and instruct the
+role to use `agent-coord-review` or `agent-coord-verify`. If no issue is
+eligible, the orchestrator sleeps and polls again without invoking Pi.
+
+Every issue job starts a fresh raw Pi session with `pi-env --raw --` and does
+not pass `--continue`. Coordination state and Git history are the memory shared
+between jobs; a fresh conversation avoids stale context from a previous issue
+influencing item selection, review, verification, or lifecycle helper use.
+
+The command fails closed. Dirty project or coordination trees stop the loop; it
+will not reset, discard, or stash source changes for you. A failed
+coordination pull/rebase stops with the helper's error so you can resolve the
+conflict and rerun. A non-zero Pi job also stops the loop instead of moving on
+to another issue; inspect the terminal output and clean up any project or
+coordination changes before restarting.
+
+Serial mode does not require tmux, per-role clones, worktrees, or
+reviewer/tester leases, and the local lock prevents two serial loops from
+sharing one clone.
+Those pieces are future parallel-worker concerns. Parallel mode should use
+separate clones/worktrees and additional lease rules before multiple roles edit
+or mutate coordination concurrently.
 
 See `designs/serial-role-automation.md` for the full design.
 
