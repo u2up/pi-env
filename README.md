@@ -892,6 +892,7 @@ agent-coord-close     final-close reviewed+verified done items
 agent-coord-lint      lint item IDs, status, and item-matched tests
 agent-coord-upgrade-rules --preview
                       preview/apply bundled rule template updates
+pi-serial-roles       serially run one developer/reviewer/tester Pi job at a time
 ```
 
 Items are YAML files with chronological `events` and linked Markdown messages.
@@ -952,6 +953,30 @@ When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
 Pi subprocesses to the role's `coordCommitter` value, or to the role name when
 `coordCommitter` is omitted. Bash-invoked `agent-coord-*` commands inherit the
 active role without changing project Git identity.
+
+### Serial role automation
+
+`pi-serial-roles` is a small serial orchestrator for one project checkout and
+one coordination checkout. It holds a local lock under the project's Git
+metadata directory, checks for clean project and coordination working trees,
+pulls/rebases coordination, selects one eligible issue, and launches one fresh
+`pi-env --raw --` role job without `--continue`.
+
+Work priority is tester-eligible done items, reviewer-eligible done items, then
+open developer items. Developer items are claimed with `agent-coord-claim`
+before Pi is invoked; reviewer and tester prompts name only the selected done
+item and instruct the role to use `agent-coord-review` or `agent-coord-verify`.
+If no item is available, the command sleeps and polls again.
+
+Bounded and dry-run modes are available for smoke checks:
+
+```bash
+pi-serial-roles --once
+pi-serial-roles --dry-run
+pi-serial-roles --max-jobs 1 --max-idle-polls 1 --sleep 5
+```
+
+See `designs/serial-role-automation.md` for the full design.
 
 See `designs/agent-coordination.md` for the full design.
 

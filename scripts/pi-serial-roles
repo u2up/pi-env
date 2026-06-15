@@ -1,0 +1,587 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+pi-serial-roles - run serial developer/reviewer/tester Pi role jobs
+
+Usage:
+  pi-serial-roles [options]
+
+Options:
+  --project-root DIR      Project checkout to operate on; default: Git root or $PWD
+  --coord-dir DIR         Coordination checkout; default: PI_COORD_DIR or ./coordination
+                          relative to the project root
+  --agent-id ID           Coordination agent identity; default: PI_COORD_AGENT_ID or USER
+  --sleep SECONDS         Idle poll sleep interval; default: 30
+  --max-jobs N            Stop after running N Pi jobs
+  --max-idle-polls N      Stop after N idle polls with no eligible work
+  --once                  One bounded poll/job; same as --max-jobs 1 and
+                          --max-idle-polls 1 when those are unset
+  --dry-run               Pull and select, then print the claim/Pi command that
+                          would run without claiming work or invoking Pi
+  --lock-file PATH        Local lock path; default: pi-serial-roles.lock
+                          under the project's Git metadata directory
+  --pi-env COMMAND        pi-env launcher; default: pi-env on PATH or this checkout
+  --role-manager PATH     Role-manager package/path for raw Pi jobs; default:
+                          PI_ENV_ROLE_MANAGER_PACKAGE or this checkout's role-manager
+  --tools LIST            Tool allowlist for Pi; default:
+                          read,bash,edit,write,grep,find,ls
+  -h, --help              Show this help
+
+Work priority:
+  1. tester:   done issues with reviewed:true and verified:false
+  2. reviewer: done issues with reviewed:false
+  3. developer: open issues, claimed before Pi is invoked
+
+Each job starts a fresh pi-env raw session and does not pass --continue.
+USAGE
+}
+
+note() {
+  printf 'pi-serial-roles: %s\n' "$*" >&2
+}
+
+die() {
+  printf 'pi-serial-roles: %s\n' "$*" >&2
+  exit 1
+}
+
+project_root_opt=""
+coord_dir_opt=""
+agent_id="$(coord_default_agent)"
+sleep_seconds="30"
+max_jobs=""
+max_idle_polls=""
+once=0
+dry_run=0
+lock_file_opt=""
+pi_env_cmd_opt=""
+role_manager_opt=""
+tools="${PI_BWRAP_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
+
+require_value() {
+  [ -n "${2:-}" ] || die "$1 requires a value"
+}
+
+is_nonnegative_int() {
+  case "$1" in
+    ''|*[!0-9]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --project-root)
+      require_value "$1" "${2:-}"
+      project_root_opt="$2"
+      shift 2
+      ;;
+    --coord-dir)
+      require_value "$1" "${2:-}"
+      coord_dir_opt="$2"
+      shift 2
+      ;;
+    --agent-id)
+      require_value "$1" "${2:-}"
+      agent_id="$2"
+      shift 2
+      ;;
+    --sleep|--poll-interval)
+      require_value "$1" "${2:-}"
+      sleep_seconds="$2"
+      case "$sleep_seconds" in
+        -*|'') die "--sleep must be a non-negative duration" ;;
+      esac
+      shift 2
+      ;;
+    --max-jobs)
+      require_value "$1" "${2:-}"
+      is_nonnegative_int "$2" || die "--max-jobs must be a non-negative integer"
+      max_jobs="$2"
+      shift 2
+      ;;
+    --max-idle-polls)
+      require_value "$1" "${2:-}"
+      is_nonnegative_int "$2" || die "--max-idle-polls must be a non-negative integer"
+      max_idle_polls="$2"
+      shift 2
+      ;;
+    --once)
+      once=1
+      shift
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    --lock-file)
+      require_value "$1" "${2:-}"
+      lock_file_opt="$2"
+      shift 2
+      ;;
+    --pi-env)
+      require_value "$1" "${2:-}"
+      pi_env_cmd_opt="$2"
+      shift 2
+      ;;
+    --role-manager)
+      require_value "$1" "${2:-}"
+      role_manager_opt="$2"
+      shift 2
+      ;;
+    --tools)
+      require_value "$1" "${2:-}"
+      tools="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      [ "$#" -eq 0 ] || die "unexpected positional arguments: $*"
+      break
+      ;;
+    --*)
+      die "unknown option: $1"
+      ;;
+    *)
+      die "unexpected argument: $1"
+      ;;
+  esac
+done
+
+[ -n "$agent_id" ] || die "agent id must not be empty"
+if [ "$once" = "1" ]; then
+  [ -n "$max_jobs" ] || max_jobs=1
+  [ -n "$max_idle_polls" ] || max_idle_polls=1
+fi
+
+resolve_project_root() {
+  local root
+  if [ -n "$project_root_opt" ]; then
+    root="$(realpath -m "$project_root_opt")"
+  else
+    root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    if [ -z "$root" ]; then
+      root="$(pwd -P)"
+    fi
+    root="$(realpath -m "$root")"
+  fi
+  [ -d "$root" ] || die "project root does not exist: $root"
+  git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+    || die "project root is not a Git working tree: $root"
+  printf '%s\n' "$root"
+}
+
+resolve_relative_to_project() {
+  local candidate project_root
+  candidate="$1"
+  project_root="$2"
+  case "$candidate" in
+    /*) realpath -m "$candidate" ;;
+    *) realpath -m "$project_root/$candidate" ;;
+  esac
+}
+
+resolve_coord_dir() {
+  local project_root candidate coord_dir
+  project_root="$1"
+  if [ -n "$coord_dir_opt" ]; then
+    candidate="$coord_dir_opt"
+  elif [ -n "${PI_COORD_DIR:-}" ]; then
+    candidate="$PI_COORD_DIR"
+  else
+    candidate="coordination"
+  fi
+  coord_dir="$(resolve_relative_to_project "$candidate" "$project_root")"
+  [ -d "$coord_dir" ] || die "coordination dir not found: $coord_dir"
+  [ -d "$coord_dir/.git" ] || die "not a coordination Git repo: $coord_dir"
+  [ -f "$coord_dir/AGENTS.md" ] || die "coordination dir is missing AGENTS.md: $coord_dir"
+  printf '%s\n' "$coord_dir"
+}
+
+resolve_command() {
+  local command_name resolved
+  command_name="$1"
+  case "$command_name" in
+    */*)
+      resolved="$(realpath -m "$command_name")"
+      [ -x "$resolved" ] || die "command is not executable: $resolved"
+      printf '%s\n' "$resolved"
+      ;;
+    *)
+      resolved="$(command -v "$command_name" 2>/dev/null || true)"
+      [ -n "$resolved" ] || die "command not found on PATH: $command_name"
+      printf '%s\n' "$resolved"
+      ;;
+  esac
+}
+
+resolve_pi_env_cmd() {
+  if [ -n "$pi_env_cmd_opt" ]; then
+    resolve_command "$pi_env_cmd_opt"
+  elif command -v pi-env >/dev/null 2>&1; then
+    command -v pi-env
+  elif [ -x "$script_dir/../pi-env" ]; then
+    realpath -m "$script_dir/../pi-env"
+  else
+    die "pi-env was not found; pass --pi-env or run inside the pi-env devshell"
+  fi
+}
+
+resolve_role_manager() {
+  local candidate
+  if [ -n "$role_manager_opt" ]; then
+    candidate="$role_manager_opt"
+  elif [ -n "${PI_ENV_ROLE_MANAGER_PACKAGE:-}" ]; then
+    candidate="$PI_ENV_ROLE_MANAGER_PACKAGE"
+  elif [ -e "$script_dir/../role-manager" ]; then
+    candidate="$script_dir/../role-manager"
+  else
+    die "role-manager package not found; set PI_ENV_ROLE_MANAGER_PACKAGE or pass --role-manager"
+  fi
+  candidate="$(realpath -m "$candidate")"
+  [ -e "$candidate" ] || die "role-manager path does not exist: $candidate"
+  printf '%s\n' "$candidate"
+}
+
+coord_helper() {
+  local name
+  name="$1"
+  if [ -x "$script_dir/$name" ]; then
+    printf '%s\n' "$script_dir/$name"
+  else
+    resolve_command "$name"
+  fi
+}
+
+ensure_clean_git() {
+  local dir label status
+  dir="$1"
+  label="$2"
+  git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+    || die "$label is not a Git working tree: $dir"
+  status="$(git -C "$dir" status --porcelain --untracked-files=normal)"
+  if [ -n "$status" ]; then
+    printf 'pi-serial-roles: unexpected dirty %s working tree: %s\n' "$label" "$dir" >&2
+    printf '%s\n' "$status" >&2
+    exit 1
+  fi
+}
+
+install_lock_traps() {
+  trap 'release_lock' EXIT
+  trap 'release_lock; exit 130' INT
+  trap 'release_lock; exit 143' TERM
+}
+
+acquire_lock() {
+  local lock_file lock_dir old_pid
+  lock_file="$1"
+  lock_dir="$(dirname "$lock_file")"
+  mkdir -p "$lock_dir"
+  if ( set -o noclobber; printf '%s\n' "$$" >"$lock_file" ) 2>/dev/null; then
+    install_lock_traps
+    return
+  fi
+
+  old_pid="$(cat "$lock_file" 2>/dev/null || true)"
+  if [ -n "$old_pid" ] && printf '%s' "$old_pid" | grep -Eq '^[0-9]+$' \
+    && ! kill -0 "$old_pid" 2>/dev/null; then
+    rm -f "$lock_file"
+    if ( set -o noclobber; printf '%s\n' "$$" >"$lock_file" ) 2>/dev/null; then
+      install_lock_traps
+      return
+    fi
+  fi
+
+  if [ -n "$old_pid" ]; then
+    die "lock is already held at $lock_file by pid $old_pid"
+  fi
+  die "lock is already held at $lock_file"
+}
+
+release_lock() {
+  if [ -n "${lock_file:-}" ] && [ -f "$lock_file" ]; then
+    if [ "$(cat "$lock_file" 2>/dev/null || true)" = "$$" ]; then
+      rm -f "$lock_file"
+    fi
+  fi
+}
+
+pull_coordination() {
+  local pull_cmd
+  ensure_clean_git "$coord_dir" "coordination"
+  pull_cmd="$(coord_helper agent-coord-pull)"
+  "$pull_cmd" --coord-dir "$coord_dir" >&2
+  ensure_clean_git "$coord_dir" "coordination"
+}
+
+item_id_for_file() {
+  local file item_id
+  file="$1"
+  item_id="$(coord_item_value "$file" id || true)"
+  if [ -z "$item_id" ]; then
+    item_id="$(basename "$file")"
+    item_id="${item_id%.yaml}"
+    item_id="${item_id%.yml}"
+    item_id="${item_id%.md}"
+  fi
+  printf '%s\n' "$item_id"
+}
+
+status_lc_for_file() {
+  coord_item_value "$1" status | tr '[:upper:]' '[:lower:]'
+}
+
+select_next_work_in_coord() {
+  local file raw_type file_type status item_id owner
+
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    raw_type="$(coord_item_value "$file" type || true)"
+    file_type="$(coord_item_type_canonical "$raw_type")"
+    [ "$file_type" = "issue" ] || continue
+    status="$(status_lc_for_file "$file")"
+    if [ "$status" = "done" ] \
+      && coord_item_flag_true "$file" reviewed \
+      && ! coord_item_flag_true "$file" verified; then
+      item_id="$(item_id_for_file "$file")"
+      printf 'tester\t%s\t%s\n' "$item_id" "$file"
+      return 0
+    fi
+  done < <(coord_item_find_files)
+
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    raw_type="$(coord_item_value "$file" type || true)"
+    file_type="$(coord_item_type_canonical "$raw_type")"
+    [ "$file_type" = "issue" ] || continue
+    status="$(status_lc_for_file "$file")"
+    if [ "$status" = "done" ] && ! coord_item_flag_true "$file" reviewed; then
+      item_id="$(item_id_for_file "$file")"
+      printf 'reviewer\t%s\t%s\n' "$item_id" "$file"
+      return 0
+    fi
+  done < <(coord_item_find_files)
+
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    raw_type="$(coord_item_value "$file" type || true)"
+    file_type="$(coord_item_type_canonical "$raw_type")"
+    [ "$file_type" = "issue" ] || continue
+    status="$(status_lc_for_file "$file")"
+    [ "$status" = "open" ] || continue
+    owner="$(coord_item_value "$file" owner || true)"
+    if [ -n "$owner" ] && [ "$owner" != "$agent_id" ]; then
+      continue
+    fi
+    item_id="$(item_id_for_file "$file")"
+    printf 'developer\t%s\t%s\n' "$item_id" "$file"
+    return 0
+  done < <(coord_item_find_files)
+
+  return 1
+}
+
+select_next_work() {
+  ( cd "$coord_dir" && select_next_work_in_coord )
+}
+
+role_prompt() {
+  local role item
+  role="$1"
+  item="$2"
+  case "$role" in
+    developer)
+      printf '/role-cycle developer Implement coordination issue %s only. Do not select other work. The serial orchestrator selected this item and claims it before launch; if coordination shows it unclaimed, run agent-coord-claim for this item only before code changes. Commit project changes, mark the item done with agent-coord-done and structured implementation refs, then stop.\n' "$item"
+      ;;
+    reviewer)
+      printf '/role-cycle reviewer Review coordination issue %s only. Do not select other work. Review the committed project state for this done item, then run agent-coord-review --pass or agent-coord-review --fail for this item and stop.\n' "$item"
+      ;;
+    tester)
+      printf '/role-cycle tester Verify coordination issue %s only. Do not select other work. Run item-appropriate checks for this reviewed done item, then run agent-coord-verify --pass or agent-coord-verify --fail for this item and stop without closing other work.\n' "$item"
+      ;;
+    *)
+      die "unknown role: $role"
+      ;;
+  esac
+}
+
+merged_pass_env() {
+  local value
+  value="${PI_BWRAP_PASS_ENV:-}"
+  value="${value:+$value }PI_ACTIVE_ROLE PI_ROLE_MANAGER_ACTIVE_ROLE"
+  printf '%s\n' "$value"
+}
+
+shell_quote_command() {
+  local first=1 arg
+  for arg in "$@"; do
+    if [ "$first" = "1" ]; then
+      first=0
+    else
+      printf ' '
+    fi
+    printf '%q' "$arg"
+  done
+  printf '\n'
+}
+
+print_dry_run() {
+  local role item prompt pass_env
+  role="$1"
+  item="$2"
+  prompt="$3"
+  pass_env="$(merged_pass_env)"
+
+  printf 'selected role=%s item=%s\n' "$role" "$item"
+  if [ "$role" = "developer" ]; then
+    printf 'would-claim: '
+    shell_quote_command \
+      "$(coord_helper agent-coord-claim)" \
+      --coord-dir "$coord_dir" \
+      --agent-id "$agent_id" \
+      --role developer \
+      "$item"
+  fi
+  printf 'would-run: '
+  shell_quote_command \
+    env \
+    "PI_ACTIVE_ROLE=$role" \
+    "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
+    "PI_COORD_ROLE=$role" \
+    "PI_COORD_AGENT_ID=$agent_id" \
+    "PI_COORD_DIR=$coord_dir" \
+    "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
+    "PI_BWRAP_PROJECT_ROOT=$project_root" \
+    "PI_BWRAP_PASS_ENV=$pass_env" \
+    "$pi_env_cmd" \
+    --raw -- \
+    -e "$role_manager_package" \
+    --tools "$tools" \
+    -p "$prompt"
+}
+
+claim_developer_item() {
+  local item claim_cmd
+  item="$1"
+  claim_cmd="$(coord_helper agent-coord-claim)"
+  "$claim_cmd" \
+    --coord-dir "$coord_dir" \
+    --agent-id "$agent_id" \
+    --role developer \
+    "$item" >&2
+  ensure_clean_git "$coord_dir" "coordination"
+}
+
+run_pi_job() {
+  local role item prompt pass_env
+  role="$1"
+  item="$2"
+  prompt="$3"
+  pass_env="$(merged_pass_env)"
+
+  if [ "$role" = "developer" ]; then
+    claim_developer_item "$item"
+  fi
+
+  ensure_clean_git "$project_root" "project"
+  ensure_clean_git "$coord_dir" "coordination"
+
+  note "launching $role job for $item"
+  (
+    cd "$project_root"
+    env \
+      "PI_ACTIVE_ROLE=$role" \
+      "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
+      "PI_COORD_ROLE=$role" \
+      "PI_COORD_AGENT_ID=$agent_id" \
+      "PI_COORD_DIR=$coord_dir" \
+      "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
+      "PI_BWRAP_PROJECT_ROOT=$project_root" \
+      "PI_BWRAP_PASS_ENV=$pass_env" \
+      "$pi_env_cmd" \
+      --raw -- \
+      -e "$role_manager_package" \
+      --tools "$tools" \
+      -p "$prompt"
+  )
+}
+
+project_root="$(resolve_project_root)"
+coord_dir="$(resolve_coord_dir "$project_root")"
+pi_env_cmd="$(resolve_pi_env_cmd)"
+role_manager_package="$(resolve_role_manager)"
+
+if [ -n "$lock_file_opt" ]; then
+  lock_file="$(resolve_relative_to_project "$lock_file_opt" "$project_root")"
+else
+  git_lock_file="$(git -C "$project_root" rev-parse --git-path pi-serial-roles.lock)"
+  case "$git_lock_file" in
+    /*) lock_file="$git_lock_file" ;;
+    *) lock_file="$(realpath -m "$project_root/$git_lock_file")" ;;
+  esac
+fi
+
+acquire_lock "$lock_file"
+
+if [ "${max_jobs:-}" = "0" ]; then
+  note "max job limit is 0; exiting"
+  exit 0
+fi
+
+jobs_run=0
+idle_polls=0
+
+while :; do
+  selection=""
+  ensure_clean_git "$project_root" "project"
+  pull_coordination
+
+  if selection="$(select_next_work)"; then
+    IFS=$'\t' read -r role item _path <<<"$selection"
+    idle_polls=0
+    prompt="$(role_prompt "$role" "$item")"
+
+    if [ "$dry_run" = "1" ]; then
+      print_dry_run "$role" "$item" "$prompt"
+      exit 0
+    fi
+
+    run_pi_job "$role" "$item" "$prompt" || die "$role job failed for $item"
+    ensure_clean_git "$project_root" "project"
+    ensure_clean_git "$coord_dir" "coordination"
+
+    jobs_run=$((jobs_run + 1))
+    if [ -n "$max_jobs" ] && [ "$jobs_run" -ge "$max_jobs" ]; then
+      note "max job limit reached ($jobs_run); exiting"
+      exit 0
+    fi
+  else
+    idle_polls=$((idle_polls + 1))
+    if [ "$dry_run" = "1" ]; then
+      printf 'selected role=none item=none\n'
+      exit 0
+    fi
+    if [ -n "$max_idle_polls" ] && [ "$idle_polls" -ge "$max_idle_polls" ]; then
+      note "idle poll limit reached ($idle_polls); exiting"
+      exit 0
+    fi
+    note "no eligible issue; sleeping ${sleep_seconds}s before polling again"
+    sleep "$sleep_seconds"
+  fi
+done

@@ -652,6 +652,7 @@
         "agent-coord-lint"
         "agent-coord-generate-requirements"
         "agent-coord-upgrade-rules"
+        "pi-serial-roles"
       ];
 
       mkAgentCoordSupport = pkgs:
@@ -660,19 +661,22 @@
           cp -R ${./pi-skill-templates} "$out/share/pi-env/pi-skill-templates"
           cp -R ${./scripts} "$out/share/pi-env/scripts"
           chmod +x "$out/share/pi-env/scripts"/agent-coord-* \
-            "$out/share/pi-env/scripts/bootstrap-coordination"
+            "$out/share/pi-env/scripts/bootstrap-coordination" \
+            "$out/share/pi-env/scripts/pi-serial-roles"
         '';
 
       mkAgentCoordCommand = pkgs: name:
         let
           runtimePath = pkgs.lib.makeBinPath (mkRuntime pkgs);
           support = mkAgentCoordSupport pkgs;
+          roleManagerPackage = mkRoleManagerPackage pkgs;
         in
         pkgs.writeShellScriptBin name ''
           set -euo pipefail
           export PATH="${runtimePath}:''${PATH:-}"
           export PI_ENV_COORD_TEMPLATE_DIR="${support}/share/pi-env/pi-skill-templates/agent-coordination"
           export PI_ENV_COORD_LIB="${support}/share/pi-env/scripts/agent-coord-lib.sh"
+          export PI_ENV_ROLE_MANAGER_PACKAGE="''${PI_ENV_ROLE_MANAGER_PACKAGE:-${roleManagerPackage}}"
           exec "${support}/share/pi-env/scripts/${name}" "$@"
         '';
 
