@@ -71,6 +71,8 @@ const previousEnv = {
   PI_BWRAP_COMMON_AGENT_DIR: process.env.PI_BWRAP_COMMON_AGENT_DIR,
   PI_COORD_DIR: process.env.PI_COORD_DIR,
   PI_COORD_ROLE: process.env.PI_COORD_ROLE,
+  PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE:
+    process.env.PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE,
 };
 process.env.PI_CODING_AGENT_DIR = join(tmp, "agent");
 delete process.env.PI_BWRAP_COMMON_AGENT_DIR;
@@ -113,6 +115,7 @@ function createHarness(initialEntries = [], options = {}) {
   const statuses = [];
   const widgets = [];
   const titles = [];
+  const shutdownCalls = [];
   const hasUI = options.hasUI ?? true;
   const includeRoleUiMethods = options.includeRoleUiMethods ?? true;
   const state = {
@@ -227,6 +230,9 @@ function createHarness(initialEntries = [], options = {}) {
       return true;
     },
     async waitForIdle() {},
+    shutdown() {
+      shutdownCalls.push({ at: new Date().toISOString() });
+    },
     async newSession(options = {}) {
       newSessionRequests.push(options);
       if (state.newSessionCancelled) {
@@ -332,6 +338,7 @@ function createHarness(initialEntries = [], options = {}) {
     statuses,
     widgets,
     titles,
+    shutdownCalls,
     state,
     ctx,
     emit,
@@ -563,6 +570,27 @@ try {
   assert.equal(completedCycleEntry.data.roleCycle.summary, "Finished cycle UI checks.");
   assert.equal(cycle.widgets.at(-1).key, "role-manager-cycle");
   assert.equal(cycle.widgets.at(-1).content, undefined);
+  assert.deepEqual(cycle.shutdownCalls, []);
+
+  const autoShutdown = createHarness([]);
+  process.env.PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE = "1";
+  const autoShutdownResult = await autoShutdown.tools.get("role_cycle_done").execute(
+    "call-auto-shutdown",
+    roleCycleDoneTool.prepareArguments({
+      summary: "Finished watched auto-exit cycle.",
+      filesInspected: [],
+      filesChanged: [],
+      testsChecksRun: [],
+      coordinationUpdates: [],
+      recommendedNextRole: "none",
+    }),
+    undefined,
+    undefined,
+    autoShutdown.ctx,
+  );
+  assert.equal(autoShutdownResult.terminate, true);
+  assert.equal(autoShutdown.shutdownCalls.length, 1);
+  process.env.PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE = "0";
 
   const nonInteractive = createHarness([], {
     hasUI: false,

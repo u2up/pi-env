@@ -997,6 +997,7 @@ pi-serial-roles --dry-run
 pi-serial-roles --ui none --once
 pi-serial-roles --ui json --once
 pi-serial-roles --ui interactive --once
+pi-serial-roles --ui watched-auto-exit --once
 ```
 
 Each poll holds a local lock under the project's Git metadata directory,
@@ -1028,11 +1029,17 @@ and error events.
 Use `--ui interactive` for watched/manual cycles. It launches the normal Pi TUI
 with the same selected item prompt, active role environment, coordination mount,
 and tool allowlist, but without `--mode json`, `--print`, or `-p`. The
-orchestrator waits for that interactive Pi process to exit, then performs the
-same clean-tree and failure checks before polling or launching another item.
-Coordination state and Git history are the memory shared between jobs; a fresh
-conversation avoids stale context from a previous issue influencing item
-selection, review, verification, or lifecycle helper use.
+orchestrator waits for that interactive Pi process to exit manually, then
+performs the same clean-tree and failure checks before polling or launching
+another item.
+
+Use `--ui watched-auto-exit` for watched bounded cycles. It uses the same TUI
+command shape as `interactive`, but passes a role-manager extension flag. After
+`role_cycle_done` records and renders its final result, the extension calls Pi's
+graceful `ctx.shutdown()` hook so the TUI exits automatically before the
+orchestrator continues. Coordination state and Git history are the memory shared
+between jobs; a fresh conversation avoids stale context from a previous issue
+influencing item selection, review, verification, or lifecycle helper use.
 
 The command fails closed. Dirty project or coordination trees stop the loop; it
 will not reset, discard, or stash source changes for you. A failed

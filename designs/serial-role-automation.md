@@ -53,10 +53,11 @@ The orchestrator, not Pi, owns the idle polling loop. Pi is invoked only when
 there is a concrete item to process. Each issue-related job is a new Pi session
 by invoking `pi-env --raw -- ...` without `--continue`. The default `--ui none`
 mode runs a non-interactive `--print` invocation for simple prompt/response
-output. The user can choose `--ui json` for headless JSONL automation or
-`--ui interactive` for a watched normal Pi TUI; every mode still runs exactly
-one selected item and the orchestrator waits for Pi to exit before polling
-again.
+output. The user can choose `--ui json` for headless JSONL automation,
+`--ui interactive` for a watched normal Pi TUI that stays open for manual
+inspection, or `--ui watched-auto-exit` for the same watched TUI with graceful
+shutdown requested after `role_cycle_done`; every mode still runs exactly one
+selected item and the orchestrator waits for Pi to exit before polling again.
 
 ## Role priority
 
@@ -167,6 +168,13 @@ pi-env --raw -- \
   --tools read,bash,edit,write,grep,find,ls,role_cycle_done \
   "$prompt"
 ```
+
+For watched auto-exit work, `pi-serial-roles` uses that same TUI command shape
+and additionally passes `PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1` through the
+sandbox. The role-manager extension checks that flag in `role_cycle_done` and
+calls Pi's graceful `ctx.shutdown()` API after recording the final structured
+result. Pi defers interactive shutdown until the agent becomes idle, which
+preserves normal tool-result rendering/logging before the process exits.
 
 ## Failure behavior
 

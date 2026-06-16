@@ -24,6 +24,7 @@ const ROLE_UI_STATUS_KEY = "role-manager";
 const ROLE_CYCLE_WIDGET_KEY = "role-manager-cycle";
 const ROLE_CYCLE_SECTION_TITLE = "One-cycle workflow";
 const PI_COORD_ROLE_ENV = "PI_COORD_ROLE";
+const ROLE_CYCLE_AUTO_SHUTDOWN_ENV = "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE";
 
 const ROLE_CYCLE_DONE_PARAMETERS = {
   type: "object",
@@ -581,6 +582,23 @@ function uniqueToolNames(tools: string[]) {
   return result;
 }
 
+function envFlagEnabled(name: string) {
+  const value = process.env[name]?.trim();
+  return Boolean(value && !/^(0|false|no|off)$/i.test(value));
+}
+
+function requestAutoShutdownAfterRoleCycle(ctx: ExtensionContext | undefined) {
+  if (!ctx || !envFlagEnabled(ROLE_CYCLE_AUTO_SHUTDOWN_ENV)) return;
+
+  try {
+    ctx.shutdown();
+  } catch (error) {
+    console.warn(
+      `role-manager: failed to request automatic shutdown after ${ROLE_CYCLE_DONE_TOOL_NAME}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 function sameModel(left: unknown, right: unknown) {
   const leftModel = left as { provider?: unknown; id?: unknown } | undefined;
   const rightModel = right as { provider?: unknown; id?: unknown } | undefined;
@@ -621,6 +639,7 @@ export default function roleManager(pi: ExtensionAPI) {
       };
 
       completeRoleCycle(details, ctx);
+      requestAutoShutdownAfterRoleCycle(ctx);
 
       return {
         content: [

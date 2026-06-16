@@ -35,6 +35,8 @@ capture="${SERIAL_FAKE_PI_CAPTURE:?}"
     "${PI_ROLE_MANAGER_ACTIVE_ROLE:-}"
   printf 'env PI_COORD_ROLE=%s\n' "${PI_COORD_ROLE:-}"
   printf 'env PI_COORD_AGENT_ID=%s\n' "${PI_COORD_AGENT_ID:-}"
+  printf 'env PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=%s\n' \
+    "${PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE:-}"
   printf 'env PI_BWRAP_PASS_ENV=%s\n' "${PI_BWRAP_PASS_ENV:-}"
   printf 'env PI_BWRAP_EXTRA_PATH=%s\n' "${PI_BWRAP_EXTRA_PATH:-}"
   for arg in "$@"; do
@@ -203,7 +205,7 @@ make_fake_pi_env "$FAKE_PI_ENV"
 
 help_out="$tmp/help.out"
 "$serial_script" --help >"$help_out"
-test_grep '--ui none|json|interactive' "$help_out"
+test_grep '--ui none|json|interactive|watched-auto-exit' "$help_out"
 test_grep 'default: none' "$help_out"
 
 invalid_out="$tmp/invalid-ui.out"
@@ -214,7 +216,7 @@ set -e
 if [ "$invalid_status" -eq 0 ]; then
   test_fail 'invalid --ui unexpectedly succeeded'
 fi
-test_grep '--ui must be none, json, or interactive' "$invalid_out"
+test_grep '--ui must be none, json, interactive, or watched-auto-exit' "$invalid_out"
 
 # Tester work is preferred over reviewer and developer queues, and the dry-run
 # command shows role activation variables that pi-bwrap must pass through.
@@ -267,9 +269,21 @@ test_grep 'would-run: env' "$interactive_out"
 test_grep 'PI_ACTIVE_ROLE=tester' "$interactive_out"
 test_grep '--tools .*role_cycle_done' "$interactive_out"
 test_grep 'Role.*cycle.*kickoff' "$interactive_out"
-test_grep 'watched.*interactive.*session' "$interactive_out"
+test_grep 'watched/manual.*interactive.*session' "$interactive_out"
+assert_no_grep 'PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1' "$interactive_out"
 assert_no_grep '--mode json' "$interactive_out"
 assert_no_grep ' -p ' "$interactive_out"
+
+watched_auto_out="$SCENARIO_DIR/watched-auto.out"
+run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/watched-auto.lock" \
+  --dry-run --once --ui watched-auto-exit >"$watched_auto_out" 2>&1
+test_grep '^selected ui=watched-auto-exit$' "$watched_auto_out"
+test_grep 'PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1' "$watched_auto_out"
+test_grep 'PI_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
+  "$watched_auto_out"
+test_grep 'watched auto-exit.*interactive.*session' "$watched_auto_out"
+assert_no_grep '--mode json' "$watched_auto_out"
+assert_no_grep ' -p ' "$watched_auto_out"
 
 # Reviewer work is selected ahead of open developer work when no tester issue is
 # waiting.
@@ -396,8 +410,45 @@ assert_no_grep '^arg:json$' "$interactive_capture"
 assert_no_grep '^arg:--print$' "$interactive_capture"
 assert_no_grep '^arg:-p$' "$interactive_capture"
 test_grep '^arg:## Role cycle kickoff$' "$interactive_capture"
-test_grep 'watched serial job starts a fresh Pi interactive session' \
+test_grep 'watched/manual serial job starts a fresh Pi interactive session' \
   "$interactive_capture"
+assert_no_grep '^env PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1$' \
+  "$interactive_capture"
+assert_clean_git "$SCENARIO_PROJECT" "project"
+assert_clean_git "$SCENARIO_COORD" "coordination"
+
+# Watched auto-exit mode uses the same TUI invocation as interactive mode, but
+# passes an extension flag that makes role_cycle_done request graceful shutdown.
+new_scenario developer-watched-auto-exit
+add_issue "$SCENARIO_COORD" SERIAL-DEVELOPER-WATCHED-AUTO open false false \
+  "Developer watched auto-exit candidate"
+commit_coord "$SCENARIO_COORD"
+watched_auto_capture="$SCENARIO_DIR/fake-pi-watched-auto.capture"
+SERIAL_FAKE_PI_CAPTURE="$watched_auto_capture" \
+SERIAL_EXPECT_CLAIMED_ITEM=SERIAL-DEVELOPER-WATCHED-AUTO \
+  run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+    --once --ui watched-auto-exit >"$SCENARIO_DIR/developer-watched-auto.out" 2>&1
+test_file_exists "$watched_auto_capture"
+test_grep '^env PI_ACTIVE_ROLE=developer$' "$watched_auto_capture"
+test_grep '^env PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1$' \
+  "$watched_auto_capture"
+test_grep '^env PI_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
+  "$watched_auto_capture"
+test_grep 'ROLE_CYCLE_AUTO_SHUTDOWN_ENV = "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE"' \
+  "$repo_root/role-manager/extensions/role-manager.ts"
+test_grep 'requestAutoShutdownAfterRoleCycle(ctx)' \
+  "$repo_root/role-manager/extensions/role-manager.ts"
+test_grep 'ctx.shutdown()' "$repo_root/role-manager/extensions/role-manager.ts"
+test_grep '^arg:--raw$' "$watched_auto_capture"
+test_grep '^arg:--tools$' "$watched_auto_capture"
+test_grep '^arg:read,bash,edit,write,grep,find,ls,role_cycle_done$' \
+  "$watched_auto_capture"
+assert_no_grep '^arg:--mode$' "$watched_auto_capture"
+assert_no_grep '^arg:json$' "$watched_auto_capture"
+assert_no_grep '^arg:--print$' "$watched_auto_capture"
+assert_no_grep '^arg:-p$' "$watched_auto_capture"
+test_grep 'watched auto-exit serial job starts a fresh Pi interactive session' \
+  "$watched_auto_capture"
 assert_clean_git "$SCENARIO_PROJECT" "project"
 assert_clean_git "$SCENARIO_COORD" "coordination"
 
