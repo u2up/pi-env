@@ -34,8 +34,9 @@ Options:
   --pi-env COMMAND        pi-env launcher; default: pi-env on PATH or this checkout
   --role-manager PATH     Role-manager package/path for raw Pi jobs; default:
                           PI_ENV_ROLE_MANAGER_PACKAGE or this checkout's role-manager
-  --tools LIST            Tool allowlist for Pi; default:
-                          read,bash,edit,write,grep,find,ls
+  --tools LIST            Tool allowlist for Pi; role_cycle_done is appended
+                          when absent. Default:
+                          read,bash,edit,write,grep,find,ls,role_cycle_done
   -h, --help              Show this help
 
 Work priority:
@@ -70,6 +71,7 @@ role_manager_opt=""
 coord_helper_pi_dir=""
 coord_helper_extra_path=""
 tools="${PI_BWRAP_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
+role_cycle_done_tool="role_cycle_done"
 
 require_value() {
   [ -n "${2:-}" ] || die "$1 requires a value"
@@ -479,6 +481,16 @@ role_prompt() {
   esac
 }
 
+tools_with_role_cycle_done() {
+  local value
+  value="$1"
+  case ",$value," in
+    *,"$role_cycle_done_tool",*) printf '%s\n' "$value" ;;
+    ,) printf '%s\n' "$role_cycle_done_tool" ;;
+    *) printf '%s,%s\n' "$value" "$role_cycle_done_tool" ;;
+  esac
+}
+
 merged_pass_env() {
   local value
   value="${PI_BWRAP_PASS_ENV:-}"
@@ -513,12 +525,13 @@ shell_quote_command() {
 }
 
 print_dry_run() {
-  local role item prompt pass_env extra_path
+  local role item prompt pass_env extra_path pi_tools
   role="$1"
   item="$2"
   prompt="$3"
   pass_env="$(merged_pass_env)"
   extra_path="$(merged_extra_path)"
+  pi_tools="$(tools_with_role_cycle_done "$tools")"
 
   printf 'selected role=%s item=%s\n' "$role" "$item"
   if [ "$role" = "developer" ]; then
@@ -545,7 +558,7 @@ print_dry_run() {
     "$pi_env_cmd" \
     --raw -- \
     -e "$role_manager_pi_arg" \
-    --tools "$tools" \
+    --tools "$pi_tools" \
     -p "$prompt"
 }
 
@@ -562,12 +575,13 @@ claim_developer_item() {
 }
 
 run_pi_job() {
-  local role item prompt pass_env extra_path
+  local role item prompt pass_env extra_path pi_tools
   role="$1"
   item="$2"
   prompt="$3"
   pass_env="$(merged_pass_env)"
   extra_path="$(merged_extra_path)"
+  pi_tools="$(tools_with_role_cycle_done "$tools")"
 
   if [ "$role" = "developer" ]; then
     claim_developer_item "$item"
@@ -592,7 +606,7 @@ run_pi_job() {
       "$pi_env_cmd" \
       --raw -- \
       -e "$role_manager_pi_arg" \
-      --tools "$tools" \
+      --tools "$pi_tools" \
       -p "$prompt"
   )
 }

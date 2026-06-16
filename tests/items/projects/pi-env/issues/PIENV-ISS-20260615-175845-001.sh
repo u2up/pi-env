@@ -220,9 +220,15 @@ test_grep 'PI_ACTIVE_ROLE=tester' "$priority_out"
 test_grep 'PI_ROLE_MANAGER_ACTIVE_ROLE=tester' "$priority_out"
 test_grep 'PI_BWRAP_PASS_ENV=.*PI_ACTIVE_ROLE.*PI_ROLE_MANAGER_ACTIVE_ROLE' \
   "$priority_out"
+test_grep '--tools .*role_cycle_done' "$priority_out"
 test_grep '/role-cycle.*tester.*Verify.*SERIAL-TESTER-001.*only' \
   "$priority_out"
 assert_no_grep '--continue' "$priority_out"
+
+custom_tools_out="$SCENARIO_DIR/custom-tools.out"
+run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/custom-tools.lock" \
+  --dry-run --once --tools read,grep >"$custom_tools_out" 2>&1
+test_grep '--tools read.*,grep.*,role_cycle_done' "$custom_tools_out"
 
 # Reviewer work is selected ahead of open developer work when no tester issue is
 # waiting.
@@ -258,6 +264,9 @@ test_grep '^env PI_ROLE_MANAGER_ACTIVE_ROLE=developer$' "$dev_capture"
 test_grep '^env PI_COORD_ROLE=developer$' "$dev_capture"
 test_grep '^arg:--raw$' "$dev_capture"
 test_grep '^arg:--$' "$dev_capture"
+test_grep '^arg:--tools$' "$dev_capture"
+test_grep '^arg:read,bash,edit,write,grep,find,ls,role_cycle_done$' \
+  "$dev_capture"
 test_grep '^arg:-p$' "$dev_capture"
 test_grep '^arg:/role-cycle developer Implement coordination issue SERIAL-DEVELOPER-CLAIM only\.' \
   "$dev_capture"
