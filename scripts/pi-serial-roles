@@ -458,27 +458,65 @@ select_next_work() {
 }
 
 role_prompt() {
-  local role item claim_helper done_helper review_helper verify_helper
+  local role item goal helper_text claim_helper done_helper review_helper verify_helper
   role="$1"
   item="$2"
   case "$role" in
     developer)
       claim_helper="$(coord_helper_prompt_cmd agent-coord-claim)"
       done_helper="$(coord_helper_prompt_cmd agent-coord-done)"
-      printf '/role-cycle developer Implement coordination issue %s only. Do not select other work. The serial orchestrator selected this item and claims it before launch; if coordination shows it unclaimed, run %s for this item only before code changes. Commit project changes, mark the item done with %s and structured implementation refs, then stop.\n' "$item" "$claim_helper" "$done_helper"
+      goal="Implement coordination issue $item only."
+      helper_text="The serial orchestrator selected this item and claims it before launch; if coordination shows it unclaimed, run $claim_helper for this item only before code changes. Commit project changes, mark the item done with $done_helper and structured implementation refs, then stop."
       ;;
     reviewer)
       review_helper="$(coord_helper_prompt_cmd agent-coord-review)"
-      printf '/role-cycle reviewer Review coordination issue %s only. Do not select other work. Review the committed project state for this done item, then run %s --pass or %s --fail for this item and stop.\n' "$item" "$review_helper" "$review_helper"
+      goal="Review coordination issue $item only."
+      helper_text="Review the committed project state for this done item, then run $review_helper --pass or $review_helper --fail for this item and stop."
       ;;
     tester)
       verify_helper="$(coord_helper_prompt_cmd agent-coord-verify)"
-      printf '/role-cycle tester Verify coordination issue %s only. Do not select other work. Run item-appropriate checks for this reviewed done item, then run %s --pass or %s --fail for this item and stop without closing other work.\n' "$item" "$verify_helper" "$verify_helper"
+      goal="Verify coordination issue $item only."
+      helper_text="Run item-appropriate checks for this reviewed done item, then run $verify_helper --pass or $verify_helper --fail for this item and stop without closing other work."
       ;;
     *)
       die "unknown role: $role"
       ;;
   esac
+
+  cat <<EOF_PROMPT
+## Role cycle kickoff
+
+Active role: $role
+Goal: $goal
+
+Run exactly one bounded cycle for the active role.
+
+Serial coordination scope:
+
+- Selected role: $role
+- Selected item ID: $item
+- Work only on this one coordination item; do not select other work.
+- $helper_text
+
+Operating constraints:
+
+- Follow the active role instructions and its one-cycle workflow.
+- Work only on the stated goal; do not start unrelated tasks.
+- Project changes are allowed only when directly needed for the goal and
+  permitted by the current repository instructions.
+- Coordination changes are allowed only when directly needed for the goal and
+  permitted by the current coordination rules.
+- Use only context available in this session. This headless serial job starts a
+  fresh Pi print-mode session and does not continue a prior conversation.
+- Finish by calling \`role_cycle_done\` as the final action of the cycle.
+  Treat that structured tool report as the role's expected final report.
+- Populate every \`role_cycle_done\` field: \`summary\`, \`filesInspected\`,
+  \`filesChanged\`, \`testsChecksRun\`, \`coordinationUpdates\`, and
+  \`recommendedNextRole\`. Use empty arrays for list fields with no entries,
+  and use \`none\` when there is no recommended next role.
+- After calling \`role_cycle_done\`, stop. Do not emit another assistant
+  response and do not begin a second role cycle.
+EOF_PROMPT
 }
 
 tools_with_role_cycle_done() {

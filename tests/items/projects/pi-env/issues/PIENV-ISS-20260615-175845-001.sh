@@ -221,8 +221,10 @@ test_grep 'PI_ROLE_MANAGER_ACTIVE_ROLE=tester' "$priority_out"
 test_grep 'PI_BWRAP_PASS_ENV=.*PI_ACTIVE_ROLE.*PI_ROLE_MANAGER_ACTIVE_ROLE' \
   "$priority_out"
 test_grep '--tools .*role_cycle_done' "$priority_out"
-test_grep '/role-cycle.*tester.*Verify.*SERIAL-TESTER-001.*only' \
-  "$priority_out"
+test_grep 'Role.*cycle.*kickoff' "$priority_out"
+test_grep 'Active.*role:.*tester' "$priority_out"
+test_grep 'Selected.*item.*ID:.*SERIAL-TESTER-001' "$priority_out"
+assert_no_grep '/role-cycle' "$priority_out"
 assert_no_grep '--continue' "$priority_out"
 
 custom_tools_out="$SCENARIO_DIR/custom-tools.out"
@@ -242,8 +244,9 @@ reviewer_out="$SCENARIO_DIR/reviewer.out"
 run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
   --dry-run --once >"$reviewer_out" 2>&1
 test_grep '^selected role=reviewer item=SERIAL-REVIEWER-002$' "$reviewer_out"
-test_grep '/role-cycle.*reviewer.*Review.*SERIAL-REVIEWER-002.*only' \
-  "$reviewer_out"
+test_grep 'Active.*role:.*reviewer' "$reviewer_out"
+test_grep 'Selected.*item.*ID:.*SERIAL-REVIEWER-002' "$reviewer_out"
+assert_no_grep '/role-cycle' "$reviewer_out"
 assert_no_grep '--continue' "$reviewer_out"
 
 # A developer job claims the selected open issue before launching Pi, starts a
@@ -268,11 +271,13 @@ test_grep '^arg:--tools$' "$dev_capture"
 test_grep '^arg:read,bash,edit,write,grep,find,ls,role_cycle_done$' \
   "$dev_capture"
 test_grep '^arg:-p$' "$dev_capture"
-test_grep '^arg:/role-cycle developer Implement coordination issue SERIAL-DEVELOPER-CLAIM only\.' \
+test_grep '^arg:## Role cycle kickoff$' "$dev_capture"
+test_grep '^Active role: developer$' "$dev_capture"
+test_grep '^- Selected item ID: SERIAL-DEVELOPER-CLAIM$' "$dev_capture"
+test_grep 'Finish by calling `role_cycle_done` as the final action' \
   "$dev_capture"
+assert_no_grep '^arg:/role-cycle' "$dev_capture"
 assert_no_grep '^arg:--continue$' "$dev_capture"
-item_mentions="$(grep -o 'SERIAL-DEVELOPER-CLAIM' "$dev_capture" | wc -l | tr -d ' ')"
-test_eq "1" "$item_mentions" "developer Pi prompt names one selected item"
 test_grep '^status: claimed$' \
   "$SCENARIO_COORD/projects/pi-env/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
 test_grep '^owner: serial-agent$' \
