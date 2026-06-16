@@ -133,11 +133,13 @@ PI_BWRAP_COORDINATION_DIR="$coordination_dir" \
 pi-env --raw -- \
   -e "$PI_ENV_ROLE_MANAGER_PACKAGE" \
   --tools read,bash,edit,write,grep,find,ls \
-  -p "$prompt"
+  --mode json "$prompt"
 ```
 
-The important properties are: no `--continue`, one item in the prompt, active
-role context, and a mounted/writable coordination checkout.
+The important properties are: JSONL event-stream output, no `--continue`, one
+item in the prompt, active role context, and a mounted/writable coordination
+checkout. The final lifecycle report can be parsed from the `role_cycle_done`
+`tool_execution_end` event.
 
 ## Failure behavior
 

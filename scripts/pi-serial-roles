@@ -507,7 +507,7 @@ Operating constraints:
 - Coordination changes are allowed only when directly needed for the goal and
   permitted by the current coordination rules.
 - Use only context available in this session. This headless serial job starts a
-  fresh Pi print-mode session and does not continue a prior conversation.
+  fresh Pi JSON event stream session and does not continue a prior conversation.
 - Finish by calling \`role_cycle_done\` as the final action of the cycle.
   Treat that structured tool report as the role's expected final report.
 - Populate every \`role_cycle_done\` field: \`summary\`, \`filesInspected\`,
@@ -597,7 +597,7 @@ print_dry_run() {
     --raw -- \
     -e "$role_manager_pi_arg" \
     --tools "$pi_tools" \
-    -p "$prompt"
+    --mode json "$prompt"
 }
 
 claim_developer_item() {
@@ -645,7 +645,7 @@ run_pi_job() {
       --raw -- \
       -e "$role_manager_pi_arg" \
       --tools "$pi_tools" \
-      -p "$prompt"
+      --mode json "$prompt"
   )
 }
 

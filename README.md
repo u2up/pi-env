@@ -1010,10 +1010,14 @@ Reviewer and tester prompts name only the selected done item and instruct the
 role to use `agent-coord-review` or `agent-coord-verify`. If no issue is
 eligible, the orchestrator sleeps and polls again without invoking Pi.
 
-Every issue job starts a fresh raw Pi session with `pi-env --raw --` and does
-not pass `--continue`. Coordination state and Git history are the memory shared
-between jobs; a fresh conversation avoids stale context from a previous issue
-influencing item selection, review, verification, or lifecycle helper use.
+Every issue job starts a fresh raw Pi session with `pi-env --raw --` and
+`--mode json`, and does not pass `--continue`. The default serial job output is
+JSONL. The final `role_cycle_done` details are available in the JSON event
+stream from the corresponding `tool_execution_end` event, alongside other
+structured tool, usage, compaction, and error events. Coordination state and
+Git history are the memory shared between jobs; a fresh conversation avoids
+stale context from a previous issue influencing item selection, review,
+verification, or lifecycle helper use.
 
 The command fails closed. Dirty project or coordination trees stop the loop; it
 will not reset, discard, or stash source changes for you. A failed
