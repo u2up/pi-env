@@ -662,9 +662,12 @@ print_dry_run() {
       local auto_shutdown_env=()
       if [ "$ui_mode" = "watched-auto-exit" ]; then
         auto_shutdown_env=("PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1")
+      else
+        auto_shutdown_env=(-u "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE")
       fi
       shell_quote_command \
         env \
+        "${auto_shutdown_env[@]}" \
         "PI_ACTIVE_ROLE=$role" \
         "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
         "PI_COORD_ROLE=$role" \
@@ -674,7 +677,6 @@ print_dry_run() {
         "PI_BWRAP_PROJECT_ROOT=$project_root" \
         "PI_BWRAP_PASS_ENV=$pass_env" \
         "PI_BWRAP_EXTRA_PATH=$extra_path" \
-        "${auto_shutdown_env[@]}" \
         "$pi_env_cmd" \
         --raw -- \
         -e "$role_manager_pi_arg" \
@@ -757,8 +759,11 @@ run_pi_job() {
         local auto_shutdown_env=()
         if [ "$ui_mode" = "watched-auto-exit" ]; then
           auto_shutdown_env=("PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1")
+        else
+          auto_shutdown_env=(-u "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE")
         fi
         env \
+          "${auto_shutdown_env[@]}" \
           "PI_ACTIVE_ROLE=$role" \
           "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
           "PI_COORD_ROLE=$role" \
@@ -768,7 +773,6 @@ run_pi_job() {
           "PI_BWRAP_PROJECT_ROOT=$project_root" \
           "PI_BWRAP_PASS_ENV=$pass_env" \
           "PI_BWRAP_EXTRA_PATH=$extra_path" \
-          "${auto_shutdown_env[@]}" \
           "$pi_env_cmd" \
           --raw -- \
           -e "$role_manager_pi_arg" \

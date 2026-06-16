@@ -71,6 +71,8 @@ const previousEnv = {
   PI_BWRAP_COMMON_AGENT_DIR: process.env.PI_BWRAP_COMMON_AGENT_DIR,
   PI_COORD_DIR: process.env.PI_COORD_DIR,
   PI_COORD_ROLE: process.env.PI_COORD_ROLE,
+  PI_ACTIVE_ROLE: process.env.PI_ACTIVE_ROLE,
+  PI_ROLE_MANAGER_ACTIVE_ROLE: process.env.PI_ROLE_MANAGER_ACTIVE_ROLE,
   PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE:
     process.env.PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE,
 };
@@ -78,6 +80,9 @@ process.env.PI_CODING_AGENT_DIR = join(tmp, "agent");
 delete process.env.PI_BWRAP_COMMON_AGENT_DIR;
 process.env.PI_COORD_DIR = join(tmp, "coordination");
 process.env.PI_COORD_ROLE = "ambient-role";
+delete process.env.PI_ACTIVE_ROLE;
+delete process.env.PI_ROLE_MANAGER_ACTIVE_ROLE;
+delete process.env.PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE;
 
 const models = [
   { provider: "anthropic", id: "original", name: "Original", api: "anthropic-messages", baseUrl: "", reasoning: true, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000, maxTokens: 100 },
