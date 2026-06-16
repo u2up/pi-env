@@ -994,6 +994,8 @@ pi-serial-roles --once
 pi-serial-roles --max-jobs 3
 pi-serial-roles --max-idle-polls 1 --sleep 5
 pi-serial-roles --dry-run
+pi-serial-roles --ui none --once
+pi-serial-roles --ui json --once
 pi-serial-roles --ui interactive --once
 ```
 
@@ -1012,20 +1014,25 @@ role to use `agent-coord-review` or `agent-coord-verify`. If no issue is
 eligible, the orchestrator sleeps and polls again without invoking Pi.
 
 Every issue job starts a fresh raw Pi session with `pi-env --raw --` and does
-not pass `--continue`. The default `--ui json` mode adds `--mode json` for
-headless automation and JSONL output. Use it for unattended loops, CI-like
-supervision, or when you want to parse the final `role_cycle_done` details from
-the corresponding `tool_execution_end` event alongside other structured tool,
-usage, compaction, and error events.
+not pass `--continue`. The default `--ui none` mode adds `--print` for a
+non-interactive prompt/response run that prints the generated role report and
+exits. Use it for day-to-day serial orchestration when you want simple process
+output without a TUI or JSON event stream.
+
+Use `--ui json` for structured automation. It adds `--mode json` for JSONL
+output, which is useful for unattended loops, CI-like supervision, or when you
+want to parse the final `role_cycle_done` details from the corresponding
+`tool_execution_end` event alongside other structured tool, usage, compaction,
+and error events.
 
 Use `--ui interactive` for watched/manual cycles. It launches the normal Pi TUI
 with the same selected item prompt, active role environment, coordination mount,
-and tool allowlist, but without `--mode json` or `-p`. The orchestrator waits
-for that interactive Pi process to exit, then performs the same clean-tree and
-failure checks before polling or launching another item. Coordination state and
-Git history are the memory shared between jobs; a fresh conversation avoids
-stale context from a previous issue influencing item selection, review,
-verification, or lifecycle helper use.
+and tool allowlist, but without `--mode json`, `--print`, or `-p`. The
+orchestrator waits for that interactive Pi process to exit, then performs the
+same clean-tree and failure checks before polling or launching another item.
+Coordination state and Git history are the memory shared between jobs; a fresh
+conversation avoids stale context from a previous issue influencing item
+selection, review, verification, or lifecycle helper use.
 
 The command fails closed. Dirty project or coordination trees stop the loop; it
 will not reset, discard, or stash source changes for you. A failed

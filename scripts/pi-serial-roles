@@ -29,9 +29,11 @@ Options:
                           --max-idle-polls 1 when those are unset
   --dry-run               Pull and select, then print the claim/Pi command that
                           would run without claiming work or invoking Pi
-  --ui json|interactive   Pi job UI/output mode; default: json for headless
-                          automation. interactive launches the normal TUI and
-                          waits for it to exit before polling again
+  --ui none|json|interactive
+                          Pi job UI/output mode; default: none. none runs a
+                          non-interactive print job, json emits a structured
+                          event stream, and interactive launches the normal TUI
+                          and waits for it to exit before polling again
   --lock-file PATH        Local lock path; default: pi-serial-roles.lock
                           under the project's Git metadata directory
   --pi-env COMMAND        pi-env launcher; default: pi-env on PATH or this checkout
@@ -68,7 +70,7 @@ max_jobs=""
 max_idle_polls=""
 once=0
 dry_run=0
-ui_mode="json"
+ui_mode="none"
 lock_file_opt=""
 pi_env_cmd_opt=""
 role_manager_opt=""
@@ -136,8 +138,8 @@ while [ "$#" -gt 0 ]; do
     --ui)
       require_value "$1" "${2:-}"
       case "$2" in
-        json|interactive) ui_mode="$2" ;;
-        *) die "--ui must be json or interactive" ;;
+        none|json|interactive) ui_mode="$2" ;;
+        *) die "--ui must be none, json, or interactive" ;;
       esac
       shift 2
       ;;
@@ -497,6 +499,9 @@ role_prompt() {
   esac
 
   case "$ui" in
+    none)
+      session_text="This print-mode serial job starts a fresh non-interactive Pi session"
+      ;;
     json)
       session_text="This headless serial job starts a fresh Pi JSON event stream session"
       ;;
@@ -609,6 +614,24 @@ print_dry_run() {
   fi
   printf 'would-run: '
   case "$ui_mode" in
+    none)
+      shell_quote_command \
+        env \
+        "PI_ACTIVE_ROLE=$role" \
+        "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
+        "PI_COORD_ROLE=$role" \
+        "PI_COORD_AGENT_ID=$agent_id" \
+        "PI_COORD_DIR=$coord_dir" \
+        "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
+        "PI_BWRAP_PROJECT_ROOT=$project_root" \
+        "PI_BWRAP_PASS_ENV=$pass_env" \
+        "PI_BWRAP_EXTRA_PATH=$extra_path" \
+        "$pi_env_cmd" \
+        --raw -- \
+        -e "$role_manager_pi_arg" \
+        --tools "$pi_tools" \
+        --print "$prompt"
+      ;;
     json)
       shell_quote_command \
         env \
@@ -683,6 +706,23 @@ run_pi_job() {
   (
     cd "$project_root"
     case "$ui_mode" in
+      none)
+        env \
+          "PI_ACTIVE_ROLE=$role" \
+          "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
+          "PI_COORD_ROLE=$role" \
+          "PI_COORD_AGENT_ID=$agent_id" \
+          "PI_COORD_DIR=$coord_dir" \
+          "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
+          "PI_BWRAP_PROJECT_ROOT=$project_root" \
+          "PI_BWRAP_PASS_ENV=$pass_env" \
+          "PI_BWRAP_EXTRA_PATH=$extra_path" \
+          "$pi_env_cmd" \
+          --raw -- \
+          -e "$role_manager_pi_arg" \
+          --tools "$pi_tools" \
+          --print "$prompt"
+        ;;
       json)
         env \
           "PI_ACTIVE_ROLE=$role" \

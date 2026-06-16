@@ -51,10 +51,12 @@ serial orchestrator
 
 The orchestrator, not Pi, owns the idle polling loop. Pi is invoked only when
 there is a concrete item to process. Each issue-related job is a new Pi session
-by invoking `pi-env --raw -- ...` without `--continue`. The user can choose
-`--ui json` for headless JSONL automation or `--ui interactive` for a watched
-normal Pi TUI; either mode still runs exactly one selected item and the
-orchestrator waits for Pi to exit before polling again.
+by invoking `pi-env --raw -- ...` without `--continue`. The default `--ui none`
+mode runs a non-interactive `--print` invocation for simple prompt/response
+output. The user can choose `--ui json` for headless JSONL automation or
+`--ui interactive` for a watched normal Pi TUI; every mode still runs exactly
+one selected item and the orchestrator waits for Pi to exit before polling
+again.
 
 ## Role priority
 
@@ -135,19 +137,24 @@ PI_COORD_AGENT_ID="$agent_id" \
 PI_BWRAP_COORDINATION_DIR="$coordination_dir" \
 pi-env --raw -- \
   -e "$PI_ENV_ROLE_MANAGER_PACKAGE" \
-  --tools read,bash,edit,write,grep,find,ls \
-  --mode json "$prompt"
+  --tools read,bash,edit,write,grep,find,ls,role_cycle_done \
+  --print "$prompt"
 ```
 
-The important properties for the default JSON mode are: JSONL event-stream
-output, no `--continue`, one item in the prompt, active role context, and a
-mounted/writable coordination checkout. The final lifecycle report can be parsed
+The important properties for the default print mode are: non-interactive
+response output, no `--mode json`, no `-p`, no `--continue`, one item in the
+prompt, active role context, the role-manager extension, the `role_cycle_done`
+tool, and a mounted/writable coordination checkout.
+
+For structured automation, the same environment, role manager extension,
+coordination mount, and tool allowlist are used, but the Pi command adds
+`--mode json` instead of `--print`. The final lifecycle report can be parsed
 from the `role_cycle_done` `tool_execution_end` event.
 
 For watched/manual work, the same environment, role manager extension,
-coordination mount, and tool allowlist are used, but the Pi command omits
-`--mode json` and launches the normal TUI with the generated prompt as the
-initial message:
+coordination mount, and tool allowlist are used, but the Pi command omits both
+`--mode json` and `--print` and launches the normal TUI with the generated
+prompt as the initial message:
 
 ```bash
 PI_BWRAP_PASS_ENV=PI_ACTIVE_ROLE \

@@ -201,6 +201,21 @@ assert_clean_git() {
 FAKE_PI_ENV="$tmp/fake-pi-env"
 make_fake_pi_env "$FAKE_PI_ENV"
 
+help_out="$tmp/help.out"
+"$serial_script" --help >"$help_out"
+test_grep '--ui none|json|interactive' "$help_out"
+test_grep 'default: none' "$help_out"
+
+invalid_out="$tmp/invalid-ui.out"
+set +e
+run_serial "$tmp" "$tmp" "$tmp/invalid.lock" --ui tty >"$invalid_out" 2>&1
+invalid_status=$?
+set -e
+if [ "$invalid_status" -eq 0 ]; then
+  test_fail 'invalid --ui unexpectedly succeeded'
+fi
+test_grep '--ui must be none, json, or interactive' "$invalid_out"
+
 # Tester work is preferred over reviewer and developer queues, and the dry-run
 # command shows role activation variables that pi-bwrap must pass through.
 new_scenario tester-priority
@@ -215,20 +230,29 @@ priority_out="$SCENARIO_DIR/priority.out"
 run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
   --dry-run --once >"$priority_out" 2>&1
 test_grep '^selected role=tester item=SERIAL-TESTER-001$' "$priority_out"
-test_grep '^selected ui=json$' "$priority_out"
+test_grep '^selected ui=none$' "$priority_out"
 test_grep 'would-run: env' "$priority_out"
 test_grep 'PI_ACTIVE_ROLE=tester' "$priority_out"
 test_grep 'PI_ROLE_MANAGER_ACTIVE_ROLE=tester' "$priority_out"
 test_grep 'PI_BWRAP_PASS_ENV=.*PI_ACTIVE_ROLE.*PI_ROLE_MANAGER_ACTIVE_ROLE' \
   "$priority_out"
 test_grep '--tools .*role_cycle_done' "$priority_out"
-test_grep '--mode json' "$priority_out"
+test_grep '--print' "$priority_out"
+test_grep 'print-mode.*non-interactive.*session' "$priority_out"
+assert_no_grep '--mode json' "$priority_out"
 assert_no_grep ' -p ' "$priority_out"
 test_grep 'Role.*cycle.*kickoff' "$priority_out"
 test_grep 'Active.*role:.*tester' "$priority_out"
 test_grep 'Selected.*item.*ID:.*SERIAL-TESTER-001' "$priority_out"
 assert_no_grep '/role-cycle' "$priority_out"
 assert_no_grep '--continue' "$priority_out"
+
+json_out="$SCENARIO_DIR/json.out"
+run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/json.lock" \
+  --dry-run --once --ui json >"$json_out" 2>&1
+test_grep '^selected ui=json$' "$json_out"
+test_grep '--mode json' "$json_out"
+assert_no_grep '--print' "$json_out"
 
 custom_tools_out="$SCENARIO_DIR/custom-tools.out"
 run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/custom-tools.lock" \
@@ -285,13 +309,16 @@ test_grep '^arg:--$' "$dev_capture"
 test_grep '^arg:--tools$' "$dev_capture"
 test_grep '^arg:read,bash,edit,write,grep,find,ls,role_cycle_done$' \
   "$dev_capture"
-test_grep '^arg:--mode$' "$dev_capture"
-test_grep '^arg:json$' "$dev_capture"
+test_grep '^arg:--print$' "$dev_capture"
+assert_no_grep '^arg:--mode$' "$dev_capture"
+assert_no_grep '^arg:json$' "$dev_capture"
 assert_no_grep '^arg:-p$' "$dev_capture"
 test_grep '^arg:## Role cycle kickoff$' "$dev_capture"
 test_grep '^Active role: developer$' "$dev_capture"
 test_grep '^- Selected item ID: SERIAL-DEVELOPER-CLAIM$' "$dev_capture"
 test_grep 'Finish by calling `role_cycle_done` as the final action' \
+  "$dev_capture"
+test_grep 'print-mode serial job starts a fresh non-interactive Pi session' \
   "$dev_capture"
 assert_no_grep '^arg:/role-cycle' "$dev_capture"
 assert_no_grep '^arg:--continue$' "$dev_capture"
@@ -302,8 +329,49 @@ test_grep '^owner: serial-agent$' \
 assert_clean_git "$SCENARIO_PROJECT" "project"
 assert_clean_git "$SCENARIO_COORD" "coordination"
 
+# Explicit none mode uses the same print invocation as the default.
+new_scenario developer-none
+add_issue "$SCENARIO_COORD" SERIAL-DEVELOPER-NONE open false false \
+  "Developer none candidate"
+commit_coord "$SCENARIO_COORD"
+none_capture="$SCENARIO_DIR/fake-pi-none.capture"
+SERIAL_FAKE_PI_CAPTURE="$none_capture" \
+SERIAL_EXPECT_CLAIMED_ITEM=SERIAL-DEVELOPER-NONE \
+  run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+    --once --ui none >"$SCENARIO_DIR/developer-none.out" 2>&1
+test_file_exists "$none_capture"
+test_grep '^env PI_ACTIVE_ROLE=developer$' "$none_capture"
+test_grep '^arg:--print$' "$none_capture"
+test_grep '^arg:--tools$' "$none_capture"
+test_grep '^arg:read,bash,edit,write,grep,find,ls,role_cycle_done$' \
+  "$none_capture"
+assert_no_grep '^arg:--mode$' "$none_capture"
+assert_no_grep '^arg:json$' "$none_capture"
+assert_no_grep '^arg:-p$' "$none_capture"
+assert_clean_git "$SCENARIO_PROJECT" "project"
+assert_clean_git "$SCENARIO_COORD" "coordination"
+
+# JSON mode remains available for structured automation.
+new_scenario developer-json
+add_issue "$SCENARIO_COORD" SERIAL-DEVELOPER-JSON open false false \
+  "Developer json candidate"
+commit_coord "$SCENARIO_COORD"
+json_capture="$SCENARIO_DIR/fake-pi-json.capture"
+SERIAL_FAKE_PI_CAPTURE="$json_capture" \
+SERIAL_EXPECT_CLAIMED_ITEM=SERIAL-DEVELOPER-JSON \
+  run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+    --once --ui json >"$SCENARIO_DIR/developer-json.out" 2>&1
+test_file_exists "$json_capture"
+test_grep '^env PI_ACTIVE_ROLE=developer$' "$json_capture"
+test_grep '^arg:--mode$' "$json_capture"
+test_grep '^arg:json$' "$json_capture"
+assert_no_grep '^arg:--print$' "$json_capture"
+assert_no_grep '^arg:-p$' "$json_capture"
+assert_clean_git "$SCENARIO_PROJECT" "project"
+assert_clean_git "$SCENARIO_COORD" "coordination"
+
 # Interactive mode preserves the same environment and raw role-manager/tool
-# setup while omitting the JSON event-stream flags for the watched TUI.
+# setup while omitting the JSON event-stream and print flags for the watched TUI.
 new_scenario developer-interactive
 add_issue "$SCENARIO_COORD" SERIAL-DEVELOPER-TUI open false false \
   "Developer interactive candidate"
@@ -325,6 +393,7 @@ test_grep '^arg:read,bash,edit,write,grep,find,ls,role_cycle_done$' \
   "$interactive_capture"
 assert_no_grep '^arg:--mode$' "$interactive_capture"
 assert_no_grep '^arg:json$' "$interactive_capture"
+assert_no_grep '^arg:--print$' "$interactive_capture"
 assert_no_grep '^arg:-p$' "$interactive_capture"
 test_grep '^arg:## Role cycle kickoff$' "$interactive_capture"
 test_grep 'watched serial job starts a fresh Pi interactive session' \
