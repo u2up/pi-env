@@ -109,9 +109,22 @@ const items = fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).map(f => {
 }).filter(i => i.status === 'active' && i.key && i.body)
   .sort((a,b) => {
     const rank = cls => cls === 'quality' ? 1 : cls === 'constraint' ? 2 : 0;
-    return rank(a.cls) - rank(b.cls) || a.order - b.order || a.key.localeCompare(b.key);
+    return rank(a.cls) - rank(b.cls)
+      || compareSection(a.section, b.section)
+      || a.order - b.order
+      || a.key.localeCompare(b.key);
   });
 
+function sectionRank(section) {
+  const m = (section || '').match(/^(\d+)\.(\d+)\b/);
+  if (!m) return [999, 999, section || ''];
+  return [Number(m[1]), Number(m[2]), section || ''];
+}
+function compareSection(a, b) {
+  const ar = sectionRank(a);
+  const br = sectionRank(b);
+  return ar[0] - br[0] || ar[1] - br[1] || ar[2].localeCompare(br[2]);
+}
 function renderBody(markdown) {
   return markdown
     .split('\n')
