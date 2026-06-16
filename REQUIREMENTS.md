@@ -238,21 +238,6 @@ The isolated launcher must support safer workflows such as reviewing unfamiliar 
 
 For workspaces where several agents operate in separate project clones, `pi-env` must optionally help establish and maintain a dedicated Git-backed coordination repository. Agents synchronize only by normal Git pull/commit/push operations. This use case remains opt-in, and default `pi-start` behavior must not mutate coordination state automatically.
 
-### 3.2 Flake and package requirements
-
-#### FLAKE-001 Inputs
-
-The flake must declare only these normal inputs:
-
-- `nixpkgs` pointing at `github:NixOS/nixpkgs/nixos-25.05`
-- `flake-utils` pointing at `github:numtide/flake-utils`
-
-It must not require a local `common-nix-runtime` or other machine-specific flake input.
-
-### 3.1 Workflow-level functional requirements
-
-Workflow-level requirements describe user goals that the detailed requirements must support. They are functional requirements with requirement kind `workflow`.
-
 #### UC-024 Serial role automation workflow
 
 A user must be able to run one serial automation loop over a single
@@ -278,6 +263,15 @@ Acceptance criteria:
   until a later parallel-worker phase.
 
 ### 3.2 Flake and package requirements
+
+#### FLAKE-001 Inputs
+
+The flake must declare only these normal inputs:
+
+- `nixpkgs` pointing at `github:NixOS/nixpkgs/nixos-25.05`
+- `flake-utils` pointing at `github:numtide/flake-utils`
+
+It must not require a local `common-nix-runtime` or other machine-specific flake input.
 
 #### FLAKE-002 Systems
 
@@ -668,16 +662,6 @@ The flake must also expose a Nix-provided `pi-env` package/app and include
 it in the default devshell so project-integrated users can run `pi-env`
 after `nix develop` without a separate checkout script.
 
-### 3.5 Project root and working directory requirements
-
-#### PATH-001 Project root detection
-
-Unless `PI_BWRAP_PROJECT_ROOT` is set, `pi-bwrap` must use `git rev-parse --show-toplevel` when `PI_BWRAP_USE_GIT_ROOT` is unset or `1`.
-
-If git-root detection fails or is disabled, it must use `$PWD`.
-
-### 3.4 Command requirements
-
 #### CMD-019 Default role-manager startup integration
 
 `pi-start` must load the pi-env role-manager package by default when the
@@ -704,14 +688,6 @@ remains controlled by stored session role state, `/role`, `/role-cycle`,
 `/role-new`, or explicit role environment variables supported by the
 role-manager extension.
 
-### 3.5 Project root and working directory requirements
-
-#### PATH-002 Project root override
-
-`PI_BWRAP_PROJECT_ROOT=/path` must force the mounted project root.
-
-### 3.4 Command requirements
-
 #### CMD-020 Serial role automation command
 
 pi-env should provide a serial automation command or script that can be
@@ -736,6 +712,16 @@ The command must:
 The command must not require tmux for the serial mode.
 
 ### 3.5 Project root and working directory requirements
+
+#### PATH-001 Project root detection
+
+Unless `PI_BWRAP_PROJECT_ROOT` is set, `pi-bwrap` must use `git rev-parse --show-toplevel` when `PI_BWRAP_USE_GIT_ROOT` is unset or `1`.
+
+If git-root detection fails or is disabled, it must use `$PWD`.
+
+#### PATH-002 Project root override
+
+`PI_BWRAP_PROJECT_ROOT=/path` must force the mounted project root.
 
 #### PATH-003 Existing project root
 
@@ -1048,38 +1034,6 @@ The sandbox must share the host network by default so Pi can reach model provide
 
 ## 4. Quality requirements
 
-### 4.1 Documentation requirements
-
-#### DOC-002 Getting started workflows
-
-The main `README.md` must include a concise `Getting started` section near
-the top that explains both supported `pi-env` use modes.
-
-The direct-use subsection must show how to start from an arbitrary target
-project without editing that project:
-
-```bash
-cd /path/to/project
-/path/to/pi-env/pi-env
-```
-
-It must also include examples for passing a prompt and for raw custom Pi
-arguments through `pi-env --raw -- ...`.
-
-The project-integrated subsection must describe when to wire `pi-env` into
-a target project's flake, including pinned `pi-env` inputs, shared team
-setup, project-specific Nix dependencies, and running from inside the
-project devshell:
-
-```bash
-nix develop
-pi-env
-```
-
-The getting-started text must also mention that `pi-start`/`pi-env`
-default startup loads the role-manager package when available, while
-`PI_ENV_ROLE_MANAGER_AUTO=0` disables that behavior.
-
 ### 4.1 Documentation quality requirements
 
 #### DOC-000 Design documents
@@ -1120,6 +1074,38 @@ mounted read-only, host `/bin` and `/usr/bin` are not mounted as the tool
 source, and direct `nix run` examples are suitable for inspection but may
 lack project build/test tools unless the project integrates pi-env or an
 explicit extra path is provided.
+
+### 4.1 Documentation requirements
+
+#### DOC-002 Getting started workflows
+
+The main `README.md` must include a concise `Getting started` section near
+the top that explains both supported `pi-env` use modes.
+
+The direct-use subsection must show how to start from an arbitrary target
+project without editing that project:
+
+```bash
+cd /path/to/project
+/path/to/pi-env/pi-env
+```
+
+It must also include examples for passing a prompt and for raw custom Pi
+arguments through `pi-env --raw -- ...`.
+
+The project-integrated subsection must describe when to wire `pi-env` into
+a target project's flake, including pinned `pi-env` inputs, shared team
+setup, project-specific Nix dependencies, and running from inside the
+project devshell:
+
+```bash
+nix develop
+pi-env
+```
+
+The getting-started text must also mention that `pi-start`/`pi-env`
+default startup loads the role-manager package when available, while
+`PI_ENV_ROLE_MANAGER_AUTO=0` disables that behavior.
 
 ### 4.2 Blackbox verification requirements
 
