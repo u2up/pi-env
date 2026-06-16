@@ -29,6 +29,9 @@ Options:
                           --max-idle-polls 1 when those are unset
   --dry-run               Pull and select, then print the claim/Pi command that
                           would run without claiming work or invoking Pi
+  --ui json|interactive   Pi job UI/output mode; default: json for headless
+                          automation. interactive launches the normal TUI and
+                          waits for it to exit before polling again
   --lock-file PATH        Local lock path; default: pi-serial-roles.lock
                           under the project's Git metadata directory
   --pi-env COMMAND        pi-env launcher; default: pi-env on PATH or this checkout
@@ -65,6 +68,7 @@ max_jobs=""
 max_idle_polls=""
 once=0
 dry_run=0
+ui_mode="json"
 lock_file_opt=""
 pi_env_cmd_opt=""
 role_manager_opt=""
@@ -128,6 +132,14 @@ while [ "$#" -gt 0 ]; do
     --dry-run)
       dry_run=1
       shift
+      ;;
+    --ui)
+      require_value "$1" "${2:-}"
+      case "$2" in
+        json|interactive) ui_mode="$2" ;;
+        *) die "--ui must be json or interactive" ;;
+      esac
+      shift 2
       ;;
     --lock-file)
       require_value "$1" "${2:-}"
@@ -458,9 +470,10 @@ select_next_work() {
 }
 
 role_prompt() {
-  local role item goal helper_text claim_helper done_helper review_helper verify_helper
+  local role item ui goal helper_text session_text claim_helper done_helper review_helper verify_helper
   role="$1"
   item="$2"
+  ui="$3"
   case "$role" in
     developer)
       claim_helper="$(coord_helper_prompt_cmd agent-coord-claim)"
@@ -480,6 +493,18 @@ role_prompt() {
       ;;
     *)
       die "unknown role: $role"
+      ;;
+  esac
+
+  case "$ui" in
+    json)
+      session_text="This headless serial job starts a fresh Pi JSON event stream session"
+      ;;
+    interactive)
+      session_text="This watched serial job starts a fresh Pi interactive session"
+      ;;
+    *)
+      die "unknown UI mode: $ui"
       ;;
   esac
 
@@ -506,8 +531,8 @@ Operating constraints:
   permitted by the current repository instructions.
 - Coordination changes are allowed only when directly needed for the goal and
   permitted by the current coordination rules.
-- Use only context available in this session. This headless serial job starts a
-  fresh Pi JSON event stream session and does not continue a prior conversation.
+- Use only context available in this session. $session_text and does not
+  continue a prior conversation.
 - Finish by calling \`role_cycle_done\` as the final action of the cycle.
   Treat that structured tool report as the role's expected final report.
 - Populate every \`role_cycle_done\` field: \`summary\`, \`filesInspected\`,
@@ -572,6 +597,7 @@ print_dry_run() {
   pi_tools="$(tools_with_role_cycle_done "$tools")"
 
   printf 'selected role=%s item=%s\n' "$role" "$item"
+  printf 'selected ui=%s\n' "$ui_mode"
   if [ "$role" = "developer" ]; then
     printf 'would-claim: '
     shell_quote_command \
@@ -582,22 +608,47 @@ print_dry_run() {
       "$item"
   fi
   printf 'would-run: '
-  shell_quote_command \
-    env \
-    "PI_ACTIVE_ROLE=$role" \
-    "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
-    "PI_COORD_ROLE=$role" \
-    "PI_COORD_AGENT_ID=$agent_id" \
-    "PI_COORD_DIR=$coord_dir" \
-    "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
-    "PI_BWRAP_PROJECT_ROOT=$project_root" \
-    "PI_BWRAP_PASS_ENV=$pass_env" \
-    "PI_BWRAP_EXTRA_PATH=$extra_path" \
-    "$pi_env_cmd" \
-    --raw -- \
-    -e "$role_manager_pi_arg" \
-    --tools "$pi_tools" \
-    --mode json "$prompt"
+  case "$ui_mode" in
+    json)
+      shell_quote_command \
+        env \
+        "PI_ACTIVE_ROLE=$role" \
+        "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
+        "PI_COORD_ROLE=$role" \
+        "PI_COORD_AGENT_ID=$agent_id" \
+        "PI_COORD_DIR=$coord_dir" \
+        "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
+        "PI_BWRAP_PROJECT_ROOT=$project_root" \
+        "PI_BWRAP_PASS_ENV=$pass_env" \
+        "PI_BWRAP_EXTRA_PATH=$extra_path" \
+        "$pi_env_cmd" \
+        --raw -- \
+        -e "$role_manager_pi_arg" \
+        --tools "$pi_tools" \
+        --mode json "$prompt"
+      ;;
+    interactive)
+      shell_quote_command \
+        env \
+        "PI_ACTIVE_ROLE=$role" \
+        "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
+        "PI_COORD_ROLE=$role" \
+        "PI_COORD_AGENT_ID=$agent_id" \
+        "PI_COORD_DIR=$coord_dir" \
+        "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
+        "PI_BWRAP_PROJECT_ROOT=$project_root" \
+        "PI_BWRAP_PASS_ENV=$pass_env" \
+        "PI_BWRAP_EXTRA_PATH=$extra_path" \
+        "$pi_env_cmd" \
+        --raw -- \
+        -e "$role_manager_pi_arg" \
+        --tools "$pi_tools" \
+        "$prompt"
+      ;;
+    *)
+      die "unknown UI mode: $ui_mode"
+      ;;
+  esac
 }
 
 claim_developer_item() {
@@ -628,24 +679,48 @@ run_pi_job() {
   ensure_clean_git "$project_root" "project"
   ensure_clean_git "$coord_dir" "coordination"
 
-  note "launching $role job for $item"
+  note "launching $role job for $item with ui=$ui_mode"
   (
     cd "$project_root"
-    env \
-      "PI_ACTIVE_ROLE=$role" \
-      "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
-      "PI_COORD_ROLE=$role" \
-      "PI_COORD_AGENT_ID=$agent_id" \
-      "PI_COORD_DIR=$coord_dir" \
-      "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
-      "PI_BWRAP_PROJECT_ROOT=$project_root" \
-      "PI_BWRAP_PASS_ENV=$pass_env" \
-      "PI_BWRAP_EXTRA_PATH=$extra_path" \
-      "$pi_env_cmd" \
-      --raw -- \
-      -e "$role_manager_pi_arg" \
-      --tools "$pi_tools" \
-      --mode json "$prompt"
+    case "$ui_mode" in
+      json)
+        env \
+          "PI_ACTIVE_ROLE=$role" \
+          "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
+          "PI_COORD_ROLE=$role" \
+          "PI_COORD_AGENT_ID=$agent_id" \
+          "PI_COORD_DIR=$coord_dir" \
+          "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
+          "PI_BWRAP_PROJECT_ROOT=$project_root" \
+          "PI_BWRAP_PASS_ENV=$pass_env" \
+          "PI_BWRAP_EXTRA_PATH=$extra_path" \
+          "$pi_env_cmd" \
+          --raw -- \
+          -e "$role_manager_pi_arg" \
+          --tools "$pi_tools" \
+          --mode json "$prompt"
+        ;;
+      interactive)
+        env \
+          "PI_ACTIVE_ROLE=$role" \
+          "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
+          "PI_COORD_ROLE=$role" \
+          "PI_COORD_AGENT_ID=$agent_id" \
+          "PI_COORD_DIR=$coord_dir" \
+          "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
+          "PI_BWRAP_PROJECT_ROOT=$project_root" \
+          "PI_BWRAP_PASS_ENV=$pass_env" \
+          "PI_BWRAP_EXTRA_PATH=$extra_path" \
+          "$pi_env_cmd" \
+          --raw -- \
+          -e "$role_manager_pi_arg" \
+          --tools "$pi_tools" \
+          "$prompt"
+        ;;
+      *)
+        die "unknown UI mode: $ui_mode"
+        ;;
+    esac
   )
 }
 
@@ -688,8 +763,7 @@ while :; do
   if selection="$(select_next_work)"; then
     IFS=$'\t' read -r role item _path <<<"$selection"
     idle_polls=0
-    prompt="$(role_prompt "$role" "$item")"
-
+    prompt="$(role_prompt "$role" "$item" "$ui_mode")"
     if [ "$dry_run" = "1" ]; then
       print_dry_run "$role" "$item" "$prompt"
       exit 0

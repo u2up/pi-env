@@ -215,6 +215,7 @@ priority_out="$SCENARIO_DIR/priority.out"
 run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
   --dry-run --once >"$priority_out" 2>&1
 test_grep '^selected role=tester item=SERIAL-TESTER-001$' "$priority_out"
+test_grep '^selected ui=json$' "$priority_out"
 test_grep 'would-run: env' "$priority_out"
 test_grep 'PI_ACTIVE_ROLE=tester' "$priority_out"
 test_grep 'PI_ROLE_MANAGER_ACTIVE_ROLE=tester' "$priority_out"
@@ -233,6 +234,18 @@ custom_tools_out="$SCENARIO_DIR/custom-tools.out"
 run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/custom-tools.lock" \
   --dry-run --once --tools read,grep >"$custom_tools_out" 2>&1
 test_grep '--tools read.*,grep.*,role_cycle_done' "$custom_tools_out"
+
+interactive_out="$SCENARIO_DIR/interactive.out"
+run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/interactive.lock" \
+  --dry-run --once --ui interactive >"$interactive_out" 2>&1
+test_grep '^selected ui=interactive$' "$interactive_out"
+test_grep 'would-run: env' "$interactive_out"
+test_grep 'PI_ACTIVE_ROLE=tester' "$interactive_out"
+test_grep '--tools .*role_cycle_done' "$interactive_out"
+test_grep 'Role.*cycle.*kickoff' "$interactive_out"
+test_grep 'watched.*interactive.*session' "$interactive_out"
+assert_no_grep '--mode json' "$interactive_out"
+assert_no_grep ' -p ' "$interactive_out"
 
 # Reviewer work is selected ahead of open developer work when no tester issue is
 # waiting.
@@ -286,6 +299,36 @@ test_grep '^status: claimed$' \
   "$SCENARIO_COORD/projects/pi-env/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
 test_grep '^owner: serial-agent$' \
   "$SCENARIO_COORD/projects/pi-env/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
+assert_clean_git "$SCENARIO_PROJECT" "project"
+assert_clean_git "$SCENARIO_COORD" "coordination"
+
+# Interactive mode preserves the same environment and raw role-manager/tool
+# setup while omitting the JSON event-stream flags for the watched TUI.
+new_scenario developer-interactive
+add_issue "$SCENARIO_COORD" SERIAL-DEVELOPER-TUI open false false \
+  "Developer interactive candidate"
+commit_coord "$SCENARIO_COORD"
+interactive_capture="$SCENARIO_DIR/fake-pi-interactive.capture"
+SERIAL_FAKE_PI_CAPTURE="$interactive_capture" \
+SERIAL_EXPECT_CLAIMED_ITEM=SERIAL-DEVELOPER-TUI \
+  run_serial "$SCENARIO_PROJECT" "$SCENARIO_COORD" "$SCENARIO_DIR/lock" \
+    --once --ui interactive >"$SCENARIO_DIR/developer-interactive.out" 2>&1
+test_file_exists "$interactive_capture"
+test_grep '^env PI_ACTIVE_ROLE=developer$' "$interactive_capture"
+test_grep '^env PI_ROLE_MANAGER_ACTIVE_ROLE=developer$' "$interactive_capture"
+test_grep '^env PI_COORD_ROLE=developer$' "$interactive_capture"
+test_grep '^arg:--raw$' "$interactive_capture"
+test_grep '^arg:--$' "$interactive_capture"
+test_grep '^arg:-e$' "$interactive_capture"
+test_grep '^arg:--tools$' "$interactive_capture"
+test_grep '^arg:read,bash,edit,write,grep,find,ls,role_cycle_done$' \
+  "$interactive_capture"
+assert_no_grep '^arg:--mode$' "$interactive_capture"
+assert_no_grep '^arg:json$' "$interactive_capture"
+assert_no_grep '^arg:-p$' "$interactive_capture"
+test_grep '^arg:## Role cycle kickoff$' "$interactive_capture"
+test_grep 'watched serial job starts a fresh Pi interactive session' \
+  "$interactive_capture"
 assert_clean_git "$SCENARIO_PROJECT" "project"
 assert_clean_git "$SCENARIO_COORD" "coordination"
 

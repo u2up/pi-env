@@ -994,6 +994,7 @@ pi-serial-roles --once
 pi-serial-roles --max-jobs 3
 pi-serial-roles --max-idle-polls 1 --sleep 5
 pi-serial-roles --dry-run
+pi-serial-roles --ui interactive --once
 ```
 
 Each poll holds a local lock under the project's Git metadata directory,
@@ -1010,11 +1011,18 @@ Reviewer and tester prompts name only the selected done item and instruct the
 role to use `agent-coord-review` or `agent-coord-verify`. If no issue is
 eligible, the orchestrator sleeps and polls again without invoking Pi.
 
-Every issue job starts a fresh raw Pi session with `pi-env --raw --` and
-`--mode json`, and does not pass `--continue`. The default serial job output is
-JSONL. The final `role_cycle_done` details are available in the JSON event
-stream from the corresponding `tool_execution_end` event, alongside other
-structured tool, usage, compaction, and error events. Coordination state and
+Every issue job starts a fresh raw Pi session with `pi-env --raw --` and does
+not pass `--continue`. The default `--ui json` mode adds `--mode json` for
+headless automation and JSONL output. Use it for unattended loops, CI-like
+supervision, or when you want to parse the final `role_cycle_done` details from
+the corresponding `tool_execution_end` event alongside other structured tool,
+usage, compaction, and error events.
+
+Use `--ui interactive` for watched/manual cycles. It launches the normal Pi TUI
+with the same selected item prompt, active role environment, coordination mount,
+and tool allowlist, but without `--mode json` or `-p`. The orchestrator waits
+for that interactive Pi process to exit, then performs the same clean-tree and
+failure checks before polling or launching another item. Coordination state and
 Git history are the memory shared between jobs; a fresh conversation avoids
 stale context from a previous issue influencing item selection, review,
 verification, or lifecycle helper use.
