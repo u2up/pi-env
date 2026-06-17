@@ -504,6 +504,17 @@ try {
   assert.match(restart.statuses.at(-1).text, /🧪 role:modeler/);
   assert.match(restart.titles.at(-1), /role:modeler/);
 
+  process.env.PI_ROLE_MANAGER_ACTIVE_ROLE = "modeler";
+  const envActiveRole = createHarness([]);
+  await envActiveRole.emit("session_start", { type: "session_start", reason: "startup" });
+  assert.deepEqual(envActiveRole.state.activeTools, [
+    "read",
+    "bash",
+    "role_cycle_done",
+  ]);
+  assert.equal(process.env.PI_COORD_ROLE, "project-modeler");
+  delete process.env.PI_ROLE_MANAGER_ACTIVE_ROLE;
+
   await harness.commands.get("role-clear").handler("", harness.ctx);
   const clearEntry = harness.entries.at(-1);
   assert.equal(clearEntry.data.activeRoleName, null);

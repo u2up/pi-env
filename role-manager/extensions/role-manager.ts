@@ -1070,6 +1070,9 @@ export default function roleManager(pi: ExtensionAPI) {
     if (role) {
       setActiveCoordRole(role);
       await applyRoleRuntimeSettings(role, ctx);
+      if (state.source === "env") {
+        ensureRoleCycleDoneToolActive(ctx);
+      }
     } else {
       setActiveCoordRole({ name: state.roleName });
     }
