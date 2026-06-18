@@ -508,12 +508,13 @@ pi-env only chooses which root to expose for this run.
   directory into the sandbox by default (disabled for ephemeral homes), so
   `/resume` and `--continue` can access sessions for the directory/project
   without exposing all sessions;
-- passes `PI_COORD_ROOT`, `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`,
-  `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, and coordination directory context
-  when set, mapping project-local coordination paths to `/workspace/...`,
-  auto-binding host `/workspace/agent-remotes` when available for legacy/local
-  setups, and explicitly mounting an external coordination clone with
-  `PI_BWRAP_COORDINATION_DIR`;
+- passes `PI_COORD_ROOT`, `PI_COORD_REMOTE_URL`, `PI_COORD_WORKSPACE`,
+  `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, and
+  coordination directory context when set, mapping project-local coordination
+  paths to `/workspace/...`, binding explicit external `PI_COORD_ROOT` paths at
+  `/agent-remotes`, retaining a narrow `/workspace/agent-remotes` compatibility
+  bind for legacy local setups, and explicitly mounting an external
+  coordination clone with `PI_BWRAP_COORDINATION_DIR`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or
   Docker sockets;
 - clears the environment, then passes only terminal basics and selected LLM
@@ -548,8 +549,8 @@ PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy i
 PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
 PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
-PI_COORD_ROOT=/workspace/agent-remotes  # bare coordination remotes; default is project-visible agent-remotes
-PI_COORD_REMOTE_URL=git@example:repo.git # optional Git-server coordination remote URL
+PI_COORD_ROOT=/path/to/agent-remotes     # bare remotes; project paths map to /workspace, external paths to /agent-remotes
+PI_COORD_REMOTE_URL=git@example:repo.git # optional Git-server coordination remote URL; no local remotes mount required
 PI_COORD_ROLE=architect                 # active coordination role for helper commits/events
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_EXTRA_PATH=/nix/store/.../bin   # advanced: validated extra command dirs
@@ -847,11 +848,18 @@ $PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git
 ```
 
 If `PI_COORD_ROOT` is unset, helpers default to a project-visible
-`agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
-resolves to the current project root, that default is `/workspace/agent-remotes`
-instead of the isolated sandbox `$HOME`. `pi-bwrap` also auto-binds host
-`/workspace/agent-remotes` at the same sandbox path when it exists and is not
-already part of the selected project mount.
+`agent-remotes` directory. Inside the pi-env sandbox, that is normally the
+project's `/workspace/agent-remotes`, available through the standard project
+bind mount rather than a separate remotes mount. During migration, `pi-bwrap`
+also keeps a narrow compatibility bind for an existing host
+`/workspace/agent-remotes` when the selected project does not already provide
+one and no Git-server remote URL is configured.
+
+If `PI_COORD_ROOT` is set to a project-local path, `pi-bwrap` rewrites it to the
+matching `/workspace/...` path. If it is set to an existing local path outside
+the project, `pi-bwrap` bind-mounts that directory read-write at
+`/agent-remotes` and rewrites `PI_COORD_ROOT=/agent-remotes` inside the
+sandbox.
 
 When `--remote` or `PI_COORD_REMOTE_URL` is set, helpers use that URL directly
 and do not create a local bare remote. The remote repository must already exist

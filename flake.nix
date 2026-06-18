@@ -90,7 +90,8 @@
             PI_BWRAP_EXTRA_PATH=/nix/store/.../bin[:...] Add validated Nix-store command dirs after pi-env runtime tools
             PI_BWRAP_NET=0                Disable network namespace sharing
             PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
-            PI_COORD_ROOT=/workspace/agent-remotes Bare coordination remotes root; auto-bound when available
+            PI_COORD_ROOT=/path/to/agent-remotes Bare coordination remotes root; external paths bind at /agent-remotes
+            PI_COORD_REMOTE_URL=url       Coordination Git remote URL passed through without local mounts
             PI_COORD_ROLE=architect       Active coordination role passed to helpers
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
@@ -299,13 +300,33 @@
           fi
 
           coord_root_bind_args=()
-          host_common_coord_root=""
-          if [ -d /workspace/agent-remotes ]; then
+          sandbox_coord_root=""
+          if [ -n "''${PI_COORD_ROOT:-}" ]; then
+            host_coord_root="$(realpath -m "$PI_COORD_ROOT")"
+            case "$host_coord_root" in
+              "$project_root")
+                sandbox_coord_root="/workspace"
+                ;;
+              "$project_root"/*)
+                sandbox_coord_root="/workspace''${host_coord_root#"$project_root"}"
+                ;;
+              *)
+                if [ -d "$host_coord_root" ]; then
+                  sandbox_coord_root="/agent-remotes"
+                  coord_root_bind_args=(--dir /agent-remotes --bind "$host_coord_root" /agent-remotes)
+                  echo "pi-bwrap: coordination remotes available at /agent-remotes" >&2
+                else
+                  sandbox_coord_root="$PI_COORD_ROOT"
+                  echo "pi-bwrap: warning: PI_COORD_ROOT outside project is not an existing directory and will not be mounted: $PI_COORD_ROOT" >&2
+                fi
+                ;;
+            esac
+          elif [ -z "''${PI_COORD_REMOTE_URL:-}" ] && [ ! -d "$project_root/agent-remotes" ] && [ -d /workspace/agent-remotes ]; then
             host_common_coord_root="$(realpath -m /workspace/agent-remotes)"
             project_coord_root="$(realpath -m "$project_root/agent-remotes")"
             if [ "$host_common_coord_root" != "$project_coord_root" ]; then
               coord_root_bind_args=(--bind "$host_common_coord_root" /workspace/agent-remotes)
-              echo "pi-bwrap: agent remotes available at /workspace/agent-remotes" >&2
+              echo "pi-bwrap: compatibility: host /workspace/agent-remotes available at /workspace/agent-remotes" >&2
             fi
           fi
 
@@ -447,19 +468,9 @@
           sandbox_path="$sandbox_path:/usr/local/bin:/usr/bin:/bin"
 
           if [ -n "''${PI_COORD_ROOT:-}" ]; then
-            host_coord_root="$(realpath -m "$PI_COORD_ROOT")"
-            case "$host_coord_root" in
-              "$project_root")
-                set_env PI_COORD_ROOT /workspace
-                ;;
-              "$project_root"/*)
-                set_env PI_COORD_ROOT "/workspace''${host_coord_root#"$project_root"}"
-                ;;
-              *)
-                set_env PI_COORD_ROOT "$PI_COORD_ROOT"
-                ;;
-            esac
+            set_env PI_COORD_ROOT "$sandbox_coord_root"
           fi
+          copy_env PI_COORD_REMOTE_URL
           copy_env PI_COORD_WORKSPACE
           copy_env PI_COORD_AGENT_ID
           copy_env PI_COORD_PROJECT_KEY
