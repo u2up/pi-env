@@ -549,6 +549,7 @@ PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gi
 PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
 PI_COORD_ROOT=/workspace/agent-remotes  # bare coordination remotes; default is project-visible agent-remotes
+PI_COORD_REMOTE_URL=git@example:repo.git # optional Git-server coordination remote URL
 PI_COORD_ROLE=architect                 # active coordination role for helper commits/events
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_EXTRA_PATH=/nix/store/.../bin   # advanced: validated extra command dirs
@@ -810,7 +811,7 @@ bootstrap-coordination --project-root /path/to/project --print-only
 bootstrap-coordination --print-only
 ```
 
-Manual minimal setup:
+Manual minimal setup with a local bare remote:
 
 ```bash
 export PI_COORD_ROOT=/workspace/agent-remotes
@@ -821,14 +822,25 @@ export PI_COORD_AGENT_ID=agent-a
 agent-coord-init --project pi-env
 ```
 
+To use a remote hosted by a Git server, pass it explicitly or set
+`PI_COORD_REMOTE_URL`:
+
+```bash
+agent-coord-init --project pi-env --remote git@example.com:org/pi-env-coordination.git
+agent-coord-clone --remote git@example.com:org/pi-env-coordination.git
+bootstrap-coordination --remote git@example.com:org/pi-env-coordination.git --print-only
+```
+
 `bootstrap-coordination` is a thin wrapper around `agent-coord-init`: it prints
 the inferred root, legacy domain ID, clone dir, remote, agent ID, project, and
-project key, then initializes with those explicit values. If the local
-coordination clone already exists but the planned local bare remote is missing
-or empty, it recreates that remote from the clone's committed Git history and
-repairs `origin` when it is absent or points to a missing local path.
+project key, then initializes with those explicit values. Remote selection uses
+this precedence: explicit `--remote`, then `PI_COORD_REMOTE_URL`, then the
+local bare remote under `PI_COORD_ROOT`. If the local coordination clone already
+exists but the planned local bare remote is missing or empty, it recreates that
+remote from the clone's committed Git history and repairs `origin` when it is
+absent or points to a missing local path.
 
-This creates a bare remote at:
+Without a configured remote URL, this creates a bare remote at:
 
 ```text
 $PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git
@@ -840,6 +852,12 @@ resolves to the current project root, that default is `/workspace/agent-remotes`
 instead of the isolated sandbox `$HOME`. `pi-bwrap` also auto-binds host
 `/workspace/agent-remotes` at the same sandbox path when it exists and is not
 already part of the selected project mount.
+
+When `--remote` or `PI_COORD_REMOTE_URL` is set, helpers use that URL directly
+and do not create a local bare remote. The remote repository must already exist
+and be accessible to Git. Provide SSH keys, tokens, or credential helpers
+through narrowly-scoped sandbox/project configuration as needed; pi-env does
+not import the host `~/.ssh` directory or all host Git credentials wholesale.
 
 It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, `WORKSPACE.md`,
 project `PROJECT.md` metadata, protocol docs, item-format docs, and

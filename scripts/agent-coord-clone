@@ -19,12 +19,14 @@ Usage:
 
 Options:
   --root DIR       Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
+  --remote URL     Coordination remote URL; default: PI_COORD_REMOTE_URL
   --project ID     Coordination project; default: PI_COORD_PROJECT, PI_COORD_WORKSPACE, or cwd name
   --workspace ID   Legacy alias for --project when --project is omitted
   --dir DIR        Clone target; default: PI_COORD_DIR or coordination
   -h, --help       Show this help
 
-When remote is omitted, the command clones:
+Remote precedence is explicit --remote or positional remote, then
+PI_COORD_REMOTE_URL, then:
   <root>/<project>-coordination.git
 USAGE
 }
@@ -33,13 +35,21 @@ root="$(coord_default_root)"
 project="${PI_COORD_PROJECT:-}"
 legacy_workspace=""
 coord_dir="$(coord_default_dir)"
-remote=""
+remote="${PI_COORD_REMOTE_URL:-}"
+remote_set=0
+[ -n "$remote" ] && remote_set=1
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root)
       [ "$#" -ge 2 ] || coord_die "--root requires a value"
       root="$2"
+      shift 2
+      ;;
+    --remote)
+      [ "$#" -ge 2 ] || coord_die "--remote requires a value"
+      remote="$2"
+      remote_set=1
       shift 2
       ;;
     --workspace)
@@ -62,10 +72,11 @@ while [ "$#" -gt 0 ]; do
       exit 0
       ;;
     *)
-      if [ -n "$remote" ]; then
+      if [ "$remote_set" = "1" ]; then
         coord_die "unexpected extra argument: $1"
       fi
       remote="$1"
+      remote_set=1
       shift
       ;;
   esac

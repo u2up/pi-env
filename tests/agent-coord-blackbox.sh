@@ -106,6 +106,58 @@ bootstrap-coordination \
 test ! -e "$tmp/print-only-remotes"
 test ! -e "$print_only_project_dir/coordination"
 
+server_print_project_dir="$tmp/server-print-project"
+mkdir -p "$server_print_project_dir"
+git -C "$server_print_project_dir" init -q
+server_print_remote="$tmp/server-print.git"
+bootstrap-coordination \
+  --project-root "$server_print_project_dir" \
+  --root "$tmp/server-print-remotes" \
+  --remote "$server_print_remote" \
+  --print-only >"$tmp/server-print-plan.txt" 2>/dev/null
+
+grep -q "Remote:       $server_print_remote" "$tmp/server-print-plan.txt"
+grep -q "agent-coord-init --remote $server_print_remote" "$tmp/server-print-plan.txt"
+test ! -e "$tmp/server-print-remotes"
+test ! -e "$server_print_project_dir/coordination"
+
+PI_COORD_REMOTE_URL="$tmp/env-remote.git" bootstrap-coordination \
+  --project-root "$server_print_project_dir" \
+  --remote "$server_print_remote" \
+  --print-only >"$tmp/server-precedence-plan.txt" 2>/dev/null
+grep -q "Remote:       $server_print_remote" "$tmp/server-precedence-plan.txt"
+! grep -q "Remote:       $tmp/env-remote.git" "$tmp/server-precedence-plan.txt"
+
+server_remote="$tmp/server-remote.git"
+git init --bare --initial-branch=main "$server_remote" >/dev/null 2>&1 \
+  || git init --bare "$server_remote" >/dev/null
+agent-coord-init \
+  --remote "$server_remote" \
+  --project server-demo \
+  --agent-id agent-server \
+  --dir "$tmp/server-coordination" >/dev/null
+
+test -f "$tmp/server-coordination/AGENTS.md"
+server_head="$(git --git-dir="$server_remote" rev-parse main)"
+agent-coord-init \
+  --remote "$server_remote" \
+  --project server-demo \
+  --agent-id agent-server \
+  --dir "$tmp/server-coordination-existing" >/dev/null
+
+test "$(git -C "$tmp/server-coordination-existing" rev-parse HEAD)" = "$server_head"
+
+env_remote="$tmp/env-clone-remote.git"
+git clone --bare "$server_remote" "$env_remote" >/dev/null 2>&1
+unset PI_COORD_ROOT
+PI_COORD_REMOTE_URL="$env_remote" agent-coord-clone \
+  --dir "$tmp/env-remote-clone" >/dev/null
+test -f "$tmp/env-remote-clone/AGENTS.md"
+agent-coord-clone \
+  --remote "$server_remote" \
+  --dir "$tmp/arg-remote-clone" >/dev/null
+test -f "$tmp/arg-remote-clone/AGENTS.md"
+
 bare_only_project_dir="$tmp/bare-only-project"
 mkdir -p "$bare_only_project_dir"
 git -C "$bare_only_project_dir" init -q

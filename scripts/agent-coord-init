@@ -19,6 +19,7 @@ Usage:
 
 Options:
   --root DIR        Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
+  --remote URL      Existing coordination remote URL; default: PI_COORD_REMOTE_URL
   --project ID      Coordination project; default: PI_COORD_PROJECT, PI_COORD_WORKSPACE, or cwd name
   --project-key KEY Project item ID prefix; default: derived project
   --workspace ID    Legacy alias for --project when --project is omitted
@@ -28,12 +29,13 @@ Options:
   --bare-only       Only create the bare remote
   -h, --help        Show this help
 
-The remote path is:
+Remote precedence is explicit --remote, then PI_COORD_REMOTE_URL, then:
   <root>/<project>-coordination.git
 USAGE
 }
 
 root="$(coord_default_root)"
+remote_url="${PI_COORD_REMOTE_URL:-}"
 legacy_workspace=""
 coord_dir="$(coord_default_dir)"
 agent_id="$(coord_default_agent)"
@@ -47,6 +49,11 @@ while [ "$#" -gt 0 ]; do
     --root)
       [ "$#" -ge 2 ] || coord_die "--root requires a value"
       root="$2"
+      shift 2
+      ;;
+    --remote)
+      [ "$#" -ge 2 ] || coord_die "--remote requires a value"
+      remote_url="$2"
       shift 2
       ;;
     --workspace)
@@ -103,20 +110,31 @@ fi
 [ -n "$project_key" ] || coord_die "project must not be empty"
 [ -n "$agent_id" ] || coord_die "agent id must not be empty"
 
-root="$(coord_abs "$root")"
-remote="$(coord_remote_for "$root" "$project_key")"
-mkdir -p "$root"
-
-if [ -e "$remote" ] && [ ! -d "$remote/objects" ]; then
-  coord_die "remote path exists but is not a bare Git repo: $remote"
-fi
-
-if [ ! -d "$remote" ]; then
-  git init --bare --initial-branch=main "$remote" >/dev/null 2>&1 \
-    || git init --bare "$remote" >/dev/null
-  coord_note "created bare remote: $remote"
+remote_git_dir=""
+if [ -n "$remote_url" ]; then
+  remote="$remote_url"
+  case "$remote" in
+    file://*) remote_git_dir="$(coord_abs "${remote#file://}")" ;;
+    /*|./*|../*) remote_git_dir="$(coord_abs "$remote")" ;;
+  esac
+  coord_note "using configured coordination remote: $remote"
 else
-  coord_note "bare remote already exists: $remote"
+  root="$(coord_abs "$root")"
+  remote="$(coord_remote_for "$root" "$project_key")"
+  mkdir -p "$root"
+
+  if [ -e "$remote" ] && [ ! -d "$remote/objects" ]; then
+    coord_die "remote path exists but is not a bare Git repo: $remote"
+  fi
+
+  if [ ! -d "$remote" ]; then
+    git init --bare --initial-branch=main "$remote" >/dev/null 2>&1 \
+      || git init --bare "$remote" >/dev/null
+    coord_note "created bare remote: $remote"
+  else
+    coord_note "bare remote already exists: $remote"
+  fi
+  remote_git_dir="$remote"
 fi
 
 if [ "$bare_only" = "1" ]; then
@@ -222,7 +240,9 @@ find issues requirements decisions notes agents -type d -empty -exec sh -c 'touc
 actor="$(coord_effective_actor "$agent_id" "$role")"
 if coord_commit_all_if_changed "Initialize coordination repository" "$actor"; then
   git push -u origin main >/dev/null
-  git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+  if [ -n "$remote_git_dir" ] && [ -d "$remote_git_dir/objects" ]; then
+    git --git-dir="$remote_git_dir" symbolic-ref HEAD refs/heads/main
+  fi
   coord_note "initialized coordination clone: $(pwd -P)"
 else
   coord_note "no changes to commit"

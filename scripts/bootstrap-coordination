@@ -21,6 +21,7 @@ Usage:
 Options:
   --project-root DIR  Project directory to inspect; default: current directory
   --root DIR          Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
+  --remote URL        Existing coordination remote URL; default: PI_COORD_REMOTE_URL
   --project KEY       Coordination project; default: PI_COORD_PROJECT or inferred project name
   --project-key KEY   Project item ID prefix; default: PI_COORD_PROJECT_KEY or derived project
   --workspace ID      Legacy alias for --project when --project is omitted
@@ -42,7 +43,8 @@ project/dir/key defaults are inferred from that directory instead of inherited
 PI_COORD_WORKSPACE, PI_COORD_DIR, PI_COORD_PROJECT, and PI_COORD_PROJECT_KEY
 values; pass explicit options to override them. If a coordination clone
 already exists but the planned local bare remote is missing or empty, the
-remote is restored from the clone's committed history.
+remote is restored from the clone's committed history. Remote precedence is
+explicit --remote, then PI_COORD_REMOTE_URL, then the local bare remote path.
 USAGE
 }
 
@@ -108,7 +110,13 @@ bootstrap_shell_quote() {
 
 bootstrap_print_plan() {
   local init_command
-  init_command="agent-coord-init --root $(bootstrap_shell_quote "$root_abs") --project $(bootstrap_shell_quote "$project") --project-key $(bootstrap_shell_quote "$project_item_key") --dir $(bootstrap_shell_quote "$coord_dir_abs") --agent-id $(bootstrap_shell_quote "$agent_id")"
+  init_command="agent-coord-init"
+  if [ -n "$remote_url" ]; then
+    init_command="$init_command --remote $(bootstrap_shell_quote "$remote_url")"
+  else
+    init_command="$init_command --root $(bootstrap_shell_quote "$root_abs")"
+  fi
+  init_command="$init_command --project $(bootstrap_shell_quote "$project") --project-key $(bootstrap_shell_quote "$project_item_key") --dir $(bootstrap_shell_quote "$coord_dir_abs") --agent-id $(bootstrap_shell_quote "$agent_id")"
   if [ "$bare_only" = "1" ]; then
     init_command="$init_command --bare-only"
   fi
@@ -125,6 +133,7 @@ Suggested coordination settings:
 
 Suggested environment for future runs:
   export PI_COORD_ROOT=$(bootstrap_shell_quote "$root_abs")
+  export PI_COORD_REMOTE_URL=$(bootstrap_shell_quote "$remote_url")
   export PI_COORD_PROJECT=$(bootstrap_shell_quote "$project")
   export PI_COORD_PROJECT_KEY=$(bootstrap_shell_quote "$project_item_key")
   export PI_COORD_DIR=$(bootstrap_shell_quote "$coord_dir_abs")
@@ -273,6 +282,7 @@ bootstrap_ensure_remote_from_clone() {
 
 project_root_arg=""
 root_arg=""
+remote_url_arg=""
 workspace_arg=""
 coord_dir_arg=""
 agent_id_arg=""
@@ -292,6 +302,11 @@ while [ "$#" -gt 0 ]; do
     --root)
       [ "$#" -ge 2 ] || coord_die "--root requires a value"
       root_arg="$2"
+      shift 2
+      ;;
+    --remote)
+      [ "$#" -ge 2 ] || coord_die "--remote requires a value"
+      remote_url_arg="$2"
       shift 2
       ;;
     --workspace)
@@ -356,6 +371,12 @@ else
   root="$(coord_default_root)"
 fi
 
+if [ -n "$remote_url_arg" ]; then
+  remote_url="$remote_url_arg"
+else
+  remote_url="${PI_COORD_REMOTE_URL:-}"
+fi
+
 if [ -n "$workspace_arg" ]; then
   workspace="$workspace_arg"
 elif [ "$use_context_env" = "1" ] && [ -n "${PI_COORD_WORKSPACE:-}" ]; then
@@ -409,7 +430,11 @@ fi
 inspect_dir="$(pwd -P)"
 root_abs="$(coord_abs "$root")"
 coord_dir_abs="$(coord_abs "$coord_dir")"
-remote="$(coord_remote_for "$root_abs" "$project")"
+if [ -n "$remote_url" ]; then
+  remote="$remote_url"
+else
+  remote="$(coord_remote_for "$root_abs" "$project")"
+fi
 
 bootstrap_print_plan
 
@@ -428,7 +453,9 @@ if [ "$bare_only" != "1" ] \
   && [ -e "$coord_dir_abs" ] \
   && coord_is_coord_repo "$coord_dir_abs"; then
   coord_note "coordination clone already exists: $coord_dir_abs"
-  bootstrap_ensure_remote_from_clone "$coord_dir_abs" "$remote"
+  if [ -z "$remote_url" ]; then
+    bootstrap_ensure_remote_from_clone "$coord_dir_abs" "$remote"
+  fi
   if [ "$status_after" = "1" ]; then
     "$agent_coord_status" --coord-dir "$coord_dir_abs"
   fi
@@ -436,12 +463,16 @@ if [ "$bare_only" != "1" ] \
 fi
 
 init_args=(
-  --root "$root_abs"
   --project "$project"
   --project-key "$project_item_key"
   --dir "$coord_dir_abs"
   --agent-id "$agent_id"
 )
+if [ -n "$remote_url" ]; then
+  init_args=(--remote "$remote_url" "${init_args[@]}")
+else
+  init_args=(--root "$root_abs" "${init_args[@]}")
+fi
 if [ "$bare_only" = "1" ]; then
   init_args+=(--bare-only)
 fi
