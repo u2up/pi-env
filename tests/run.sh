@@ -8,6 +8,7 @@ scripts=(
   tests/agent-coord-blackbox.sh
   tests/agent-coord-concurrency.sh
   tests/agent-coord-lint.sh
+  tests/agent-coord-root-layout.sh
   tests/agent-coord-generate-requirements.sh
   tests/agent-coord-generate-requirements-coverage.sh
   tests/design-covers.sh
