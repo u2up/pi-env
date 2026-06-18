@@ -53,13 +53,15 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+requirements_dirs=()
 if [ -d "$coord_dir/requirements" ]; then
-  requirements_dir="$coord_dir/requirements"
-else
-  requirements_dir="$coord_dir/projects/$project/requirements"
+  requirements_dirs+=("$coord_dir/requirements")
 fi
-if [ ! -d "$requirements_dir" ]; then
-  echo "requirements directory not found: $requirements_dir" >&2
+if [ -d "$coord_dir/projects/$project/requirements" ]; then
+  requirements_dirs+=("$coord_dir/projects/$project/requirements")
+fi
+if [ "${#requirements_dirs[@]}" -eq 0 ]; then
+  echo "requirements directory not found: $coord_dir/requirements or $coord_dir/projects/$project/requirements" >&2
   exit 1
 fi
 if [ ! -d "$designs_dir" ]; then
@@ -75,13 +77,13 @@ tmp="$(mktemp)"
 cleanup() { rm -f "$tmp"; }
 trap cleanup EXIT
 
-node - "$requirements_dir" "$designs_dir" "$check" "$preview" > "$tmp" <<'NODE'
+node - "$designs_dir" "$check" "$preview" "${requirements_dirs[@]}" > "$tmp" <<'NODE'
 const fs = require('fs');
 const path = require('path');
-const reqDir = process.argv[2];
-const designsDir = process.argv[3];
-const check = process.argv[4] === '1';
-const preview = process.argv[5] === '1';
+const designsDir = process.argv[2];
+const check = process.argv[3] === '1';
+const preview = process.argv[4] === '1';
+const reqDirs = process.argv.slice(5);
 
 function unquote(v) {
   v = (v || '').trim();
@@ -104,19 +106,24 @@ function sortRequirements(a, b) {
 
 const requirements = [];
 const byKey = new Map();
-for (const file of fs.readdirSync(reqDir).filter((name) => /\.ya?ml$/.test(name)).sort()) {
-  const text = fs.readFileSync(path.join(reqDir, file), 'utf8');
-  const status = field(text, 'status');
-  const key = field(text, 'requirement_key');
-  const id = field(text, 'id');
-  if (status !== 'active' || !key || !id) continue;
-  const req = { key, id, order: Number(field(text, 'render_order') || '999999') };
-  requirements.push(req);
-  if (byKey.has(key)) {
-    console.error(`duplicate active requirement_key ${key}: ${byKey.get(key).id} and ${id}`);
-    process.exit(1);
+const seenIds = new Set();
+for (const reqDir of reqDirs) {
+  for (const file of fs.readdirSync(reqDir).filter((name) => /\.ya?ml$/.test(name)).sort()) {
+    const text = fs.readFileSync(path.join(reqDir, file), 'utf8');
+    const status = field(text, 'status');
+    const key = field(text, 'requirement_key');
+    const id = field(text, 'id');
+    if (!id || seenIds.has(id)) continue;
+    seenIds.add(id);
+    if (status !== 'active' || !key) continue;
+    const req = { key, id, order: Number(field(text, 'render_order') || '999999') };
+    requirements.push(req);
+    if (byKey.has(key)) {
+      console.error(`duplicate active requirement_key ${key}: ${byKey.get(key).id} and ${id}`);
+      process.exit(1);
+    }
+    byKey.set(key, req);
   }
-  byKey.set(key, req);
 }
 requirements.sort(sortRequirements);
 

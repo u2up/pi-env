@@ -33,6 +33,34 @@ grep -F '#### CRQ-010 — Requirement source of truth precedence' "$stdout_file"
 grep -F 'projects/<project>/requirements/' "$stdout_file" >/dev/null
 grep -F 'one renderable top-level `body: |-` block' "$stdout_file" >/dev/null
 
+mixed_coord="$tmpdir/mixed-coordination"
+mkdir -p "$mixed_coord/requirements" "$mixed_coord/projects/pi-env/requirements"
+cat > "$mixed_coord/projects/pi-env/requirements/PIENV-FRQ-20260618-000000-001.yaml" <<'EOF'
+schema: coordination-item/v1
+id: PIENV-FRQ-20260618-000000-001
+type: functional-requirement
+requirement_key: MIX-001
+requirement_class: functional
+requirement_kind: detailed-behavior
+domain: test
+status: active
+project: pi-env
+title: "MIX-001"
+render_order: 1
+render_section: "3.9 Mixed layout requirements"
+testable: no
+testability_note: fixture
+body: |-
+  #### MIX-001 Mixed root and legacy fixture
+
+  Legacy requirements must render even when an empty root requirements/
+  directory exists during migration.
+EOF
+mixed_output="$tmpdir/mixed-requirements.md"
+scripts/agent-coord-generate-requirements \
+  --coordination-dir "$mixed_coord" > "$mixed_output"
+grep -F '#### MIX-001 Mixed root and legacy fixture' "$mixed_output" >/dev/null
+
 sample_requirement="coordination/projects/pi-env/requirements/PIENV-FRQ-20260612-210000-001.yaml"
 grep -F 'body: |-' "$sample_requirement" >/dev/null
 if grep -E '^(current|events|messages):' "$sample_requirement" >/dev/null; then

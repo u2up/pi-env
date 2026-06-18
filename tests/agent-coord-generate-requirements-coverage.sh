@@ -11,7 +11,7 @@ trap cleanup EXIT
 coord_dir="$tmpdir/coordination"
 designs_dir="$tmpdir/designs"
 req_dir="$coord_dir/projects/pi-env/requirements"
-mkdir -p "$req_dir" "$designs_dir"
+mkdir -p "$coord_dir/requirements" "$req_dir" "$designs_dir"
 
 write_req() {
   local id="$1" key="$2" order="$3"

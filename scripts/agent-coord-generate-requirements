@@ -50,13 +50,15 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+requirements_dirs=()
 if [ -d "$coord_dir/requirements" ]; then
-  requirements_dir="$coord_dir/requirements"
-else
-  requirements_dir="$coord_dir/projects/$project/requirements"
+  requirements_dirs+=("$coord_dir/requirements")
 fi
-if [ ! -d "$requirements_dir" ]; then
-  echo "requirements directory not found: $requirements_dir" >&2
+if [ -d "$coord_dir/projects/$project/requirements" ]; then
+  requirements_dirs+=("$coord_dir/projects/$project/requirements")
+fi
+if [ "${#requirements_dirs[@]}" -eq 0 ]; then
+  echo "requirements directory not found: $coord_dir/requirements or $coord_dir/projects/$project/requirements" >&2
   exit 1
 fi
 
@@ -64,10 +66,10 @@ tmp="$(mktemp)"
 cleanup() { rm -f "$tmp"; }
 trap cleanup EXIT
 
-node "$0.node" "$requirements_dir" > "$tmp" 2>/dev/null || node - "$requirements_dir" > "$tmp" <<'NODE'
+node "$0.node" "${requirements_dirs[@]}" > "$tmp" 2>/dev/null || node - "${requirements_dirs[@]}" > "$tmp" <<'NODE'
 const fs = require('fs');
 const path = require('path');
-const dir = process.argv[2];
+const dirs = process.argv.slice(2);
 function unquote(v) {
   v = (v || '').trim();
   if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
@@ -100,10 +102,21 @@ function blockScalar(text, marker, indent) {
 function body(text) {
   return blockScalar(text, /^body: \|-\n/m, 2);
 }
-const items = fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).map(f => {
-  const text = fs.readFileSync(path.join(dir, f), 'utf8');
+const seenIds = new Set();
+const files = [];
+for (const dir of dirs) {
+  for (const file of fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).sort()) {
+    files.push({ dir, file });
+  }
+}
+const items = files.map(({ dir, file }) => {
+  const text = fs.readFileSync(path.join(dir, file), 'utf8');
+  const id = field(text, 'id') || file;
+  if (seenIds.has(id)) return null;
+  seenIds.add(id);
   return {
-    file: f,
+    file: path.join(dir, file),
+    id,
     key: field(text, 'requirement_key'),
     cls: field(text, 'requirement_class'),
     order: Number(field(text, 'render_order') || '999999'),
@@ -111,7 +124,7 @@ const items = fs.readdirSync(dir).filter(f => /\.ya?ml$/.test(f)).map(f => {
     status: field(text, 'status'),
     body: body(text),
   };
-}).filter(i => i.status === 'active' && i.key && i.body)
+}).filter(Boolean).filter(i => i.status === 'active' && i.key && i.body)
   .sort((a,b) => {
     const rank = cls => cls === 'quality' ? 1 : cls === 'constraint' ? 2 : 0;
     return rank(a.cls) - rank(b.cls)
