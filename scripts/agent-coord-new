@@ -34,10 +34,11 @@ Options:
   -h, --help               Show this help
 
 If --project is omitted, PI_COORD_PROJECT is used when set. Otherwise the
-item is created as a workspace-level item. The item key is resolved from
---project-key, stored project/workspace metadata, PI_COORD_PROJECT_KEY, or
-a derived project/workspace name. It is uppercased and all non-alphanumeric
-characters are removed for item IDs.
+item is created in the project-root layout when PROJECT.md plus root item
+folders are present, or as a workspace-level item in legacy clones. The item
+key is resolved from --project-key, stored project/workspace metadata,
+PI_COORD_PROJECT_KEY, or a derived project/workspace name. It is uppercased
+and all non-alphanumeric characters are removed for item IDs.
 
 Generated IDs use:
   <PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
@@ -184,14 +185,47 @@ title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
 cd "$coord_dir"
 
+root_item=0
 if [ -z "$project_key" ]; then
-  workspace_item=1
+  if coord_write_root_items_by_default; then
+    root_item=1
+  else
+    workspace_item=1
+  fi
 fi
 
 created="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
 
-if [ "$workspace_item" = "1" ]; then
+if [ "$root_item" = "1" ]; then
+  if coord_item_type_uses_issue_status_dirs "$item_type"; then
+    item_root="$type_dir/open"
+  else
+    item_root="$type_dir"
+  fi
+  metadata_file="PROJECT.md"
+  stored_key="$(coord_metadata_item_key "$metadata_file")"
+  if [ -n "$project_id_key_arg" ] && [ -n "$stored_key" ]; then
+    if [ "$(coord_project_id_prefix "$project_id_key_arg")" != "$(coord_project_id_prefix "$stored_key")" ]; then
+      coord_die "--project-key conflicts with stored project item_key: $stored_key"
+    fi
+  fi
+  if [ -n "$project_id_key_arg" ]; then
+    project_id_key="$project_id_key_arg"
+  elif [ -n "$stored_key" ]; then
+    project_id_key="$stored_key"
+  elif [ -n "$project_id_key_env" ]; then
+    project_id_key="$project_id_key_env"
+  else
+    project_id_key="$(coord_workspace_dir_key .)"
+  fi
+  id_prefix="$(coord_project_id_prefix "$project_id_key")"
+  project_value="$(coord_metadata_value "$metadata_file" project)"
+  if [ -z "$project_value" ]; then
+    project_value="$(coord_sanitize_path_part "$(basename "$(pwd -P)")")"
+  fi
+  [ -n "$project_value" ] || project_value="project"
+elif [ "$workspace_item" = "1" ]; then
   if coord_item_type_uses_issue_status_dirs "$item_type"; then
     item_root="workspace/$type_dir/open"
   else

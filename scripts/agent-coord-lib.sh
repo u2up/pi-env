@@ -430,6 +430,18 @@ coord_move_issue_item_to_status() {
   target_path="$item_path"
 
   case "$item_path" in
+    issues/open/*)
+      target_path="issues/$target_status/${item_path#issues/open/}"
+      ;;
+    issues/blocked/*)
+      target_path="issues/$target_status/${item_path#issues/blocked/}"
+      ;;
+    issues/done/*)
+      target_path="issues/$target_status/${item_path#issues/done/}"
+      ;;
+    issues/closed/*)
+      target_path="issues/$target_status/${item_path#issues/closed/}"
+      ;;
     */issues/open/*)
       target_path="${item_path/\/issues\/open\//\/issues\/$target_status\/}"
       ;;
@@ -554,6 +566,29 @@ coord_metadata_item_key() {
     value="$(coord_frontmatter_value "$file" item_key || true)"
   fi
   printf '%s\n' "$value"
+}
+
+coord_metadata_value() {
+  local file key value
+  file="$1"
+  key="$2"
+  value=""
+  if [ -f "$file" ]; then
+    value="$(coord_frontmatter_value "$file" "$key" || true)"
+  fi
+  printf '%s\n' "$value"
+}
+
+coord_has_legacy_layout() {
+  [ -f WORKSPACE.md ] || [ -d workspace ] || [ -d projects ]
+}
+
+coord_has_project_root_layout() {
+  [ -f PROJECT.md ] && { [ -d issues ] || [ -d requirements ] || [ -d decisions ] || [ -d notes ]; }
+}
+
+coord_write_root_items_by_default() {
+  coord_has_project_root_layout && ! coord_has_legacy_layout
 }
 
 coord_set_frontmatter() {
@@ -858,10 +893,36 @@ coord_append_activity() {
 }
 
 coord_item_find_files() {
-  find workspace projects \
+  local roots=() seen file id_value stem key
+  for root in issues requirements decisions notes workspace projects; do
+    if [ -e "$root" ]; then
+      roots+=("$root")
+    fi
+  done
+  [ "${#roots[@]}" -gt 0 ] || return 0
+
+  seen=$'\n'
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    id_value="$(coord_item_value "$file" id || true)"
+    if [ -n "$id_value" ]; then
+      key="$id_value"
+    else
+      stem="$(basename "$file")"
+      stem="${stem%.yaml}"
+      stem="${stem%.yml}"
+      stem="${stem%.md}"
+      key="$stem"
+    fi
+    case "$seen" in
+      *$'\n'"$key"$'\n'*) continue ;;
+    esac
+    seen="${seen}${key}"$'\n'
+    printf '%s\n' "$file"
+  done < <(find "${roots[@]}" \
     -type f \
     \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) \
-    2>/dev/null | sort
+    2>/dev/null | sort)
 }
 
 coord_find_item() {

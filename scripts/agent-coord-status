@@ -75,10 +75,15 @@ while IFS= read -r file; do
   printf -- '- %s [%s] owner=%s reviewed=%s verified=%s priority=%s %s (%s)\n' \
     "$id" "$status" "$owner" "$reviewed" "$verified" "$priority" "$title" "$file"
 done < <(
-  find workspace/issues/open workspace/issues/blocked workspace/issues/done \
-    projects/*/issues/open projects/*/issues/blocked projects/*/issues/done \
-    -type f \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) \
-    2>/dev/null | sort
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    if coord_item_type_uses_issue_status_dirs "$(coord_item_value "$file" type || true)"; then
+      case "$(coord_item_value "$file" status || true)" in
+        closed) ;;
+        *) printf '%s\n' "$file" ;;
+      esac
+    fi
+  done < <(coord_item_find_files)
 )
 
 if [ "$found" = "0" ]; then

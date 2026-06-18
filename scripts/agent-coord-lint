@@ -42,6 +42,9 @@ Checks:
 Issue status directories are not mirrored under tests/items; the expected
 project-item test path is:
   tests/items/projects/<project>/<type-dir>/<item-id>.sh
+
+Root-layout item tests use:
+  tests/items/<item-id>.sh
 USAGE
 }
 
@@ -104,20 +107,21 @@ lint_warn() {
 }
 
 item_yaml_files() {
-  find workspace projects \
-    -type f \
-    \( -name '*.yaml' -o -name '*.yml' \) \
-    2>/dev/null | sort
+  while IFS= read -r file; do
+    case "$file" in
+      *.yaml|*.yml) printf '%s\n' "$file" ;;
+    esac
+  done < <(coord_item_find_files)
 }
 
 item_status_dir() {
   local file
   file="$1"
   case "$file" in
-    */issues/open/*) printf 'open\n' ;;
-    */issues/blocked/*) printf 'blocked\n' ;;
-    */issues/done/*) printf 'done\n' ;;
-    */issues/closed/*) printf 'closed\n' ;;
+    issues/open/*|*/issues/open/*) printf 'open\n' ;;
+    issues/blocked/*|*/issues/blocked/*) printf 'blocked\n' ;;
+    issues/done/*|*/issues/done/*) printf 'done\n' ;;
+    issues/closed/*|*/issues/closed/*) printf 'closed\n' ;;
     *) printf '\n' ;;
   esac
 }
@@ -249,7 +253,7 @@ while IFS= read -r file; do
   case "$canonical_type" in
     functional-requirement|quality-requirement|constraint-requirement|requirement)
       case "$file" in
-        projects/*/requirements/*.yaml|projects/*/requirements/*.yml|workspace/requirements/*.yaml|workspace/requirements/*.yml)
+        projects/*/requirements/*.yaml|projects/*/requirements/*.yml|workspace/requirements/*.yaml|workspace/requirements/*.yml|requirements/*.yaml|requirements/*.yml)
           ;;
         *) lint_fail "$file requirement item must live under a single requirements directory" ;;
       esac

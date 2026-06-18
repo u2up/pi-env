@@ -53,7 +53,11 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-requirements_dir="$coord_dir/projects/$project/requirements"
+if [ -d "$coord_dir/requirements" ]; then
+  requirements_dir="$coord_dir/requirements"
+else
+  requirements_dir="$coord_dir/projects/$project/requirements"
+fi
 if [ ! -d "$requirements_dir" ]; then
   echo "requirements directory not found: $requirements_dir" >&2
   exit 1
