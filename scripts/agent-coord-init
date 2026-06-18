@@ -19,26 +19,26 @@ Usage:
 
 Options:
   --root DIR        Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
-  --workspace ID    Coordination domain; default: PI_COORD_WORKSPACE or cwd name
+  --project ID      Coordination project; default: PI_COORD_PROJECT, PI_COORD_WORKSPACE, or cwd name
+  --project-key KEY Project item ID prefix; default: derived project
+  --workspace ID    Legacy alias for --project when --project is omitted
   --dir DIR         Working clone dir; default: PI_COORD_DIR or coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE       Coordination role; default: PI_COORD_ROLE
-  --project KEY     Initial project directory; default: workspace ID
-  --project-key KEY Initial project's item ID prefix; default: derived project
   --bare-only       Only create the bare remote
   -h, --help        Show this help
 
 The remote path is:
-  <root>/<workspace>-coordination.git
+  <root>/<project>-coordination.git
 USAGE
 }
 
 root="$(coord_default_root)"
-workspace="$(coord_default_workspace)"
+legacy_workspace=""
 coord_dir="$(coord_default_dir)"
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
-project_key=""
+project_key="${PI_COORD_PROJECT:-}"
 project_id_key="${PI_COORD_PROJECT_KEY:-}"
 bare_only=0
 
@@ -51,7 +51,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --workspace)
       [ "$#" -ge 2 ] || coord_die "--workspace requires a value"
-      workspace="$2"
+      legacy_workspace="$2"
       shift 2
       ;;
     --dir)
@@ -93,14 +93,18 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-[ -n "$workspace" ] || coord_die "workspace must not be empty"
-[ -n "$agent_id" ] || coord_die "agent id must not be empty"
 if [ -z "$project_key" ]; then
-  project_key="$workspace"
+  if [ -n "$legacy_workspace" ]; then
+    project_key="$legacy_workspace"
+  else
+    project_key="$(coord_default_workspace)"
+  fi
 fi
+[ -n "$project_key" ] || coord_die "project must not be empty"
+[ -n "$agent_id" ] || coord_die "agent id must not be empty"
 
 root="$(coord_abs "$root")"
-remote="$(coord_remote_for "$root" "$workspace")"
+remote="$(coord_remote_for "$root" "$project_key")"
 mkdir -p "$root"
 
 if [ -e "$remote" ] && [ ! -d "$remote/objects" ]; then
@@ -148,7 +152,6 @@ agent_file="$(coord_sanitize_path_part "$agent_id")"
 [ -n "$agent_file" ] || agent_file="agent"
 
 created="$(coord_timestamp_iso)"
-workspace_item_key="$(coord_project_id_prefix "$(coord_workspace_dir_key .)")"
 if [ -z "$project_id_key" ]; then
   project_id_key="$project_key"
 fi
@@ -157,21 +160,13 @@ project_item_key="$(coord_project_id_prefix "$project_id_key")"
 mkdir -p \
   docs \
   ".pi/skills/agent-coordination" \
-  "projects/$project_dir/issues/open" \
-  "projects/$project_dir/issues/blocked" \
-  "projects/$project_dir/issues/done" \
-  "projects/$project_dir/issues/closed" \
-  "projects/$project_dir/requirements" \
-  "projects/$project_dir/decisions" \
-  "projects/$project_dir/notes" \
-  workspace/issues/open \
-  workspace/issues/blocked \
-  workspace/issues/done \
-  workspace/issues/closed \
-  workspace/requirements \
-  workspace/decisions \
-  workspace/architecture \
-  workspace/cross-project-todos \
+  issues/open \
+  issues/blocked \
+  issues/done \
+  issues/closed \
+  requirements \
+  decisions \
+  notes \
   agents
 
 coord_install_template AGENTS.md AGENTS.md
@@ -180,10 +175,10 @@ coord_install_template ITEM_FORMAT.md docs/ITEM_FORMAT.md
 coord_install_template SKILL.md .pi/skills/agent-coordination/SKILL.md
 
 cat >README.md <<EOF_README
-# $workspace coordination
+# $project_dir coordination
 
 This repository stores Git-backed agent coordination state for the
-$workspace workspace.
+$project_dir project.
 
 Use normal Git pull, commit, and push operations to synchronize state.
 Read AGENTS.md and docs/SYNC_PROTOCOL.md before changing shared items.
@@ -198,22 +193,7 @@ starting at \`001\` for each timestamp. Testable items are linked to project
 repo scripts by matching item and test filename stems.
 EOF_README
 
-cat >WORKSPACE.md <<EOF_WORKSPACE
----
-workspace: $workspace
-item_key: $workspace_item_key
-created: $created
----
-
-# Workspace: $workspace
-
-- Coordination domain: $workspace
-- Workspace item key: $workspace_item_key
-- Bare remote: $remote
-- Initial project: $project_dir
-EOF_WORKSPACE
-
-cat >"projects/$project_dir/PROJECT.md" <<EOF_PROJECT
+cat >PROJECT.md <<EOF_PROJECT
 ---
 project: $project_dir
 item_key: $project_item_key
@@ -224,6 +204,7 @@ created: $created
 
 - Project item key: $project_item_key
 - Source name: $project_key
+- Bare remote: $remote
 EOF_PROJECT
 
 cat >"agents/$agent_file.md" <<EOF_AGENT
@@ -236,7 +217,7 @@ cat >"agents/$agent_file.md" <<EOF_AGENT
 
 EOF_AGENT
 
-find projects workspace agents -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
+find issues requirements decisions notes agents -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
 
 actor="$(coord_effective_actor "$agent_id" "$role")"
 if coord_commit_all_if_changed "Initialize coordination repository" "$actor"; then

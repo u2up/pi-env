@@ -35,7 +35,8 @@ coordination rules say otherwise.
 
 ## Item keys and IDs
 
-Use stored `item_key` metadata when creating items. Project item keys live in
+Use stored `item_key` metadata when creating items. Project-root item keys
+live in top-level `PROJECT.md`; legacy project clones may store keys in
 `projects/<project>/PROJECT.md`. Top-level `WORKSPACE.md` keys are legacy
 compatibility metadata for existing workspace-level items only. Do not invent
 or silently change keys.
@@ -91,9 +92,12 @@ project item path plus item type, not issue status. Legacy workspace-level
 items may keep mirrored workspace test paths:
 
 ```text
-tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/requirements/<item-id>.sh
-tests/items/workspace/issues/<item-id>.sh
+tests/items/<item-id>.sh
+tests/items/requirements/<item-id>.sh
+tests/items/projects/<project>/issues/<item-id>.sh        # legacy
+tests/items/projects/<project>/requirements/<item-id>.sh  # legacy
+tests/items/workspace/issues/<item-id>.sh                 # legacy
+tests/items/workspace/requirements/<item-id>.sh           # legacy
 ```
 
 Verification messages should record exact commands and results. When available,

@@ -588,7 +588,7 @@ coord_has_project_root_layout() {
 }
 
 coord_write_root_items_by_default() {
-  coord_has_project_root_layout && ! coord_has_legacy_layout
+  coord_has_project_root_layout
 }
 
 coord_set_frontmatter() {

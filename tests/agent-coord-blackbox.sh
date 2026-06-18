@@ -31,7 +31,6 @@ git init -q
 agent-coord-init \
   --workspace default-demo \
   --agent-id agent-a \
-  --project pi-env \
   --bare-only >/dev/null
 test -d "$tmp/default-root/agent-remotes/default-demo-coordination.git"
 test ! -e "$HOME/agent-remotes/default-demo-coordination.git"
@@ -59,15 +58,16 @@ bootstrap-coordination \
 
 test -d "$tmp/bootstrap-remotes/other-project-coordination.git"
 test -f "$bootstrap_project_dir/coordination/AGENTS.md"
-test -d "$bootstrap_project_dir/coordination/projects/other-project/issues/open"
-test ! -e "$bootstrap_project_dir/coordination/projects/other-project/functional-requirements"
-test ! -e "$bootstrap_project_dir/coordination/projects/other-project/quality-requirements"
-test ! -e "$bootstrap_project_dir/coordination/projects/other-project/constraint-requirements"
-test -d "$bootstrap_project_dir/coordination/projects/other-project/requirements"
-grep -q '^workspace: other-project$' "$bootstrap_project_dir/coordination/WORKSPACE.md"
-grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/coordination/projects/other-project/PROJECT.md"
+test -d "$bootstrap_project_dir/coordination/issues/open"
+test ! -e "$bootstrap_project_dir/coordination/functional-requirements"
+test ! -e "$bootstrap_project_dir/coordination/quality-requirements"
+test ! -e "$bootstrap_project_dir/coordination/constraint-requirements"
+test -d "$bootstrap_project_dir/coordination/requirements"
+grep -q '^project: other-project$' "$bootstrap_project_dir/coordination/PROJECT.md"
+grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/coordination/PROJECT.md"
 grep -q "Clone dir:    $bootstrap_project_dir/coordination" "$bootstrap_plan"
-grep -q 'export PI_COORD_WORKSPACE=other-project' "$bootstrap_plan"
+grep -q 'export PI_COORD_PROJECT=other-project' "$bootstrap_plan"
+! grep -q 'PI_COORD_WORKSPACE' "$bootstrap_plan"
 
 bootstrap_remote="$tmp/bootstrap-remotes/other-project-coordination.git"
 bootstrap_head="$(git -C "$bootstrap_project_dir/coordination" rev-parse HEAD)"
@@ -127,26 +127,26 @@ agent-coord-init \
   --agent-id agent-a \
   --project pi-env >/dev/null
 
-test -d "$tmp/remotes/demo-coordination.git"
+test -d "$tmp/remotes/pi-env-coordination.git"
 test -f coordination/AGENTS.md
 test -f coordination/docs/SYNC_PROTOCOL.md
 test -f coordination/docs/ITEM_FORMAT.md
 test -f coordination/.pi/skills/agent-coordination/SKILL.md
-test -d coordination/projects/pi-env/issues/open
-test -d coordination/projects/pi-env/issues/done
-test ! -e coordination/projects/pi-env/functional-requirements
-test ! -e coordination/projects/pi-env/quality-requirements
-test ! -e coordination/projects/pi-env/constraint-requirements
-test -d coordination/projects/pi-env/requirements
-grep -q '^item_key: PIENV$' coordination/projects/pi-env/PROJECT.md
-grep -q '^item_key: PIENVTEST$' coordination/WORKSPACE.md
+test -d coordination/issues/open
+test -d coordination/issues/done
+test ! -e coordination/functional-requirements
+test ! -e coordination/quality-requirements
+test ! -e coordination/constraint-requirements
+test -d coordination/requirements
+grep -q '^project: pi-env$' coordination/PROJECT.md
+grep -q '^item_key: PIENV$' coordination/PROJECT.md
 git -C coordination config --get pull.rebase | grep -qx true
 git -C coordination config --get rebase.autoStash | grep -qx true
 
 cd "$tmp"
 agent-coord-clone \
   --root "$tmp/remotes" \
-  --workspace demo \
+  --project pi-env \
   --dir clone >/dev/null
 
 test -f clone/AGENTS.md
@@ -156,7 +156,6 @@ git -C clone rev-parse --verify HEAD >/dev/null
 
 action_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --agent-id agent-a \
   --role architect \
   "Document pi config behavior" | tail -n 1)"
@@ -198,7 +197,6 @@ grep -q '^id: PIENVTEST-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
 
 requirement_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type functional \
   --status accepted \
   --testable no \
@@ -210,13 +208,12 @@ grep -q '^type: functional-requirement$' "$workspace_dir/coordination/$requireme
 grep -q '^status: accepted$' "$workspace_dir/coordination/$requirement_path"
 grep -q '^testable: no$' "$workspace_dir/coordination/$requirement_path"
 case "$requirement_path" in
-  projects/pi-env/requirements/*.yaml) ;;
+  requirements/*.yaml) ;;
   *) printf 'unexpected requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
 esac
 
 quality_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type quality \
   --status accepted \
   --testable no \
@@ -226,13 +223,12 @@ grep -q '^id: PIENV-QRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$quality_requirement_path"
 grep -q '^type: quality-requirement$' "$workspace_dir/coordination/$quality_requirement_path"
 case "$quality_requirement_path" in
-  projects/pi-env/requirements/*.yaml) ;;
+  requirements/*.yaml) ;;
   *) printf 'unexpected quality requirement path: %s\n' "$quality_requirement_path" >&2; exit 1 ;;
 esac
 
 constraint_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type constraint \
   --status accepted \
   --testable no \
@@ -242,13 +238,12 @@ grep -q '^id: PIENV-CRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$constraint_requirement_path"
 grep -q '^type: constraint-requirement$' "$workspace_dir/coordination/$constraint_requirement_path"
 case "$constraint_requirement_path" in
-  projects/pi-env/requirements/*.yaml) ;;
+  requirements/*.yaml) ;;
   *) printf 'unexpected constraint requirement path: %s\n' "$constraint_requirement_path" >&2; exit 1 ;;
 esac
 
 legacy_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type requirement \
   --status accepted \
   --testable no \
@@ -258,7 +253,7 @@ grep -q '^id: PIENV-REQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$legacy_requirement_path"
 grep -q '^type: requirement$' "$workspace_dir/coordination/$legacy_requirement_path"
 case "$legacy_requirement_path" in
-  projects/pi-env/requirements/*.yaml) ;;
+  requirements/*.yaml) ;;
   *) printf 'unexpected legacy requirement path: %s\n' "$legacy_requirement_path" >&2; exit 1 ;;
 esac
 
@@ -269,7 +264,6 @@ legacy_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$legacy_requi
 
 decision_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type decision \
   --status accepted \
   --testable no \
@@ -280,7 +274,7 @@ grep -q '^id: PIENV-DEC-[0-9]\{8\}-[0-9]\{6\}-001$' \
 grep -q '^type: decision$' "$workspace_dir/coordination/$decision_path"
 grep -q '^status: accepted$' "$workspace_dir/coordination/$decision_path"
 case "$decision_path" in
-  projects/pi-env/decisions/*.yaml) ;;
+  decisions/*.yaml) ;;
   *) printf 'unexpected decision path: %s\n' "$decision_path" >&2; exit 1 ;;
 esac
 

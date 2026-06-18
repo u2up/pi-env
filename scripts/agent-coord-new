@@ -186,7 +186,7 @@ coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
 cd "$coord_dir"
 
 root_item=0
-if [ -z "$project_key" ]; then
+if [ -z "$project_key" ] && [ "$workspace_item" != "1" ]; then
   if coord_write_root_items_by_default; then
     root_item=1
   else

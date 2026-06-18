@@ -39,7 +39,8 @@ coordination work is project-scoped.
 Use the stored `item_key` for the project key portion of generated
 coordination item IDs:
 
-- project items use `projects/<project>/PROJECT.md`;
+- root-layout project items use top-level `PROJECT.md`;
+- legacy project items use `projects/<project>/PROJECT.md`;
 - top-level `WORKSPACE.md` keys are legacy compatibility metadata for existing
   workspace-level items only.
 
@@ -80,11 +81,12 @@ The completion metric for managers, reviewers, and testers is therefore not
 "done". It is `status: closed` with `reviewed: true` and `verified: true`.
 
 Other item types live under semantic type directories. All requirement classes
-use the single `requirements/` directory under `projects/<project>/` while
-preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. Existing
-`workspace/` requirement directories are legacy compatibility state for
-migrated coordination repositories. Generic `REQ` IDs are legacy-only unless an
-explicit supersession or migration decision says otherwise. Do not mirror issue
+use the single root-level `requirements/` directory in project-root clones
+while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. Existing
+`projects/<project>/requirements/` and `workspace/` requirement directories are
+legacy compatibility state for migrated coordination repositories. Generic
+`REQ` IDs are legacy-only unless an explicit supersession or migration decision
+says otherwise. Do not mirror issue
 status directories in project test paths, and do not silently renumber or
 rewrite historical items to fit newer conventions.
 
@@ -134,10 +136,12 @@ type, but not issue lifecycle status. Legacy workspace-level items may keep
 mirrored workspace test paths:
 
 ```text
-tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/requirements/<item-id>.sh
-tests/items/workspace/issues/<item-id>.sh
-tests/items/workspace/requirements/<item-id>.sh
+tests/items/<item-id>.sh
+tests/items/requirements/<item-id>.sh
+tests/items/projects/<project>/issues/<item-id>.sh        # legacy
+tests/items/projects/<project>/requirements/<item-id>.sh  # legacy
+tests/items/workspace/issues/<item-id>.sh                 # legacy
+tests/items/workspace/requirements/<item-id>.sh           # legacy
 ```
 
 Verification events should record exact commands run and pass/fail evidence.

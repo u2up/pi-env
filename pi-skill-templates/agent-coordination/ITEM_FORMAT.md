@@ -21,9 +21,10 @@ PIENV-FRQ-20260607-204155-002.yaml
 ```
 
 `PROJECTKEY` is uppercase alphanumeric text. Project item keys are stored in
-`projects/<project>/PROJECT.md` as `item_key`. Top-level `WORKSPACE.md` keys
-and workspace-level item IDs are legacy compatibility metadata only; new
-pi-env project coordination should create project-scoped items.
+root-layout `PROJECT.md` as `item_key`. Legacy project clones may store keys
+in `projects/<project>/PROJECT.md`. Top-level `WORKSPACE.md` keys and
+workspace-level item IDs are legacy compatibility metadata only; new pi-env
+project coordination should create project-scoped items.
 
 `TYPECODE` is an uppercase item-type abbreviation. Built-in mappings are:
 
@@ -143,29 +144,36 @@ declared by design documents and generated coverage reports.
 Issue items use developer-centric status directories:
 
 ```text
-projects/<project>/issues/open/
-projects/<project>/issues/blocked/
-projects/<project>/issues/done/
-projects/<project>/issues/closed/
-workspace/issues/open/
-workspace/issues/blocked/
-workspace/issues/done/
-workspace/issues/closed/
+issues/open/
+issues/blocked/
+issues/done/
+issues/closed/
+projects/<project>/issues/open/      # legacy compatibility
+projects/<project>/issues/blocked/   # legacy compatibility
+projects/<project>/issues/done/      # legacy compatibility
+projects/<project>/issues/closed/    # legacy compatibility
+workspace/issues/open/               # legacy compatibility
+workspace/issues/blocked/            # legacy compatibility
+workspace/issues/done/               # legacy compatibility
+workspace/issues/closed/             # legacy compatibility
 ```
 
 Other item types live under their semantic type directory and do not mirror
-issue status directories by default. All requirement classes share a single
-project-level requirements directory while preserving FRQ, QRQ, CRQ, and legacy
-REQ item-ID type codes. The workspace-level layout is legacy compatibility
-state for migrated coordination repositories:
+issue status directories by default. In project-root clones, all requirement
+classes share the root-level `requirements/` directory while preserving FRQ,
+QRQ, CRQ, and legacy REQ item-ID type codes. Legacy project/workspace layouts
+are compatibility state for migrated coordination repositories:
 
 ```text
-projects/<project>/requirements/        # functional, quality, constraint, and legacy requirements
-projects/<project>/decisions/
-projects/<project>/notes/
-workspace/requirements/                 # functional, quality, constraint, and legacy requirements
-workspace/decisions/
-workspace/notes/
+requirements/                           # functional, quality, constraint, and legacy requirements
+decisions/
+notes/
+projects/<project>/requirements/        # legacy compatibility
+projects/<project>/decisions/           # legacy compatibility
+projects/<project>/notes/               # legacy compatibility
+workspace/requirements/                 # legacy compatibility
+workspace/decisions/                    # legacy compatibility
+workspace/notes/                        # legacy compatibility
 ```
 
 Generic `REQ` requirement IDs are legacy-only unless an explicit supersession or
@@ -219,10 +227,12 @@ repository. Project item tests mirror the project and item-type path, but not
 issue status directories:
 
 ```text
-tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/requirements/<item-id>.sh
-tests/items/workspace/issues/<item-id>.sh
-tests/items/workspace/requirements/<item-id>.sh
+tests/items/<item-id>.sh
+tests/items/requirements/<item-id>.sh
+tests/items/projects/<project>/issues/<item-id>.sh        # legacy
+tests/items/projects/<project>/requirements/<item-id>.sh  # legacy
+tests/items/workspace/issues/<item-id>.sh                 # legacy
+tests/items/workspace/requirements/<item-id>.sh           # legacy
 ```
 
 Examples:
