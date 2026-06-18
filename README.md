@@ -1,7 +1,8 @@
 # pi-env
 
-Run Pi Coding Agent in a reproducible, sandboxed workspace instead of giving an
-AI agent direct access to your host environment.
+Run Pi Coding Agent against one selected project root in a reproducible,
+sandboxed environment instead of giving an AI agent direct access to your host
+environment.
 
 AI coding agents can inspect files, run commands, edit code, and invoke tools.
 That is powerful, but it also creates risk when the agent process can see your
@@ -18,9 +19,12 @@ or unrelated project data.
   and repeated runs use the same runtime tools.
 
 Nix provides reproducibility; Bubblewrap provides the isolation boundary.
-Optional role-manager and Git-backed coordination helpers are included for
-tracked role-based agent workflows, but the core value is simple: a safer,
-repeatable environment for running Pi against a codebase.
+Each pi-env run has one primary project root. That root is mounted read-write
+at `/workspace` inside the sandbox; `/workspace` is the sandbox path name, not a
+host-side multi-project workspace manager. Optional role-manager and Git-backed
+coordination helpers are included for tracked role-based agent workflows, but
+the core value is simple: a safer, repeatable environment for running Pi
+against one codebase at a time.
 
 ```text
 Without pi-env:
@@ -230,8 +234,11 @@ pi-env "Inspect this repo"
 pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
-Both direct and flake-integrated modes keep the target project as the workspace
-mounted at `/workspace`.
+Both direct and flake-integrated modes keep the selected project root as the
+single project mounted at `/workspace`. Direct use gets pi-env from a checkout
+or profile; flake integration lets the project pin pi-env in its own
+`flake.lock` and combine it with project-specific tools. Neither mode turns
+pi-env into a separate workspace-env repository or multi-project manager.
 
 ### New project flake
 
@@ -468,6 +475,12 @@ Bubblewrap sandbox. It modifies the host Pi agent config, normally
 
 ## 6. Runtime and sandbox behavior
 
+A pi-env invocation operates on one selected project root. The launcher detects
+or receives that root, and the Bubblewrap layer mounts it read-write at the
+fixed in-sandbox path `/workspace`. Complex layouts such as monorepos,
+submodules, worktrees, or integration checkouts remain project-owned policy;
+pi-env only chooses which root to expose for this run.
+
 `pi-bwrap`:
 
 - mounts the detected project root read-write at `/workspace`;
@@ -498,8 +511,9 @@ Bubblewrap sandbox. It modifies the host Pi agent config, normally
 - passes `PI_COORD_ROOT`, `PI_COORD_WORKSPACE`, `PI_COORD_AGENT_ID`,
   `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, and coordination directory context
   when set, mapping project-local coordination paths to `/workspace/...`,
-  auto-binding host `/workspace/agent-remotes` when available, and explicitly
-  mounting an external coordination clone with `PI_BWRAP_COORDINATION_DIR`;
+  auto-binding host `/workspace/agent-remotes` when available for legacy/local
+  setups, and explicitly mounting an external coordination clone with
+  `PI_BWRAP_COORDINATION_DIR`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or
   Docker sockets;
 - clears the environment, then passes only terminal basics and selected LLM
@@ -553,8 +567,9 @@ PI_BWRAP_IMPORT_AUTH=0 pi-start               # do not copy host Pi auth into sa
 PI_BWRAP_NET=0 pi-start                       # disable network access
 ```
 
-Inside the sandbox, the selected project is mounted read-write at `/workspace`,
-while the sandbox home and Pi config live separately from the host home.
+Inside the sandbox, the selected project root is mounted read-write at
+`/workspace`, while the sandbox home and Pi config live separately from the
+host home.
 
 ## 8. Common vs project-specific Pi resources
 
@@ -732,15 +747,15 @@ Role definitions are Markdown files with frontmatter. Project roles live in
 `.pi/roles/*.md` beside other project Pi resources. Common roles can live in the
 host/common agent resource directory as `roles/*.md`; `pi-bwrap` imports that
 `roles/` directory with common `skills/` and `prompts/` when common import is
-enabled. Coordination workspaces may also provide `coordination/roles` when a
-coordination clone is mounted.
+enabled. A mounted coordination clone may also provide `coordination/roles` for
+that project coordination domain.
 
 Roles are merged by `name`; later sources override earlier ones:
 
 1. bundled base package roles;
 2. global/common agent roles imported into `/home/pi/.pi/agent/roles`;
 3. common roles from `PI_BWRAP_COMMON_AGENT_DIR/roles` when directly visible;
-4. coordination workspace roles from `$PI_COORD_DIR/roles` or
+4. coordination-domain roles from `$PI_COORD_DIR/roles` or
    `coordination/roles`;
 5. project roles from `.pi/roles`.
 
@@ -779,14 +794,17 @@ See `designs/role-manager.md` for the architecture.
 
 ## 11. Agent coordination helpers
 
-`pi-env` includes opt-in helpers for Git-backed coordination repositories. They
-are plain Git/text-file tooling and are separate from `pi-start`.
+`pi-env` includes opt-in helpers for Git-backed project coordination
+repositories. They are plain Git/text-file tooling and are separate from
+`pi-start`. Coordination can track multiple project names for legacy or
+migration cases, but pi-env itself still runs against one selected project root
+per invocation.
 
-Guided setup with inferred, workspace-specific defaults:
+Guided setup with inferred, project-specific defaults:
 
 ```bash
 bootstrap-coordination
-# inspect another project/workspace from this devshell
+# inspect another project root from this devshell
 bootstrap-coordination --project-root /path/to/project --print-only
 # or only print the suggested PI_COORD_* environment and init command
 bootstrap-coordination --print-only
@@ -804,11 +822,11 @@ agent-coord-init --project pi-env
 ```
 
 `bootstrap-coordination` is a thin wrapper around `agent-coord-init`: it prints
-the inferred root, workspace, clone dir, remote, agent ID, project, and project
-key, then initializes with those explicit values. If the local coordination
-clone already exists but the planned local bare remote is missing or empty, it
-recreates that remote from the clone's committed Git history and repairs
-`origin` when it is absent or points to a missing local path.
+the inferred root, legacy domain ID, clone dir, remote, agent ID, project, and
+project key, then initializes with those explicit values. If the local
+coordination clone already exists but the planned local bare remote is missing
+or empty, it recreates that remote from the clone's committed Git history and
+repairs `origin` when it is absent or points to a missing local path.
 
 This creates a bare remote at:
 
@@ -852,17 +870,17 @@ For example, an issue can be created as
 `PIENV-FRQ-20260607-204155-001.yaml`. Use
 `agent-coord-init --project-key PIENV` to set the initial project's stored key
 during scaffolding. Project keys are stored in the coordination repo at
-`projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
-stored in `WORKSPACE.md` as `item_key`. Agents should use those stored keys
-instead of inventing new ones.
+`projects/<project>/PROJECT.md` as `item_key`. Coordination-domain item keys are
+stored in `WORKSPACE.md` as `item_key` for compatibility. Agents should use
+those stored keys instead of inventing new ones.
 
 Key resolution for `agent-coord-new` is:
 
 1. `--project-key KEY`;
-2. stored project/workspace `item_key`;
+2. stored project/domain `item_key`;
 3. `PI_COORD_PROJECT_KEY` when no stored key exists;
 4. derived `--project` / `PI_COORD_PROJECT` for project items;
-5. derived workspace directory name for workspace-level items.
+5. derived coordination clone directory name for domain-level items.
 
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
 backslashes, and other non-alphanumeric characters are removed. For example,

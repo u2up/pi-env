@@ -27,10 +27,12 @@ the layer that needs it.
 
 ## 1. Layer responsibilities
 
-`pi-env` is the outer entrypoint. It prepares paths, validates project context,
-and chooses whether the user wants a shell, a command, or an agent launch. It
-owns argument compatibility for the command families covered by `CMD-001`
-through `CMD-008`.
+`pi-env` is the outer entrypoint. It prepares paths, validates one selected
+project root, and chooses whether the user wants a shell, a command, or an
+agent launch. It owns argument compatibility for the command families covered
+by `CMD-001` through `CMD-008`. The selected project root is the only primary
+project for the run and is later mounted at `/workspace`; pi-env does not manage
+a host-side collection of projects.
 
 `pi-start` is the agent-facing startup layer. It translates the prepared
 workspace into the final `pi` invocation, applies role or prompt options, and
@@ -43,7 +45,7 @@ and home-state isolation flags.
 ## 2. Command flow
 
 The launchers pass structured intent downward rather than sharing hidden global
-state. `pi-env` resolves the project root and runtime inputs, then calls
+state. `pi-env` resolves the single project root and runtime inputs, then calls
 `pi-start` for the default `UC-001` agent startup or `pi-bwrap` for the
 custom-argument `UC-002` path. `pi-start` may delegate to `pi-bwrap` when the
 agent must run in the sandbox.

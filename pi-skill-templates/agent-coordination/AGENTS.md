@@ -95,6 +95,11 @@ current-state records under `requirements/`: they keep requirement metadata and
 one top-level renderable `body: |-` block, and must not contain top-level
 `current`, `events`, or `messages` sections.
 
+When changing requirements, update the corresponding requirement item first.
+Then regenerate `REQUIREMENTS.md` from the requirement items. Do not edit
+`REQUIREMENTS.md` as the primary source for a requirement that already has an
+active coordination requirement item.
+
 Do not add or maintain a separate Markdown `## Activity` section in item files.
 It duplicates issue event history and will drift.
 

@@ -45,15 +45,18 @@ network mode.
 
 ## 1. Project root and paths
 
-The sandbox starts from a selected project root. Path requirements ensure that
-the root is resolved consistently, mounted at the expected in-sandbox location,
-and used as the working directory unless the caller intentionally chooses a
-subdirectory.
+The sandbox starts from one selected project root. Path requirements ensure
+that the root is resolved consistently, mounted read-write at the fixed
+in-sandbox location `/workspace`, and used as the working directory unless the
+caller intentionally chooses a subdirectory. `/workspace` is a sandbox path
+name for that one root, not a host-side workspace manager abstraction.
 
 Host paths are not implicitly trusted. Only documented project, runtime, cache,
-and temporary paths should be mounted. When a path is optional, missing host
-state should degrade to an empty or freshly-created sandbox path rather than
-accidentally widening access.
+coordination, and temporary paths should be mounted. Monorepos, submodules,
+worktrees, integration checkouts, and other complex source layouts remain the
+selected project's own policy; pi-env only decides which project root is exposed
+for this run. When a path is optional, missing host state should degrade to an
+empty or freshly-created sandbox path rather than accidentally widening access.
 
 ## 2. Home and filesystem state
 
@@ -89,8 +92,8 @@ with environment filtering so users can reduce network and environment exposure
 for a run.
 
 The same controls support `UC-022`: review and automation workflows can narrow
-workspace mounts, tool access, environment variables, network access, and state
-persistence when inspecting unfamiliar code.
+the selected project mount, tool access, environment variables, network access,
+and state persistence when inspecting unfamiliar code.
 
 The sandbox documents and tests the Bubblewrap flags used, but it is not a
 complete security boundary against a malicious host or kernel. `CRQ-008` and

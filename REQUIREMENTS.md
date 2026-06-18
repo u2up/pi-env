@@ -1,19 +1,19 @@
 # pi-env Requirements
 
-This document is generated reference output for requirements that have active coordination requirement items. Requirement coordination items are the preferred source of truth when present; `REQUIREMENTS.md` is a secondary fallback source only for project or requirement areas that do not yet have coordination items.
+This document is generated reference output for requirements that have active coordination requirement items. Requirement coordination items are the preferred source of truth when present; update them first, then regenerate `REQUIREMENTS.md`. `REQUIREMENTS.md` is a secondary fallback source only for project or requirement areas that do not yet have coordination items.
 
 Each rendered requirement has a stable public key such as `UC-001`, `CMD-004`, or `FS-010`. Coordination items may have timestamped item IDs, but generated documentation preserves these stable keys as the public requirement identifiers.
 
 ## 1. Product scope
 
-`pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`.
+`pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`. Each run operates on one selected project root, and that root is mounted read-write at `/workspace` inside the sandbox. `/workspace` is the sandbox path name, not a host-side multi-project workspace manager.
 
 Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.
 
 The project must keep two responsibilities separate:
 
 - **Nix devshell/runtime:** reproducibly provide command-line tools on `PATH`.
-- **Bubblewrap launcher:** isolate the `pi` process from the host filesystem and environment while still allowing controlled access to the current project and selected Pi state.
+- **Bubblewrap launcher:** isolate the `pi` process from the host filesystem and environment while still allowing controlled access to the selected project root and selected Pi state.
 
 ## 2. History-derived intent
 
@@ -228,7 +228,7 @@ A user must be able to validate `pi-env` through blackbox-style checks including
 - Requirement kind: workflow
 - Related requirements: UC-004, UC-007, UC-014, UC-015, FS-010, GIT-007, NET-002
 
-The isolated launcher must support safer workflows such as reviewing unfamiliar repositories, limiting Pi to a selected workspace, avoiding accidental access to host secrets, using reduced tool allowlists, disabling network, using ephemeral state, and importing only the auth/session/config needed for the current project.
+The isolated launcher must support safer workflows such as reviewing unfamiliar repositories, limiting Pi to the selected project root mounted at `/workspace`, avoiding accidental access to host secrets, using reduced tool allowlists, disabling network, using ephemeral state, and importing only the auth/session/config needed for the current project.
 
 #### UC-023 — Coordinate multiple agents with Git
 
@@ -236,7 +236,7 @@ The isolated launcher must support safer workflows such as reviewing unfamiliar 
 - Requirement kind: workflow
 - Related requirements: CMD-009 through CMD-015, ENV-006, FS-010
 
-For workspaces where several agents operate in separate project clones, `pi-env` must optionally help establish and maintain a dedicated Git-backed coordination repository. Agents synchronize only by normal Git pull/commit/push operations. This use case remains opt-in, and default `pi-start` behavior must not mutate coordination state automatically.
+For projects where several agents coordinate through separate clones, `pi-env` must optionally help establish and maintain a dedicated Git-backed project coordination repository. Agents synchronize only by normal Git pull/commit/push operations. This use case remains opt-in, and default `pi-start` behavior must not mutate coordination state automatically. Compatibility names such as `PI_COORD_WORKSPACE` or `workspace/` in the coordination layout are coordination data-model labels, not a primary pi-env capability for managing multiple project roots.
 
 #### UC-024 Serial role automation workflow
 
@@ -505,10 +505,12 @@ acceptance-criteria placeholder, chronological `events`, and linked Markdown
 The generated item ID prefix must resolve in this order:
 
 1. explicit `--project-key`;
-2. stored `item_key` metadata for the selected project or workspace;
+2. stored `item_key` metadata for the selected project or compatibility
+   coordination domain;
 3. `PI_COORD_PROJECT_KEY` when no stored key exists;
 4. derived `--project` / `PI_COORD_PROJECT` for project items;
-5. derived workspace directory name for workspace-level items.
+5. derived coordination clone directory name for domain-level compatibility
+   items.
 
 Derived keys must be uppercased with delimiters, whitespace, pipes,
 slashes, backslashes, and other non-alphanumeric characters removed. Unless
@@ -528,11 +530,12 @@ coordination checkout. Filenames for new generated items must use the item ID
 only. `--id` must override the whole item ID.
 
 Project item keys must be stored in `projects/<project>/PROJECT.md` as
-`item_key`; workspace-level item keys must be stored in `WORKSPACE.md` as
-`item_key`. Issue items must be created under `issues/open`. Functional, quality, constraint, and legacy generic requirement items must be
-created under the single `requirements/` directory for both project and
-workspace items while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type
-codes. Decision, note, and custom item types must be created under semantic type
+`item_key`; domain-level compatibility item keys must be stored in
+`WORKSPACE.md` as `item_key`. Issue items must be created under
+`issues/open`. Functional, quality, constraint, and legacy generic
+requirement items must be created under the single `requirements/` directory
+for both project and domain-level compatibility items while preserving FRQ,
+QRQ, CRQ, and legacy REQ item-ID type codes. Decision, note, and custom item types must be created under semantic type
 directories by default. Existing historical items must not be silently
 renumbered or rewritten only to satisfy newer naming conventions.
 
@@ -727,9 +730,9 @@ If git-root detection fails or is disabled, it must use `$PWD`.
 
 If the resolved project root is not a directory, `pi-bwrap` must exit with code `2`.
 
-#### PATH-004 Workspace mount
+#### PATH-004 Project mount at `/workspace`
 
-The selected project root must be mounted read-write at `/workspace`.
+The selected project root must be mounted read-write at `/workspace`. The path name is fixed inside the sandbox and does not imply that pi-env manages a host-side multi-project workspace.
 
 #### PATH-005 Sandbox cwd mapping
 
@@ -1571,13 +1574,15 @@ stable `requirement_key`, classification, relationships, testability
 metadata, and renderable Markdown body text.
 
 `REQUIREMENTS.md` is normally a generated, human-readable reference
-rendered from active requirement items. When requirement coordination
-items do not yet exist for a project or requirement area,
-`REQUIREMENTS.md` may serve as the secondary source of truth until
-corresponding coordination items are created. Once items exist, any
-generated documentation drift must be resolved by correcting the
-relevant coordination items or the requirements generator, then
-regenerating the document.
+rendered from active requirement items. Do not make requirement changes by
+editing `REQUIREMENTS.md` first when a corresponding requirement item exists.
+Update the source requirement item first, then regenerate `REQUIREMENTS.md`
+with the requirements generator. When requirement coordination items do not
+yet exist for a project or requirement area, `REQUIREMENTS.md` may serve as
+the secondary source of truth until corresponding coordination items are
+created. Once items exist, any generated documentation drift must be resolved
+by correcting the relevant coordination items or the requirements generator,
+then regenerating the document.
 
 #### CRQ-012 Extra PATH entries are explicit Nix-store paths
 

@@ -1,8 +1,13 @@
 # Agent Coordination Repository Design
 
-This document describes a proposed optional `pi-env` layer for creating and maintaining Git-backed agent coordination repositories.
+This document describes an optional `pi-env` layer for creating and maintaining
+Git-backed project coordination repositories.
 
-The goal is to make multi-agent workspaces easy to establish while keeping synchronization plain, inspectable, and tool-independent: Git plus YAML item files with Markdown message bodies.
+The goal is to make multi-agent coordination for a selected project easy to
+establish while keeping synchronization plain, inspectable, and
+tool-independent: Git plus YAML item files with Markdown message bodies. This
+layer does not change the core pi-env invariant: one run operates on one
+selected project root mounted at `/workspace` inside the sandbox.
 
 ## Covers
 
@@ -26,7 +31,8 @@ The goal is to make multi-agent workspaces easy to establish while keeping synch
 
 ## 1. Concept
 
-An agent coordination repository is a dedicated Git repository that stores shared agent state for a workspace:
+An agent coordination repository is a dedicated Git repository that stores
+shared agent state for a project:
 
 - issues;
 - tasks and TODOs;
@@ -34,9 +40,11 @@ An agent coordination repository is a dedicated Git repository that stores share
 - decisions;
 - notes;
 - chronological agent event histories;
-- cross-project coordination state.
+- optional migration or legacy records for related projects.
 
-For multi-agent work, the coordination repository is the only synchronization mechanism. Agents pull, edit, commit, and push coordination state just like source code.
+For multi-agent work on the same project, the coordination repository is the
+only synchronization mechanism. Agents pull, edit, commit, and push
+coordination state just like source code.
 
 For same-machine use, the shared remote can be a local bare Git repository.
 
@@ -48,7 +56,7 @@ For same-machine use, the shared remote can be a local bare Git repository.
 - scaffolding for a standard directory layout;
 - simple issue/task templates;
 - documented Git synchronization protocol;
-- environment variables for selecting a coordination domain;
+- environment variables for selecting a project coordination domain;
 - optional instructions that tell agents where the coordination repo is and how to sync it.
 
 The coordination repositories themselves should remain normal Git repositories containing plain text: YAML coordination items, Markdown message bodies, and small metadata files.
@@ -58,40 +66,36 @@ The coordination repositories themselves should remain normal Git repositories c
 Use this rule:
 
 ```text
-one bare coordination repo == one coordination domain
+one bare coordination repo == one project coordination domain
 ```
 
-A coordination domain is usually one workspace. If several projects are related and agents need to coordinate across them, use one workspace-level coordination repository with per-project directories.
+A coordination domain normally belongs to one selected project. The historical
+`PI_COORD_WORKSPACE` name and `workspace/` directory are compatibility labels
+for the coordination data model; they do not make pi-env a multi-project
+workspace manager. If several repositories need shared planning during a
+migration, the coordination repo may keep per-project directories as legacy or
+integration state, but each pi-env invocation still selects exactly one project
+root for `/workspace`.
 
-If workspaces are unrelated, use separate bare coordination repositories.
+If projects are unrelated, use separate bare coordination repositories.
 
 Example:
 
 ```text
-/workspace/agent-remotes/
-  piws-coordination.git
-  client-a-coordination.git
-  oss-tools-coordination.git
+/path/to/project/
+  coordination/
+  agent-remotes/
+    project-coordination.git
 
-~/workspaces/
-  agent-a/
-    piws/
-      coordination/
-      project-1/
-      project-2/
-    client-a/
-      coordination/
-      project-x/
-
-  agent-b/
-    piws/
-      coordination/
-      project-1/
+/path/to/another-project/
+  coordination/
+  agent-remotes/
+    another-project-coordination.git
 ```
 
 ## 4. Repository layout
 
-Recommended workspace-level layout:
+Recommended project coordination layout:
 
 ```text
 coordination/
@@ -138,7 +142,7 @@ coordination/
     agent-b.md
 ```
 
-`AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `agent-coord-init`. After initialization, the copies in the coordination repository are authoritative for that workspace and can be edited/versioned like any other coordination state.
+`AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `agent-coord-init`. After initialization, the copies in the coordination repository are authoritative for that project coordination domain and can be edited/versioned like any other coordination state.
 
 Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions` for codebase-specific Pi behavior. Keep task state and cross-agent synchronization in the coordination repository.
 
@@ -311,7 +315,7 @@ git config rebase.autoStash true
 bootstrap-coordination
                       infer defaults and initialize via agent-coord-init
 agent-coord-init      create a local bare coordination remote
-agent-coord-clone     clone a coordination remote into the current workspace
+agent-coord-clone     clone a coordination remote for the current project
 agent-coord-status    show sync status and current open/claimed items
 agent-coord-list      list issues, decisions, or requirement classes by status
 agent-coord-pull      run git pull --rebase in the coordination clone
@@ -341,8 +345,8 @@ Everything else can remain normal Git commands until real usage proves that more
 
 ```bash
 PI_COORD_ROOT=/workspace/agent-remotes # where bare coordination remotes live
-PI_COORD_WORKSPACE=piws                # coordination domain/workspace id
-PI_COORD_DIR=coordination              # clone directory in each workspace
+PI_COORD_WORKSPACE=piws                # legacy domain id label
+PI_COORD_DIR=coordination              # clone directory for this project
 PI_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
 PI_COORD_ROLE=architect                # optional active role for role-aware commits
 PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
@@ -350,7 +354,7 @@ PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
 
 `bootstrap-coordination` can print and apply inferred values for these
 variables when they are not already set, including when pointed at another
-project/workspace with `--project-root`. If the coordination clone already
+project root with `--project-root`. If the coordination clone already
 exists but the planned local bare remote is missing or empty, it can restore
 that remote from committed clone history without changing item state. With
 these set, `agent-coord-clone` can infer:
@@ -363,9 +367,10 @@ When `PI_COORD_ROOT` is unset, helpers should prefer a project-visible
 `agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
 resolves to the current project root, that default should be
 `/workspace/agent-remotes` so the same bare remote is usable from inside
-and outside Bubblewrap. `pi-bwrap` should auto-bind host
+and outside Bubblewrap for this project. `pi-bwrap` should auto-bind host
 `/workspace/agent-remotes` at that same sandbox path when it exists and is
-not already part of the selected project mount.
+not already part of the selected project mount; this is a compatibility aid, not
+a general host workspace mount.
 
 ### 8.1 Optional role-aware identity
 
@@ -408,7 +413,7 @@ coordination/docs/ITEM_FORMAT.md
 coordination/.pi/skills/agent-coordination/SKILL.md
 ```
 
-The installed files are the workspace's authoritative rules. `pi-env` templates are only defaults; after initialization, updates to rules should be committed to the coordination repository so all agents receive them via Git.
+The installed files are the project coordination domain's authoritative rules. `pi-env` templates are only defaults; after initialization, updates to rules should be committed to the coordination repository so all agents receive them via Git.
 
 ### 9.1 Required `AGENTS.md` rules
 
@@ -450,7 +455,7 @@ Do not encode important state only in a commit message. The file content must re
 ```markdown
 # Agent Coordination
 
-Use this skill when working in a workspace that contains a Git-backed agent coordination repository, when asked to find/claim/update work, or before making changes that affect shared agent state.
+Use this skill when working in a project that contains a Git-backed agent coordination repository, when asked to find/claim/update work, or before making changes that affect shared agent state.
 
 ## Coordination repository
 
@@ -459,7 +464,7 @@ The coordination repository is the only synchronization source for agent task st
 ## Required protocol
 
 1. `cd coordination && git pull --rebase` before reading or modifying coordination state.
-2. Inspect open/claimed/blocked/done YAML items relevant to the current workspace/project.
+2. Inspect open/claimed/blocked/done YAML items relevant to the current project.
 3. Claim at most one item unless instructed otherwise.
 4. Commit and push immediately after claiming or changing status.
 5. Do project work in the project repository.

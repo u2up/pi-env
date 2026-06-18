@@ -135,20 +135,20 @@ function renderBody(markdown) {
 function print(s='') { process.stdout.write(s + '\n'); }
 print('# pi-env Requirements');
 print();
-print('This document is generated reference output for requirements that have active coordination requirement items. Requirement coordination items are the preferred source of truth when present; `REQUIREMENTS.md` is a secondary fallback source only for project or requirement areas that do not yet have coordination items.');
+print('This document is generated reference output for requirements that have active coordination requirement items. Requirement coordination items are the preferred source of truth when present; update them first, then regenerate `REQUIREMENTS.md`. `REQUIREMENTS.md` is a secondary fallback source only for project or requirement areas that do not yet have coordination items.');
 print();
 print('Each rendered requirement has a stable public key such as `UC-001`, `CMD-004`, or `FS-010`. Coordination items may have timestamped item IDs, but generated documentation preserves these stable keys as the public requirement identifiers.');
 print();
 print('## 1. Product scope');
 print();
-print('`pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`.');
+print('`pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`. Each run operates on one selected project root, and that root is mounted read-write at `/workspace` inside the sandbox. `/workspace` is the sandbox path name, not a host-side multi-project workspace manager.');
 print();
 print('Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.');
 print();
 print('The project must keep two responsibilities separate:');
 print();
 print('- **Nix devshell/runtime:** reproducibly provide command-line tools on `PATH`.');
-print('- **Bubblewrap launcher:** isolate the `pi` process from the host filesystem and environment while still allowing controlled access to the current project and selected Pi state.');
+print('- **Bubblewrap launcher:** isolate the `pi` process from the host filesystem and environment while still allowing controlled access to the selected project root and selected Pi state.');
 print();
 print('## 2. History-derived intent');
 print();
