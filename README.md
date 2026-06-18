@@ -920,16 +920,18 @@ developer believes implementation is complete, and `closed` means final
 accepted after review and verification.
 
 Functional, quality, constraint, and legacy requirements use the single
-`requirements/` directory under both `projects/<project>/` and `workspace/`,
-while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. The
-`agent-coord-list requirements` command reports functional, quality,
-constraint, and legacy requirement items; use `functional`, `quality`,
-`constraint`, or `legacy-requirements` for class-specific listings. Done issue
-listings append review and verification sub-status after the title. Imported
-requirement items record traceability in a top-level `source_refs` list using
-stable strings such as old requirement IDs, `REQUIREMENTS.md#heading`, and
-`USE_CASES.md#section`; lint checks imported FRQ/QRQ/CRQ items for non-empty
-source references plus the standard `testable` metadata.
+`requirements/` directory under `projects/<project>/` while preserving FRQ,
+QRQ, CRQ, and legacy REQ item-ID type codes. Existing `workspace/`
+requirements are legacy compatibility state for migrated coordination repos,
+not a primary multi-project workspace model. The `agent-coord-list
+requirements` command reports functional, quality, constraint, and legacy
+requirement items; use `functional`, `quality`, `constraint`, or
+`legacy-requirements` for class-specific listings. Done issue listings append
+review and verification sub-status after the title. Imported requirement items
+record traceability in a top-level `source_refs` list using stable strings such
+as old requirement IDs, `REQUIREMENTS.md#heading`, and `USE_CASES.md#section`;
+lint checks imported FRQ/QRQ/CRQ items for non-empty source references plus the
+standard `testable` metadata.
 
 Decision, note, and other non-issue item types live under their semantic type
 directories. Stored implementation refs are structured objects with `repo`,
@@ -1143,8 +1145,9 @@ tests/role-manager-commands.sh
 ```
 
 Item-matched tests live in the project repository under `tests/items/`, mirror
-project/workspace and item type, and match the item ID by filename stem. They
-intentionally do not mirror issue lifecycle status directories:
+the project item path and item type, and match the item ID by filename stem.
+Legacy workspace-level items may keep mirrored `tests/items/workspace/` tests.
+They intentionally do not mirror issue lifecycle status directories:
 
 ```text
 coordination/projects/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml

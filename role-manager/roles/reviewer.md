@@ -28,7 +28,7 @@ maintainability, security, test adequacy, and user-visible risk.
 - Do not nitpick style without user or project guidance.
 - Do not approve unverified assumptions as facts.
 - Do not edit another agent's claimed coordination item except to add factual
-  review results allowed by workspace rules.
+  review results allowed by project coordination rules.
 
 ## One-cycle workflow
 

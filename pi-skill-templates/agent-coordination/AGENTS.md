@@ -1,6 +1,8 @@
 # Agent Coordination Rules
 
-This repository is the authoritative coordination state for this workspace.
+This repository is the authoritative coordination state for this project.
+Historical workspace-level state may exist for compatibility, but new pi-env
+coordination work is project-scoped.
 
 ## Required rules
 
@@ -17,8 +19,8 @@ This repository is the authoritative coordination state for this workspace.
 5. Prefer one claimed item per agent unless explicitly instructed
    otherwise.
 6. Do not edit another agent's claimed item except to resolve a Git
-   conflict, add clearly relevant factual information, or when workspace
-   rules define it as stale or abandoned.
+   conflict, add clearly relevant factual information, or when coordination
+   domain rules define it as stale or abandoned.
 7. Record every meaningful state transition as a chronological YAML event
    with a linked Markdown message in the item file.
 8. Link developer-completed work from done/link events to concrete
@@ -34,17 +36,18 @@ This repository is the authoritative coordination state for this workspace.
 
 ## Item keys and IDs
 
-Use the stored `item_key` for the project/workspace key portion of generated
+Use the stored `item_key` for the project key portion of generated
 coordination item IDs:
 
 - project items use `projects/<project>/PROJECT.md`;
-- workspace-level items use top-level `WORKSPACE.md`.
+- top-level `WORKSPACE.md` keys are legacy compatibility metadata for existing
+  workspace-level items only.
 
-Do not invent, rename, or silently change item keys. If a key is missing,
-derive it from the project or workspace directory name by uppercasing it and
-removing delimiters and other non-alphanumeric characters, then commit that key
-in the appropriate metadata file. Changing an existing `item_key` requires an
-explicit workspace decision.
+Do not invent, rename, or silently change item keys. If a project key is
+missing, derive it from the project name by uppercasing it and removing
+delimiters and other non-alphanumeric characters, then commit that key in the
+project metadata file. Changing an existing `item_key` requires an explicit
+coordination-domain decision.
 
 New item IDs use this shape and filenames use the item ID only:
 
@@ -77,12 +80,13 @@ The completion metric for managers, reviewers, and testers is therefore not
 "done". It is `status: closed` with `reviewed: true` and `verified: true`.
 
 Other item types live under semantic type directories. All requirement classes
-use the single `requirements/` directory at both `projects/<project>/` and
-`workspace/` while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes.
-Generic `REQ` IDs are legacy-only unless an explicit supersession or migration
-decision says otherwise. Do not mirror issue status directories in project test
-paths, and do not silently renumber or rewrite historical items to fit newer
-conventions.
+use the single `requirements/` directory under `projects/<project>/` while
+preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. Existing
+`workspace/` requirement directories are legacy compatibility state for
+migrated coordination repositories. Generic `REQ` IDs are legacy-only unless an
+explicit supersession or migration decision says otherwise. Do not mirror issue
+status directories in project test paths, and do not silently renumber or
+rewrite historical items to fit newer conventions.
 
 ## Item format
 
@@ -125,8 +129,9 @@ cases such as documentation-only work, policy decisions, legacy closed items
 predating the convention, or explicit coverage by another requirement item.
 
 Item-matched tests live in the project repo under `tests/items/` and match the
-item ID exactly by filename stem. They mirror project/workspace and item type,
-but not issue lifecycle status:
+item ID exactly by filename stem. They mirror the project item path and item
+type, but not issue lifecycle status. Legacy workspace-level items may keep
+mirrored workspace test paths:
 
 ```text
 tests/items/projects/<project>/issues/<item-id>.sh

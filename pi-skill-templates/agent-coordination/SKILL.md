@@ -1,22 +1,24 @@
 # Agent Coordination
 
-Use this skill when working in a workspace that contains a Git-backed agent
+Use this skill when working in a project that contains a Git-backed agent
 coordination repository, when asked to find, claim, or update work, or before
-making changes that affect shared agent state.
+making changes that affect shared agent state. Historical workspace-level
+coordination state may exist for compatibility, but new pi-env work is
+project-scoped.
 
 ## Coordination repository
 
 The coordination repository is the only synchronization source for agent task
-state. Find it at `./coordination` unless the user, environment, or workspace
-rules say otherwise.
+state. Find it at `./coordination` unless the user, environment, or project
+coordination rules say otherwise.
 
 ## Required protocol
 
 1. `cd coordination && git pull --rebase` before reading or modifying
    coordination state.
 2. Inspect open, claimed, blocked, and done YAML issue items relevant to the
-   current workspace or project. Also inspect related requirement or decision
-   items when they affect acceptance criteria.
+   current project. Also inspect related requirement or decision items when
+   they affect acceptance criteria.
 3. Claim at most one issue item unless instructed otherwise.
 4. When an active role is in effect, preserve it for coordination helpers with
    `--role ROLE` or `PI_COORD_ROLE=ROLE`; item events should store the actor ID
@@ -34,8 +36,9 @@ rules say otherwise.
 ## Item keys and IDs
 
 Use stored `item_key` metadata when creating items. Project item keys live in
-`projects/<project>/PROJECT.md`; workspace-level item keys live in
-`WORKSPACE.md`. Do not invent or silently change keys.
+`projects/<project>/PROJECT.md`. Top-level `WORKSPACE.md` keys are legacy
+compatibility metadata for existing workspace-level items only. Do not invent
+or silently change keys.
 
 New item IDs and filenames use:
 
@@ -84,7 +87,8 @@ not required.
 
 Item-matched tests are executable bash scripts in the project repo, not the
 coordination repo. Match the filename stem to the item ID and mirror the
-project/workspace plus item type, not issue status:
+project item path plus item type, not issue status. Legacy workspace-level
+items may keep mirrored workspace test paths:
 
 ```text
 tests/items/projects/<project>/issues/<item-id>.sh

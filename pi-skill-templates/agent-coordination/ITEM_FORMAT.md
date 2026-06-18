@@ -21,8 +21,9 @@ PIENV-FRQ-20260607-204155-002.yaml
 ```
 
 `PROJECTKEY` is uppercase alphanumeric text. Project item keys are stored in
-`projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
-stored in top-level `WORKSPACE.md` as `item_key`.
+`projects/<project>/PROJECT.md` as `item_key`. Top-level `WORKSPACE.md` keys
+and workspace-level item IDs are legacy compatibility metadata only; new
+pi-env project coordination should create project-scoped items.
 
 `TYPECODE` is an uppercase item-type abbreviation. Built-in mappings are:
 
@@ -43,8 +44,9 @@ sequence number.
 When `agent-coord-new` needs to derive a project key, it uppercases the source
 name and removes delimiters, whitespace, slashes, backslashes, pipes, and other
 non-alphanumeric characters. Project items derive from the project name;
-workspace-level items derive from the workspace directory name. `--id` may
-override the whole item ID when a caller needs to preserve or import an ID.
+legacy workspace-level items derive from the coordination directory name.
+`--id` may override the whole item ID when a caller needs to preserve or import
+an ID.
 
 Historical items may keep legacy IDs and slug filenames. Do not rename or
 renumber existing items only to satisfy a newer naming convention.
@@ -153,8 +155,9 @@ workspace/issues/closed/
 
 Other item types live under their semantic type directory and do not mirror
 issue status directories by default. All requirement classes share a single
-project-level or workspace-level requirements directory while preserving FRQ,
-QRQ, CRQ, and legacy REQ item-ID type codes:
+project-level requirements directory while preserving FRQ, QRQ, CRQ, and legacy
+REQ item-ID type codes. The workspace-level layout is legacy compatibility
+state for migrated coordination repositories:
 
 ```text
 projects/<project>/requirements/        # functional, quality, constraint, and legacy requirements

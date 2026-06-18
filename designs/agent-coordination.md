@@ -162,16 +162,19 @@ for note. Generic `REQ` requirement IDs are legacy-only unless an explicit
 supersession or migration decision says otherwise. `NNN` is a three-digit
 collision/order suffix for the exact UTC
 timestamp and starts at `001`. Project item keys are stored in
-`projects/<project>/PROJECT.md` as `item_key`. Workspace-level item keys are
-stored in top-level `WORKSPACE.md` as `item_key`.
+`projects/<project>/PROJECT.md` as `item_key`. Top-level `WORKSPACE.md` keys
+and workspace-level item IDs are legacy compatibility metadata only; new
+pi-env project coordination should create project-scoped items.
 
 Default key resolution for `agent-coord-new` should be:
 
 1. explicit `--project-key`;
-2. stored `item_key` in `projects/<project>/PROJECT.md` or `WORKSPACE.md`;
-3. `PI_COORD_PROJECT_KEY` when no stored key exists;
-4. derive from `--project` / `PI_COORD_PROJECT` for project items;
-5. derive from the workspace directory for workspace-level items.
+2. stored `item_key` in `projects/<project>/PROJECT.md`;
+3. legacy stored `item_key` in `WORKSPACE.md` for `--workspace-item`;
+4. `PI_COORD_PROJECT_KEY` when no stored key exists;
+5. derive from `--project` / `PI_COORD_PROJECT` for project items;
+6. derive from the coordination directory name only for legacy
+   workspace-level items.
 
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
 backslashes, and other non-alphanumeric characters are removed.
@@ -244,13 +247,14 @@ issues/closed/
 
 Other item types live under semantic type directories such as
 `requirements/`, `decisions/`, and `notes/`. Functional, quality, constraint,
-and legacy requirement items share `requirements/` while preserving their item
-ID type codes. The same layout is used
-under both `projects/<project>/` and `workspace/`. The generic `requirements/`
-directory is legacy-only for historical `REQ` items unless an explicit
-supersession or migration decision says otherwise. Preserve historical IDs and
-filenames; do not silently renumber, rewrite, or move old items just to satisfy
-a newer taxonomy.
+and legacy requirement items share `requirements/` under
+`projects/<project>/` while preserving their item ID type codes. The
+`workspace/` layout is legacy compatibility state for migrated coordination
+repositories, not a primary multi-project workspace model. The generic
+`requirements/` directory is legacy-only for historical `REQ` items unless an
+explicit supersession or migration decision says otherwise. Preserve historical
+IDs and filenames; do not silently renumber, rewrite, or move old items just to
+satisfy a newer taxonomy.
 
 The state names are developer-centric: `open` means developer work is needed,
 `blocked` means developer work cannot proceed, `done` means the developer
@@ -259,8 +263,9 @@ review and verification. New items start with `reviewed: false` and
 `verified: false`, and declare `testable: yes` or `testable: no` with a
 `testability_note` when direct item-matched testing is not required.
 Item-matched tests live in the project repository under `tests/items/`, mirror
-project/workspace and item type, and match the item ID by filename stem. They
-intentionally do not mirror issue status directories.
+the project item path and item type, and match the item ID by filename stem.
+Legacy workspace-level items may keep mirrored `tests/items/workspace/` tests.
+Tests intentionally do not mirror issue status directories.
 
 When marking an issue done, move it with `git mv`, set `status: done`, set
 `done:`, reset `reviewed: false` and `verified: false`, update `current:`,
@@ -424,7 +429,7 @@ The generated `coordination/AGENTS.md` should instruct agents:
 3. Commit and push coordination changes immediately after changing shared state.
 4. Never force-push, rewrite public history, delete done or closed items, or renumber item IDs.
 5. Prefer one claimed item per agent unless explicitly instructed otherwise.
-6. Do not edit another agent's claimed item except to resolve a Git conflict, add clearly relevant factual information, or when workspace rules define it as stale/abandoned.
+6. Do not edit another agent's claimed item except to resolve a Git conflict, add clearly relevant factual information, or when the coordination domain rules define it as stale/abandoned.
 7. Record all meaningful state transitions as chronological item events with linked Markdown messages.
 8. Link developer-completed work to concrete structured implementation refs with `repo`, `branch`, and full `commit` fields.
 9. Keep coordination changes small and reviewable.
