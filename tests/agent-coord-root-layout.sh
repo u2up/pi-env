@@ -55,6 +55,17 @@ grep -q "^$issue_id[[:space:]]\+open[[:space:]]\+Root layout issue$" \
 agent-coord-cat --coord-dir "$coord_dir" "$issue_id" | grep -q "^title: 'Root layout issue'$"
 agent-coord-status --coord-dir "$coord_dir" | grep -q "$issue_id"
 
+env_issue_path="$(PI_COORD_PROJECT=env-project agent-coord-new \
+  --coord-dir "$coord_dir" \
+  --testable no \
+  --testability-note "Root layout should ignore PI_COORD_PROJECT for paths." \
+  "Root layout env issue" | tail -n 1)"
+case "$env_issue_path" in
+  issues/open/ROOTDEMO-ISS-*.yaml) ;;
+  *) printf 'unexpected env root issue path: %s\n' "$env_issue_path" >&2; exit 1 ;;
+esac
+test ! -e "$coord_dir/projects/env-project"
+
 cat >"$project_root/tests/items/$issue_id.sh" <<'EOF_TEST'
 #!/usr/bin/env bash
 set -euo pipefail

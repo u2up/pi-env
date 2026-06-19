@@ -9,6 +9,10 @@ coord_note() {
   printf 'agent-coord: %s\n' "$*" >&2
 }
 
+coord_deprecated() {
+  coord_note "deprecated: $*"
+}
+
 coord_abs() {
   realpath -m "$1"
 }
@@ -49,6 +53,7 @@ coord_default_root() {
 
 coord_default_workspace() {
   if [ -n "${PI_COORD_WORKSPACE:-}" ]; then
+    coord_deprecated "PI_COORD_WORKSPACE is a compatibility alias; use PI_COORD_PROJECT instead"
     printf '%s\n' "$PI_COORD_WORKSPACE"
   else
     basename "$(pwd -P)"
@@ -581,6 +586,10 @@ coord_metadata_value() {
 
 coord_has_legacy_layout() {
   [ -f WORKSPACE.md ] || [ -d workspace ] || [ -d projects ]
+}
+
+coord_has_legacy_workspace_layout() {
+  [ -f WORKSPACE.md ] || [ -d workspace ]
 }
 
 coord_has_project_root_layout() {

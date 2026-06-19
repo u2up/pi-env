@@ -20,9 +20,9 @@ Usage:
 Options:
   --root DIR        Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
   --remote URL      Existing coordination remote URL; default: PI_COORD_REMOTE_URL
-  --project ID      Coordination project; default: PI_COORD_PROJECT, PI_COORD_WORKSPACE, or cwd name
+  --project ID      Coordination project; default: PI_COORD_PROJECT or cwd name
   --project-key KEY Project item ID prefix; default: derived project
-  --workspace ID    Legacy alias for --project when --project is omitted
+  --workspace ID    Deprecated compatibility alias for --project when omitted
   --dir DIR         Working clone dir; default: PI_COORD_DIR or coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE       Coordination role; default: PI_COORD_ROLE
@@ -59,6 +59,7 @@ while [ "$#" -gt 0 ]; do
     --workspace)
       [ "$#" -ge 2 ] || coord_die "--workspace requires a value"
       legacy_workspace="$2"
+      coord_deprecated "--workspace is a compatibility alias; use --project instead"
       shift 2
       ;;
     --dir)

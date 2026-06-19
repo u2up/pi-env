@@ -8,7 +8,10 @@ node <<'JS'
 const fs = require('fs');
 const path = require('path');
 
-const reqDir = path.join('coordination', 'projects', 'pi-env', 'requirements');
+const reqDirs = [
+  path.join('coordination', 'requirements'),
+  path.join('coordination', 'projects', 'pi-env', 'requirements'),
+].filter((dir) => fs.existsSync(dir));
 const designsDir = 'designs';
 const reqByKey = new Map();
 let failed = false;
@@ -18,13 +21,15 @@ function fail(message) {
   failed = true;
 }
 
-for (const file of fs.readdirSync(reqDir).filter((name) => name.endsWith('.yaml'))) {
-  const text = fs.readFileSync(path.join(reqDir, file), 'utf8');
-  const id = text.match(/^id: (.+)$/m)?.[1];
-  const status = text.match(/^status: (.+)$/m)?.[1];
-  const key = text.match(/^requirement_key: (.+)$/m)?.[1];
-  if (!id || !key || status !== 'active') continue;
-  reqByKey.set(key, id);
+for (const reqDir of reqDirs) {
+  for (const file of fs.readdirSync(reqDir).filter((name) => name.endsWith('.yaml'))) {
+    const text = fs.readFileSync(path.join(reqDir, file), 'utf8');
+    const id = text.match(/^id: (.+)$/m)?.[1];
+    const status = text.match(/^status: (.+)$/m)?.[1];
+    const key = text.match(/^requirement_key: (.+)$/m)?.[1];
+    if (!id || !key || status !== 'active' || reqByKey.has(key)) continue;
+    reqByKey.set(key, id);
+  }
 }
 
 const itemIdPattern = /\bPIENV-(?:ISS|FRQ|QRQ|CRQ|REQ|DEC|NOTE)-\d{8}-\d{6}-\d{3}\b/;

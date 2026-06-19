@@ -95,13 +95,13 @@ Example:
 
 ## 4. Repository layout
 
-Recommended project coordination layout:
+Recommended project-root coordination layout:
 
 ```text
 coordination/
   AGENTS.md
   README.md
-  WORKSPACE.md
+  PROJECT.md
   docs/
     SYNC_PROTOCOL.md
     ITEM_FORMAT.md
@@ -109,38 +109,22 @@ coordination/
     skills/
       agent-coordination/
         SKILL.md
-  projects/
-    project-a/
-      PROJECT.md
-      issues/
-        open/
-        blocked/
-        done/
-        closed/
-      decisions/
-      notes/
-    project-b/
-      PROJECT.md
-      issues/
-        open/
-        blocked/
-        done/
-        closed/
-      decisions/
-      notes/
-  workspace/
-    issues/
-      open/
-      blocked/
-      done/
-      closed/
-    decisions/
-    architecture/
-    cross-project-todos/
+  issues/
+    open/
+    blocked/
+    done/
+    closed/
+  requirements/
+  decisions/
+  notes/
   agents/
     agent-a.md
     agent-b.md
 ```
+
+Legacy `projects/<project>/` and `workspace/` layouts may remain in migrated
+coordination repositories for compatibility, but new scaffolds do not create
+`WORKSPACE.md` or `workspace/` directories by default.
 
 `AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `agent-coord-init`. After initialization, the copies in the coordination repository are authoritative for that project coordination domain and can be edited/versioned like any other coordination state.
 
@@ -161,19 +145,21 @@ requirement, `CRQ` for constraint requirement, `DEC` for decision, and `NOTE`
 for note. Generic `REQ` requirement IDs are legacy-only unless an explicit
 supersession or migration decision says otherwise. `NNN` is a three-digit
 collision/order suffix for the exact UTC
-timestamp and starts at `001`. Project item keys are stored in
-`projects/<project>/PROJECT.md` as `item_key`. Top-level `WORKSPACE.md` keys
-and workspace-level item IDs are legacy compatibility metadata only; new
-pi-env project coordination should create project-scoped items.
+timestamp and starts at `001`. Project-root item keys are stored in top-level
+`PROJECT.md` as `item_key`. Legacy project item keys may remain in
+`projects/<project>/PROJECT.md`; top-level `WORKSPACE.md` keys and
+workspace-level item IDs are legacy compatibility metadata only. New pi-env
+project coordination should create root project-scoped items.
 
 Default key resolution for `agent-coord-new` should be:
 
 1. explicit `--project-key`;
-2. stored `item_key` in `projects/<project>/PROJECT.md`;
-3. legacy stored `item_key` in `WORKSPACE.md` for `--workspace-item`;
-4. `PI_COORD_PROJECT_KEY` when no stored key exists;
-5. derive from `--project` / `PI_COORD_PROJECT` for project items;
-6. derive from the coordination directory name only for legacy
+2. stored `item_key` in root `PROJECT.md`;
+3. stored `item_key` in legacy `projects/<project>/PROJECT.md`;
+4. legacy stored `item_key` in `WORKSPACE.md` for `--workspace-item`;
+5. `PI_COORD_PROJECT_KEY` when no stored key exists;
+6. derive from `--project` / `PI_COORD_PROJECT` for project items;
+7. derive from the coordination directory name only for explicit legacy
    workspace-level items.
 
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
@@ -247,14 +233,12 @@ issues/closed/
 
 Other item types live under semantic type directories such as
 `requirements/`, `decisions/`, and `notes/`. Functional, quality, constraint,
-and legacy requirement items share `requirements/` under
-`projects/<project>/` while preserving their item ID type codes. The
-`workspace/` layout is legacy compatibility state for migrated coordination
-repositories, not a primary multi-project workspace model. The generic
-`requirements/` directory is legacy-only for historical `REQ` items unless an
-explicit supersession or migration decision says otherwise. Preserve historical
-IDs and filenames; do not silently renumber, rewrite, or move old items just to
-satisfy a newer taxonomy.
+and legacy requirement items share root-level `requirements/` in project-root
+clones while preserving their item ID type codes. Legacy
+`projects/<project>/requirements/` and `workspace/` layouts are compatibility
+state for migrated coordination repositories, not a primary multi-project
+workspace model. Preserve historical IDs and filenames; do not silently
+renumber, rewrite, or move old items just to satisfy a newer taxonomy.
 
 The state names are developer-centric: `open` means developer work is needed,
 `blocked` means developer work cannot proceed, `done` means the developer
@@ -352,11 +336,12 @@ Everything else can remain normal Git commands until real usage proves that more
 
 ```bash
 PI_COORD_ROOT=/workspace/agent-remotes # where bare coordination remotes live
-PI_COORD_WORKSPACE=piws                # legacy domain id label
+PI_COORD_PROJECT=pi-env                # coordination project/domain name
 PI_COORD_DIR=coordination              # clone directory for this project
 PI_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
 PI_COORD_ROLE=architect                # optional active role for role-aware commits
 PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
+PI_COORD_WORKSPACE=piws                # deprecated compatibility alias
 ```
 
 `bootstrap-coordination` can print and apply inferred values for these
@@ -367,8 +352,13 @@ that remote from committed clone history without changing item state. With
 these set, `agent-coord-clone` can infer:
 
 ```text
-$PI_COORD_ROOT/$PI_COORD_WORKSPACE-coordination.git -> $PI_COORD_DIR
+$PI_COORD_ROOT/$PI_COORD_PROJECT-coordination.git -> $PI_COORD_DIR
 ```
+
+`PI_COORD_WORKSPACE`, `--workspace`, and `--workspace-item` are deprecated
+compatibility APIs. They should keep working for older clones where practical,
+but helper commands should emit non-fatal diagnostics that point users to
+`PI_COORD_PROJECT`, `--project`, and the project-root item layout.
 
 When `PI_COORD_ROOT` is unset, helpers should prefer a project-visible
 `agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`

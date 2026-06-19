@@ -18,9 +18,8 @@ git config --global user.email "coordination-test@example.invalid"
 cd "$tmp/project"
 agent-coord-init \
   --root "$tmp/remotes" \
-  --workspace demo \
-  --agent-id agent-a \
-  --project pi-env >/dev/null
+  --project pi-env \
+  --agent-id agent-a >/dev/null
 
 item_path="$(agent-coord-new \
   --coord-dir coordination \

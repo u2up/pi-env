@@ -477,6 +477,7 @@
             set_env PI_COORD_ROOT "$sandbox_coord_root"
           fi
           copy_env PI_COORD_REMOTE_URL
+          copy_env PI_COORD_PROJECT
           copy_env PI_COORD_WORKSPACE
           copy_env PI_COORD_AGENT_ID
           copy_env PI_COORD_PROJECT_KEY

@@ -31,7 +31,9 @@ git init -q
 agent-coord-init \
   --workspace default-demo \
   --agent-id agent-a \
-  --bare-only >/dev/null
+  --bare-only >"$tmp/default-root.out" 2>"$tmp/default-root.err"
+grep -q 'deprecated: --workspace is a compatibility alias; use --project instead' \
+  "$tmp/default-root.err"
 test -d "$tmp/default-root/agent-remotes/default-demo-coordination.git"
 test ! -e "$HOME/agent-remotes/default-demo-coordination.git"
 
@@ -59,6 +61,8 @@ bootstrap-coordination \
 test -d "$tmp/bootstrap-remotes/other-project-coordination.git"
 test -f "$bootstrap_project_dir/coordination/AGENTS.md"
 test -d "$bootstrap_project_dir/coordination/issues/open"
+test ! -e "$bootstrap_project_dir/coordination/WORKSPACE.md"
+test ! -e "$bootstrap_project_dir/coordination/workspace"
 test ! -e "$bootstrap_project_dir/coordination/functional-requirements"
 test ! -e "$bootstrap_project_dir/coordination/quality-requirements"
 test ! -e "$bootstrap_project_dir/coordination/constraint-requirements"
@@ -175,9 +179,8 @@ test ! -e "$bare_only_project_dir/coordination"
 cd "$workspace_dir"
 agent-coord-init \
   --root "$tmp/remotes" \
-  --workspace demo \
-  --agent-id agent-a \
-  --project pi-env >/dev/null
+  --project pi-env \
+  --agent-id agent-a >/dev/null
 
 test -d "$tmp/remotes/pi-env-coordination.git"
 test -f coordination/AGENTS.md
@@ -186,6 +189,8 @@ test -f coordination/docs/ITEM_FORMAT.md
 test -f coordination/.pi/skills/agent-coordination/SKILL.md
 test -d coordination/issues/open
 test -d coordination/issues/done
+test ! -e coordination/WORKSPACE.md
+test ! -e coordination/workspace
 test ! -e coordination/functional-requirements
 test ! -e coordination/quality-requirements
 test ! -e coordination/constraint-requirements

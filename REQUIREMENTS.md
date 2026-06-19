@@ -449,15 +449,18 @@ The flake/devshell must provide these opt-in coordination commands:
 `bootstrap-coordination` must remain a thin wrapper around
 `agent-coord-init`: it prints the inferred `PI_COORD_*` settings and the
 corresponding initialization command, then initializes with those explicit
-values unless `--print-only`/`--dry-run` is used. When project/workspace
-values are unset, it must infer useful defaults from `PI_COORD_PROJECT`,
-the Git origin repository name, the Git root basename, or the current
-directory basename, in that order. It must support `--project-root DIR`
-to infer and initialize relative to another project/workspace directory;
-when doing so, stale context values from `PI_COORD_WORKSPACE`,
-`PI_COORD_DIR`, `PI_COORD_PROJECT`, and `PI_COORD_PROJECT_KEY` must not
-override the target directory's inferred defaults unless explicit options
-are supplied. If the selected coordination clone already exists but the
+values unless `--print-only`/`--dry-run` is used. When project values are
+unset, it must infer useful defaults from `PI_COORD_PROJECT`, the Git
+origin repository name, the Git root basename, or the current directory
+basename, in that order. It must support `--project-root DIR` to infer and
+initialize relative to another project directory; when doing so, stale
+context values from `PI_COORD_WORKSPACE`, `PI_COORD_DIR`,
+`PI_COORD_PROJECT`, and `PI_COORD_PROJECT_KEY` must not override the target
+directory's inferred defaults unless explicit options are supplied.
+`PI_COORD_WORKSPACE` and `--workspace` must remain deprecated compatibility
+aliases for the project name when `PI_COORD_PROJECT`/`--project` is omitted
+and should emit a non-fatal deprecation diagnostic when used. If the selected
+coordination clone already exists but the
 planned local bare remote is missing or does not contain the clone's
 current branch, it must restore that bare remote from committed clone
 history, adding `origin` when absent and updating `origin` only when it
@@ -477,9 +480,12 @@ It must install the rule/protocol templates into:
 - `docs/ITEM_FORMAT.md`
 - `.pi/skills/agent-coordination/SKILL.md`
 
-It must also create the standard workspace/project directory skeleton,
-write `WORKSPACE.md` and initial project `PROJECT.md` item-key metadata,
-and configure the clone with `pull.rebase=true` and
+It must also create the standard project-root directory skeleton:
+root-level `issues/open`, `issues/blocked`, `issues/done`,
+`issues/closed`, `requirements`, `decisions`, `notes`, and `agents`
+directories plus top-level `PROJECT.md` item-key metadata. New generated
+scaffolds must not include `WORKSPACE.md` or `workspace/` directories by
+default. The clone must be configured with `pull.rebase=true` and
 `rebase.autoStash=true`.
 
 When `--root` and `PI_COORD_ROOT` are omitted, coordination helpers must
@@ -491,8 +497,10 @@ default root must be `/workspace/agent-remotes`; otherwise it must be
 #### CMD-011 `agent-coord-clone`
 
 `agent-coord-clone` must clone a coordination remote into the selected
-workspace directory and configure the clone with `pull.rebase=true` and
-`rebase.autoStash=true`.
+coordination clone directory and configure the clone with `pull.rebase=true`
+and `rebase.autoStash=true`. `--workspace` must remain a deprecated
+compatibility alias for `--project` when `--project` is omitted and should
+emit a non-fatal deprecation diagnostic when used.
 
 #### CMD-012 `agent-coord-new`
 
@@ -505,12 +513,12 @@ acceptance-criteria placeholder, chronological `events`, and linked Markdown
 The generated item ID prefix must resolve in this order:
 
 1. explicit `--project-key`;
-2. stored `item_key` metadata for the selected project or compatibility
-   coordination domain;
+2. stored `item_key` metadata in root `PROJECT.md`, a legacy selected
+   project, or a compatibility coordination domain;
 3. `PI_COORD_PROJECT_KEY` when no stored key exists;
 4. derived `--project` / `PI_COORD_PROJECT` for project items;
-5. derived coordination clone directory name for domain-level compatibility
-   items.
+5. derived coordination clone directory name only for explicit legacy
+   workspace-level compatibility items.
 
 Derived keys must be uppercased with delimiters, whitespace, pipes,
 slashes, backslashes, and other non-alphanumeric characters removed. Unless
@@ -529,15 +537,21 @@ at `001` for each timestamp and increment to avoid collisions in the local
 coordination checkout. Filenames for new generated items must use the item ID
 only. `--id` must override the whole item ID.
 
-Project item keys must be stored in `projects/<project>/PROJECT.md` as
-`item_key`; domain-level compatibility item keys must be stored in
-`WORKSPACE.md` as `item_key`. Issue items must be created under
-`issues/open`. Functional, quality, constraint, and legacy generic
-requirement items must be created under the single `requirements/` directory
-for both project and domain-level compatibility items while preserving FRQ,
-QRQ, CRQ, and legacy REQ item-ID type codes. Decision, note, and custom item types must be created under semantic type
-directories by default. Existing historical items must not be silently
-renumbered or rewritten only to satisfy newer naming conventions.
+Project-root item keys must be stored in top-level `PROJECT.md` as
+`item_key`; legacy project item keys may remain in
+`projects/<project>/PROJECT.md`; explicit workspace-level compatibility item
+keys may remain in `WORKSPACE.md`. When `--project` is omitted in a
+project-root clone, root item paths must be used even if `PI_COORD_PROJECT`
+is set for the coordination domain. In project-root clones, issue items must
+be created under `issues/open`. Functional, quality, constraint, and legacy
+generic requirement items must be created under the root-level
+`requirements/` directory while preserving FRQ, QRQ, CRQ, and legacy REQ
+item-ID type codes. Decision, note, and custom item types must be created
+under semantic type directories by default. `--workspace-item` must remain an
+explicit deprecated compatibility option for `workspace/` items and should
+emit a non-fatal deprecation diagnostic when used. Existing historical items
+must not be silently renumbered or rewritten only to satisfy newer naming
+conventions.
 
 #### CMD-013 Coordination lifecycle helpers
 
@@ -1003,10 +1017,11 @@ When set, the launcher must pass safe coordination context into the
 sandbox:
 
 - `PI_COORD_ROOT`
-- `PI_COORD_WORKSPACE`
+- `PI_COORD_PROJECT`
 - `PI_COORD_AGENT_ID`
 - `PI_COORD_PROJECT_KEY`
 - `PI_COORD_ROLE`
+- `PI_COORD_WORKSPACE` only as a deprecated compatibility alias
 
 If `PI_COORD_ROOT` points inside the selected project, the launcher must
 pass it into the sandbox as the corresponding `/workspace/...` path.

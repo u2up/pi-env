@@ -18,9 +18,8 @@ git config --global user.email "coordination-test@example.invalid"
 cd "$tmp/seed"
 agent-coord-init \
   --root "$tmp/remotes" \
-  --workspace demo \
-  --agent-id seed-agent \
-  --project pi-env >/dev/null
+  --project pi-env \
+  --agent-id seed-agent >/dev/null
 
 item_path="$(agent-coord-new \
   --coord-dir coordination \
@@ -34,11 +33,11 @@ agent-coord-push \
 cd "$tmp"
 agent-coord-clone \
   --root "$tmp/remotes" \
-  --workspace demo \
+  --project pi-env \
   --dir agent-a >/dev/null
 agent-coord-clone \
   --root "$tmp/remotes" \
-  --workspace demo \
+  --project pi-env \
   --dir agent-b >/dev/null
 
 agent-coord-claim \
@@ -123,7 +122,7 @@ agent-coord-pull --coord-dir agent-a >/dev/null
 test -f "agent-a/$closed_path"
 grep -q '^status: closed$' "agent-a/$closed_path"
 
-printf 'subject length check\n' >agent-b/workspace/decisions/subject-length.md
+printf 'subject length check\n' >agent-b/decisions/subject-length.md
 long_subject="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 if agent-coord-push \
   --coord-dir agent-b \

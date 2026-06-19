@@ -19,9 +19,9 @@ Usage:
 
 Options:
   --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or ./coordination
-  --project KEY            Create under projects/<key>/<type-directory>
-  --project-key KEY        Project/workspace key portion of generated IDs
-  --workspace-item         Create under workspace/<type-directory>
+  --project KEY            Create under legacy projects/<key>/<type-directory>
+  --project-key KEY        Project key portion of generated IDs
+  --workspace-item         Deprecated: create a legacy workspace/<type-directory> item
   --type TYPE              Item type; default: issue
   --status STATUS          Initial status; default: open for issues, active otherwise
   --priority VALUE         Priority value; default: medium
@@ -33,12 +33,15 @@ Options:
   --id ID                  Explicit item ID; default: timestamp ID with type code
   -h, --help               Show this help
 
-If --project is omitted, PI_COORD_PROJECT is used when set. Otherwise the
-item is created in the project-root layout when PROJECT.md plus root item
-folders are present, or as a workspace-level item in legacy clones. The item
-key is resolved from --project-key, stored project/workspace metadata,
-PI_COORD_PROJECT_KEY, or a derived project/workspace name. It is uppercased
-and all non-alphanumeric characters are removed for item IDs.
+If --project is omitted, the item is created in the project-root layout when
+PROJECT.md plus root item folders are present, even when PI_COORD_PROJECT is
+set for the coordination domain. Without a root layout, PI_COORD_PROJECT is
+used for a legacy projects/<project> item when set. Legacy projects/<project>
+or workspace/ layouts remain readable; creating new legacy workspace-level
+items requires --workspace-item or an existing legacy workspace layout and
+emits a deprecation warning. The item key is resolved from --project-key,
+stored project metadata, PI_COORD_PROJECT_KEY, or a derived project name. It
+is uppercased and all non-alphanumeric characters are removed for item IDs.
 
 Generated IDs use:
   <PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
@@ -49,7 +52,8 @@ USAGE
 }
 
 coord_dir_opt=""
-project_key="${PI_COORD_PROJECT:-}"
+project_key=""
+project_key_env="${PI_COORD_PROJECT:-}"
 project_id_key_arg=""
 project_id_key_env="${PI_COORD_PROJECT_KEY:-}"
 workspace_item=0
@@ -85,6 +89,7 @@ while [ "$#" -gt 0 ]; do
     --workspace-item)
       workspace_item=1
       project_key=""
+      coord_deprecated "--workspace-item creates legacy workspace/ items; prefer the project-root layout"
       shift
       ;;
     --type)
@@ -189,8 +194,13 @@ root_item=0
 if [ -z "$project_key" ] && [ "$workspace_item" != "1" ]; then
   if coord_write_root_items_by_default; then
     root_item=1
-  else
+  elif [ -n "$project_key_env" ]; then
+    project_key="$project_key_env"
+  elif coord_has_legacy_workspace_layout; then
+    coord_deprecated "creating a legacy workspace/ item because this clone has a legacy workspace layout; prefer PROJECT.md with root item directories"
     workspace_item=1
+  else
+    coord_die "no project-root layout found; initialize with agent-coord-init or pass --project for a legacy projects/<project> item"
   fi
 fi
 

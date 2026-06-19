@@ -24,7 +24,7 @@ Options:
   --remote URL        Existing coordination remote URL; default: PI_COORD_REMOTE_URL
   --project KEY       Coordination project; default: PI_COORD_PROJECT or inferred project name
   --project-key KEY   Project item ID prefix; default: PI_COORD_PROJECT_KEY or derived project
-  --workspace ID      Legacy alias for --project when --project is omitted
+  --workspace ID      Deprecated compatibility alias for --project when omitted
   --dir DIR           Working clone dir; default: PI_COORD_DIR or coordination
   --agent-id ID       Agent identity; default: PI_COORD_AGENT_ID or USER
   --bare-only         Only create the bare remote
@@ -38,7 +38,8 @@ agent-coord-init with those explicit values. It is a generic bootstrapper:
 when PI_COORD_* values are unset, it infers the project name from
 PI_COORD_PROJECT, the Git origin repository name, the Git root basename, or
 the current directory basename, in that order. PI_COORD_WORKSPACE and
---workspace remain compatibility aliases. With --project-root, target
+--workspace remain compatibility aliases for older automation, but new usage
+should set PI_COORD_PROJECT or pass --project. With --project-root, target
 project/dir/key defaults are inferred from that directory instead of inherited
 PI_COORD_WORKSPACE, PI_COORD_DIR, PI_COORD_PROJECT, and PI_COORD_PROJECT_KEY
 values; pass explicit options to override them. If a coordination clone
@@ -291,6 +292,14 @@ project_key_arg=""
 bare_only=0
 print_only=0
 status_after=1
+workspace_env_warned=0
+
+bootstrap_warn_workspace_env() {
+  if [ "$workspace_env_warned" = "0" ]; then
+    coord_deprecated "PI_COORD_WORKSPACE is a compatibility alias; use PI_COORD_PROJECT instead"
+    workspace_env_warned=1
+  fi
+}
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -312,6 +321,7 @@ while [ "$#" -gt 0 ]; do
     --workspace)
       [ "$#" -ge 2 ] || coord_die "--workspace requires a value"
       workspace_arg="$2"
+      coord_deprecated "--workspace is a compatibility alias; use --project instead"
       shift 2
       ;;
     --dir)
@@ -380,6 +390,7 @@ fi
 if [ -n "$workspace_arg" ]; then
   workspace="$workspace_arg"
 elif [ "$use_context_env" = "1" ] && [ -n "${PI_COORD_WORKSPACE:-}" ]; then
+  bootstrap_warn_workspace_env
   workspace="$PI_COORD_WORKSPACE"
 elif [ -n "$inferred_project" ]; then
   workspace="$inferred_project"
@@ -408,6 +419,7 @@ elif [ -n "$workspace_arg" ]; then
 elif [ "$use_context_env" = "1" ] && [ -n "${PI_COORD_PROJECT:-}" ]; then
   project="$PI_COORD_PROJECT"
 elif [ "$use_context_env" = "1" ] && [ -n "${PI_COORD_WORKSPACE:-}" ]; then
+  bootstrap_warn_workspace_env
   project="$PI_COORD_WORKSPACE"
 elif [ -n "$inferred_project" ]; then
   project="$inferred_project"
