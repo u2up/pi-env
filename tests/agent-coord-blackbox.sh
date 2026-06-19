@@ -213,6 +213,14 @@ test -f clone/AGENTS.md
 test -f clone/docs/SYNC_PROTOCOL.md
 test "$(git -C clone remote get-url origin)" = "../remotes/pi-env-coordination.git"
 
+git -C clone remote remove origin
+agent-coord-clone \
+  --root "$tmp/remotes" \
+  --project pi-env \
+  --dir clone >/dev/null
+
+test "$(git -C clone remote get-url origin)" = "../remotes/pi-env-coordination.git"
+
 git -C clone rev-parse --verify HEAD >/dev/null
 
 action_path="$(cd "$workspace_dir" && agent-coord-new \

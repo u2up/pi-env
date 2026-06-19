@@ -31,6 +31,17 @@ PI_COORD_REMOTE_URL, then:
 USAGE
 }
 
+coord_set_or_add_origin_url() {
+  local repo url
+  repo="$1"
+  url="$2"
+  if git -C "$repo" remote get-url origin >/dev/null 2>&1; then
+    git -C "$repo" remote set-url origin "$url"
+  else
+    git -C "$repo" remote add origin "$url"
+  fi
+}
+
 root="$(coord_default_root)"
 project="${PI_COORD_PROJECT:-}"
 legacy_workspace=""
@@ -103,7 +114,9 @@ if [ -e "$coord_dir" ]; then
     coord_note "clone already exists: $coord_dir"
     if [ "$remote_is_default_local" = "1" ]; then
       coord_dir_abs="$(coord_abs "$coord_dir")"
-      git -C "$coord_dir_abs" remote set-url origin "$(coord_local_remote_url_for_clone "$coord_dir_abs" "$remote")"
+      coord_set_or_add_origin_url \
+        "$coord_dir_abs" \
+        "$(coord_local_remote_url_for_clone "$coord_dir_abs" "$remote")"
     fi
     cd "$coord_dir"
     coord_git_config_defaults
@@ -115,7 +128,9 @@ fi
 git clone "$remote" "$coord_dir"
 coord_dir_abs="$(coord_abs "$coord_dir")"
 if [ "$remote_is_default_local" = "1" ]; then
-  git -C "$coord_dir_abs" remote set-url origin "$(coord_local_remote_url_for_clone "$coord_dir_abs" "$remote")"
+  coord_set_or_add_origin_url \
+    "$coord_dir_abs" \
+    "$(coord_local_remote_url_for_clone "$coord_dir_abs" "$remote")"
 fi
 cd "$coord_dir"
 coord_git_config_defaults
