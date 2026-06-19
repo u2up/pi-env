@@ -29,6 +29,14 @@ The flake exposes first-class package and app outputs for the launcher tools so
 users and tests can invoke the same artifacts. Packages provide installable
 programs; apps provide convenient `nix run` entrypoints.
 
+The package boundary separates the core sandbox runtime from optional
+coordination helpers while preserving compatibility:
+
+- `pi-core` contains `pi-env`, `pi-start`, `pi-bwrap`, and the runtime tools.
+- `pi-coordination` contains the Git-backed coordination helper commands.
+- `pi-runtime` remains the compatibility bundle containing both sets of
+  commands for existing consumers.
+
 Development shells include all tools needed for local validation: shell
 utilities, Bubblewrap, Node where required by scripts, and test dependencies.
 The shell contract is intentionally broader than a single launcher so
@@ -36,10 +44,15 @@ blackbox tests and documentation tooling use one reproducible environment.
 
 ## 2. Reusable shell construction
 
-`mkPiShell` is the reusable interface for downstream workspaces. It packages
-the common runtime dependencies and shell initialization while letting callers
-add project-specific inputs. The function is the preferred extension point
-instead of duplicating package lists across flakes.
+`mkPiShell` is the reusable interface for downstream projects. It packages the
+common runtime dependencies and shell initialization while letting callers add
+project-specific inputs. The function is the preferred extension point instead
+of duplicating package lists across flakes.
+
+`mkPiShell` keeps `includeCoordinationHelpers = true` by default so existing
+shell consumers retain `bootstrap-coordination` and `agent-coord*` commands.
+Projects that only need the sandbox/runtime set it to `false` for a core-only
+shell.
 
 The reusable shell must remain deterministic. Host-specific state such as auth
 files, Git preferences, and Pi resources is imported at launcher runtime rather

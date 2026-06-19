@@ -21,10 +21,9 @@ or unrelated project data.
 Nix provides reproducibility; Bubblewrap provides the isolation boundary.
 Each pi-env run has one primary project root. That root is mounted read-write
 at `/workspace` inside the sandbox; `/workspace` is the sandbox path name, not a
-host-side multi-project workspace manager. Optional role-manager and Git-backed
-coordination helpers are included for tracked role-based agent workflows, but
-the core value is simple: a safer, repeatable environment for running Pi
-against one codebase at a time.
+host-side multi-project workspace manager. The role-manager package and Git-backed coordination helpers remain available
+for tracked role-based agent workflows, but the core value is simple: a safer,
+repeatable environment for running Pi against one codebase at a time.
 
 ```text
 Without pi-env:
@@ -174,15 +173,25 @@ prints a short reminder unless `PI_ENV_QUIET` is set.
 
 ### Optional profile installation
 
-If you want `pi-env`, `pi-start`, `pi-bwrap`, and the coordination helpers on
-`PATH` without entering this checkout first, install the runtime package into a
-Nix profile:
+For the smallest profile that can launch Pi in the sandbox, install the core
+runtime package. It puts `pi-env`, `pi-start`, `pi-bwrap`, and the runtime tools
+on `PATH` without the Git-backed coordination helper commands:
 
 ```bash
+nix profile install ~/src/pi-env#pi-core
+```
+
+If you also use coordination helpers, either install them separately or keep the
+compatibility runtime bundle:
+
+```bash
+nix profile install ~/src/pi-env#pi-coordination
+# or, for the compatibility bundle used by older docs/automation:
 nix profile install ~/src/pi-env#pi-runtime
 ```
 
-This still does not install `pi-coding-agent`; the host `pi` command must
+`pi-runtime` continues to include the core runtime plus coordination helpers.
+None of these packages install `pi-coding-agent`; the host `pi` command must
 already exist.
 
 ## 3. Use pi-env directly from any project
@@ -200,7 +209,8 @@ cd /path/to/project
 ~/src/pi-env/pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
-If you installed `#pi-runtime` into a profile, you can run the shorter command:
+If you installed `#pi-core` or `#pi-runtime` into a profile, you can run the
+shorter command:
 
 ```bash
 cd /path/to/project
@@ -279,6 +289,10 @@ reference that your team can access.
         devShells.default = pi-env.lib.mkPiShell {
           inherit pkgs;
 
+          # Smallest project shell: omit agent-coord* helper commands unless
+          # this project uses Git-backed coordination.
+          includeCoordinationHelpers = false;
+
           extraPackages = with pkgs; [
             # project-specific tools, for example:
             # nodejs
@@ -299,6 +313,10 @@ Then run:
 nix develop
 pi-env
 ```
+
+`mkPiShell` defaults `includeCoordinationHelpers` to `true` so existing
+consumers keep `bootstrap-coordination` and `agent-coord*` commands on `PATH`.
+Set it to `false` for core-only project shells.
 
 ### Existing project flake
 
@@ -336,6 +354,10 @@ tools through `extraPackages`:
 devShells.default = pi-env.lib.mkPiShell {
   inherit pkgs;
 
+  # Keep this false for a core-only runtime shell. Omit the option or set it
+  # to true if the project uses bootstrap-coordination or agent-coord* helpers.
+  includeCoordinationHelpers = false;
+
   extraPackages = with pkgs; [
     # existing project tools
   ];
@@ -358,6 +380,7 @@ For builds or tests, declare tools in the consuming project's flake:
 ```nix
 devShells.default = pi-env.lib.mkPiShell {
   inherit pkgs;
+  includeCoordinationHelpers = false;
 
   extraPackages = with pkgs; [
     gnumake
@@ -386,13 +409,15 @@ add the pi-env commands:
 
 ```nix
 packages = existingPackages ++ [
-  pi-env.packages.${system}.pi-runtime
+  pi-env.packages.${system}.pi-core
 ];
 ```
 
 If your shell uses `nativeBuildInputs` or `buildInputs`, add the same package
-there instead. `pi-runtime` includes `pi-env`, `pi-start`, `pi-bwrap`, the
-runtime tools, and the coordination helpers.
+there instead. Use `pi-env.packages.${system}.pi-coordination` when you want
+only the optional coordination helpers, or `pi-env.packages.${system}.pi-runtime`
+when older automation expects the compatibility bundle containing both the core
+runtime and coordination helpers.
 
 Update a consuming project's pinned input with:
 
@@ -815,9 +840,12 @@ See `designs/role-manager.md` for the architecture.
 
 `pi-env` includes opt-in helpers for one Git-backed coordination repository per
 selected project. They are plain Git/text-file tooling and are separate from
-`pi-start`. Legacy `projects/<project>/` and `workspace/` layouts can still be
-read, listed, linted, and migrated, but the default path is project-root
-coordination for the one project mounted at `/workspace` per invocation.
+`pi-start`. Install `#pi-coordination`, use the compatibility `#pi-runtime`
+bundle, or leave `includeCoordinationHelpers` enabled in `mkPiShell` when you
+want these commands. Legacy `projects/<project>/` and `workspace/` layouts can
+still be read, listed, linted, and migrated, but the default path is
+project-root coordination for the one project mounted at `/workspace` per
+invocation.
 
 Guided setup with inferred, project-specific defaults:
 

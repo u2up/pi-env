@@ -669,6 +669,7 @@
         "agent-coord-close"
         "agent-coord-lint"
         "agent-coord-generate-requirements"
+        "agent-coord-generate-requirements-coverage"
         "agent-coord-upgrade-rules"
         "pi-serial-roles"
       ];
@@ -695,7 +696,7 @@
           export PI_ENV_COORD_TEMPLATE_DIR="${support}/share/pi-env/pi-skill-templates/agent-coordination"
           export PI_ENV_COORD_LIB="${support}/share/pi-env/scripts/agent-coord-lib.sh"
           export PI_ENV_ROLE_MANAGER_PACKAGE="''${PI_ENV_ROLE_MANAGER_PACKAGE:-${roleManagerPackage}}"
-          exec "${support}/share/pi-env/scripts/${name}" "$@"
+          exec ${pkgs.bash}/bin/bash "${support}/share/pi-env/scripts/${name}" "$@"
         '';
 
       mkAgentCoordCommands = pkgs:
@@ -710,12 +711,18 @@
           cp -R ${./role-manager}/. "$out/"
         '';
 
-      mkPiShell = { pkgs, extraPackages ? [ ], shellHook ? "" }:
+      mkPiShell =
+        { pkgs
+        , extraPackages ? [ ]
+        , shellHook ? ""
+        , includeCoordinationHelpers ? true
+        }:
         let
           piBwrap = mkPiBwrap pkgs;
           piStart = mkPiStart pkgs;
           piEnv = mkPiEnv pkgs;
           agentCoordCommands = builtins.attrValues (mkAgentCoordCommands pkgs);
+          coordinationPackages = if includeCoordinationHelpers then agentCoordCommands else [ ];
           roleManagerPackage = mkRoleManagerPackage pkgs;
           extraPackagePath = pkgs.lib.makeBinPath extraPackages;
         in
@@ -724,7 +731,7 @@
             piBwrap
             piStart
             piEnv
-          ] ++ agentCoordCommands ++ extraPackages;
+          ] ++ coordinationPackages ++ extraPackages;
 
           shellHook = ''
             export PS1="(nix-dev) \u@\h:\w$ "
@@ -767,15 +774,31 @@
         piStart = mkPiStart pkgs;
         piEnv = mkPiEnv pkgs;
         agentCoordCommands = mkAgentCoordCommands pkgs;
+        agentCoordCommandPackages = builtins.attrValues agentCoordCommands;
         roleManagerPackage = mkRoleManagerPackage pkgs;
+        coreRuntimePaths = (mkRuntime pkgs) ++ [
+          piBwrap
+          piStart
+          piEnv
+        ];
+        piCore = pkgs.buildEnv {
+          name = "pi-env-core";
+          paths = coreRuntimePaths;
+        };
+        piCoordination = pkgs.buildEnv {
+          name = "pi-env-coordination";
+          paths = agentCoordCommandPackages;
+        };
         piRuntime = pkgs.buildEnv {
           name = "pi-env-runtime";
-          paths = (mkRuntime pkgs) ++ [
-            piBwrap
-            piStart
-            piEnv
-          ] ++ builtins.attrValues agentCoordCommands;
+          paths = coreRuntimePaths ++ agentCoordCommandPackages;
         };
+        smokeCheck = name: nativeBuildInputs: script:
+          pkgs.runCommand name { inherit nativeBuildInputs; } ''
+            set -euo pipefail
+            ${script}
+            touch "$out"
+          '';
       in
       {
         packages = {
@@ -783,7 +806,9 @@
           pi-env = piEnv;
           pi-start = piStart;
           pi-bwrap = piBwrap;
+          pi-core = piCore;
           pi-runtime = piRuntime;
+          pi-coordination = piCoordination;
           pi-role-manager = roleManagerPackage;
         } // agentCoordCommands;
 
@@ -804,6 +829,38 @@
             type = "app";
             program = "${piBwrap}/bin/pi-bwrap";
           };
+        };
+
+        checks = {
+          pi-core-smoke = smokeCheck "pi-env-core-smoke" [ piCore ] ''
+            command -v pi-env >/dev/null
+            command -v pi-start >/dev/null
+            command -v pi-bwrap >/dev/null
+            pi-env --help >/dev/null
+            pi-bwrap --help >/dev/null
+            if command -v agent-coord-status >/dev/null 2>&1; then
+              echo "agent coordination helpers leaked into pi-core" >&2
+              exit 1
+            fi
+          '';
+
+          pi-runtime-compat-smoke = smokeCheck "pi-env-runtime-compat-smoke" [ piRuntime ] ''
+            command -v pi-env >/dev/null
+            command -v pi-start >/dev/null
+            command -v pi-bwrap >/dev/null
+            command -v agent-coord-status >/dev/null
+            command -v bootstrap-coordination >/dev/null
+            pi-env --help >/dev/null
+            agent-coord-status --help >/dev/null
+          '';
+
+          pi-coordination-smoke = smokeCheck "pi-env-coordination-smoke" [ piCoordination ] ''
+            command -v agent-coord-status >/dev/null
+            command -v agent-coord-lint >/dev/null
+            command -v bootstrap-coordination >/dev/null
+            agent-coord-lint --help >/dev/null
+            bootstrap-coordination --help >/dev/null
+          '';
         };
 
         devShells.default = mkPiShell { inherit pkgs; };

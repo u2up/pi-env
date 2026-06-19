@@ -204,7 +204,10 @@ A project that already has a flake/devshell must be able to keep its existing sh
 - Requirement kind: workflow
 - Related requirements: FLAKE-004, FLAKE-005
 
-Users must be able to use exposed packages and apps such as `default`, `pi-start`, `pi-bwrap`, and `pi-runtime` through commands like `nix run .#pi-bwrap -- ...` and `nix build .#pi-runtime`.
+Users must be able to use exposed packages and apps such as `default`,
+`pi-start`, `pi-bwrap`, `pi-core`, `pi-coordination`, and the compatibility
+`pi-runtime` bundle through commands like `nix run .#pi-bwrap -- ...`,
+`nix build .#pi-core`, and `nix build .#pi-runtime`.
 
 #### UC-020 — Use the library API in other flakes
 
@@ -288,14 +291,22 @@ The flake must expose `lib` attributes:
 - `mkPiShell`
 - `mkRoleManagerPackage`
 
+`mkPiShell` must accept `includeCoordinationHelpers` with a compatibility
+default of `true`; setting it to `false` must omit the optional
+coordination helper commands from the shell.
+
 #### FLAKE-004 Packages
 
 For each supported system the flake must expose packages:
 
-- `default` equal to `pi-start`
+- `default` equal to `pi-env`
+- `pi-env`
 - `pi-start`
 - `pi-bwrap`
-- `pi-runtime`
+- `pi-core` for core runtime commands and tools only
+- `pi-coordination` for the optional Git-backed coordination helpers
+- `pi-runtime` as a compatibility bundle containing `pi-core` plus
+  `pi-coordination`
 - `pi-role-manager`
 - `bootstrap-coordination`
 - `agent-coord-init`
@@ -303,6 +314,7 @@ For each supported system the flake must expose packages:
 - `agent-coord-new`
 - `agent-coord-status`
 - `agent-coord-list`
+- `agent-coord-cat`
 - `agent-coord-lint`
 - `agent-coord-pull`
 - `agent-coord-push`
@@ -311,7 +323,10 @@ For each supported system the flake must expose packages:
 - `agent-coord-review`
 - `agent-coord-verify`
 - `agent-coord-close`
+- `agent-coord-generate-requirements`
+- `agent-coord-generate-requirements-coverage`
 - `agent-coord-upgrade-rules`
+- `pi-serial-roles`
 
 #### FLAKE-005 Apps
 
@@ -323,7 +338,11 @@ For each supported system the flake must expose apps:
 
 #### FLAKE-006 Devshell
 
-The default devshell must include the runtime packages and wrappers and must print a helpful startup message unless `PI_ENV_QUIET` is set.
+The default devshell must include the runtime packages, wrappers, and
+coordination helpers, and must print a helpful startup message unless
+`PI_ENV_QUIET` is set. The reusable `mkPiShell` must keep that default for
+compatibility while allowing `includeCoordinationHelpers = false` to omit the
+optional coordination helper commands from consuming project shells.
 
 The shell prompt must be prefixed with `(nix-dev)`. The shell must export
 `PI_ENV_ROLE_MANAGER_PACKAGE` to the Nix-built role-manager Pi package path.
@@ -1139,8 +1158,11 @@ nix flake show
 
 Expected:
 
-- packages include `pi-start`, `pi-bwrap`, `pi-runtime`, `pi-role-manager`, and `default`
-- apps include `pi-start`, `pi-bwrap`, and `default`
+- packages include `default`, `pi-env`, `pi-start`, `pi-bwrap`, `pi-core`,
+  `pi-coordination`, `pi-runtime`, `pi-role-manager`, and the coordination
+  helper command packages
+- apps include `pi-env`, `pi-start`, `pi-bwrap`, and `default`
+- checks include core-only and coordination-included package smoke tests
 - `devShells.default` exists
 
 #### TEST-002 Flake builds
@@ -1148,8 +1170,11 @@ Expected:
 Commands:
 
 ```bash
+nix build .#pi-env
 nix build .#pi-bwrap
 nix build .#pi-start
+nix build .#pi-core
+nix build .#pi-coordination
 nix build .#pi-runtime
 nix build .#pi-role-manager
 nix build .#agent-coord-init
@@ -1157,6 +1182,7 @@ nix build .#agent-coord-clone
 nix build .#agent-coord-new
 nix build .#agent-coord-status
 nix build .#agent-coord-list
+nix build .#agent-coord-cat
 nix build .#agent-coord-pull
 nix build .#agent-coord-push
 nix build .#agent-coord-claim
@@ -1165,7 +1191,13 @@ nix build .#agent-coord-review
 nix build .#agent-coord-verify
 nix build .#agent-coord-close
 nix build .#agent-coord-lint
+nix build .#agent-coord-generate-requirements
+nix build .#agent-coord-generate-requirements-coverage
 nix build .#agent-coord-upgrade-rules
+nix build .#pi-serial-roles
+nix build .#checks.x86_64-linux.pi-core-smoke
+nix build .#checks.x86_64-linux.pi-runtime-compat-smoke
+nix build .#checks.x86_64-linux.pi-coordination-smoke
 ```
 
 Expected: all builds succeed.
