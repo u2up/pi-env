@@ -130,6 +130,19 @@ bash bubblewrap cacert coreutils fd findutils gawk git gnugrep gnused
 gnutar gzip jq nodejs ripgrep which
 ```
 
+The development shell also includes review and patch utilities for contributor
+workflows:
+
+```text
+diff diff3 patch
+```
+
+Verify the devshell tools with:
+
+```bash
+nix develop --command bash -lc 'command -v diff diff3 patch'
+```
+
 You normally do not need to install these separately for pi-env itself.
 
 ## 2. Install pi-env

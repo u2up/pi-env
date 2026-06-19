@@ -30,6 +30,12 @@
           which
         ];
 
+      mkDevShellTools = pkgs:
+        with pkgs; [
+          diffutils
+          patch
+        ];
+
       mkPiBwrap = pkgs:
         let
           runtimePackages = mkRuntime pkgs;
@@ -713,7 +719,7 @@
           extraPackagePath = pkgs.lib.makeBinPath extraPackages;
         in
         pkgs.mkShell {
-          packages = (mkRuntime pkgs) ++ [
+          packages = (mkRuntime pkgs) ++ (mkDevShellTools pkgs) ++ [
             piBwrap
             piStart
             piEnv
@@ -741,6 +747,7 @@
         inherit
           defaultTools
           mkRuntime
+          mkDevShellTools
           mkPiBwrap
           mkPiStart
           mkPiEnv
