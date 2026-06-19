@@ -501,6 +501,82 @@ closed_issue_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" 
 printf '%s\n' "$closed_issue_list" \
   | grep -Eq "^$item_id[[:space:]]+closed[[:space:]]+Document pi config behavior$"
 
+review_fail_path="$(agent-coord-new \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id agent-a \
+  --role developer \
+  "Review failure clears owner" | tail -n 1)"
+review_fail_id="$(basename "$review_fail_path")"
+review_fail_id="${review_fail_id%.yaml}"
+agent-coord-claim \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id agent-a \
+  --role developer \
+  "$review_fail_id" >/dev/null
+agent-coord-done \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id agent-a \
+  --role developer \
+  --result "Ready for failed review." \
+  "$review_fail_id" >/dev/null
+review_failed_path="$(agent-coord-review \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id reviewer-a \
+  --role reviewer \
+  --fail \
+  --result "Needs more work." \
+  "$review_fail_id" | tail -n 1)"
+
+test "$review_failed_path" = "issues/open/$review_fail_id.yaml"
+grep -q '^status: open$' "$workspace_dir/coordination/$review_failed_path"
+grep -q '^owner: null$' "$workspace_dir/coordination/$review_failed_path"
+grep -q '^done: null$' "$workspace_dir/coordination/$review_failed_path"
+grep -q '^reviewed: false$' "$workspace_dir/coordination/$review_failed_path"
+grep -q '^verified: false$' "$workspace_dir/coordination/$review_failed_path"
+grep -q '^    type: review_failed$' \
+  "$workspace_dir/coordination/$review_failed_path"
+
+verify_fail_path="$(agent-coord-new \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id agent-a \
+  --role developer \
+  "Verification failure clears owner" | tail -n 1)"
+verify_fail_id="$(basename "$verify_fail_path")"
+verify_fail_id="${verify_fail_id%.yaml}"
+agent-coord-claim \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id agent-a \
+  --role developer \
+  "$verify_fail_id" >/dev/null
+agent-coord-done \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id agent-a \
+  --role developer \
+  --result "Ready for failed verification." \
+  "$verify_fail_id" >/dev/null
+agent-coord-review \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id reviewer-a \
+  --role reviewer \
+  --pass \
+  --result "Review passed for verification failure test." \
+  "$verify_fail_id" >/dev/null
+verification_failed_path="$(PI_COORD_ROLE=tester agent-coord-verify \
+  --coord-dir "$workspace_dir/coordination" \
+  --agent-id tester-a \
+  --fail \
+  --result "Needs more verification work." \
+  "$verify_fail_id" | tail -n 1)"
+
+test "$verification_failed_path" = "issues/open/$verify_fail_id.yaml"
+grep -q '^status: open$' "$workspace_dir/coordination/$verification_failed_path"
+grep -q '^owner: null$' "$workspace_dir/coordination/$verification_failed_path"
+grep -q '^done: null$' "$workspace_dir/coordination/$verification_failed_path"
+grep -q '^reviewed: false$' "$workspace_dir/coordination/$verification_failed_path"
+grep -q '^verified: false$' "$workspace_dir/coordination/$verification_failed_path"
+grep -q '^    type: verification_failed$' \
+  "$workspace_dir/coordination/$verification_failed_path"
+
 head_before="$(git -C "$workspace_dir/coordination" rev-parse HEAD)"
 agent-coord-upgrade-rules \
   --coord-dir "$workspace_dir/coordination" \

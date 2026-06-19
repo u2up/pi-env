@@ -148,6 +148,7 @@ else
     "updated=$now" \
     "done=null" \
     "closed=null" \
+    "owner=null" \
     "reviewed=false" \
     "verified=false"
   message="Reject verification $item_id"

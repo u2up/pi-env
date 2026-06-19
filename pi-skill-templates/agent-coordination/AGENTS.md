@@ -167,17 +167,17 @@ verification.
   full `commit` hash.
 - Review pass: keep the item in `done/`, set `reviewed: true`, append a
   `reviewed` event/message, commit, and push.
-- Review fail: move the item back to `open/`, set `status: open`, reset
-  `done: null`, `reviewed: false`, and `verified: false`, append a
-  `review_failed` event/message explaining what must be fixed, commit, and
-  push.
+- Review fail: move the item back to `open/`, set `status: open`, clear
+  `owner: null`, reset `done: null`, `reviewed: false`, and
+  `verified: false`, append a `review_failed` event/message explaining what
+  must be fixed, commit, and push.
 - Verification pass: keep the item in `done/`, set `verified: true`, append a
   `verified` event/message with test evidence, commit, and push.
-- Verification fail: move the item back to `open/`, set `status: open`, reset
-  `done: null`, `reviewed: false`, and `verified: false`, append a
-  `verification_failed` event/message with failing tests/items, commit, and
-  push. Developers must fix their solution rather than weakening unrelated
-  previously passing tests.
+- Verification fail: move the item back to `open/`, set `status: open`, clear
+  `owner: null`, reset `done: null`, `reviewed: false`, and
+  `verified: false`, append a `verification_failed` event/message with failing
+  tests/items, commit, and push. Developers must fix their solution rather
+  than weakening unrelated previously passing tests.
 - Close: after `status: done`, `reviewed: true`, and `verified: true`, use
   `git mv` into `closed/`, set `status: closed`, set
   `closed: <timestamp>`, append a final `closed` event/message, commit, and
