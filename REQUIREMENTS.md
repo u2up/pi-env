@@ -1605,7 +1605,7 @@ immutable Nix-store tool paths already covered by the read-only
 
 ## 6. Coordination requirement item structure
 
-Requirement coordination items live under `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`. Requirement items are current-state records: they store one renderable top-level `body: |-` block and do not store embedded `current`, `events`, or `messages` history.
+Requirement coordination items live under root `requirements/` or legacy `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`. Requirement items are current-state records: they store one renderable top-level `body: |-` block and do not store embedded `current`, `events`, or `messages` history.
 
 Required fields for functional, quality, and constraint requirement items:
 

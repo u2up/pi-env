@@ -238,11 +238,11 @@ tests/items/workspace/requirements/<item-id>.sh           # legacy
 Examples:
 
 ```text
-coordination/projects/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml
-tests/items/projects/pi-env/issues/PIENV-ISS-20260607-204155-001.sh
+coordination/issues/closed/PIENV-ISS-20260607-204155-001.yaml
+tests/items/PIENV-ISS-20260607-204155-001.sh
 
-coordination/projects/pi-env/requirements/PIENV-FRQ-20260607-204155-001.yaml
-tests/items/projects/pi-env/requirements/PIENV-FRQ-20260607-204155-001.sh
+coordination/requirements/PIENV-FRQ-20260607-204155-001.yaml
+tests/items/requirements/PIENV-FRQ-20260607-204155-001.sh
 ```
 
 A verification event should record the exact test command(s) and result. The

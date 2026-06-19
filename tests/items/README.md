@@ -3,17 +3,23 @@
 Executable scripts under this directory verify coordination items by filename
 stem. The script name, without `.sh`, should match the coordination item `id`.
 
-Project item tests mirror project and item type, not issue status. All
-requirement classes use the single requirements test directory:
+Root project issue tests live directly under `tests/items/`:
 
 ```text
-tests/items/projects/<project>/issues/<item-id>.sh
-tests/items/projects/<project>/requirements/<item-id>.sh
+tests/items/<item-id>.sh
 ```
 
-Workspace item tests use:
+Root project requirement tests use:
 
 ```text
+tests/items/requirements/<item-id>.sh
+```
+
+Legacy project/workspace layouts remain accepted for older coordination
+clones:
+
+```text
+tests/items/projects/<project>/<type-dir>/<item-id>.sh
 tests/items/workspace/<type-dir>/<item-id>.sh
 ```
 

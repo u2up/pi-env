@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd -P)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "$repo_root"
 . tests/lib/test-helpers.sh
 
@@ -45,7 +45,7 @@ capture="${SERIAL_FAKE_PI_CAPTURE:?}"
 } >>"$capture"
 
 if [ -n "${SERIAL_EXPECT_CLAIMED_ITEM:-}" ]; then
-  item_file="${PI_COORD_DIR:?}/projects/pi-env/issues/open/${SERIAL_EXPECT_CLAIMED_ITEM}.yaml"
+  item_file="${PI_COORD_DIR:?}/issues/open/${SERIAL_EXPECT_CLAIMED_ITEM}.yaml"
   grep -q '^status: claimed$' "$item_file"
   grep -q "^owner: ${PI_COORD_AGENT_ID:?}$" "$item_file"
 fi
@@ -81,15 +81,12 @@ new_scenario() {
   git -C "$coord" remote add origin "$remote"
 
   mkdir -p \
-    "$coord/workspace" \
-    "$coord/projects/pi-env/issues/open" \
-    "$coord/projects/pi-env/issues/done" \
-    "$coord/projects/pi-env/issues/blocked" \
-    "$coord/projects/pi-env/issues/closed"
+    "$coord/issues/open" \
+    "$coord/issues/done" \
+    "$coord/issues/blocked" \
+    "$coord/issues/closed"
   printf '# Coordination rules for serial smoke tests\n' >"$coord/AGENTS.md"
-  printf 'workspace: serial-smoke\nitem_key: SERIAL\n' >"$coord/WORKSPACE.md"
-  printf 'project: pi-env\nitem_key: PIENV\n' \
-    >"$coord/projects/pi-env/PROJECT.md"
+  printf 'project: pi-env\nitem_key: PIENV\n' >"$coord/PROJECT.md"
 
   SCENARIO_DIR="$scenario"
   SCENARIO_PROJECT="$project"
@@ -107,12 +104,12 @@ add_issue() {
 
   case "$status" in
     done)
-      dir="$coord/projects/pi-env/issues/done"
+      dir="$coord/issues/done"
       done_value="2026-06-15T00:00:00Z"
       event_type="done"
       ;;
     open|claimed)
-      dir="$coord/projects/pi-env/issues/open"
+      dir="$coord/issues/open"
       done_value="null"
       event_type="opened"
       ;;
@@ -337,9 +334,9 @@ test_grep 'print-mode serial job starts a fresh non-interactive Pi session' \
 assert_no_grep '^arg:/role-cycle' "$dev_capture"
 assert_no_grep '^arg:--continue$' "$dev_capture"
 test_grep '^status: claimed$' \
-  "$SCENARIO_COORD/projects/pi-env/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
+  "$SCENARIO_COORD/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
 test_grep '^owner: serial-agent$' \
-  "$SCENARIO_COORD/projects/pi-env/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
+  "$SCENARIO_COORD/issues/open/SERIAL-DEVELOPER-CLAIM.yaml"
 assert_clean_git "$SCENARIO_PROJECT" "project"
 assert_clean_git "$SCENARIO_COORD" "coordination"
 

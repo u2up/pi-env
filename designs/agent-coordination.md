@@ -262,10 +262,12 @@ believes implementation is complete, and `closed` means final acceptance after
 review and verification. New items start with `reviewed: false` and
 `verified: false`, and declare `testable: yes` or `testable: no` with a
 `testability_note` when direct item-matched testing is not required.
-Item-matched tests live in the project repository under `tests/items/`, mirror
-the project item path and item type, and match the item ID by filename stem.
-Legacy workspace-level items may keep mirrored `tests/items/workspace/` tests.
-Tests intentionally do not mirror issue status directories.
+Item-matched tests live in the project repository under `tests/items/` and
+match the item ID by filename stem. Root-layout issue tests live directly under
+`tests/items/`; root-layout requirement tests may use
+`tests/items/requirements/`. Legacy project/workspace test paths remain
+accepted for older coordination clones. Tests intentionally do not mirror issue
+status directories.
 
 When marking an issue done, move it with `git mv`, set `status: done`, set
 `done:`, reset `reviewed: false` and `verified: false`, update `current:`,
@@ -297,7 +299,7 @@ cd coordination
 git pull --rebase
 # edit item: status: claimed, owner: agent-a, current: evt-0002/msg-0002
 # append a claimed event and message
-path=projects/pi-env/issues/open/<PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>.yaml
+path=issues/open/<PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>.yaml
 git add "$path"
 git commit -m "Claim <PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>"
 git push
