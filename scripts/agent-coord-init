@@ -155,6 +155,11 @@ git clone "$remote" "$coord_dir" >/dev/null 2>&1 || {
   coord_die "failed to clone remote: $remote"
 }
 
+coord_dir_abs="$(coord_abs "$coord_dir")"
+if [ -z "$remote_url" ] && [ -n "$remote_git_dir" ]; then
+  git -C "$coord_dir_abs" remote set-url origin "$(coord_local_remote_url_for_clone "$coord_dir_abs" "$remote_git_dir")"
+fi
+
 cd "$coord_dir"
 coord_git_config_defaults
 

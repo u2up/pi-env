@@ -208,9 +208,10 @@ bootstrap_clone_has_uncommitted_changes() {
 }
 
 bootstrap_ensure_remote_from_clone() {
-  local coord_dir remote_path branch remote_created needs_push origin_url origin_path
+  local coord_dir remote_path remote_url_for_clone branch remote_created needs_push origin_url origin_path
   coord_dir="$1"
   remote_path="$2"
+  remote_url_for_clone="$(coord_local_remote_url_for_clone "$coord_dir" "$remote_path")"
   remote_created=0
   needs_push=0
 
@@ -244,18 +245,23 @@ bootstrap_ensure_remote_from_clone() {
 
   if git -C "$coord_dir" remote get-url origin >/dev/null 2>&1; then
     origin_url="$(git -C "$coord_dir" remote get-url origin)"
-    if ! bootstrap_origin_points_to_remote "$coord_dir" "$origin_url" "$remote_path"; then
+    if bootstrap_origin_points_to_remote "$coord_dir" "$origin_url" "$remote_path"; then
+      if [ "$origin_url" != "$remote_url_for_clone" ]; then
+        git -C "$coord_dir" remote set-url origin "$remote_url_for_clone"
+        coord_note "updated origin remote to portable path: $remote_url_for_clone"
+      fi
+    else
       origin_path="$(bootstrap_normalized_local_remote_path "$coord_dir" "$origin_url" 2>/dev/null || true)"
       if [ -n "$origin_path" ] && [ ! -e "$origin_path" ]; then
-        git -C "$coord_dir" remote set-url origin "$remote_path"
-        coord_note "updated origin remote to restored path: $remote_path"
+        git -C "$coord_dir" remote set-url origin "$remote_url_for_clone"
+        coord_note "updated origin remote to restored path: $remote_url_for_clone"
       else
         coord_note "origin points elsewhere; restored remote will be pushed explicitly: $remote_path"
       fi
     fi
   else
-    git -C "$coord_dir" remote add origin "$remote_path"
-    coord_note "added origin remote: $remote_path"
+    git -C "$coord_dir" remote add origin "$remote_url_for_clone"
+    coord_note "added origin remote: $remote_url_for_clone"
   fi
 
   if ! git --git-dir="$remote_path" rev-parse --verify "refs/heads/$branch" >/dev/null 2>&1; then

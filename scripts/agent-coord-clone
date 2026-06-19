@@ -37,6 +37,7 @@ legacy_workspace=""
 coord_dir="$(coord_default_dir)"
 remote="${PI_COORD_REMOTE_URL:-}"
 remote_set=0
+remote_is_default_local=0
 [ -n "$remote" ] && remote_set=1
 
 while [ "$#" -gt 0 ]; do
@@ -94,11 +95,16 @@ if [ -z "$remote" ]; then
   [ -n "$project" ] || coord_die "project must not be empty"
   root="$(coord_abs "$root")"
   remote="$(coord_remote_for "$root" "$project")"
+  remote_is_default_local=1
 fi
 
 if [ -e "$coord_dir" ]; then
   if [ -d "$coord_dir/.git" ]; then
     coord_note "clone already exists: $coord_dir"
+    if [ "$remote_is_default_local" = "1" ]; then
+      coord_dir_abs="$(coord_abs "$coord_dir")"
+      git -C "$coord_dir_abs" remote set-url origin "$(coord_local_remote_url_for_clone "$coord_dir_abs" "$remote")"
+    fi
     cd "$coord_dir"
     coord_git_config_defaults
     exit 0
@@ -107,6 +113,10 @@ if [ -e "$coord_dir" ]; then
 fi
 
 git clone "$remote" "$coord_dir"
+coord_dir_abs="$(coord_abs "$coord_dir")"
+if [ "$remote_is_default_local" = "1" ]; then
+  git -C "$coord_dir_abs" remote set-url origin "$(coord_local_remote_url_for_clone "$coord_dir_abs" "$remote")"
+fi
 cd "$coord_dir"
 coord_git_config_defaults
 coord_note "cloned coordination repo: $(pwd -P)"

@@ -335,6 +335,20 @@ coord_remote_for() {
   printf '%s/%s-coordination.git\n' "$root" "$workspace"
 }
 
+coord_local_remote_url_for_clone() {
+  local coord_dir remote_path rel
+  coord_dir="$(coord_abs "$1")"
+  remote_path="$(coord_abs "$2")"
+  if rel="$(realpath -m --relative-to="$coord_dir" "$remote_path" 2>/dev/null)"; then
+    case "$rel" in
+      /*|'') printf '%s\n' "$remote_path" ;;
+      *) printf '%s\n' "$rel" ;;
+    esac
+  else
+    printf '%s\n' "$remote_path"
+  fi
+}
+
 coord_is_coord_repo() {
   local dir
   dir="$1"
