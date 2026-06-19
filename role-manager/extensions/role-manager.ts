@@ -361,28 +361,22 @@ function setRoleTitle(pi: ExtensionAPI, ctx: ExtensionContext, roleName?: string
   }
 }
 
-function formatRoleCycleWidgetLines(
-  role: RoleDisplayInfo,
-  cycle: RoleCycleState,
-) {
-  const title = `${role.icon ? `${role.icon} ` : ""}${role.name}`;
-  const lines = [
-    `Role cycle: ${title}${cycle.goal ? ` — ${cycle.goal}` : ""}`,
-  ];
-  const checklist = cycle.checklist ?? extractRoleCycleChecklist(role);
+function formatRoleCycleChecklistPrompt(role: RoleDisplayInfo) {
+  const checklist = extractRoleCycleChecklist(role);
+  if (checklist.length === 0) return "";
 
-  for (const [index, item] of checklist.entries()) {
-    lines.push(`☐ ${index + 1}. ${item}`);
-  }
-
-  return lines;
+  return [
+    "One-cycle checklist:",
+    ...checklist.map((item, index) => `${index + 1}. ${item}`),
+    "",
+  ].join("\n");
 }
 
 function applyRoleUI(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
   role: RoleDisplayInfo | undefined,
-  cycleValue?: unknown,
+  _cycleValue?: unknown,
 ) {
   if (!role?.name) {
     clearRoleUI(pi, ctx);
@@ -392,12 +386,10 @@ function applyRoleUI(
   setRoleStatus(ctx, themeText(ctx, "accent", formatRoleStatusText(role)));
   setRoleTitle(pi, ctx, role.name);
 
-  const cycle = normalizeRoleCycleState(cycleValue);
-  if (isRoleCycleRunning(cycle)) {
-    setRoleWidget(ctx, formatRoleCycleWidgetLines(role, cycle));
-  } else {
-    setRoleWidget(ctx, undefined);
-  }
+  // Keep the cycle checklist in the kickoff prompt only. A persistent widget
+  // repeats before later prompts and makes /role-new behavior feel different
+  // across sessions depending on UI/tool availability.
+  setRoleWidget(ctx, undefined);
 }
 
 function clearRoleUI(pi: ExtensionAPI, ctx: ExtensionContext) {
@@ -521,13 +513,14 @@ function parseRoleCycleArgs(args: string): ParsedRoleCycleArgs | undefined {
 function formatRoleCyclePrompt(role: any, goal: string) {
   const roleName = role.name ?? "unknown";
   const roleTitle = role.icon ? `${role.icon} ${roleName}` : roleName;
+  const checklist = formatRoleCycleChecklistPrompt(role);
 
   return `## Role cycle kickoff
 
 Active role: ${roleTitle}
 Goal: ${goal.trim()}
 
-Run exactly one bounded cycle for the active role.
+${checklist}Run exactly one bounded cycle for the active role.
 
 Operating constraints:
 
@@ -539,12 +532,15 @@ Operating constraints:
   permitted by the current coordination rules.
 - Use only context available in this session. If this is a fresh session, do
   not assume parent-session conversation details unless they are included here.
-- Finish by calling \`role_cycle_done\` as the final action of the cycle.
-  Treat that structured tool report as the role's expected final report.
+- Finish by calling \`role_cycle_done\` as the final action of the cycle when
+  that tool is available. Treat that structured tool report as the role's
+  expected final report.
 - Populate every \`role_cycle_done\` field: \`summary\`, \`filesInspected\`,
   \`filesChanged\`, \`testsChecksRun\`, \`coordinationUpdates\`, and
   \`recommendedNextRole\`. Use empty arrays for list fields with no entries,
   and use \`none\` when there is no recommended next role.
+- If \`role_cycle_done\` is unavailable, do not output JSON. End with the
+  role's normal prose final report instead.
 - After calling \`role_cycle_done\`, stop. Do not emit another assistant
   response and do not begin a second role cycle.
 `;
@@ -1180,6 +1176,7 @@ export default function roleManager(pi: ExtensionAPI) {
 
       const result = await ctx.newSession({
         parentSession,
+        preserveScreen: true,
         setup: async (sessionManager) => {
           sessionManager.appendSessionInfo(sessionName);
         },
@@ -1190,7 +1187,7 @@ export default function roleManager(pi: ExtensionAPI) {
           );
           await replacementCtx.sendUserMessage(roleCycleCommand);
         },
-      });
+      } as any);
 
       if (result.cancelled) {
         notifyInfo(ctx, "role-manager: new role session cancelled");

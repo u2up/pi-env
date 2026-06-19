@@ -70,11 +70,14 @@ registered and reports a warning naming any missing tools instead of silently
 ignoring them. `/role-cycle` sends a bounded
 one-cycle kickoff prompt in the current session, enables `role_cycle_done` for
 that cycle, and instructs the model to call it as the final action with a
-structured summary. `/role-new` uses Pi's session replacement API, records the
+structured summary. If the tool is unavailable, the prompt asks for the role's
+normal prose final report instead of JSON. `/role-new` uses Pi's session
+replacement API, asks Pi to keep the existing UI screen visible, records the
 parent session, names the fresh session with a role prefix, and starts the
 cycle from the replacement-session context. While a role is active, the
-extension updates the footer status and terminal title; while `/role-cycle` is
-running, it also shows the role's one-cycle checklist above the editor.
-`/role-clear` removes those UI decorations. While a role is active, the
+extension updates the footer status and terminal title. `/role-cycle` includes
+the role's one-cycle checklist in the kickoff prompt instead of keeping a
+persistent checklist above later prompts. `/role-clear` removes active role UI
+decorations. While a role is active, the
 extension also exports `PI_COORD_ROLE` to Pi subprocesses using the role's
 `coordCommitter` value, or the role name when `coordCommitter` is omitted.

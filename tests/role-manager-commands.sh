@@ -552,18 +552,18 @@ try {
   assert.equal(cycle.sentUserMessages.length, 1);
   assert.match(cycle.sentUserMessages[0].content, /Role cycle kickoff/);
   assert.match(cycle.sentUserMessages[0].content, /Goal: design role manager/);
+  assert.match(cycle.sentUserMessages[0].content, /One-cycle checklist/);
+  assert.match(cycle.sentUserMessages[0].content, /PROJECT modeler workflow/);
   assert.match(cycle.sentUserMessages[0].content, /exactly one bounded cycle/);
   assert.match(cycle.sentUserMessages[0].content, /role_cycle_done/);
   assert.match(cycle.sentUserMessages[0].content, /filesInspected/);
   assert.match(cycle.sentUserMessages[0].content, /testsChecksRun/);
+  assert.match(cycle.sentUserMessages[0].content, /do not output JSON/);
   assert.equal(cycle.statuses.at(-1).key, "role-manager");
   assert.match(cycle.statuses.at(-1).text, /🧪 role:modeler/);
   assert.match(cycle.titles.at(-1), /role:modeler/);
   assert.equal(cycle.widgets.at(-1).key, "role-manager-cycle");
-  assert.match(cycle.widgets.at(-1).content[0], /Role cycle: 🧪 modeler — design role manager/);
-  assert.ok(
-    cycle.widgets.at(-1).content.some((line) => line.includes("PROJECT modeler workflow.")),
-  );
+  assert.equal(cycle.widgets.at(-1).content, undefined);
 
   const cycleDoneResult = await cycle.tools.get("role_cycle_done").execute(
     "call-cycle",
@@ -626,6 +626,7 @@ try {
 
   assert.equal(fresh.newSessionRequests.length, 1);
   assert.equal(fresh.newSessionRequests[0].parentSession, fresh.state.sessionFile);
+  assert.equal(fresh.newSessionRequests[0].preserveScreen, true);
   assert.deepEqual(fresh.newSessionSetups[0].sessionInfoNames, ["[modeler] design role manager"]);
   assert.deepEqual(fresh.entries, [], "fresh session command must not mutate the original session state");
   assert.deepEqual(fresh.sentUserMessages, [], "fresh session command must not use the old pi sender");
@@ -644,6 +645,7 @@ try {
   await cancelled.commands.get("role-new").handler("modeler design role manager", cancelled.ctx);
 
   assert.equal(cancelled.newSessionRequests.length, 1);
+  assert.equal(cancelled.newSessionRequests[0].preserveScreen, true);
   assert.equal(cancelled.newSessionSetups.length, 0);
   assert.deepEqual(cancelled.entries, []);
   assert.deepEqual(cancelled.sentUserMessages, []);

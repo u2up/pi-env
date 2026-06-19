@@ -147,8 +147,9 @@ The extension should expose these commands:
 ```
 
 `/role-new` should use Pi's session replacement API to create a fresh session,
-set a session name such as `[architect] design roles`, persist role state, and
-send the one-cycle prompt in the replacement session.
+request that Pi preserve the existing UI screen, set a session name such as
+`[architect] design roles`, persist role state, and send the one-cycle prompt
+in the replacement session.
 
 ## One-cycle behavior
 
@@ -158,6 +159,7 @@ should include:
 - active role name;
 - user goal;
 - whether project and coordination changes are allowed;
+- the role's one-cycle checklist once at kickoff;
 - instruction to follow the role's one-cycle workflow;
 - instruction to stop after the final role report.
 
@@ -181,7 +183,8 @@ Interactive sessions should make the active role obvious:
 
 - footer status, for example `🧭 role:architect`;
 - terminal title, for example `pi - architect`;
-- optional widget for the current cycle checklist while a cycle is running.
+- no persistent checklist widget; the checklist is shown once in the kickoff
+  prompt so it does not repeat before later prompts.
 
 The extension should clear all role UI when `/role-clear` is used or when no
 role is active.

@@ -823,9 +823,12 @@ When a role is active, only that role's instructions are injected into the
 system prompt for each turn. Role frontmatter may request a thinking level,
 model/provider, and tool allowlist. Unknown requested tools are warned and
 ignored. The default `pi-start` allowlist includes every built-in tool used by
-the bundled roles. `/role-cycle` also enables the package's `role_cycle_done`
-tool for that cycle; the model is instructed to call it as the final action so
-Pi can terminate the cycle without an extra follow-up turn.
+the bundled roles. `/role-cycle` includes the role's one-cycle checklist in the
+kickoff prompt, enables the package's `role_cycle_done` tool for that cycle,
+and instructs the model to call it as the final action so Pi can terminate the
+cycle without an extra follow-up turn. If that tool is unavailable, the prompt
+asks for a normal prose final report rather than JSON. `/role-new` requests
+that Pi preserve the existing UI screen while switching to the fresh session.
 
 When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
 Pi subprocesses to the role's `coordCommitter` value, or to the role name when
