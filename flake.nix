@@ -78,6 +78,7 @@
             PI_BWRAP_PROJECT_ROOT=/path   Project to mount; default: git root, else $PWD
             PI_BWRAP_USE_GIT_ROOT=0       Use $PWD instead of auto git-root detection
             PI_BWRAP_STATE_DIR=/path      Persistent sandbox home/config; default: XDG state per project
+                                           Use $PWD/.pi-env/state only as explicit project-local opt-in
             PI_BWRAP_EPHEMERAL_HOME=1     Use a temporary sandbox home/config for this run
             PI_BWRAP_IMPORT_AUTH=0        Do not import host ~/.pi/agent auth files
             PI_BWRAP_AUTH_SYNC=missing    Copy auth only if sandbox copy is absent (default: always)
@@ -96,7 +97,8 @@
             PI_BWRAP_EXTRA_PATH=/nix/store/.../bin[:...] Add validated Nix-store command dirs after pi-env runtime tools
             PI_BWRAP_NET=0                Disable network namespace sharing
             PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
-            PI_COORD_ROOT=/path/to/agent-remotes Bare coordination remotes root; external paths bind at /agent-remotes
+            PI_COORD_ROOT=.pi-env/agent-remotes Bare remotes root; project paths stay under /workspace,
+                                           external paths bind at /agent-remotes
             PI_COORD_REMOTE_URL=url       Coordination Git remote URL passed through without local mounts
             PI_COORD_ROLE=architect       Active coordination role passed to helpers
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
@@ -308,7 +310,14 @@
           coord_root_bind_args=()
           sandbox_coord_root=""
           if [ -n "''${PI_COORD_ROOT:-}" ]; then
-            host_coord_root="$(realpath -m "$PI_COORD_ROOT")"
+            case "$PI_COORD_ROOT" in
+              /*)
+                host_coord_root="$(realpath -m "$PI_COORD_ROOT")"
+                ;;
+              *)
+                host_coord_root="$(realpath -m "$project_root/$PI_COORD_ROOT")"
+                ;;
+            esac
             case "$host_coord_root" in
               "$project_root")
                 sandbox_coord_root="/workspace"

@@ -528,7 +528,8 @@ pi-env only chooses which root to expose for this run.
   so a global npm-installed `pi` works;
 - uses isolated `$HOME=/home/pi`;
 - stores sandbox Pi state outside the project by default under
-  `$XDG_STATE_HOME/pi-env/<project-hash>`;
+  `$XDG_STATE_HOME/pi-env/<project-hash>` or
+  `$HOME/.local/state/pi-env/<project-hash>`;
 - imports common Pi rules/skills/prompts/roles from the host Pi agent directory
   by default (`$PI_CODING_AGENT_DIR`, else `~/.pi/agent`), limited to
   `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`,
@@ -572,7 +573,7 @@ Common environment knobs:
 ```bash
 PI_BWRAP_PROJECT_ROOT=/path/to/repo     # default: git root, else $PWD
 PI_BWRAP_USE_GIT_ROOT=0                 # bind only $PWD
-PI_BWRAP_STATE_DIR=/path/to/state       # persistent sandbox home/config
+PI_BWRAP_STATE_DIR=/path/to/state       # persistent sandbox home/config; .pi-env/state is opt-in
 PI_BWRAP_EPHEMERAL_HOME=1               # temporary home/config for this run
 PI_BWRAP_IMPORT_AUTH=0                  # do not import host ~/.pi/agent auth files
 PI_BWRAP_AUTH_SYNC=missing              # copy auth only if sandbox copy is absent; default is always
@@ -588,7 +589,7 @@ PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy i
 PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
 PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
-PI_COORD_ROOT=/path/to/agent-remotes     # bare remotes; project paths map to /workspace, external paths to /agent-remotes
+PI_COORD_ROOT=.pi-env/agent-remotes      # bare remotes; project paths map to /workspace, external paths to /agent-remotes
 PI_COORD_REMOTE_URL=git@example:repo.git # optional Git-server coordination remote URL; no local remotes mount required
 PI_COORD_PROJECT=pi-env                 # coordination project/domain name
 PI_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
@@ -607,13 +608,17 @@ or exported in the project's shell hook:
 PI_BWRAP_PROJECT_ROOT=/path/to/repo pi-start  # mount this repo at /workspace
 PI_BWRAP_USE_GIT_ROOT=0 pi-start              # use $PWD instead of git root
 PI_BWRAP_EPHEMERAL_HOME=1 pi-start            # throw away sandbox home after the run
+PI_BWRAP_STATE_DIR=$PWD/.pi-env/state pi-start # opt in to project-local sandbox state
 PI_BWRAP_IMPORT_AUTH=0 pi-start               # do not copy host Pi auth into sandbox state
 PI_BWRAP_NET=0 pi-start                       # disable network access
 ```
 
 Inside the sandbox, the selected project root is mounted read-write at
 `/workspace`, while the sandbox home and Pi config live separately from the
-host home.
+host home. The default state location intentionally stays outside `.pi-env/`
+because it can contain copied auth, settings, sessions, and caches; use
+`PI_BWRAP_STATE_DIR=$PWD/.pi-env/state` only when you explicitly want that
+project-local operational state.
 
 ## 8. Common vs project-specific Pi resources
 
