@@ -36,8 +36,9 @@ Options:
                           and waits for manual exit, and watched-auto-exit
                           launches the normal TUI but requests graceful exit
                           after role_cycle_done
-  --lock-file PATH        Local lock path; default: pi-serial-roles.lock
-                          under the project's Git metadata directory
+  --lock-file PATH        Local lock path; default:
+                          .pi-env/locks/pi-serial-roles.lock relative to
+                          the project root
   --pi-env COMMAND        pi-env launcher; default: pi-env on PATH or this checkout
   --role-manager PATH     Role-manager package/path for raw Pi jobs; default:
                           PI_ENV_ROLE_MANAGER_PACKAGE or this checkout's role-manager
@@ -804,13 +805,13 @@ esac
 if [ -n "$lock_file_opt" ]; then
   lock_file="$(resolve_relative_to_project "$lock_file_opt" "$project_root")"
 else
-  git_lock_file="$(git -C "$project_root" rev-parse --git-path pi-serial-roles.lock)"
-  case "$git_lock_file" in
-    /*) lock_file="$git_lock_file" ;;
-    *) lock_file="$(realpath -m "$project_root/$git_lock_file")" ;;
-  esac
+  lock_file="$(realpath -m "$project_root/.pi-env/locks/pi-serial-roles.lock")"
 fi
 
+(
+  cd "$project_root"
+  coord_ensure_operational_root_excluded "$lock_file"
+)
 acquire_lock "$lock_file"
 
 if [ "${max_jobs:-}" = "0" ]; then

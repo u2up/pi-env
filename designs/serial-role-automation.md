@@ -98,8 +98,8 @@ A later implementation may replace this duplicated shell parsing with an
 
 Before every Pi job the orchestrator should:
 
-- hold a local lock, for example
-  `flock .pi-env/locks/pi-serial-roles.lock`, so two serial workers cannot
+- hold the default local lock at `.pi-env/locks/pi-serial-roles.lock`,
+  creating `.pi-env/locks` when needed, so two serial workers cannot
   accidentally run in the same clone;
 - pull/rebase coordination before inspecting or mutating items;
 - ensure the project working tree is clean unless the previous role job left a
@@ -115,9 +115,9 @@ state, not uncommitted leftovers.
 
 ## Pi invocation
 
-Local automation logs, when written, should default under `.pi-env/logs/` so
-serial-role operational artifacts stay grouped with other pi-env generated
-state.
+Serial automation logs and future local diagnostics, when written, should
+default under `.pi-env/logs/` so serial-role operational artifacts stay grouped
+with other pi-env generated state.
 
 The orchestrator should render a role-specific prompt that names exactly one
 item and says not to select other work. The prompt should tell the role to use

@@ -1119,10 +1119,11 @@ pi-serial-roles --ui interactive --once
 pi-serial-roles --ui watched-auto-exit --once
 ```
 
-Each poll holds a local lock under the project's Git metadata directory,
-requires clean project and coordination working trees, pulls/rebases
-coordination, selects at most one issue, and then runs one Pi job. Work priority
-is:
+Each poll holds `.pi-env/locks/pi-serial-roles.lock` and creates
+`.pi-env/locks` as needed. It requires clean project and coordination working
+trees, pulls/rebases coordination, selects at most one issue, and then runs one
+Pi job. Serial automation logs and future local diagnostics default under
+`.pi-env/logs`. Work priority is:
 
 1. tester: done issues with `reviewed: true` and `verified: false`;
 2. reviewer: done issues with `reviewed: false`;
