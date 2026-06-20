@@ -20,12 +20,12 @@ Usage:
 
 Options:
   --project-root DIR  Project directory to inspect; default: current directory
-  --root DIR          Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
+  --root DIR          Bare remote parent; default: PI_COORD_ROOT or .pi-env/agent-remotes
   --remote URL        Existing coordination remote URL; default: PI_COORD_REMOTE_URL
   --project KEY       Coordination project; default: PI_COORD_PROJECT or inferred project name
   --project-key KEY   Project item ID prefix; default: PI_COORD_PROJECT_KEY or derived project
   --workspace ID      Deprecated compatibility alias for --project when omitted
-  --dir DIR           Working clone dir; default: PI_COORD_DIR or coordination
+  --dir DIR           Working clone dir; default: PI_COORD_DIR or .pi-env/coordination
   --agent-id ID       Agent identity; default: PI_COORD_AGENT_ID or USER
   --bare-only         Only create the bare remote
   --print-only        Print suggested settings and command; do not initialize or restore
@@ -409,7 +409,7 @@ if [ -n "$coord_dir_arg" ]; then
 elif [ "$use_context_env" = "1" ]; then
   coord_dir="$(coord_default_dir)"
 else
-  coord_dir="coordination"
+  coord_dir="$(coord_default_dir_for_project)"
 fi
 
 if [ -n "$agent_id_arg" ]; then

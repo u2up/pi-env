@@ -10,7 +10,7 @@ Usage:
 
 Options:
   --project NAME            Project name; default: PI_COORD_PROJECT or pi-env
-  --coordination-dir DIR    Coordination clone; default: PI_COORD_DIR or coordination
+  --coordination-dir DIR    Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy coordination
   --designs-dir DIR         Design documents directory; default: designs
   --output PATH, -o PATH    Write Markdown to PATH instead of stdout
   --check                   Validate inputs without writing Markdown

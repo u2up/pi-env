@@ -19,7 +19,8 @@ cd "$tmp/project"
 agent-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
-  --agent-id agent-a >/dev/null
+  --agent-id agent-a \
+  --dir coordination >/dev/null
 
 item_path="$(agent-coord-new \
   --coord-dir coordination \

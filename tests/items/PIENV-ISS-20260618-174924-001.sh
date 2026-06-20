@@ -55,7 +55,7 @@ run_harness() {
   mkdir -p "$project"
   (
     cd "$project"
-    unset PI_COORD_ROOT PI_COORD_REMOTE_URL
+    unset PI_COORD_ROOT PI_COORD_REMOTE_URL PI_COORD_DIR
     env \
       PATH="$fakebin:$PATH" \
       PI_ENV_TEST_FAKE_BWRAP="$tmpdir/fake-bwrap" \
@@ -119,6 +119,14 @@ assert_no_grep "^$HOME/.ssh$" "$home_capture"
 assert_no_grep '/\.ssh$' "$home_capture"
 assert_no_grep 'bind.*\.ssh' "$script"
 assert_no_grep 'host_home.*--bind' "$script"
+
+coord_project="$tmpdir/coord-project"
+mkdir -p "$coord_project/.pi-env/coordination/.git"
+touch "$coord_project/.pi-env/coordination/AGENTS.md"
+coord_capture="$tmpdir/coord-capture"
+run_harness "$coord_project" "$coord_capture"
+test_grep '^PI_COORD_DIR$' "$coord_capture"
+test_grep '^/workspace/.pi-env/coordination$' "$coord_capture"
 
 if [ -d /workspace/agent-remotes ] && [ ! -e "$tmpdir/compat-project/agent-remotes" ]; then
   compat_capture="$tmpdir/compat-capture"

@@ -82,8 +82,8 @@ agent-coord-status
 pi-env "Inspect this repository and review its state."
 ```
 
-This creates local coordination files/directories for agent task tracking.
-Commit them only if you want that workflow versioned with the project.
+This creates local coordination state under `.pi-env/` for agent task
+tracking. `.pi-env/` is operational state and should normally stay untracked.
 
 ## 1. Host prerequisites
 
@@ -863,10 +863,10 @@ bootstrap-coordination --print-only
 Manual minimal setup with a local bare remote:
 
 ```bash
-export PI_COORD_ROOT=/workspace/agent-remotes
+export PI_COORD_ROOT=/workspace/.pi-env/agent-remotes
 export PI_COORD_PROJECT=pi-env
 export PI_COORD_PROJECT_KEY=PIENV
-export PI_COORD_DIR=coordination
+export PI_COORD_DIR=/workspace/.pi-env/coordination
 export PI_COORD_AGENT_ID=agent-a
 
 agent-coord-init
@@ -896,13 +896,14 @@ Without a configured remote URL, this creates a bare remote at:
 $PI_COORD_ROOT/$PI_COORD_PROJECT-coordination.git
 ```
 
-If `PI_COORD_ROOT` is unset, helpers default to a project-visible
-`agent-remotes` directory. Inside the pi-env sandbox, that is normally the
-project's `/workspace/agent-remotes`, available through the standard project
-bind mount rather than a separate remotes mount. During migration, `pi-bwrap`
-also keeps a narrow compatibility bind for an existing host
-`/workspace/agent-remotes` when the selected project does not already provide
-one and no Git-server remote URL is configured.
+If `PI_COORD_ROOT` is unset, helpers default to the project-local
+`.pi-env/agent-remotes` directory. Inside the pi-env sandbox, that is normally
+`/workspace/.pi-env/agent-remotes`, available through the standard project
+bind mount rather than a separate remotes mount. Existing root-level
+`agent-remotes/` directories remain compatibility detection paths. During
+migration, `pi-bwrap` also keeps a narrow compatibility bind for an existing
+host `/workspace/agent-remotes` when the selected project does not already
+provide one and no Git-server remote URL is configured.
 
 If `PI_COORD_ROOT` is set to a project-local path, `pi-bwrap` rewrites it to the
 matching `/workspace/...` path. If it is set to an existing local path outside
@@ -919,7 +920,9 @@ not import the host `~/.ssh` directory or all host Git credentials wholesale.
 It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, project
 `PROJECT.md` metadata, root `issues/`, `requirements/`, `decisions/`, and
 `notes/` directories, protocol docs, item-format docs, and
-`.pi/skills/agent-coordination/SKILL.md`. New scaffolds do not include
+`.pi/skills/agent-coordination/SKILL.md`. When `PI_COORD_DIR` is unset, fresh
+projects use `.pi-env/coordination`; existing root-level `coordination/`
+clones remain compatibility detection paths. New scaffolds do not include
 `WORKSPACE.md` or `workspace/` directories by default.
 
 Deprecated compatibility remains available for older automation:

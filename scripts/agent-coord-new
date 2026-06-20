@@ -18,7 +18,7 @@ Usage:
   agent-coord-new [options] "Item title"
 
 Options:
-  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or ./coordination
+  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
   --project KEY            Create under legacy projects/<key>/<type-directory>
   --project-key KEY        Project key portion of generated IDs
   --workspace-item         Deprecated: create a legacy workspace/<type-directory> item

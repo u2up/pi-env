@@ -29,7 +29,7 @@ Arguments:
   STATUS        Optional status filter, for example open, closed, or accepted
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
+  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
   -h, --help        Show this help
 
 Output columns are tab-separated:

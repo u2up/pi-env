@@ -34,13 +34,32 @@ agent-coord-init \
   --bare-only >"$tmp/default-root.out" 2>"$tmp/default-root.err"
 grep -q 'deprecated: --workspace is a compatibility alias; use --project instead' \
   "$tmp/default-root.err"
-test -d "$tmp/default-root/agent-remotes/default-demo-coordination.git"
+test -d "$tmp/default-root/.pi-env/agent-remotes/default-demo-coordination.git"
 test ! -e "$HOME/agent-remotes/default-demo-coordination.git"
+grep -Fxq '/.pi-env/' "$tmp/default-root/.git/info/exclude"
 
 if [ -d /workspace ] && [ "$(realpath -m /workspace)" = "$(realpath -m "$repo_root")" ]; then
   workspace_default_root="$(cd "$repo_root" && unset PI_COORD_ROOT && . "$PI_ENV_COORD_LIB" && coord_default_root)"
-  test "$workspace_default_root" = "/workspace/agent-remotes"
+  if [ -d "$repo_root/.pi-env/agent-remotes" ]; then
+    test "$workspace_default_root" = "/workspace/.pi-env/agent-remotes"
+  elif [ -d "$repo_root/agent-remotes" ]; then
+    test "$workspace_default_root" = "/workspace/agent-remotes"
+  else
+    test "$workspace_default_root" = "/workspace/.pi-env/agent-remotes"
+  fi
 fi
+
+fresh_default_project="$tmp/fresh-default-project"
+mkdir -p "$fresh_default_project"
+git -C "$fresh_default_project" init -q
+cd "$fresh_default_project"
+agent-coord-init \
+  --project fresh-default \
+  --agent-id agent-a >/dev/null
+
+test -d "$fresh_default_project/.pi-env/agent-remotes/fresh-default-coordination.git"
+test -f "$fresh_default_project/.pi-env/coordination/AGENTS.md"
+grep -Fxq '/.pi-env/' "$fresh_default_project/.git/info/exclude"
 
 bootstrap_project_dir="$tmp/bootstrap-project"
 mkdir -p "$bootstrap_project_dir"
@@ -59,25 +78,27 @@ bootstrap-coordination \
   --no-status >"$bootstrap_plan" 2>/dev/null
 
 test -d "$tmp/bootstrap-remotes/other-project-coordination.git"
-test -f "$bootstrap_project_dir/coordination/AGENTS.md"
-test -d "$bootstrap_project_dir/coordination/issues/open"
-test ! -e "$bootstrap_project_dir/coordination/WORKSPACE.md"
-test ! -e "$bootstrap_project_dir/coordination/workspace"
-test ! -e "$bootstrap_project_dir/coordination/functional-requirements"
-test ! -e "$bootstrap_project_dir/coordination/quality-requirements"
-test ! -e "$bootstrap_project_dir/coordination/constraint-requirements"
-test -d "$bootstrap_project_dir/coordination/requirements"
-grep -q '^project: other-project$' "$bootstrap_project_dir/coordination/PROJECT.md"
-grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/coordination/PROJECT.md"
-grep -q "Clone dir:    $bootstrap_project_dir/coordination" "$bootstrap_plan"
+test -f "$bootstrap_project_dir/.pi-env/coordination/AGENTS.md"
+test -d "$bootstrap_project_dir/.pi-env/coordination/issues/open"
+test ! -e "$bootstrap_project_dir/.pi-env/coordination/WORKSPACE.md"
+test ! -e "$bootstrap_project_dir/.pi-env/coordination/workspace"
+test ! -e "$bootstrap_project_dir/.pi-env/coordination/functional-requirements"
+test ! -e "$bootstrap_project_dir/.pi-env/coordination/quality-requirements"
+test ! -e "$bootstrap_project_dir/.pi-env/coordination/constraint-requirements"
+test -d "$bootstrap_project_dir/.pi-env/coordination/requirements"
+grep -q '^project: other-project$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
+grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
+grep -q "Clone dir:    $bootstrap_project_dir/.pi-env/coordination" "$bootstrap_plan"
+grep -Fxq '/.pi-env/' "$bootstrap_project_dir/.git/info/exclude"
 grep -q 'export PI_COORD_PROJECT=other-project' "$bootstrap_plan"
 ! grep -q 'PI_COORD_WORKSPACE' "$bootstrap_plan"
 
 bootstrap_remote="$tmp/bootstrap-remotes/other-project-coordination.git"
-bootstrap_remote_rel="$(realpath -m --relative-to="$bootstrap_project_dir/coordination" "$bootstrap_remote")"
-bootstrap_head="$(git -C "$bootstrap_project_dir/coordination" rev-parse HEAD)"
-test "$(git -C "$bootstrap_project_dir/coordination" remote get-url origin)" = "$bootstrap_remote_rel"
-git -C "$bootstrap_project_dir/coordination" remote remove origin
+bootstrap_coord_dir="$bootstrap_project_dir/.pi-env/coordination"
+bootstrap_remote_rel="$(realpath -m --relative-to="$bootstrap_coord_dir" "$bootstrap_remote")"
+bootstrap_head="$(git -C "$bootstrap_coord_dir" rev-parse HEAD)"
+test "$(git -C "$bootstrap_coord_dir" remote get-url origin)" = "$bootstrap_remote_rel"
+git -C "$bootstrap_coord_dir" remote remove origin
 rm -rf "$bootstrap_remote"
 bootstrap-coordination \
   --project-root "$bootstrap_project_dir" \
@@ -87,7 +108,7 @@ bootstrap-coordination \
 
 test -d "$bootstrap_remote"
 test "$(git --git-dir="$bootstrap_remote" rev-parse main)" = "$bootstrap_head"
-test "$(git -C "$bootstrap_project_dir/coordination" remote get-url origin)" = "$bootstrap_remote_rel"
+test "$(git -C "$bootstrap_coord_dir" remote get-url origin)" = "$bootstrap_remote_rel"
 
 rm -rf "$bootstrap_remote"
 bootstrap-coordination \
@@ -110,7 +131,19 @@ bootstrap-coordination \
   --print-only >/dev/null
 
 test ! -e "$tmp/print-only-remotes"
-test ! -e "$print_only_project_dir/coordination"
+test ! -e "$print_only_project_dir/.pi-env/coordination"
+
+fresh_print_project_dir="$tmp/fresh-print-project"
+mkdir -p "$fresh_print_project_dir"
+git -C "$fresh_print_project_dir" init -q
+bootstrap-coordination \
+  --project-root "$fresh_print_project_dir" \
+  --print-only >"$tmp/fresh-print-plan.txt" 2>/dev/null
+grep -q "Root:         $fresh_print_project_dir/.pi-env/agent-remotes" \
+  "$tmp/fresh-print-plan.txt"
+grep -q "Clone dir:    $fresh_print_project_dir/.pi-env/coordination" \
+  "$tmp/fresh-print-plan.txt"
+test ! -e "$fresh_print_project_dir/.pi-env"
 
 server_print_project_dir="$tmp/server-print-project"
 mkdir -p "$server_print_project_dir"
@@ -125,7 +158,7 @@ bootstrap-coordination \
 grep -q "Remote:       $server_print_remote" "$tmp/server-print-plan.txt"
 grep -q "agent-coord-init --remote $server_print_remote" "$tmp/server-print-plan.txt"
 test ! -e "$tmp/server-print-remotes"
-test ! -e "$server_print_project_dir/coordination"
+test ! -e "$server_print_project_dir/.pi-env/coordination"
 
 PI_COORD_REMOTE_URL="$tmp/env-remote.git" bootstrap-coordination \
   --project-root "$server_print_project_dir" \
@@ -164,6 +197,15 @@ agent-coord-clone \
   --dir "$tmp/arg-remote-clone" >/dev/null
 test -f "$tmp/arg-remote-clone/AGENTS.md"
 
+clone_default_project="$tmp/clone-default-project"
+mkdir -p "$clone_default_project"
+git -C "$clone_default_project" init -q
+cd "$clone_default_project"
+agent-coord-clone \
+  --remote "$server_remote" >/dev/null
+test -f "$clone_default_project/.pi-env/coordination/AGENTS.md"
+grep -Fxq '/.pi-env/' "$clone_default_project/.git/info/exclude"
+
 bare_only_project_dir="$tmp/bare-only-project"
 mkdir -p "$bare_only_project_dir"
 git -C "$bare_only_project_dir" init -q
@@ -176,13 +218,14 @@ bootstrap-coordination \
   --no-status >/dev/null
 
 test -d "$tmp/bare-only-remotes/bare-project-coordination.git"
-test ! -e "$bare_only_project_dir/coordination"
+test ! -e "$bare_only_project_dir/.pi-env/coordination"
 
 cd "$workspace_dir"
 agent-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
-  --agent-id agent-a >/dev/null
+  --agent-id agent-a \
+  --dir coordination >/dev/null
 
 test -d "$tmp/remotes/pi-env-coordination.git"
 test -f coordination/AGENTS.md

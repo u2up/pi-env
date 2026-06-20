@@ -18,7 +18,7 @@ Usage:
   agent-coord-lint [options]
 
 Options:
-  --coord-dir DIR            Coordination clone; default: PI_COORD_DIR or ./coordination
+  --coord-dir DIR            Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
   --project-root DIR         Project repo containing tests/items; default: parent of coord dir
   --require-done-or-closed   Fail when any issue item is not done or closed
   --warn-legacy-ids          Warn about IDs that predate the new ID format

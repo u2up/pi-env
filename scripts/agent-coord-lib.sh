@@ -26,29 +26,28 @@ coord_project_root() {
   coord_abs "$root"
 }
 
+coord_default_root_for_project() {
+  local project_root pi_env_root legacy_root
+  project_root="$(coord_project_root)"
+  pi_env_root="$project_root/.pi-env/agent-remotes"
+  legacy_root="$project_root/agent-remotes"
+
+  if [ -d "$pi_env_root" ]; then
+    printf '%s\n' "$pi_env_root"
+  elif [ -d "$legacy_root" ]; then
+    printf '%s\n' "$legacy_root"
+  else
+    printf '%s\n' "$pi_env_root"
+  fi
+}
+
 coord_default_root() {
-  local project_root workspace_root
   if [ -n "${PI_COORD_ROOT:-}" ]; then
     printf '%s\n' "$PI_COORD_ROOT"
     return
   fi
 
-  project_root="$(coord_project_root)"
-  if [ -d /workspace ]; then
-    workspace_root="$(coord_abs /workspace)"
-    if [ "$project_root" = "/workspace" ] || [ "$project_root" = "$workspace_root" ]; then
-      printf '%s\n' "/workspace/agent-remotes"
-      return
-    fi
-  fi
-
-  if [ -n "$project_root" ]; then
-    printf '%s\n' "$project_root/agent-remotes"
-  elif [ -n "${HOME:-}" ]; then
-    printf '%s\n' "$HOME/agent-remotes"
-  else
-    printf '%s\n' "./agent-remotes"
-  fi
+  coord_default_root_for_project
 }
 
 coord_default_workspace() {
@@ -60,8 +59,27 @@ coord_default_workspace() {
   fi
 }
 
+coord_default_dir_for_project() {
+  local project_root pi_env_dir legacy_dir
+  project_root="$(coord_project_root)"
+  pi_env_dir="$project_root/.pi-env/coordination"
+  legacy_dir="$project_root/coordination"
+
+  if [ -d "$pi_env_dir" ]; then
+    printf '%s\n' "$pi_env_dir"
+  elif [ -d "$legacy_dir" ]; then
+    printf '%s\n' "$legacy_dir"
+  else
+    printf '%s\n' "$pi_env_dir"
+  fi
+}
+
 coord_default_dir() {
-  printf '%s\n' "${PI_COORD_DIR:-coordination}"
+  if [ -n "${PI_COORD_DIR:-}" ]; then
+    printf '%s\n' "$PI_COORD_DIR"
+  else
+    coord_default_dir_for_project
+  fi
 }
 
 coord_default_agent() {
@@ -349,6 +367,27 @@ coord_local_remote_url_for_clone() {
   fi
 }
 
+coord_ensure_operational_root_excluded() {
+  local target_dir project_root target_abs pi_env_root exclude_path
+  target_dir="$1"
+  project_root="$(coord_project_root)"
+  target_abs="$(coord_abs "$target_dir")"
+  pi_env_root="$(coord_abs "$project_root/.pi-env")"
+
+  case "$target_abs" in
+    "$pi_env_root"|"$pi_env_root"/*) ;;
+    *) return 0 ;;
+  esac
+
+  exclude_path="$(git -C "$project_root" rev-parse --git-path info/exclude 2>/dev/null || true)"
+  [ -n "$exclude_path" ] || return 0
+  mkdir -p "$(dirname "$exclude_path")"
+  touch "$exclude_path"
+  if ! grep -Fxq '/.pi-env/' "$exclude_path"; then
+    printf '/.pi-env/\n' >>"$exclude_path"
+  fi
+}
+
 coord_is_coord_repo() {
   local dir
   dir="$1"
@@ -359,7 +398,7 @@ coord_is_coord_repo() {
 }
 
 coord_resolve_dir() {
-  local candidate git_root
+  local candidate git_root project_root
   candidate="${1:-}"
   if [ -z "$candidate" ] && [ -n "${PI_COORD_DIR:-}" ]; then
     candidate="$PI_COORD_DIR"
@@ -370,7 +409,14 @@ coord_resolve_dir() {
       coord_abs "$git_root"
       return
     fi
-    candidate="coordination"
+    project_root="$(coord_project_root)"
+    if [ -d "$project_root/.pi-env/coordination" ]; then
+      candidate="$project_root/.pi-env/coordination"
+    elif [ -d "$project_root/coordination" ]; then
+      candidate="$project_root/coordination"
+    else
+      candidate="$project_root/.pi-env/coordination"
+    fi
   fi
   [ -d "$candidate" ] || coord_die "coordination dir not found: $candidate"
   candidate="$(coord_abs "$candidate")"

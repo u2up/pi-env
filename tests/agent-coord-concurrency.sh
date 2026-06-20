@@ -19,7 +19,8 @@ cd "$tmp/seed"
 agent-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
-  --agent-id seed-agent >/dev/null
+  --agent-id seed-agent \
+  --dir coordination >/dev/null
 
 item_path="$(agent-coord-new \
   --coord-dir coordination \

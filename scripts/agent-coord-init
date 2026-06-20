@@ -18,12 +18,12 @@ Usage:
   agent-coord-init [options]
 
 Options:
-  --root DIR        Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
+  --root DIR        Bare remote parent; default: PI_COORD_ROOT or .pi-env/agent-remotes
   --remote URL      Existing coordination remote URL; default: PI_COORD_REMOTE_URL
   --project ID      Coordination project; default: PI_COORD_PROJECT or cwd name
   --project-key KEY Project item ID prefix; default: derived project
   --workspace ID    Deprecated compatibility alias for --project when omitted
-  --dir DIR         Working clone dir; default: PI_COORD_DIR or coordination
+  --dir DIR         Working clone dir; default: PI_COORD_DIR or .pi-env/coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE       Coordination role; default: PI_COORD_ROLE
   --bare-only       Only create the bare remote
@@ -122,6 +122,7 @@ if [ -n "$remote_url" ]; then
 else
   root="$(coord_abs "$root")"
   remote="$(coord_remote_for "$root" "$project_key")"
+  coord_ensure_operational_root_excluded "$root"
   mkdir -p "$root"
 
   if [ -e "$remote" ] && [ ! -d "$remote/objects" ]; then
@@ -141,6 +142,8 @@ fi
 if [ "$bare_only" = "1" ]; then
   exit 0
 fi
+
+coord_ensure_operational_root_excluded "$coord_dir"
 
 if [ -e "$coord_dir" ]; then
   if [ -d "$coord_dir" ] && [ -z "$(find "$coord_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]; then

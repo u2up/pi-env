@@ -18,11 +18,11 @@ Usage:
   agent-coord-clone [options] [remote]
 
 Options:
-  --root DIR       Bare remote parent; default: PI_COORD_ROOT or project-visible agent-remotes
+  --root DIR       Bare remote parent; default: PI_COORD_ROOT or .pi-env/agent-remotes
   --remote URL     Coordination remote URL; default: PI_COORD_REMOTE_URL
   --project ID     Coordination project; default: PI_COORD_PROJECT or cwd name
   --workspace ID   Deprecated compatibility alias for --project when omitted
-  --dir DIR        Clone target; default: PI_COORD_DIR or coordination
+  --dir DIR        Clone target; default: PI_COORD_DIR or .pi-env/coordination
   -h, --help       Show this help
 
 Remote precedence is explicit --remote or positional remote, then
@@ -108,6 +108,8 @@ if [ -z "$remote" ]; then
   remote="$(coord_remote_for "$root" "$project")"
   remote_is_default_local=1
 fi
+
+coord_ensure_operational_root_excluded "$coord_dir"
 
 if [ -e "$coord_dir" ]; then
   if [ -d "$coord_dir/.git" ]; then

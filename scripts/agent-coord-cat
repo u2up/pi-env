@@ -22,7 +22,7 @@ Arguments:
                   filename prefix resolved by coord_find_item.
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or ./coordination
+  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
   --path            Print only the resolved repo-relative item path
   -h, --help        Show this help
 USAGE

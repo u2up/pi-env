@@ -354,6 +354,8 @@
                 host_coord_dir="$(realpath -m "$project_root/$PI_COORD_DIR")"
                 ;;
             esac
+          elif [ -d "$project_root/.pi-env/coordination" ]; then
+            host_coord_dir="$(realpath -m "$project_root/.pi-env/coordination")"
           elif [ -d "$project_root/coordination" ]; then
             host_coord_dir="$(realpath -m "$project_root/coordination")"
           fi
