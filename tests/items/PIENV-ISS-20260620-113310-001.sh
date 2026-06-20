@@ -44,6 +44,47 @@ test -d "$init_project/.pi-env/agent-remotes/init-demo-coordination.git"
 test -f "$init_project/.pi-env/coordination/AGENTS.md"
 grep -Fx '/.pi-env/' "$init_project/.git/info/exclude" >/dev/null
 
+pi-serial-roles \
+  --project-root "$init_project" \
+  --agent-id agent-a \
+  --sleep 0 \
+  --max-idle-polls 1 \
+  --dry-run \
+  --pi-env true \
+  --role-manager "$repo_root/role-manager" >"$tmp/serial.out"
+grep -Fx 'selected role=none item=none' "$tmp/serial.out" >/dev/null
+
+mkdir -p "$init_project/.pi-env/coordination/requirements" "$init_project/designs"
+cat >"$init_project/.pi-env/coordination/requirements/INIT-FRQ-001.yaml" <<'EOF_REQ'
+schema: coordination-item/v1
+id: INIT-FRQ-001
+type: requirement
+status: active
+project: init-demo
+requirement_key: INIT-001
+render_order: 1
+body: |-
+  # INIT-001 Default coverage smoke
+EOF_REQ
+cat >"$init_project/designs/default-coverage.md" <<'EOF_DESIGN'
+# Default coverage smoke
+
+## Covers
+
+| Requirement | Coordination item |
+|-------------|-------------------|
+| INIT-001 | INIT-FRQ-001 |
+EOF_DESIGN
+agent-coord-generate-requirements-coverage \
+  --project init-demo \
+  --designs-dir "$init_project/designs" \
+  --output "$tmp/coverage.md"
+grep -F '| INIT-001 | INIT-FRQ-001 |' "$tmp/coverage.md" >/dev/null
+agent-coord-generate-requirements \
+  --project init-demo \
+  --output "$tmp/requirements.md"
+grep -F '# INIT-001 Default coverage smoke' "$tmp/requirements.md" >/dev/null
+
 clone_project="$tmp/clone-project"
 mkdir -p "$clone_project"
 git -C "$clone_project" init -q

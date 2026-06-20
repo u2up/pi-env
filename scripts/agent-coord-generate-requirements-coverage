@@ -20,7 +20,7 @@ USAGE
 }
 
 project="${PI_COORD_PROJECT:-pi-env}"
-coord_dir="${PI_COORD_DIR:-coordination}"
+coord_dir="${PI_COORD_DIR:-}"
 designs_dir="designs"
 output=""
 check=0
@@ -52,6 +52,16 @@ while [ "$#" -gt 0 ]; do
       exit 2 ;;
   esac
 done
+
+if [ -z "$coord_dir" ]; then
+  if [ -d ".pi-env/coordination" ]; then
+    coord_dir=".pi-env/coordination"
+  elif [ -d "coordination" ]; then
+    coord_dir="coordination"
+  else
+    coord_dir=".pi-env/coordination"
+  fi
+fi
 
 requirements_dirs=()
 if [ -d "$coord_dir/requirements" ]; then

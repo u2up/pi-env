@@ -223,8 +223,12 @@ resolve_coord_dir() {
     candidate="$coord_dir_opt"
   elif [ -n "${PI_COORD_DIR:-}" ]; then
     candidate="$PI_COORD_DIR"
-  else
+  elif [ -d "$project_root/.pi-env/coordination" ]; then
+    candidate=".pi-env/coordination"
+  elif [ -d "$project_root/coordination" ]; then
     candidate="coordination"
+  else
+    candidate=".pi-env/coordination"
   fi
   coord_dir="$(resolve_relative_to_project "$candidate" "$project_root")"
   [ -d "$coord_dir" ] || die "coordination dir not found: $coord_dir"
