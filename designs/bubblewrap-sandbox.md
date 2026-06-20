@@ -52,18 +52,27 @@ caller intentionally chooses a subdirectory. `/workspace` is a sandbox path
 name for that one root, not a host-side workspace manager abstraction.
 
 Host paths are not implicitly trusted. Only documented project, runtime, cache,
-coordination, and temporary paths should be mounted. Monorepos, submodules,
-worktrees, integration checkouts, and other complex source layouts remain the
-selected project's own policy; pi-env only decides which project root is exposed
-for this run. When a path is optional, missing host state should degrade to an
+coordination, and temporary paths should be mounted. Project-local pi-env
+operational artifacts should be grouped under `.pi-env/` in the selected
+project and are therefore visible through the normal `/workspace` mount;
+examples include `.pi-env/coordination`, `.pi-env/agent-remotes`,
+`.pi-env/locks`, and `.pi-env/logs`. Monorepos, submodules, worktrees,
+integration checkouts, and other complex source layouts remain the selected
+project's own policy; pi-env only decides which project root is exposed for
+this run. When a path is optional, missing host state should degrade to an
 empty or freshly-created sandbox path rather than accidentally widening access.
 
 ## 2. Home and filesystem state
 
 The sandbox uses an isolated home tree for Pi runtime state. Project files are
 mounted separately from user home state so generated files, sessions, and
-extension caches have clear ownership. Read-only and read-write mounts are
-chosen by purpose: project work needs writes, runtime inputs often do not.
+extension caches have clear ownership. Persistent sandbox Pi state remains
+outside the project by default under the XDG state location because it can
+contain copied auth files, Pi settings, sessions, imported common resources,
+and caches. A user may explicitly opt into project-local sandbox state with
+`PI_BWRAP_STATE_DIR=$PWD/.pi-env/state`; pi-env should not choose that path by
+default. Read-only and read-write mounts are chosen by purpose: project work
+needs writes, runtime inputs often do not.
 
 `FS-001` through `FS-009` define the file exposure rules. They are implemented
 as Bubblewrap mount choices, not as application-level checks after startup.

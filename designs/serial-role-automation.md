@@ -29,7 +29,8 @@ parallel role workers with per-role clones or worktrees.
 
 - No parallel developer/reviewer/tester execution in the first version.
 - No tmux dependency.
-- No cross-process Git locking beyond a local single-run lockfile.
+- No cross-process Git locking beyond a local single-run lockfile under
+  `.pi-env/locks/`.
 - No reviewer/tester lease protocol yet; the serial orchestrator is the only
   worker using the clone.
 - No hidden database or queue outside the coordination repository.
@@ -97,8 +98,9 @@ A later implementation may replace this duplicated shell parsing with an
 
 Before every Pi job the orchestrator should:
 
-- hold a local lock, for example `flock .pi-serial-roles.lock`, so two serial
-  workers cannot accidentally run in the same clone;
+- hold a local lock, for example
+  `flock .pi-env/locks/pi-serial-roles.lock`, so two serial workers cannot
+  accidentally run in the same clone;
 - pull/rebase coordination before inspecting or mutating items;
 - ensure the project working tree is clean unless the previous role job left a
   documented failure state that the user must resolve;
@@ -112,6 +114,10 @@ possible. Reviewer and tester jobs should review or verify committed project
 state, not uncommitted leftovers.
 
 ## Pi invocation
+
+Local automation logs, when written, should default under `.pi-env/logs/` so
+serial-role operational artifacts stay grouped with other pi-env generated
+state.
 
 The orchestrator should render a role-specific prompt that names exactly one
 item and says not to select other work. The prompt should tell the role to use

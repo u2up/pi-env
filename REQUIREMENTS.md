@@ -100,7 +100,13 @@ A user must be able to control which project root is exposed in the sandbox. The
 - Requirement kind: workflow
 - Related requirements: FS-002, FS-003, FS-005, FS-006
 
-By default, `pi-env` must store persistent sandbox state outside the project under `$XDG_STATE_HOME/pi-env/<project-hash>` or `$HOME/.local/state/pi-env/<project-hash>`. Users must be able to override the state directory with `PI_BWRAP_STATE_DIR=/path/to/state`.
+By default, `pi-env` must store persistent sandbox state outside the
+project under `$XDG_STATE_HOME/pi-env/<project-hash>` or
+`$HOME/.local/state/pi-env/<project-hash>` because that state may contain
+copied model auth, sandbox Pi settings, sessions, imported common agent
+resources, and caches. Users must be able to override the state directory
+with `PI_BWRAP_STATE_DIR=/path/to/state`, including an explicit opt-in
+project-local value such as `PI_BWRAP_STATE_DIR=$PWD/.pi-env/state`.
 
 #### UC-007 — Run with an ephemeral sandbox home
 
@@ -239,7 +245,16 @@ The isolated launcher must support safer workflows such as reviewing unfamiliar 
 - Requirement kind: workflow
 - Related requirements: CMD-009 through CMD-015, ENV-006, FS-010
 
-For projects where several agents coordinate through separate clones, `pi-env` must optionally help establish and maintain a dedicated Git-backed project coordination repository. Agents synchronize only by normal Git pull/commit/push operations. This use case remains opt-in, and default `pi-start` behavior must not mutate coordination state automatically. Compatibility names such as `PI_COORD_WORKSPACE` or `workspace/` in the coordination layout are coordination data-model labels, not a primary pi-env capability for managing multiple project roots.
+For projects where several agents coordinate through separate clones,
+`pi-env` must optionally help establish and maintain a dedicated Git-backed
+project coordination repository. Fresh project-local operational artifacts
+for this workflow, including the coordination working clone and local bare
+remotes, must live under `.pi-env/` by default. Agents synchronize only by
+normal Git pull/commit/push operations. This use case remains opt-in, and
+default `pi-start` behavior must not mutate coordination state automatically.
+Compatibility names such as `PI_COORD_WORKSPACE` or `workspace/` in the
+coordination layout are coordination data-model labels, not a primary
+pi-env capability for managing multiple project roots.
 
 #### UC-024 Serial role automation workflow
 
@@ -250,8 +265,10 @@ developer, reviewer, or tester Pi job for that issue, waits for the job to
 finish, and then returns to polling.
 
 The serial workflow must avoid concurrent writes to the project and
-coordination working trees. It is the first automation step before any
-future tmux, multi-clone, or parallel worker design.
+coordination working trees. Its generated operational artifacts, such as
+local locks and optional logs, must live under `.pi-env/` by default. It is
+the first automation step before any future tmux, multi-clone, or parallel
+worker design.
 
 Acceptance criteria:
 
@@ -507,19 +524,30 @@ scaffolds must not include `WORKSPACE.md` or `workspace/` directories by
 default. The clone must be configured with `pull.rebase=true` and
 `rebase.autoStash=true`.
 
+When `--dir` and `PI_COORD_DIR` are omitted, fresh project-local
+coordination bootstraps must place the working clone at
+`<project-root>/.pi-env/coordination`, visible inside the sandbox as
+`/workspace/.pi-env/coordination`. Existing `coordination/` clones remain a
+supported legacy detection path.
+
 When `--root` and `PI_COORD_ROOT` are omitted, coordination helpers must
-use a project-visible `agent-remotes` directory instead of the isolated
-sandbox `$HOME`. If `/workspace` resolves to the current project root, the
-default root must be `/workspace/agent-remotes`; otherwise it must be
-`<project-root>/agent-remotes`.
+use a project-visible `.pi-env/agent-remotes` directory instead of the
+isolated sandbox `$HOME`. If `/workspace` resolves to the current project
+root, the default root must be `/workspace/.pi-env/agent-remotes`; otherwise
+it must be `<project-root>/.pi-env/agent-remotes`. Existing `agent-remotes/`
+roots remain a supported legacy detection path.
 
 #### CMD-011 `agent-coord-clone`
 
 `agent-coord-clone` must clone a coordination remote into the selected
 coordination clone directory and configure the clone with `pull.rebase=true`
-and `rebase.autoStash=true`. `--workspace` must remain a deprecated
-compatibility alias for `--project` when `--project` is omitted and should
-emit a non-fatal deprecation diagnostic when used.
+and `rebase.autoStash=true`. When no clone directory is selected with
+`--dir` or `PI_COORD_DIR`, the default target must be
+`<project-root>/.pi-env/coordination`, with legacy `coordination/` remaining
+readable when explicitly selected or detected for existing projects.
+`--workspace` must remain a deprecated compatibility alias for `--project`
+when `--project` is omitted and should emit a non-fatal deprecation
+diagnostic when used.
 
 #### CMD-012 `agent-coord-new`
 
@@ -733,8 +761,8 @@ only for a concrete selected issue.
 
 The command must:
 
-- acquire a local lockfile before polling so two serial orchestrators do
-  not accidentally operate in the same clone;
+- acquire a local lockfile under `.pi-env/locks/` before polling so two
+  serial orchestrators do not accidentally operate in the same clone;
 - pull/rebase coordination before selecting work;
 - stop rather than discard or auto-stash unexpected project changes;
 - select tester work from done issues with `reviewed: true` and
@@ -792,6 +820,9 @@ or `$HOME/.local/state/pi-env/<project-hash>` when `XDG_STATE_HOME` is unset.
 #### FS-003 Explicit state directory
 
 `PI_BWRAP_STATE_DIR=/path` must override the persistent state directory.
+Project-local sandbox state must remain opt-in because it may contain copied
+auth, sessions, settings, common agent resources, or caches; users may choose
+`.pi-env/state` explicitly when they accept that locality and ignore policy.
 
 #### FS-004 Ephemeral home
 
@@ -1044,14 +1075,18 @@ sandbox:
 
 If `PI_COORD_ROOT` points inside the selected project, the launcher must
 pass it into the sandbox as the corresponding `/workspace/...` path.
+Project-local `.pi-env/agent-remotes` is the preferred default for local bare
+remotes; legacy `agent-remotes` remains supported for existing projects.
 
 If host `/workspace/agent-remotes` exists and is not already provided by
 the selected project mount, the launcher must bind it into the sandbox at
 `/workspace/agent-remotes` so common bare coordination remotes are available
-from inside and outside Bubblewrap through the same path.
+from inside and outside Bubblewrap through the same path during compatibility
+migration.
 
-If a coordination clone is detected under the selected project, or selected
-with `PI_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set
+If a coordination clone is detected under the selected project, preferring
+`.pi-env/coordination` before legacy `coordination`, or selected with
+`PI_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set
 `PI_COORD_DIR` inside the sandbox to the sandbox-visible path.
 
 `PI_BWRAP_COORDINATION_DIR=/path/to/coordination` must explicitly bind an

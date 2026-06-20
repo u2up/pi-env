@@ -83,22 +83,54 @@ Example:
 
 ```text
 /path/to/project/
-  coordination/
-  agent-remotes/
-    project-coordination.git
+  .pi-env/
+    coordination/
+    agent-remotes/
+      project-coordination.git
 
 /path/to/another-project/
-  coordination/
-  agent-remotes/
-    another-project-coordination.git
+  .pi-env/
+    coordination/
+    agent-remotes/
+      another-project-coordination.git
 ```
 
-## 4. Repository layout
+## 4. Project-local pi-env operational root
 
-Recommended project-root coordination layout:
+Fresh pi-env-generated operational artifacts that belong to one selected
+project should live under a single project-local `.pi-env/` directory. This
+keeps pi-env state discoverable while avoiding root-level clutter:
 
 ```text
-coordination/
+.pi-env/
+  coordination/          # working coordination clone
+  agent-remotes/         # local bare coordination remotes
+  logs/                  # optional automation logs
+  locks/                 # local process locks
+```
+
+The preferred default coordination clone is `.pi-env/coordination`; the
+preferred default local bare remote root is `.pi-env/agent-remotes`. Legacy
+`coordination/` and `agent-remotes/` remain supported detection paths for
+existing projects and compatibility migrations.
+
+Do not merge project-owned Pi resources into `.pi-env/`. Project-specific
+rules, skills, prompts, roles, extensions, and settings stay in `AGENTS.md` and
+`.pi/` because those resources may be committed with the project.
+
+Sensitive sandbox Pi state is not part of this default operational root. It
+continues to live outside the project by default under the XDG state location,
+because it may contain copied auth files, settings, sessions, imported common
+agent resources, and caches. Users can explicitly opt into project-local state
+with `PI_BWRAP_STATE_DIR=$PWD/.pi-env/state` when they accept the locality and
+ignore-policy implications.
+
+## 5. Repository layout
+
+Recommended project-root coordination layout inside `.pi-env/coordination`:
+
+```text
+.pi-env/coordination/
   AGENTS.md
   README.md
   PROJECT.md
@@ -130,7 +162,7 @@ coordination repositories for compatibility, but new scaffolds do not create
 
 Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions` for codebase-specific Pi behavior. Keep task state and cross-agent synchronization in the coordination repository.
 
-## 5. Item IDs and state
+## 6. Item IDs and state
 
 Use stable ID-only filenames. New items use type-coded timestamp IDs to avoid
 number allocation races while preserving creation-time information:
@@ -261,7 +293,7 @@ and the full `commit` hash. When final-closing an issue after review and
 verification, move it to `closed/`, set `status: closed`, set `closed:`, and
 append a final `closed` event/message.
 
-## 6. Git synchronization protocol
+## 7. Git synchronization protocol
 
 Agents should use a simple protocol:
 
@@ -298,7 +330,7 @@ git config pull.rebase true
 git config rebase.autoStash true
 ```
 
-## 7. Proposed `pi-env` helper commands
+## 8. Proposed `pi-env` helper commands
 
 `pi-env` could expose a small helper CLI or a set of shell commands:
 
@@ -332,12 +364,12 @@ agent-coord-new
 
 Everything else can remain normal Git commands until real usage proves that more automation is needed.
 
-## 8. Proposed environment variables
+## 9. Proposed environment variables
 
 ```bash
-PI_COORD_ROOT=/workspace/agent-remotes # where bare coordination remotes live
-PI_COORD_PROJECT=pi-env                # coordination project/domain name
-PI_COORD_DIR=coordination              # clone directory for this project
+PI_COORD_ROOT=/workspace/.pi-env/agent-remotes # where bare coordination remotes live
+PI_COORD_PROJECT=pi-env                        # coordination project/domain name
+PI_COORD_DIR=/workspace/.pi-env/coordination   # clone directory for this project
 PI_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
 PI_COORD_ROLE=architect                # optional active role for role-aware commits
 PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
@@ -360,16 +392,16 @@ compatibility APIs. They should keep working for older clones where practical,
 but helper commands should emit non-fatal diagnostics that point users to
 `PI_COORD_PROJECT`, `--project`, and the project-root item layout.
 
-When `PI_COORD_ROOT` is unset, helpers should prefer a project-visible
-`agent-remotes` directory. Inside the pi-env sandbox, or when `/workspace`
-resolves to the current project root, that default should be
-`/workspace/agent-remotes` so the same bare remote is usable from inside
-and outside Bubblewrap for this project. `pi-bwrap` should auto-bind host
-`/workspace/agent-remotes` at that same sandbox path when it exists and is
-not already part of the selected project mount; this is a compatibility aid, not
-a general host workspace mount.
+When `PI_COORD_ROOT` is unset, helpers should prefer the project-visible
+`.pi-env/agent-remotes` directory. Inside the pi-env sandbox, or when
+`/workspace` resolves to the current project root, that default should be
+`/workspace/.pi-env/agent-remotes` so the same bare remote is usable from
+inside and outside Bubblewrap for this project. `pi-bwrap` should continue to
+auto-bind host `/workspace/agent-remotes` at that same sandbox path when it
+exists and is not already part of the selected project mount; this is a
+compatibility aid for legacy local setups, not a general host workspace mount.
 
-### 8.1 Optional role-aware identity
+### 9.1 Optional role-aware identity
 
 If a role-template extension is active, coordination helpers may use
 `PI_COORD_ROLE` or an explicit `--role ROLE` option to make coordination
@@ -388,7 +420,7 @@ Role-aware identity should apply to the coordination repository only. It should
 not change project repository Git identity unless the user explicitly opts in.
 `pi-start` must still avoid automatic claims, closes, commits, or pushes.
 
-## 9. Coordination rules installed by `agent-coord-init`
+## 10. Coordination rules installed by `agent-coord-init`
 
 Because `pi-env` is a Pi-related project, the default agent rules should be provided as Pi skill templates and scaffolded instructions. The `pi-env` source tree should keep these defaults under a clear template directory such as:
 
@@ -404,15 +436,15 @@ pi-skill-templates/
 `agent-coord-init` should install those templates into a newly initialized coordination repository as at least:
 
 ```text
-coordination/AGENTS.md
-coordination/docs/SYNC_PROTOCOL.md
-coordination/docs/ITEM_FORMAT.md
-coordination/.pi/skills/agent-coordination/SKILL.md
+.pi-env/coordination/AGENTS.md
+.pi-env/coordination/docs/SYNC_PROTOCOL.md
+.pi-env/coordination/docs/ITEM_FORMAT.md
+.pi-env/coordination/.pi/skills/agent-coordination/SKILL.md
 ```
 
 The installed files are the project coordination domain's authoritative rules. `pi-env` templates are only defaults; after initialization, updates to rules should be committed to the coordination repository so all agents receive them via Git.
 
-### 9.1 Required `AGENTS.md` rules
+### 10.1 Required `AGENTS.md` rules
 
 The generated `coordination/AGENTS.md` should instruct agents:
 
@@ -428,7 +460,7 @@ The generated `coordination/AGENTS.md` should instruct agents:
 10. Keep all Git commit, tag, and other Git message text readable in standard terminals: subject/summary lines should be at most 72 characters, and body paragraphs should be hard-wrapped at 72 characters where practical.
 11. If a push/rebase conflict occurs, resolve it conservatively and preserve both agents' factual updates when possible.
 
-### 9.2 Item manipulation rules
+### 10.2 Item manipulation rules
 
 Agents should use these state transitions:
 
@@ -445,7 +477,7 @@ Agents should use these state transitions:
 
 Do not encode important state only in a commit message. The file content must remain understandable from a checkout.
 
-### 9.3 Required Pi skill template
+### 10.3 Required Pi skill template
 
 `pi-env` should ship the canonical skill source as `pi-skill-templates/agent-coordination/SKILL.md`. `agent-coord-init` should copy it to `coordination/.pi/skills/agent-coordination/SKILL.md`. A generated skill should look like this in spirit:
 
@@ -456,7 +488,7 @@ Use this skill when working in a project that contains a Git-backed agent coordi
 
 ## Coordination repository
 
-The coordination repository is the only synchronization source for agent task state. Find it at `./coordination` unless the user or environment says otherwise.
+The coordination repository is the only synchronization source for agent task state. Find it at `.pi-env/coordination` unless the user or environment says otherwise; legacy projects may still use `coordination`.
 
 ## Required protocol
 
@@ -483,7 +515,7 @@ The coordination repository is the only synchronization source for agent task st
 
 The skill should complement, not replace, `coordination/AGENTS.md`. If they differ, the checked-in coordination repository rules win.
 
-### 9.4 Template ownership and updates
+### 10.4 Template ownership and updates
 
 `pi-env` may update its built-in templates over time. Existing coordination repositories should not be silently overwritten. If template upgrade support is added, it should be explicit, diffable, and commit-based, for example:
 
@@ -492,20 +524,20 @@ agent-coord-upgrade-rules --preview
 agent-coord-upgrade-rules
 ```
 
-## 10. Optional Pi integration
+## 11. Optional Pi integration
 
 `pi-start` should not mutate coordination state automatically.
 
 Possible safe integrations:
 
-- print a reminder when `./coordination` exists;
-- provide generated/scaffolded `coordination/AGENTS.md`, docs, and Pi skill templates through `agent-coord-init`;
+- print a reminder when `.pi-env/coordination` or legacy `./coordination` exists;
+- provide generated/scaffolded coordination `AGENTS.md`, docs, and Pi skill templates through `agent-coord-init`;
 - provide an optional prompt/context snippet explaining the Git sync protocol;
 - allow users to mount/select the coordination repository explicitly when it is outside the project root.
 
 Any automatic claim, mark-done, review, verify, close, commit, or push behavior should be opt-in and implemented outside the default `pi-start` path.
 
-## 11. Non-goals
+## 12. Non-goals
 
 Initial infrastructure should avoid:
 
