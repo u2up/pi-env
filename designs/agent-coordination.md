@@ -311,7 +311,7 @@ Agents should use a simple protocol:
 Example claim flow:
 
 ```bash
-cd coordination
+cd "${PI_COORD_DIR:-.pi-env/coordination}"
 git pull --rebase
 # edit item: status: claimed, owner: agent-a, current: evt-0002/msg-0002
 # append a claimed event and message
@@ -488,11 +488,11 @@ Use this skill when working in a project that contains a Git-backed agent coordi
 
 ## Coordination repository
 
-The coordination repository is the only synchronization source for agent task state. Find it at `.pi-env/coordination` unless the user or environment says otherwise; legacy projects may still use `coordination`.
+The coordination repository is the only synchronization source for agent task state. Find it at `.pi-env/coordination` unless `PI_COORD_DIR`, the user, or environment says otherwise; legacy projects may still use root-level `coordination/`.
 
 ## Required protocol
 
-1. `cd coordination && git pull --rebase` before reading or modifying coordination state.
+1. `cd "${PI_COORD_DIR:-.pi-env/coordination}" && git pull --rebase` before reading or modifying coordination state.
 2. Inspect open/claimed/blocked/done YAML items relevant to the current project.
 3. Claim at most one item unless instructed otherwise.
 4. Commit and push immediately after claiming or changing status.

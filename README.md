@@ -846,9 +846,9 @@ selected project. They are plain Git/text-file tooling and are separate from
 `pi-start`. Install `#pi-coordination`, use the compatibility `#pi-runtime`
 bundle, or leave `includeCoordinationHelpers` enabled in `mkPiShell` when you
 want these commands. Legacy `projects/<project>/` and `workspace/` layouts can
-still be read, listed, linted, and migrated, but the default path is
-project-root coordination for the one project mounted at `/workspace` per
-invocation.
+still be read, listed, linted, and migrated, but fresh projects default to the
+project-local `.pi-env/coordination` clone for the one project mounted at
+`/workspace` per invocation.
 
 Guided setup with inferred, project-specific defaults:
 
@@ -1079,8 +1079,9 @@ shake-out before investing in parallel workers.
 Serial mode prerequisites:
 
 - run from a clean Git project root, or pass `--project-root DIR`;
-- provide a writable coordination checkout, either at `./coordination`, through
-  `PI_COORD_DIR`, or with `--coord-dir DIR`;
+- provide a writable coordination checkout. Fresh projects default to
+  `.pi-env/coordination`; use `PI_COORD_DIR` or `--coord-dir DIR` for another
+  path, including legacy root-level `./coordination` clones;
 - run from the pi-env devshell/profile so `pi-env`, `agent-coord-*` helpers,
   and `PI_ENV_ROLE_MANAGER_PACKAGE` are available, or pass explicit `--pi-env`
   and `--role-manager` paths;

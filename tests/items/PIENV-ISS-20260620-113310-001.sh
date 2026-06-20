@@ -85,6 +85,15 @@ agent-coord-generate-requirements \
   --output "$tmp/requirements.md"
 grep -F '# INIT-001 Default coverage smoke' "$tmp/requirements.md" >/dev/null
 
+grep -F 'find it at `.pi-env/coordination`' \
+  "$repo_root/pi-skill-templates/agent-coordination/SKILL.md" >/dev/null
+! grep -F 'Find it at `./coordination`' \
+  "$repo_root/pi-skill-templates/agent-coordination/SKILL.md" >/dev/null
+! grep -F 'cd coordination && git pull --rebase' \
+  "$repo_root/pi-skill-templates/agent-coordination/SKILL.md" >/dev/null
+grep -F 'Fresh projects default to' "$repo_root/README.md" >/dev/null
+grep -F '.pi-env/coordination' "$repo_root/README.md" >/dev/null
+
 clone_project="$tmp/clone-project"
 mkdir -p "$clone_project"
 git -C "$clone_project" init -q

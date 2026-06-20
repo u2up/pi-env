@@ -9,13 +9,15 @@ project-scoped.
 ## Coordination repository
 
 The coordination repository is the only synchronization source for agent task
-state. Find it at `./coordination` unless the user, environment, or project
-coordination rules say otherwise.
+state. For fresh pi-env projects, find it at `.pi-env/coordination` unless
+`PI_COORD_DIR`, the user, or project coordination rules say otherwise. Existing
+legacy projects may still use root-level `coordination/`.
 
 ## Required protocol
 
-1. `cd coordination && git pull --rebase` before reading or modifying
-   coordination state.
+1. `cd "${PI_COORD_DIR:-.pi-env/coordination}" && git pull --rebase` before
+   reading or modifying coordination state, or use the `agent-coord-*` helpers
+   with their default coordination directory resolution.
 2. Inspect open, claimed, blocked, and done YAML issue items relevant to the
    current project. Also inspect related requirement or decision items when
    they affect acceptance criteria.
@@ -101,9 +103,14 @@ tests/items/workspace/requirements/<item-id>.sh           # legacy
 ```
 
 Verification messages should record exact commands and results. When available,
-run `agent-coord-lint --coord-dir coordination --project-root .` to check item
-metadata and test linkage. Use `--require-done-or-closed` for release gates
-that require all issue items to be done or closed.
+run this from the project root to check item metadata and test linkage:
+
+```bash
+agent-coord-lint --coord-dir "${PI_COORD_DIR:-.pi-env/coordination}" --project-root .
+```
+
+Use `--require-done-or-closed` for release gates that require all issue items
+to be done or closed.
 
 ## Safety rules
 
