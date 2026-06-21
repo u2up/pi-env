@@ -397,9 +397,11 @@ When `PI_COORD_ROOT` is unset, helpers should prefer the project-visible
 `/workspace` resolves to the current project root, that default should be
 `/workspace/.pi-env/agent-remotes` so the same bare remote is usable from
 inside and outside Bubblewrap for this project. `pi-bwrap` should continue to
-auto-bind host `/workspace/agent-remotes` at that same sandbox path when it
-exists and is not already part of the selected project mount; this is a
-compatibility aid for legacy local setups, not a general host workspace mount.
+auto-bind host `/workspace/agent-remotes` at that same sandbox path only when
+it exists, is not already part of the selected project mount, and the selected
+project has not migrated to `.pi-env/coordination`, `.pi-env/agent-remotes`,
+or project-local legacy `agent-remotes`; this is a compatibility aid for
+legacy local setups, not a general host workspace mount.
 
 ### 9.1 Optional role-aware identity
 

@@ -7,7 +7,14 @@ cd "$repo_root"
 
 flake=flake.nix
 tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
+created_workspace_remotes=0
+cleanup() {
+  rm -rf "$tmpdir"
+  if [ "$created_workspace_remotes" = 1 ]; then
+    rm -rf /workspace/agent-remotes
+  fi
+}
+trap cleanup EXIT
 
 script="$tmpdir/pi-bwrap"
 awk '
@@ -128,10 +135,31 @@ run_harness "$coord_project" "$coord_capture"
 test_grep '^PI_COORD_DIR$' "$coord_capture"
 test_grep '^/workspace/.pi-env/coordination$' "$coord_capture"
 
-if [ -d /workspace/agent-remotes ] && [ ! -e "$tmpdir/compat-project/agent-remotes" ]; then
-  compat_capture="$tmpdir/compat-capture"
-  run_harness "$tmpdir/compat-project" "$compat_capture"
-  test_grep '^/workspace/agent-remotes$' "$compat_capture"
+if [ ! -e /workspace/agent-remotes ]; then
+  mkdir -p /workspace/agent-remotes
+  created_workspace_remotes=1
 fi
+
+compat_capture="$tmpdir/compat-capture"
+run_harness "$tmpdir/compat-project" "$compat_capture"
+test_grep '^/workspace/agent-remotes$' "$compat_capture"
+
+modern_coord_project="$tmpdir/modern-coord-project"
+mkdir -p "$modern_coord_project/.pi-env/coordination"
+modern_coord_capture="$tmpdir/modern-coord-capture"
+run_harness "$modern_coord_project" "$modern_coord_capture"
+assert_no_grep '^/workspace/agent-remotes$' "$modern_coord_capture"
+
+modern_remotes_project="$tmpdir/modern-remotes-project"
+mkdir -p "$modern_remotes_project/.pi-env/agent-remotes"
+modern_remotes_capture="$tmpdir/modern-remotes-capture"
+run_harness "$modern_remotes_project" "$modern_remotes_capture"
+assert_no_grep '^/workspace/agent-remotes$' "$modern_remotes_capture"
+
+legacy_remotes_project="$tmpdir/legacy-remotes-project"
+mkdir -p "$legacy_remotes_project/agent-remotes"
+legacy_remotes_capture="$tmpdir/legacy-remotes-capture"
+run_harness "$legacy_remotes_project" "$legacy_remotes_capture"
+assert_no_grep '^/workspace/agent-remotes$' "$legacy_remotes_capture"
 
 echo "simple coordination remote mount tests passed"

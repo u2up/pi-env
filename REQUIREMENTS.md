@@ -1080,9 +1080,11 @@ remotes; legacy `agent-remotes` remains supported for existing projects.
 
 If host `/workspace/agent-remotes` exists and is not already provided by
 the selected project mount, the launcher must bind it into the sandbox at
-`/workspace/agent-remotes` so common bare coordination remotes are available
-from inside and outside Bubblewrap through the same path during compatibility
-migration.
+`/workspace/agent-remotes` only for legacy compatibility projects that do not
+already provide project-local `.pi-env/coordination`, `.pi-env/agent-remotes`,
+or legacy `agent-remotes`. This keeps common bare coordination remotes
+available through the same path during compatibility migration without
+exposing legacy host remotes to modern `.pi-env` project state.
 
 If a coordination clone is detected under the selected project, preferring
 `.pi-env/coordination` before legacy `coordination`, or selected with
