@@ -1118,10 +1118,9 @@ pi-serial-roles --once
 pi-serial-roles --max-jobs 3
 pi-serial-roles --max-idle-polls 1 --sleep 5
 pi-serial-roles --dry-run
-pi-serial-roles --ui none --once
-pi-serial-roles --ui json --once
 pi-serial-roles --ui interactive --once
-pi-serial-roles --ui watched-auto-exit --once
+pi-serial-roles --ui json --once
+pi-serial-roles --ui none --once
 ```
 
 Each poll holds `.pi-env/locks/pi-serial-roles.lock` and creates
@@ -1140,10 +1139,12 @@ role to use `agent-coord-review` or `agent-coord-verify`. If no issue is
 eligible, the orchestrator sleeps and polls again without invoking Pi.
 
 Every issue job starts a fresh raw Pi session with `pi-env --raw --` and does
-not pass `--continue`. The default `--ui none` mode adds `--print` for a
-non-interactive prompt/response run that prints the generated role report and
-exits. Use it for day-to-day serial orchestration when you want simple process
-output without a TUI or JSON event stream.
+not pass `--continue`. The default `--ui interactive` mode launches the normal
+Pi TUI with the selected item prompt, active role environment, coordination
+mount, and tool allowlist, but without `--mode json`, `--print`, or `-p`. It
+also passes the role-manager extension flag that requests graceful TUI shutdown
+after `role_cycle_done`, so the orchestrator can continue after the bounded
+role cycle finishes.
 
 Use `--ui json` for structured automation. It adds `--mode json` for JSONL
 output, which is useful for unattended loops, CI-like supervision, or when you
@@ -1151,20 +1152,16 @@ want to parse the final `role_cycle_done` details from the corresponding
 `tool_execution_end` event alongside other structured tool, usage, compaction,
 and error events.
 
-Use `--ui interactive` for watched/manual cycles. It launches the normal Pi TUI
-with the same selected item prompt, active role environment, coordination mount,
-and tool allowlist, but without `--mode json`, `--print`, or `-p`. The
-orchestrator waits for that interactive Pi process to exit manually, then
-performs the same clean-tree and failure checks before polling or launching
-another item.
+Use `--ui none` for non-interactive prompt/response output. It adds `--print`,
+prints the generated role report, and exits without a TUI or JSON event stream.
 
-Use `--ui watched-auto-exit` for watched bounded cycles. It uses the same TUI
-command shape as `interactive`, but passes a role-manager extension flag. After
-`role_cycle_done` records and renders its final result, the extension calls Pi's
-graceful `ctx.shutdown()` hook so the TUI exits automatically before the
-orchestrator continues. Coordination state and Git history are the memory shared
-between jobs; a fresh conversation avoids stale context from a previous issue
-influencing item selection, review, verification, or lifecycle helper use.
+The previous hold-open `interactive` behavior has intentionally been removed
+and is not available under another `--ui` value or compatibility alias. If you
+need to inspect a completed session, use normal logs/output or run Pi directly
+instead of keeping `pi-serial-roles` blocked after each item. Coordination state
+and Git history are the memory shared between jobs; a fresh conversation avoids
+stale context from a previous issue influencing item selection, review,
+verification, or lifecycle helper use.
 
 The command fails closed. Dirty project or coordination trees stop the loop; it
 will not reset, discard, or stash source changes for you. A failed

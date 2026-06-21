@@ -52,13 +52,13 @@ serial orchestrator
 
 The orchestrator, not Pi, owns the idle polling loop. Pi is invoked only when
 there is a concrete item to process. Each issue-related job is a new Pi session
-by invoking `pi-env --raw -- ...` without `--continue`. The default `--ui none`
-mode runs a non-interactive `--print` invocation for simple prompt/response
-output. The user can choose `--ui json` for headless JSONL automation,
-`--ui interactive` for a watched normal Pi TUI that stays open for manual
-inspection, or `--ui watched-auto-exit` for the same watched TUI with graceful
-shutdown requested after `role_cycle_done`; every mode still runs exactly one
-selected item and the orchestrator waits for Pi to exit before polling again.
+by invoking `pi-env --raw -- ...` without `--continue`. The default
+`--ui interactive` mode runs a watched normal Pi TUI with graceful shutdown
+requested after `role_cycle_done`. The user can choose `--ui json` for headless
+JSONL automation or `--ui none` for non-interactive `--print` output; every
+mode still runs exactly one selected item and the orchestrator waits for Pi to
+exit before polling again. The old hold-open interactive behavior is
+intentionally removed and is not preserved under another selector.
 
 ## Role priority
 
@@ -148,7 +148,7 @@ pi-env --raw -- \
   --print "$prompt"
 ```
 
-The important properties for the default print mode are: non-interactive
+The important properties for `--ui none` print mode are: non-interactive
 response output, no `--mode json`, no `-p`, no `--continue`, one item in the
 prompt, active role context, the role-manager extension, the `role_cycle_done`
 tool, and a mounted/writable coordination checkout.
@@ -158,13 +158,15 @@ coordination mount, and tool allowlist are used, but the Pi command adds
 `--mode json` instead of `--print`. The final lifecycle report can be parsed
 from the `role_cycle_done` `tool_execution_end` event.
 
-For watched/manual work, the same environment, role manager extension,
-coordination mount, and tool allowlist are used, but the Pi command omits both
-`--mode json` and `--print` and launches the normal TUI with the generated
-prompt as the initial message:
+For default watched auto-exit work, the same environment, role manager
+extension, coordination mount, and tool allowlist are used, but the Pi command
+omits both `--mode json` and `--print` and launches the normal TUI with the
+generated prompt as the initial message. `pi-serial-roles` additionally passes
+`PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1` through the sandbox:
 
 ```bash
-PI_BWRAP_PASS_ENV=PI_ACTIVE_ROLE \
+PI_BWRAP_PASS_ENV="PI_ACTIVE_ROLE PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE" \
+PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1 \
 PI_ACTIVE_ROLE="$role" \
 PI_COORD_ROLE="$role" \
 PI_COORD_AGENT_ID="$agent_id" \
@@ -175,12 +177,11 @@ pi-env --raw -- \
   "$prompt"
 ```
 
-For watched auto-exit work, `pi-serial-roles` uses that same TUI command shape
-and additionally passes `PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1` through the
-sandbox. The role-manager extension checks that flag in `role_cycle_done` and
-calls Pi's graceful `ctx.shutdown()` API after recording the final structured
-result. Pi defers interactive shutdown until the agent becomes idle, which
-preserves normal tool-result rendering/logging before the process exits.
+The role-manager extension checks that flag in `role_cycle_done` and calls Pi's
+graceful `ctx.shutdown()` API after recording the final structured result. Pi
+defers interactive shutdown until the agent becomes idle, which preserves
+normal tool-result rendering/logging before the process exits. No supported
+`--ui` mode keeps the previous manual hold-open TUI behavior.
 
 ## Failure behavior
 

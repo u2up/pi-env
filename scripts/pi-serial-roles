@@ -29,13 +29,12 @@ Options:
                           --max-idle-polls 1 when those are unset
   --dry-run               Pull and select, then print the claim/Pi command that
                           would run without claiming work or invoking Pi
-  --ui none|json|interactive|watched-auto-exit
-                          Pi job UI/output mode; default: none. none runs a
-                          non-interactive print job, json emits a structured
-                          event stream, interactive launches the normal TUI
-                          and waits for manual exit, and watched-auto-exit
-                          launches the normal TUI but requests graceful exit
-                          after role_cycle_done
+  --ui interactive|json|none
+                          Pi job UI/output mode; default: interactive.
+                          interactive launches the normal TUI and requests
+                          graceful exit after role_cycle_done, json emits a
+                          structured event stream, and none runs a
+                          non-interactive print job
   --lock-file PATH        Local lock path; default:
                           .pi-env/locks/pi-serial-roles.lock relative to
                           the project root
@@ -73,7 +72,7 @@ max_jobs=""
 max_idle_polls=""
 once=0
 dry_run=0
-ui_mode="none"
+ui_mode="interactive"
 lock_file_opt=""
 pi_env_cmd_opt=""
 role_manager_opt=""
@@ -141,8 +140,8 @@ while [ "$#" -gt 0 ]; do
     --ui)
       require_value "$1" "${2:-}"
       case "$2" in
-        none|json|interactive|watched-auto-exit) ui_mode="$2" ;;
-        *) die "--ui must be none, json, interactive, or watched-auto-exit" ;;
+        interactive|json|none) ui_mode="$2" ;;
+        *) die "--ui must be interactive, json, or none" ;;
       esac
       shift 2
       ;;
@@ -513,9 +512,6 @@ role_prompt() {
       session_text="This headless serial job starts a fresh Pi JSON event stream session"
       ;;
     interactive)
-      session_text="This watched/manual serial job starts a fresh Pi interactive session and remains open until manual exit"
-      ;;
-    watched-auto-exit)
       session_text="This watched auto-exit serial job starts a fresh Pi interactive session and requests shutdown after role_cycle_done"
       ;;
     *)
@@ -573,7 +569,7 @@ merged_pass_env() {
   local value
   value="${PI_BWRAP_PASS_ENV:-}"
   value="${value:+$value }PI_ACTIVE_ROLE PI_ROLE_MANAGER_ACTIVE_ROLE"
-  if [ "$ui_mode" = "watched-auto-exit" ]; then
+  if [ "$ui_mode" = "interactive" ]; then
     value="$value PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE"
   fi
   printf '%s\n' "$value"
@@ -663,16 +659,10 @@ print_dry_run() {
         --tools "$pi_tools" \
         --mode json "$prompt"
       ;;
-    interactive|watched-auto-exit)
-      local auto_shutdown_env=()
-      if [ "$ui_mode" = "watched-auto-exit" ]; then
-        auto_shutdown_env=("PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1")
-      else
-        auto_shutdown_env=(-u "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE")
-      fi
+    interactive)
       shell_quote_command \
         env \
-        "${auto_shutdown_env[@]}" \
+        "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1" \
         "PI_ACTIVE_ROLE=$role" \
         "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
         "PI_COORD_ROLE=$role" \
@@ -760,15 +750,9 @@ run_pi_job() {
           --tools "$pi_tools" \
           --mode json "$prompt"
         ;;
-      interactive|watched-auto-exit)
-        local auto_shutdown_env=()
-        if [ "$ui_mode" = "watched-auto-exit" ]; then
-          auto_shutdown_env=("PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1")
-        else
-          auto_shutdown_env=(-u "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE")
-        fi
+      interactive)
         env \
-          "${auto_shutdown_env[@]}" \
+          "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1" \
           "PI_ACTIVE_ROLE=$role" \
           "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
           "PI_COORD_ROLE=$role" \
