@@ -551,9 +551,9 @@ pi-env only chooses which root to expose for this run.
   `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, legacy
   `PI_COORD_WORKSPACE` when set, and coordination directory context, mapping
   project-local coordination paths to `/workspace/...`, binding explicit
-  external `PI_COORD_ROOT` paths at `/agent-remotes`, retaining a narrow
-  `/workspace/agent-remotes` compatibility bind for legacy local setups, and
-  explicitly mounting an external coordination clone with
+  external `PI_COORD_ROOT` paths at `/agent-remotes`, retaining an explicit
+  opt-in `/workspace/agent-remotes` compatibility bind for legacy local setups,
+  and explicitly mounting an external coordination clone with
   `PI_BWRAP_COORDINATION_DIR`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or
   Docker sockets;
@@ -591,6 +591,7 @@ PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CON
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
 PI_COORD_ROOT=.pi-env/agent-remotes      # bare remotes; project paths map to /workspace, external paths to /agent-remotes
 PI_COORD_REMOTE_URL=git@example:repo.git # optional Git-server coordination remote URL; no local remotes mount required
+PI_BWRAP_COMPAT_AGENT_REMOTES=1         # opt in to legacy /workspace/agent-remotes bind
 PI_COORD_PROJECT=pi-env                 # coordination project/domain name
 PI_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
 PI_COORD_WORKSPACE=piws                 # deprecated compatibility alias for PI_COORD_PROJECT
@@ -906,10 +907,13 @@ If `PI_COORD_ROOT` is unset, helpers default to the project-local
 `/workspace/.pi-env/agent-remotes`, available through the standard project
 bind mount rather than a separate remotes mount. Existing root-level
 `agent-remotes/` directories remain compatibility detection paths. During
-migration, `pi-bwrap` also keeps a narrow compatibility bind for an existing
-host `/workspace/agent-remotes` only when the selected project does not already
-provide a modern `.pi-env/coordination` or `.pi-env/agent-remotes`, does not
-provide legacy `agent-remotes/`, and no Git-server remote URL is configured.
+migration, `pi-bwrap` can keep a narrow compatibility bind for an existing
+host `/workspace/agent-remotes`, but only when `PI_BWRAP_COMPAT_AGENT_REMOTES=1`
+is set, the selected project does not already provide a modern
+`.pi-env/coordination` or `.pi-env/agent-remotes`, does not provide legacy
+`agent-remotes/`, and no Git-server remote URL is configured. The bind is not
+automatic because Bubblewrap may need to create the mountpoint under the
+read-write `/workspace` project mount.
 
 If `PI_COORD_ROOT` is set to a project-local path, `pi-bwrap` rewrites it to the
 matching `/workspace/...` path. If it is set to an existing local path outside

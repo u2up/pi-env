@@ -142,7 +142,12 @@ fi
 
 compat_capture="$tmpdir/compat-capture"
 run_harness "$tmpdir/compat-project" "$compat_capture"
-test_grep '^/workspace/agent-remotes$' "$compat_capture"
+assert_no_grep '^/workspace/agent-remotes$' "$compat_capture"
+
+compat_opt_in_capture="$tmpdir/compat-opt-in-capture"
+run_harness "$tmpdir/compat-project" "$compat_opt_in_capture" \
+  PI_BWRAP_COMPAT_AGENT_REMOTES=1
+test_grep '^/workspace/agent-remotes$' "$compat_opt_in_capture"
 
 modern_coord_project="$tmpdir/modern-coord-project"
 mkdir -p "$modern_coord_project/.pi-env/coordination"

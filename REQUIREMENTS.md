@@ -1080,11 +1080,13 @@ remotes; legacy `agent-remotes` remains supported for existing projects.
 
 If host `/workspace/agent-remotes` exists and is not already provided by
 the selected project mount, the launcher must bind it into the sandbox at
-`/workspace/agent-remotes` only for legacy compatibility projects that do not
-already provide project-local `.pi-env/coordination`, `.pi-env/agent-remotes`,
-or legacy `agent-remotes`. This keeps common bare coordination remotes
-available through the same path during compatibility migration without
-exposing legacy host remotes to modern `.pi-env` project state.
+`/workspace/agent-remotes` only when `PI_BWRAP_COMPAT_AGENT_REMOTES=1` opts in
+to legacy compatibility and the selected project does not already provide
+project-local `.pi-env/coordination`, `.pi-env/agent-remotes`, or legacy
+`agent-remotes`. This keeps common bare coordination remotes available through
+the same path during explicit compatibility migration without exposing legacy
+host remotes to modern `.pi-env` project state or creating compatibility
+mountpoints in fresh project checkouts by default.
 
 If a coordination clone is detected under the selected project, preferring
 `.pi-env/coordination` before legacy `coordination`, or selected with

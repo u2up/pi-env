@@ -99,6 +99,8 @@
             PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
             PI_COORD_ROOT=.pi-env/agent-remotes Bare remotes root; project paths stay under /workspace,
                                            external paths bind at /agent-remotes
+            PI_BWRAP_COMPAT_AGENT_REMOTES=1
+                                           Opt in to legacy /workspace/agent-remotes bind
             PI_COORD_REMOTE_URL=url       Coordination Git remote URL passed through without local mounts
             PI_COORD_ROLE=architect       Active coordination role passed to helpers
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
@@ -336,7 +338,8 @@
                 fi
                 ;;
             esac
-          elif [ -z "''${PI_COORD_REMOTE_URL:-}" ] \
+          elif [ "''${PI_BWRAP_COMPAT_AGENT_REMOTES:-0}" = "1" ] \
+            && [ -z "''${PI_COORD_REMOTE_URL:-}" ] \
             && [ ! -d "$project_root/.pi-env/agent-remotes" ] \
             && [ ! -d "$project_root/.pi-env/coordination" ] \
             && [ ! -d "$project_root/agent-remotes" ] \

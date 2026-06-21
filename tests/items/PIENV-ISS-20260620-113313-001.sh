@@ -166,7 +166,12 @@ if [ -d /workspace/agent-remotes ]; then
   compat_project="$tmpdir/compat-project"
   compat_capture="$tmpdir/compat-capture"
   run_harness "$compat_project" "$compat_capture" "$compat_project"
-  assert_bind "$compat_capture" "$(realpath -m /workspace/agent-remotes)" /workspace/agent-remotes
+  assert_no_line /workspace/agent-remotes "$compat_capture"
+
+  compat_opt_in_capture="$tmpdir/compat-opt-in-capture"
+  run_harness "$compat_project" "$compat_opt_in_capture" "$compat_project" \
+    PI_BWRAP_COMPAT_AGENT_REMOTES=1
+  assert_bind "$compat_opt_in_capture" "$(realpath -m /workspace/agent-remotes)" /workspace/agent-remotes
 
   modern_project="$tmpdir/modern-project"
   modern_capture="$tmpdir/modern-capture"
