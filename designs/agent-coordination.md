@@ -147,6 +147,7 @@ Recommended project-root coordination layout inside `.pi-env/coordination`:
     done/
     closed/
   requirements/
+  todos/
   decisions/
   notes/
   agents/
@@ -173,9 +174,10 @@ number allocation races while preserving creation-time information:
 
 `PROJECTKEY` should be uppercase alphanumeric text. Built-in type codes are
 `ISS` for issue, `FRQ` for functional requirement, `QRQ` for quality
-requirement, `CRQ` for constraint requirement, `DEC` for decision, and `NOTE`
-for note. Generic `REQ` requirement IDs are legacy-only unless an explicit
-supersession or migration decision says otherwise. `NNN` is a three-digit
+requirement, `CRQ` for constraint requirement, `TODO` for todo, `DEC` for
+decision, and `NOTE` for note. Generic `REQ` requirement IDs are legacy-only
+unless an explicit supersession or migration decision says otherwise. `NNN` is
+a three-digit
 collision/order suffix for the exact UTC
 timestamp and starts at `001`. Project-root item keys are stored in top-level
 `PROJECT.md` as `item_key`. Legacy project item keys may remain in
@@ -264,13 +266,15 @@ issues/closed/
 ```
 
 Other item types live under semantic type directories such as
-`requirements/`, `decisions/`, and `notes/`. Functional, quality, constraint,
-and legacy requirement items share root-level `requirements/` in project-root
-clones while preserving their item ID type codes. Legacy
-`projects/<project>/requirements/` and `workspace/` layouts are compatibility
-state for migrated coordination repositories, not a primary multi-project
-workspace model. Preserve historical IDs and filenames; do not silently
-renumber, rewrite, or move old items just to satisfy a newer taxonomy.
+`requirements/`, `todos/`, `decisions/`, and `notes/`. Functional, quality,
+constraint, and legacy requirement items share root-level `requirements/` in
+project-root clones while preserving their item ID type codes. TODO items use
+`todos/`, the `TODO` ID type code, and single-body YAML records. Legacy
+`projects/<project>/requirements/`, `projects/<project>/todos/`, and
+`workspace/` layouts are compatibility state for migrated coordination
+repositories, not a primary multi-project workspace model. Preserve historical
+IDs and filenames; do not silently renumber, rewrite, or move old items just to
+satisfy a newer taxonomy.
 
 The state names are developer-centric: `open` means developer work is needed,
 `blocked` means developer work cannot proceed, `done` means the developer
@@ -340,7 +344,8 @@ bootstrap-coordination
 agent-coord-init      create a local bare coordination remote
 agent-coord-clone     clone a coordination remote for the current project
 agent-coord-status    show sync status and current open/claimed items
-agent-coord-list      list issues, decisions, or requirement classes by status
+agent-coord-list      list issues, todos, decisions, or requirement classes
+                      by status
 agent-coord-pull      run git pull --rebase in the coordination clone
 agent-coord-push      commit/push coordination changes
 agent-coord-new       create a new templated item

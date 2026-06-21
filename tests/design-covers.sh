@@ -8,10 +8,12 @@ node <<'JS'
 const fs = require('fs');
 const path = require('path');
 
-const reqDirs = [
-  path.join('coordination', 'requirements'),
-  path.join('coordination', 'projects', 'pi-env', 'requirements'),
-].filter((dir) => fs.existsSync(dir));
+const coordRoots = ['.pi-env/coordination', 'coordination']
+  .filter((dir) => fs.existsSync(dir));
+const reqDirs = coordRoots.flatMap((root) => [
+  path.join(root, 'requirements'),
+  path.join(root, 'projects', 'pi-env', 'requirements'),
+]).filter((dir) => fs.existsSync(dir));
 const designsDir = 'designs';
 const reqByKey = new Map();
 let failed = false;

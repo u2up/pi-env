@@ -94,6 +94,36 @@ if agent-coord-lint \
 fi
 cp "$tmp/requirement.clean.yaml" "coordination/$requirement_path"
 
+todo_path="$(agent-coord-new \
+  --coord-dir coordination \
+  --project pi-env \
+  --type todos \
+  --testable no \
+  --testability-note "Lint covers TODO single-body records." \
+  "Lint TODO item" | tail -n 1)"
+todo_id="$(grep '^id: ' "coordination/$todo_path" | sed 's/^id: //')"
+case "$todo_path" in
+  projects/pi-env/todos/"$todo_id".yaml) ;;
+  *) printf 'unexpected todo path: %s\n' "$todo_path" >&2; exit 1 ;;
+esac
+grep -q '^id: PIENV-TODO-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "coordination/$todo_path"
+grep -q '^type: todo$' "coordination/$todo_path"
+grep -q '^body: |-$' "coordination/$todo_path"
+if grep -E '^(current|events|messages):' "coordination/$todo_path" >/dev/null; then
+  printf 'new todo item should not contain embedded history\n' >&2
+  exit 1
+fi
+cp "coordination/$todo_path" "$tmp/todo.clean.yaml"
+printf 'events:\n  - id: evt-0001\n' >>"coordination/$todo_path"
+if agent-coord-lint \
+  --coord-dir coordination \
+  --project-root . >/dev/null 2>&1; then
+  printf 'expected lint to fail for todo with embedded history\n' >&2
+  exit 1
+fi
+cp "$tmp/todo.clean.yaml" "coordination/$todo_path"
+
 quality_requirement_path="$(agent-coord-new \
   --coord-dir coordination \
   --project pi-env \

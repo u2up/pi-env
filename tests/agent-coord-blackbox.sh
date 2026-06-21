@@ -86,6 +86,7 @@ test ! -e "$bootstrap_project_dir/.pi-env/coordination/functional-requirements"
 test ! -e "$bootstrap_project_dir/.pi-env/coordination/quality-requirements"
 test ! -e "$bootstrap_project_dir/.pi-env/coordination/constraint-requirements"
 test -d "$bootstrap_project_dir/.pi-env/coordination/requirements"
+test -d "$bootstrap_project_dir/.pi-env/coordination/todos"
 grep -q '^project: other-project$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
 grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
 grep -q "Clone dir:    $bootstrap_project_dir/.pi-env/coordination" "$bootstrap_plan"
@@ -240,6 +241,7 @@ test ! -e coordination/functional-requirements
 test ! -e coordination/quality-requirements
 test ! -e coordination/constraint-requirements
 test -d coordination/requirements
+test -d coordination/todos
 grep -q '^project: pi-env$' coordination/PROJECT.md
 grep -q '^item_key: PIENV$' coordination/PROJECT.md
 git -C coordination config --get pull.rebase | grep -qx true
@@ -369,10 +371,36 @@ case "$legacy_requirement_path" in
   *) printf 'unexpected legacy requirement path: %s\n' "$legacy_requirement_path" >&2; exit 1 ;;
 esac
 
+todo_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --type todo \
+  --testable no \
+  --testability-note "Lightweight TODO covered by coordination smoke tests." \
+  "Lightweight TODO item" | tail -n 1)"
+grep -q '^id: PIENV-TODO-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "$workspace_dir/coordination/$todo_path"
+grep -q '^type: todo$' "$workspace_dir/coordination/$todo_path"
+grep -q '^body: |-$' "$workspace_dir/coordination/$todo_path"
+if grep -Eq '^(current|events|messages):' "$workspace_dir/coordination/$todo_path"; then
+  printf 'todo item unexpectedly contained issue history\n' >&2
+  exit 1
+fi
+case "$todo_path" in
+  todos/*.yaml) ;;
+  *) printf 'unexpected todo path: %s\n' "$todo_path" >&2; exit 1 ;;
+esac
+if agent-coord-new --coord-dir "$workspace_dir/coordination" --type tdo \
+  "Unsupported TODO abbreviation" >"$tmp/tdo.out" 2>"$tmp/tdo.err"; then
+  printf 'agent-coord-new unexpectedly accepted --type tdo\n' >&2
+  exit 1
+fi
+grep -q -- '--type tdo is not supported; use --type todo' "$tmp/tdo.err"
+
 requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$requirement_path" | sed 's/^id: //')"
 quality_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$quality_requirement_path" | sed 's/^id: //')"
 constraint_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$constraint_requirement_path" | sed 's/^id: //')"
 legacy_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$legacy_requirement_path" | sed 's/^id: //')"
+todo_id="$(grep '^id: ' "$workspace_dir/coordination/$todo_path" | sed 's/^id: //')"
 
 decision_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
@@ -443,6 +471,16 @@ decision_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" decisions accepted)"
 printf '%s\n' "$decision_list" \
   | grep -Eq "^$decision_id[[:space:]]+accepted[[:space:]]+Use coordination list helper$"
+todo_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" todos active)"
+printf '%s\n' "$todo_list" \
+  | grep -Eq "^$todo_id[[:space:]]+active[[:space:]]+Lightweight TODO item$"
+if agent-coord-list --coord-dir "$workspace_dir/coordination" tdo \
+  >"$tmp/list-tdo.out" 2>"$tmp/list-tdo.err"; then
+  printf 'agent-coord-list unexpectedly accepted tdo alias\n' >&2
+  exit 1
+fi
+grep -q 'item type must be issues, todos,' "$tmp/list-tdo.err"
 
 agent-coord-status --coord-dir "$workspace_dir/coordination" >/dev/null
 agent-coord-push \

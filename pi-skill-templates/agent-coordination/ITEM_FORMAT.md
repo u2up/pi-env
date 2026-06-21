@@ -1,9 +1,9 @@
 # Coordination Item Format
 
 Coordination issue items are YAML files with chronological event history and
-Markdown message bodies. Requirement items are current-state YAML records with
-one renderable top-level `body: |-` block. The file content, not Git commit
-messages, is the authoritative item record.
+Markdown message bodies. Requirement and TODO items are current-state YAML
+records with one renderable top-level `body: |-` block. The file content, not
+Git commit messages, is the authoritative item record.
 
 ## Filename IDs
 
@@ -34,6 +34,7 @@ project coordination should create project-scoped items.
 - `CRQ`: `constraint-requirement`;
 - `REQ`: legacy generic `requirement` (do not use for new requirements
   unless an explicit supersession or migration decision says otherwise);
+- `TODO`: `todo`;
 - `DEC`: `decision`;
 - `NOTE`: `note`.
 
@@ -134,8 +135,8 @@ body: |-
   Requirement text...
 ```
 
-Requirement items must not include top-level `current:`, `events:`, or
-`messages:` sections. Do not add requirement design-reference fields such as
+Requirement and TODO items must not include top-level `current:`, `events:`,
+or `messages:` sections. Do not add requirement design-reference fields such as
 `design_refs`, `covered_by`, or `satisfied_by_design`; design coverage is
 declared by design documents and generated coverage reports.
 
@@ -166,12 +167,15 @@ are compatibility state for migrated coordination repositories:
 
 ```text
 requirements/                           # functional, quality, constraint, and legacy requirements
+todos/                                  # lightweight TODO records
 decisions/
 notes/
 projects/<project>/requirements/        # legacy compatibility
+projects/<project>/todos/               # legacy compatibility
 projects/<project>/decisions/           # legacy compatibility
 projects/<project>/notes/               # legacy compatibility
 workspace/requirements/                 # legacy compatibility
+workspace/todos/                        # legacy compatibility
 workspace/decisions/                    # legacy compatibility
 workspace/notes/                        # legacy compatibility
 ```
@@ -327,6 +331,7 @@ implementation and point to the implementation refs stored on the same event.
 Review and verification messages should record pass/fail evidence, including
 commands run for item-matched tests where applicable.
 
-For requirements, keep Markdown inside the top-level `body: |-` readable as
-normal Markdown. Do not add a separate `## Activity` section; that would
-duplicate issue YAML event history and is not part of requirement records.
+For requirements and TODOs, keep Markdown inside the top-level `body: |-`
+readable as normal Markdown. Do not add a separate `## Activity` section; that
+would duplicate issue YAML event history and is not part of single-body
+records.

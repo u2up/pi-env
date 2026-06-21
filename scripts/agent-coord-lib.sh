@@ -213,6 +213,9 @@ coord_item_type_canonical() {
     requirement|requirements|req|reqs)
       canonical="requirement"
       ;;
+    todo|todos)
+      canonical="todo"
+      ;;
     decision|decisions|dec)
       canonical="decision"
       ;;
@@ -246,6 +249,9 @@ coord_item_type_code() {
     requirement|requirements|req|reqs)
       code="REQ"
       ;;
+    todo|todos)
+      code="TODO"
+      ;;
     decision|decisions|dec)
       code="DEC"
       ;;
@@ -272,6 +278,9 @@ coord_item_type_dir() {
       ;;
     functional-requirement|functional-requirements|quality-requirement|quality-requirements|constraint-requirement|constraint-requirements|requirement|requirements|req|reqs)
       dir="requirements"
+      ;;
+    todo|todos)
+      dir="todos"
       ;;
     decision|decisions|dec)
       dir="decisions"
@@ -653,7 +662,10 @@ coord_has_legacy_workspace_layout() {
 }
 
 coord_has_project_root_layout() {
-  [ -f PROJECT.md ] && { [ -d issues ] || [ -d requirements ] || [ -d decisions ] || [ -d notes ]; }
+  [ -f PROJECT.md ] && {
+    [ -d issues ] || [ -d requirements ] || [ -d todos ] \
+      || [ -d decisions ] || [ -d notes ]
+  }
 }
 
 coord_write_root_items_by_default() {
@@ -963,7 +975,7 @@ coord_append_activity() {
 
 coord_item_find_files() {
   local roots=() seen file id_value stem key
-  for root in issues requirements decisions notes workspace projects; do
+  for root in issues requirements todos decisions notes workspace projects; do
     if [ -e "$root" ]; then
       roots+=("$root")
     fi

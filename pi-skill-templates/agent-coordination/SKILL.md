@@ -50,9 +50,10 @@ New item IDs and filenames use:
 ```
 
 Use `ISS` for issue, `FRQ` for functional requirement, `QRQ` for quality
-requirement, `CRQ` for constraint requirement, `DEC` for decision, and `NOTE`
-for note. Generic `REQ` requirement IDs are legacy-only unless an explicit
-supersession or migration decision says otherwise. The `NNN` suffix starts at
+requirement, `CRQ` for constraint requirement, `TODO` for todo, `DEC` for
+decision, and `NOTE` for note. Generic `REQ` requirement IDs are legacy-only
+unless an explicit supersession or migration decision says otherwise. The `NNN`
+suffix starts at
 `001` for each UTC timestamp. Historical items may keep legacy IDs; do not
 rename, renumber, rewrite, or move them unless explicitly directed.
 
@@ -64,8 +65,8 @@ legacy requirement items. Use `functional`, `quality`, `constraint`, or
 
 Coordination items are YAML files. Issue item top-level fields show current
 state; chronological `events:` entries define authoritative issue history;
-linked `messages:` entries contain Markdown text. Requirement items are
-current-state records with one top-level `body: |-` block and no embedded
+linked `messages:` entries contain Markdown text. Requirement and TODO items
+are current-state records with one top-level `body: |-` block and no embedded
 `current:`, `events:`, or `messages:` sections. State group names are
 developer-centric: `open` means developer work is needed, `blocked` means it
 cannot proceed yet, `done` means the developer believes implementation is

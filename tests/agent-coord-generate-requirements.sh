@@ -61,7 +61,10 @@ scripts/agent-coord-generate-requirements \
   --coordination-dir "$mixed_coord" > "$mixed_output"
 grep -F '#### MIX-001 Mixed root and legacy fixture' "$mixed_output" >/dev/null
 
-sample_requirement="coordination/requirements/PIENV-FRQ-20260612-210000-001.yaml"
+sample_requirement=".pi-env/coordination/requirements/PIENV-FRQ-20260612-210000-001.yaml"
+if [ ! -f "$sample_requirement" ]; then
+  sample_requirement="coordination/requirements/PIENV-FRQ-20260612-210000-001.yaml"
+fi
 grep -F 'body: |-' "$sample_requirement" >/dev/null
 if grep -E '^(current|events|messages):' "$sample_requirement" >/dev/null; then
   echo "active requirement item still contains embedded history" >&2

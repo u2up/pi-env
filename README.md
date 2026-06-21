@@ -928,8 +928,8 @@ through narrowly-scoped sandbox/project configuration as needed; pi-env does
 not import the host `~/.ssh` directory or all host Git credentials wholesale.
 
 It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, project
-`PROJECT.md` metadata, root `issues/`, `requirements/`, `decisions/`, and
-`notes/` directories, protocol docs, item-format docs, and
+`PROJECT.md` metadata, root `issues/`, `requirements/`, `todos/`,
+`decisions/`, and `notes/` directories, protocol docs, item-format docs, and
 `.pi/skills/agent-coordination/SKILL.md`. When `PI_COORD_DIR` is unset, fresh
 projects use `.pi-env/coordination`; existing root-level `coordination/`
 clones remain compatibility detection paths. New scaffolds do not include
@@ -988,9 +988,9 @@ Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
 backslashes, and other non-alphanumeric characters are removed. For example,
 `pi-env_test` becomes `PIENVTEST`. `--id ID` overrides the whole item ID.
 Built-in type codes are `ISS` for `issue`, `FRQ` for `functional-requirement`,
-`QRQ` for `quality-requirement`, `CRQ` for `constraint-requirement`, `DEC` for
-`decision`, and `NOTE` for `note`. Generic `REQ` requirement IDs are
-legacy-only unless an explicit supersession or migration decision says
+`QRQ` for `quality-requirement`, `CRQ` for `constraint-requirement`, `TODO` for
+`todo`, `DEC` for `decision`, and `NOTE` for `note`. Generic `REQ` requirement
+IDs are legacy-only unless an explicit supersession or migration decision says
 otherwise.
 
 Lifecycle helpers are also available:
@@ -999,7 +999,8 @@ Lifecycle helpers are also available:
 bootstrap-coordination
                       infer defaults and initialize via agent-coord-init
 agent-coord-status    show sync status and open/blocked/done items
-agent-coord-list      list issues, decisions, requirements, or classes by status
+agent-coord-list      list issues, todos, decisions, requirements, or classes
+                      by status
 agent-coord-cat       print one resolved item's YAML or repo-relative path
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
@@ -1023,10 +1024,12 @@ accepted after review and verification.
 
 Functional, quality, constraint, and legacy requirements use the root-level
 `requirements/` directory in project-root coordination clones while preserving
-FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. Existing
-`projects/<project>/requirements/` and `workspace/` requirements are legacy
-compatibility state for migrated coordination repos, not a primary
-multi-project workspace model. The `agent-coord-list requirements` command
+FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. TODO items use `todos/` and
+single top-level `body: |-` records without issue history. Existing
+`projects/<project>/requirements/`, `projects/<project>/todos/`, and
+`workspace/` typed item directories are legacy compatibility state for migrated
+coordination repos, not a primary multi-project workspace model. The
+`agent-coord-list requirements` command
 reports functional, quality, constraint, and legacy requirement items; use
 `functional`, `quality`, `constraint`, or `legacy-requirements` for
 class-specific listings. Done issue listings append
@@ -1037,7 +1040,9 @@ lint checks imported FRQ/QRQ/CRQ items for non-empty source references plus the
 standard `testable` metadata.
 
 Decision, note, and other non-issue item types live under their semantic type
-directories. Stored implementation refs are structured objects with `repo`,
+directories. The accepted TODO type spellings are `todo` and `todos`; `tdo` is
+not a supported alias. Stored implementation refs are structured objects with
+`repo`,
 `branch`, and full `commit` fields. `agent-coord-done --implementation-ref
 pi-env:main@<full-hash>` accepts the compact CLI form and writes the structured
 YAML form. `agent-coord-close` finalizes only items that are done, reviewed, and

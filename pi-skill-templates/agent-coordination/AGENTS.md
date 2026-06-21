@@ -58,9 +58,9 @@ New item IDs use this shape and filenames use the item ID only:
 
 Built-in type codes are `ISS` for `issue`, `FRQ` for
 `functional-requirement`, `QRQ` for `quality-requirement`, `CRQ` for
-`constraint-requirement`, `DEC` for `decision`, and `NOTE` for `note`.
-Legacy generic requirements use `REQ` for `requirement`; do not create new
-`REQ` IDs unless an explicit supersession or migration decision says
+`constraint-requirement`, `TODO` for `todo`, `DEC` for `decision`, and `NOTE`
+for `note`. Legacy generic requirements use `REQ` for `requirement`; do not
+create new `REQ` IDs unless an explicit supersession or migration decision says
 otherwise. The UTC timestamp records creation time.
 The `NNN` collision/order suffix starts at `001` for each timestamp and is not
 a global sequence number. Historical items may keep legacy IDs and slug
@@ -82,9 +82,11 @@ The completion metric for managers, reviewers, and testers is therefore not
 
 Other item types live under semantic type directories. All requirement classes
 use the single root-level `requirements/` directory in project-root clones
-while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. Existing
-`projects/<project>/requirements/` and `workspace/` requirement directories are
-legacy compatibility state for migrated coordination repositories. Generic
+while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. TODO items
+use `todos/` and the `TODO` item-ID type code. Existing
+`projects/<project>/requirements/`, `projects/<project>/todos/`, and
+`workspace/` typed directories are legacy compatibility state for migrated
+coordination repositories. Generic
 `REQ` IDs are legacy-only unless an explicit supersession or migration decision
 says otherwise. Do not mirror issue
 status directories in project test paths, and do not silently renumber or
@@ -98,8 +100,9 @@ Issue current state is stored near the top (`status`, `owner`, `updated`,
 `current`), while authoritative issue history is stored in chronological
 `events` and linked Markdown `messages` entries. Requirement items are
 current-state records under `requirements/`: they keep requirement metadata and
-one top-level renderable `body: |-` block, and must not contain top-level
-`current`, `events`, or `messages` sections.
+one top-level renderable `body: |-` block. TODO items are current-state records
+under `todos/` with one top-level `body: |-` block. Requirement and TODO items
+must not contain top-level `current`, `events`, or `messages` sections.
 
 When changing requirements, update the corresponding requirement item first.
 Then regenerate `REQUIREMENTS.md` from the requirement items. Do not edit

@@ -192,6 +192,7 @@ mkdir -p \
   issues/done \
   issues/closed \
   requirements \
+  todos \
   decisions \
   notes \
   agents
@@ -244,7 +245,7 @@ cat >"agents/$agent_file.md" <<EOF_AGENT
 
 EOF_AGENT
 
-find issues requirements decisions notes agents -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
+find issues requirements todos decisions notes agents -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
 
 actor="$(coord_effective_actor "$agent_id" "$role")"
 if coord_commit_all_if_changed "Initialize coordination repository" "$actor"; then

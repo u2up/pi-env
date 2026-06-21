@@ -577,8 +577,8 @@ slashes, backslashes, and other non-alphanumeric characters removed. Unless
 
 Built-in type codes must include `ISS` for `issue`, `FRQ` for
 `functional-requirement`, `QRQ` for `quality-requirement`, `CRQ` for
-`constraint-requirement`, `DEC` for `decision`, and `NOTE` for `note`.
-Generic `REQ` IDs for `requirement` are legacy-only unless an explicit
+`constraint-requirement`, `TODO` for `todo`, `DEC` for `decision`, and `NOTE`
+for `note`. Generic `REQ` IDs for `requirement` are legacy-only unless an explicit
 supersession or migration decision says otherwise. The `NNN` suffix must start
 at `001` for each timestamp and increment to avoid collisions in the local
 coordination checkout. Filenames for new generated items must use the item ID

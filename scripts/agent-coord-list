@@ -18,7 +18,7 @@ Usage:
   agent-coord-list [options] TYPE [STATUS]
 
 Arguments:
-  TYPE          Item type to list, for example issues, decisions,
+  TYPE          Item type to list, for example issues, todos, decisions,
                 requirements, functional-requirements,
                 quality-requirements, or constraint-requirements.
                 All requirement classes are stored under the single
@@ -95,10 +95,10 @@ case "$raw_item_type_lc" in
     ;;
 esac
 case "$item_type" in
-  issue|decision|requirement|functional-requirement|quality-requirement|constraint-requirement)
+  issue|todo|decision|requirement|functional-requirement|quality-requirement|constraint-requirement)
     ;;
   *)
-    coord_die "item type must be issues, decisions, requirements, legacy-requirements, functional-requirements, quality-requirements, or constraint-requirements"
+    coord_die "item type must be issues, todos, decisions, requirements, legacy-requirements, functional-requirements, quality-requirements, or constraint-requirements"
     ;;
 esac
 

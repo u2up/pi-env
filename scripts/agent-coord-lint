@@ -34,7 +34,8 @@ Checks:
   - testable: yes has a matching tests/items/**/*.sh script;
   - testable: no has a non-empty testability_note;
   - issue items have embedded current/events/messages history;
-  - requirement items have current-state body records without embedded history;
+  - requirement and todo items have current-state body records without
+    embedded history;
   - imported FRQ/QRQ/CRQ items have non-empty source_refs;
   - every tests/items/**/*.sh script matches an existing item ID;
   - design ## Covers entries reference active requirement keys and IDs.
@@ -276,6 +277,20 @@ while IFS= read -r file; do
       for history_field in current events messages; do
         if item_has_top_level_field "$file" "$history_field"; then
           lint_fail "$file requirement item must not contain top-level $history_field history"
+        fi
+      done
+      ;;
+    todo)
+      case "$file" in
+        projects/*/todos/*.yaml|projects/*/todos/*.yml|workspace/todos/*.yaml|workspace/todos/*.yml|todos/*.yaml|todos/*.yml)
+          ;;
+        *) lint_fail "$file todo item must live under a todos directory" ;;
+      esac
+      item_has_nonempty_top_level_body "$file" \
+        || lint_fail "$file todo item is missing non-empty top-level body"
+      for history_field in current events messages; do
+        if item_has_top_level_field "$file" "$history_field"; then
+          lint_fail "$file todo item must not contain top-level $history_field history"
         fi
       done
       ;;
