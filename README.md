@@ -907,8 +907,9 @@ If `PI_COORD_ROOT` is unset, helpers default to the project-local
 bind mount rather than a separate remotes mount. Existing root-level
 `agent-remotes/` directories remain compatibility detection paths. During
 migration, `pi-bwrap` also keeps a narrow compatibility bind for an existing
-host `/workspace/agent-remotes` when the selected project does not already
-provide one and no Git-server remote URL is configured.
+host `/workspace/agent-remotes` only when the selected project does not already
+provide a modern `.pi-env/coordination` or `.pi-env/agent-remotes`, does not
+provide legacy `agent-remotes/`, and no Git-server remote URL is configured.
 
 If `PI_COORD_ROOT` is set to a project-local path, `pi-bwrap` rewrites it to the
 matching `/workspace/...` path. If it is set to an existing local path outside

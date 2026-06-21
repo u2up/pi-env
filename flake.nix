@@ -336,7 +336,11 @@
                 fi
                 ;;
             esac
-          elif [ -z "''${PI_COORD_REMOTE_URL:-}" ] && [ ! -d "$project_root/agent-remotes" ] && [ -d /workspace/agent-remotes ]; then
+          elif [ -z "''${PI_COORD_REMOTE_URL:-}" ] \
+            && [ ! -d "$project_root/.pi-env/agent-remotes" ] \
+            && [ ! -d "$project_root/.pi-env/coordination" ] \
+            && [ ! -d "$project_root/agent-remotes" ] \
+            && [ -d /workspace/agent-remotes ]; then
             host_common_coord_root="$(realpath -m /workspace/agent-remotes)"
             project_coord_root="$(realpath -m "$project_root/agent-remotes")"
             if [ "$host_common_coord_root" != "$project_coord_root" ]; then

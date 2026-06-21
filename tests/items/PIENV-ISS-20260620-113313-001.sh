@@ -167,6 +167,18 @@ if [ -d /workspace/agent-remotes ]; then
   compat_capture="$tmpdir/compat-capture"
   run_harness "$compat_project" "$compat_capture" "$compat_project"
   assert_bind "$compat_capture" "$(realpath -m /workspace/agent-remotes)" /workspace/agent-remotes
+
+  modern_project="$tmpdir/modern-project"
+  modern_capture="$tmpdir/modern-capture"
+  mkdir -p "$modern_project/.pi-env/agent-remotes"
+  run_harness "$modern_project" "$modern_capture" "$modern_project"
+  assert_no_line /workspace/agent-remotes "$modern_capture"
+
+  modern_coord_project="$tmpdir/modern-coord-project"
+  modern_coord_capture="$tmpdir/modern-coord-capture"
+  mkdir -p "$modern_coord_project/.pi-env/coordination/.git"
+  run_harness "$modern_coord_project" "$modern_coord_capture" "$modern_coord_project"
+  assert_no_line /workspace/agent-remotes "$modern_coord_capture"
 fi
 
 state_project="$tmpdir/default-state-project"
