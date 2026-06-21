@@ -606,9 +606,10 @@ The lifecycle helpers must remain thin wrappers around Git and YAML item
 file edits:
 
 - `agent-coord-status` shows Git status and open/blocked/done item summaries;
-- `agent-coord-list` lists issue, decision, legacy requirement, or
-  requirement-class IDs, statuses, and titles, optionally filtered by status,
-  and appends done-issue review/verification sub-status after the title;
+- `agent-coord-list` lists issue, TODO, note, decision, legacy requirement,
+  or requirement-class IDs, statuses, and titles, optionally filtered by
+  status, and appends done-issue review/verification sub-status after the
+  title;
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
 - coordination commands that create item events or commits accept

@@ -999,8 +999,8 @@ Lifecycle helpers are also available:
 bootstrap-coordination
                       infer defaults and initialize via agent-coord-init
 agent-coord-status    show sync status and open/blocked/done items
-agent-coord-list      list issues, todos, decisions, requirements, or classes
-                      by status
+agent-coord-list      list issues, todos, notes, decisions, requirements, or
+                      classes by status
 agent-coord-cat       print one resolved item's YAML or repo-relative path
 agent-coord-pull      run git pull --rebase --autostash
 agent-coord-push      commit and push coordination changes
@@ -1040,7 +1040,9 @@ lint checks imported FRQ/QRQ/CRQ items for non-empty source references plus the
 standard `testable` metadata.
 
 Decision, note, and other non-issue item types live under their semantic type
-directories. The accepted TODO type spellings are `todo` and `todos`; `tdo` is
+directories. Use `agent-coord-list notes` or `agent-coord-list todos` to list
+those root-level groups, optionally filtered by their YAML `status` values. The
+accepted TODO type spellings are `todo` and `todos`; `tdo` is
 not a supported alias. Stored implementation refs are structured objects with
 `repo`,
 `branch`, and full `commit` fields. `agent-coord-done --implementation-ref

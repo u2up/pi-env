@@ -57,9 +57,10 @@ suffix starts at
 `001` for each UTC timestamp. Historical items may keep legacy IDs; do not
 rename, renumber, rewrite, or move them unless explicitly directed.
 
-`agent-coord-list requirements` reports functional, quality, constraint, and
-legacy requirement items. Use `functional`, `quality`, `constraint`, or
-`legacy-requirements` for class-specific listings.
+`agent-coord-list notes` and `agent-coord-list todos` report note and TODO
+items by their YAML `status` values. `agent-coord-list requirements` reports
+functional, quality, constraint, and legacy requirement items. Use `functional`,
+`quality`, `constraint`, or `legacy-requirements` for class-specific listings.
 
 ## Item history
 

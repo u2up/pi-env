@@ -87,6 +87,7 @@ test ! -e "$bootstrap_project_dir/.pi-env/coordination/quality-requirements"
 test ! -e "$bootstrap_project_dir/.pi-env/coordination/constraint-requirements"
 test -d "$bootstrap_project_dir/.pi-env/coordination/requirements"
 test -d "$bootstrap_project_dir/.pi-env/coordination/todos"
+test -d "$bootstrap_project_dir/.pi-env/coordination/notes"
 grep -q '^project: other-project$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
 grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
 grep -q "Clone dir:    $bootstrap_project_dir/.pi-env/coordination" "$bootstrap_plan"
@@ -242,6 +243,7 @@ test ! -e coordination/quality-requirements
 test ! -e coordination/constraint-requirements
 test -d coordination/requirements
 test -d coordination/todos
+test -d coordination/notes
 grep -q '^project: pi-env$' coordination/PROJECT.md
 grep -q '^item_key: PIENV$' coordination/PROJECT.md
 git -C coordination config --get pull.rebase | grep -qx true
@@ -396,11 +398,43 @@ if agent-coord-new --coord-dir "$workspace_dir/coordination" --type tdo \
 fi
 grep -q -- '--type tdo is not supported; use --type todo' "$tmp/tdo.err"
 
+todo_open_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --type todo \
+  --status open \
+  --testable no \
+  --testability-note "Open TODO covered by list status-filter tests." \
+  "Open TODO item" | tail -n 1)"
+grep -q '^type: todo$' "$workspace_dir/coordination/$todo_open_path"
+grep -q '^status: open$' "$workspace_dir/coordination/$todo_open_path"
+case "$todo_open_path" in
+  todos/*.yaml) ;;
+  *) printf 'unexpected open todo path: %s\n' "$todo_open_path" >&2; exit 1 ;;
+esac
+
+note_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --type note \
+  --status active \
+  --testable no \
+  --testability-note "Note item covered by list and cat smoke tests." \
+  "Reference note item" | tail -n 1)"
+grep -q '^id: PIENV-NOTE-[0-9]\{8\}-[0-9]\{6\}-001$' \
+  "$workspace_dir/coordination/$note_path"
+grep -q '^type: note$' "$workspace_dir/coordination/$note_path"
+grep -q '^status: active$' "$workspace_dir/coordination/$note_path"
+case "$note_path" in
+  notes/*.yaml) ;;
+  *) printf 'unexpected note path: %s\n' "$note_path" >&2; exit 1 ;;
+esac
+
 requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$requirement_path" | sed 's/^id: //')"
 quality_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$quality_requirement_path" | sed 's/^id: //')"
 constraint_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$constraint_requirement_path" | sed 's/^id: //')"
 legacy_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$legacy_requirement_path" | sed 's/^id: //')"
 todo_id="$(grep '^id: ' "$workspace_dir/coordination/$todo_path" | sed 's/^id: //')"
+todo_open_id="$(grep '^id: ' "$workspace_dir/coordination/$todo_open_path" | sed 's/^id: //')"
+note_id="$(grep '^id: ' "$workspace_dir/coordination/$note_path" | sed 's/^id: //')"
 
 decision_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
@@ -428,6 +462,15 @@ test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" --path "$actio
 test "$(agent-coord-cat \
   --coord-dir "$workspace_dir/coordination" \
   --path "${item_id%-001}")" = "$action_path"
+test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" "$todo_id")" = \
+  "$(cat "$workspace_dir/coordination/$todo_path")"
+test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" --path "$todo_id")" = "$todo_path"
+test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" "$note_id")" = \
+  "$(cat "$workspace_dir/coordination/$note_path")"
+test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" --path "$note_id")" = "$note_path"
+test "$(agent-coord-cat \
+  --coord-dir "$workspace_dir/coordination" \
+  --path "${note_id%-001}")" = "$note_path"
 if agent-coord-cat --coord-dir "$workspace_dir/coordination" MISSING-ITEM \
   >"$tmp/cat-missing.out" 2>"$tmp/cat-missing.err"; then
   printf 'agent-coord-cat unexpectedly found missing item\n' >&2
@@ -475,6 +518,30 @@ todo_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" todos active)"
 printf '%s\n' "$todo_list" \
   | grep -Eq "^$todo_id[[:space:]]+active[[:space:]]+Lightweight TODO item$"
+todo_open_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" todo open)"
+printf '%s\n' "$todo_open_list" \
+  | grep -Eq "^$todo_open_id[[:space:]]+open[[:space:]]+Open TODO item$"
+all_todo_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" todos)"
+printf '%s\n' "$all_todo_list" \
+  | grep -Eq "^$todo_id[[:space:]]+active[[:space:]]+Lightweight TODO item$"
+printf '%s\n' "$all_todo_list" \
+  | grep -Eq "^$todo_open_id[[:space:]]+open[[:space:]]+Open TODO item$"
+note_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" notes active)"
+printf '%s\n' "$note_list" \
+  | grep -Eq "^$note_id[[:space:]]+active[[:space:]]+Reference note item$"
+note_alias_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" note active)"
+printf '%s\n' "$note_alias_list" \
+  | grep -Eq "^$note_id[[:space:]]+active[[:space:]]+Reference note item$"
+if printf '%s\n' "$note_alias_list" | grep -q "$todo_id"; then
+  printf 'note list included a todo item\n' >&2
+  exit 1
+fi
+all_note_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" notes)"
+printf '%s\n' "$all_note_list" \
+  | grep -Eq "^$note_id[[:space:]]+active[[:space:]]+Reference note item$"
 if agent-coord-list --coord-dir "$workspace_dir/coordination" tdo \
   >"$tmp/list-tdo.out" 2>"$tmp/list-tdo.err"; then
   printf 'agent-coord-list unexpectedly accepted tdo alias\n' >&2
