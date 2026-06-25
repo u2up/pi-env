@@ -951,9 +951,14 @@ agent-coord-clone
 Create a type-coded timestamp-ID item in the project-root layout with:
 
 ```bash
-agent-coord-new --type issue "Document pi config behavior"
+agent-coord-new --type issue --issue-type bug "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
+
+Issue items can use optional `--issue-type` categories such as `bug`,
+`feature-request`, `task`, `question`, or `improvement`. Use
+`agent-coord-list --issue-type bug issues open` to filter, or
+`agent-coord-list --group-by-issue-type issues` to sort grouped issue output.
 
 When top-level `PROJECT.md` exists, omit `--project`; `PI_COORD_PROJECT` can
 remain set for coordination-domain selection without forcing legacy

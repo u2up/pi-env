@@ -63,6 +63,7 @@ linked to events.
 schema: coordination-item/v1
 id: PIENV-ISS-20260607-204155-001
 type: issue
+issue_type: bug
 status: open
 project: pi-env
 title: Document pi config behavior
@@ -134,6 +135,12 @@ body: |-
 
   Requirement text...
 ```
+
+Issue items may include optional `issue_type` category metadata for listing
+and grouping. Recommended values include `bug`, `feature-request`, `task`,
+`question`, and `improvement`; project-specific slugs are allowed when a more
+specific category is useful. The top-level `type` field remains the structural
+coordination item type and should stay `issue` for issue workflow items.
 
 Requirement and TODO items must not include top-level `current:`, `events:`,
 or `messages:` sections. Do not add requirement design-reference fields such as

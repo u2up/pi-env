@@ -274,12 +274,14 @@ action_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --agent-id agent-a \
   --role architect \
+  --issue-type Bug \
   "Document pi config behavior" | tail -n 1)"
 
 test -f "$workspace_dir/coordination/$action_path"
 grep -q '^id: PIENV-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$action_path"
 grep -q '^status: open$' "$workspace_dir/coordination/$action_path"
+grep -q '^issue_type: bug$' "$workspace_dir/coordination/$action_path"
 grep -q '^done: null$' "$workspace_dir/coordination/$action_path"
 grep -q '^reviewed: false$' "$workspace_dir/coordination/$action_path"
 grep -q '^verified: false$' "$workspace_dir/coordination/$action_path"
@@ -488,6 +490,18 @@ grep -q "$action_path" "$tmp/cat-ambiguous.err"
 issue_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" issues open)"
 printf '%s\n' "$issue_list" \
   | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
+issue_type_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" --show-issue-type issues open)"
+printf '%s\n' "$issue_type_list" \
+  | grep -Eq "^bug[[:space:]]+$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
+issue_type_filter_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" --issue-type bug issues open)"
+printf '%s\n' "$issue_type_filter_list" \
+  | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
+issue_type_group_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" --group-by-issue-type issues open)"
+printf '%s\n' "$issue_type_group_list" \
+  | grep -Eq "^bug[[:space:]]+$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
 requirement_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" functional-requirements accepted)"
 printf '%s\n' "$requirement_list" \

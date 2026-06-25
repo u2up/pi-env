@@ -311,6 +311,32 @@ coord_item_type_uses_issue_status_dirs() {
   return 1
 }
 
+coord_issue_type_canonical() {
+  local type canonical
+  type="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  case "$type" in
+    feature|feature_request|feature-request|features|feature_requests|feature-requests)
+      canonical="feature-request"
+      ;;
+    bug|bugs|defect|defects)
+      canonical="bug"
+      ;;
+    task|tasks)
+      canonical="task"
+      ;;
+    question|questions)
+      canonical="question"
+      ;;
+    improvement|improvements|enhancement|enhancements)
+      canonical="improvement"
+      ;;
+    *)
+      canonical="$(coord_sanitize_path_part "$type")"
+      ;;
+  esac
+  printf '%s\n' "$canonical"
+}
+
 coord_item_id_exists() {
   local candidate file id_value stem
   candidate="$1"

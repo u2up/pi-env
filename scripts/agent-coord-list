@@ -29,11 +29,17 @@ Arguments:
   STATUS        Optional status filter, for example open, closed, or accepted
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
-  -h, --help        Show this help
+  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
+  --issue-type TYPE        Only list issue items with this category
+  --show-issue-type        Add issue category as the first output column
+  --group-by-issue-type    Sort by issue category and add it as the first column
+  -h, --help               Show this help
 
 Output columns are tab-separated:
   item id, status, title
+
+With --show-issue-type or --group-by-issue-type, output columns are:
+  issue type, item id, status, title
 
 Done issue titles include review and verification sub-status:
   title (reviewed:true|false, verified:true|false)
@@ -41,6 +47,9 @@ USAGE
 }
 
 coord_dir_opt=""
+issue_type_filter=""
+show_issue_type=0
+group_by_issue_type=0
 positional=()
 
 while [ "$#" -gt 0 ]; do
@@ -49,6 +58,20 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
       coord_dir_opt="$2"
       shift 2
+      ;;
+    --issue-type)
+      [ "$#" -ge 2 ] || coord_die "--issue-type requires a value"
+      issue_type_filter="$2"
+      shift 2
+      ;;
+    --show-issue-type)
+      show_issue_type=1
+      shift
+      ;;
+    --group-by-issue-type)
+      group_by_issue_type=1
+      show_issue_type=1
+      shift
       ;;
     -h|--help)
       usage
@@ -105,8 +128,29 @@ esac
 status_filter="${positional[1]:-}"
 status_filter_cmp="$(printf '%s' "$status_filter" | tr '[:upper:]' '[:lower:]')"
 
+if [ "$show_issue_type" = "1" ]; then
+  if [ "$item_type" != "issue" ] || [ "$list_all_requirement_classes" = "1" ]; then
+    coord_die "--show-issue-type and --group-by-issue-type can only be used with issue lists"
+  fi
+fi
+
+if [ -n "$(coord_trim "$issue_type_filter")" ]; then
+  if [ "$item_type" != "issue" ] || [ "$list_all_requirement_classes" = "1" ]; then
+    coord_die "--issue-type can only filter issue lists"
+  fi
+  issue_type_filter="$(coord_issue_type_canonical "$issue_type_filter")"
+  [ -n "$issue_type_filter" ] || coord_die "--issue-type produced an empty category"
+fi
+
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
 cd "$coord_dir"
+
+tab="$(printf '\t')"
+rows_file=""
+if [ "$group_by_issue_type" = "1" ]; then
+  rows_file="$(mktemp)"
+  trap 'rm -f "$rows_file"' EXIT
+fi
 
 while IFS= read -r file; do
   [ -n "$file" ] || continue
@@ -130,6 +174,17 @@ while IFS= read -r file; do
   [ -n "$status" ] || status="unknown"
   status_cmp="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
   if [ -n "$status_filter" ] && [ "$status_cmp" != "$status_filter_cmp" ]; then
+    continue
+  fi
+
+  issue_type="$(coord_item_value "$file" issue_type || true)"
+  if [ -z "$(coord_trim "$issue_type")" ]; then
+    issue_type="uncategorized"
+  else
+    issue_type="$(coord_issue_type_canonical "$issue_type")"
+    [ -n "$issue_type" ] || issue_type="uncategorized"
+  fi
+  if [ -n "$issue_type_filter" ] && [ "$issue_type" != "$issue_type_filter" ]; then
     continue
   fi
 
@@ -159,5 +214,19 @@ while IFS= read -r file; do
     title="$title (reviewed:$reviewed, verified:$verified)"
   fi
 
-  printf '%s\t%s\t%s\n' "$id" "$status" "$title"
+  if [ "$show_issue_type" = "1" ]; then
+    row="${issue_type}	${id}	${status}	${title}"
+  else
+    row="${id}	${status}	${title}"
+  fi
+
+  if [ "$group_by_issue_type" = "1" ]; then
+    printf '%s\n' "$row" >>"$rows_file"
+  else
+    printf '%s\n' "$row"
+  fi
 done < <(coord_item_find_files)
+
+if [ "$group_by_issue_type" = "1" ] && [ -n "$rows_file" ]; then
+  sort -t "$tab" -k1,1 -k2,2 "$rows_file"
+fi

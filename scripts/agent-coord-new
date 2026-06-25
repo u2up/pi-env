@@ -23,6 +23,7 @@ Options:
   --project-key KEY        Project key portion of generated IDs
   --workspace-item         Deprecated: create a legacy workspace/<type-directory> item
   --type TYPE              Item type; default: issue
+  --issue-type TYPE        Optional issue category: bug, feature-request, task, question, improvement, ...
   --status STATUS          Initial status; default: open for issues, active otherwise
   --priority VALUE         Priority value; default: medium
   --owner ID               Initial owner; default: empty
@@ -58,6 +59,7 @@ project_id_key_arg=""
 project_id_key_env="${PI_COORD_PROJECT_KEY:-}"
 workspace_item=0
 item_type="issue"
+issue_type=""
 status_arg=""
 priority="medium"
 owner=""
@@ -95,6 +97,11 @@ while [ "$#" -gt 0 ]; do
     --type)
       [ "$#" -ge 2 ] || coord_die "--type requires a value"
       item_type="$2"
+      shift 2
+      ;;
+    --issue-type)
+      [ "$#" -ge 2 ] || coord_die "--issue-type requires a value"
+      issue_type="$2"
       shift 2
       ;;
     --status)
@@ -191,6 +198,13 @@ if coord_item_type_uses_issue_status_dirs "$item_type" && [ "$status_arg" != "op
 fi
 
 item_type="$(coord_item_type_canonical "$item_type")"
+if [ -n "$(coord_trim "$issue_type")" ]; then
+  if ! coord_item_type_uses_issue_status_dirs "$item_type"; then
+    coord_die "--issue-type is only valid for issue items"
+  fi
+  issue_type="$(coord_issue_type_canonical "$issue_type")"
+  [ -n "$issue_type" ] || coord_die "--issue-type produced an empty category"
+fi
 type_dir="$(coord_item_type_dir "$item_type")"
 title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
@@ -404,6 +418,7 @@ EOF_ITEM
 schema: coordination-item/v1
 id: $item_id
 type: $item_type
+issue_type: $(coord_yaml_scalar "$issue_type")
 status: $status_arg
 project: $project_value
 title: $(coord_yaml_scalar "$title")
