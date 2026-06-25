@@ -104,6 +104,11 @@ fi
 
 raw_item_type="${positional[0]}"
 raw_item_type_lc="$(printf '%s' "$raw_item_type" | tr '[:upper:]' '[:lower:]')"
+case "$raw_item_type_lc" in
+  task|tasks)
+    coord_die "$raw_item_type is not a coordination item type; use issues --issue-type task"
+    ;;
+esac
 list_all_requirement_classes=0
 case "$raw_item_type_lc" in
   legacy-requirement|legacy-requirements|legacy_requirement|legacy_requirements)

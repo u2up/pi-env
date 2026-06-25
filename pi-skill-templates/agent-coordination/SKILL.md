@@ -8,9 +8,10 @@ project-scoped.
 
 ## Coordination repository
 
-The coordination repository is the only synchronization source for agent task
-state. For fresh pi-env projects, find it at `.pi-env/coordination` unless
-`PI_COORD_DIR`, the user, or project coordination rules say otherwise. Existing
+The coordination repository is the only synchronization source for agent issue,
+TODO, and coordination state. For fresh pi-env projects, find it at
+`.pi-env/coordination` unless `PI_COORD_DIR`, the user, or project coordination
+rules say otherwise. Existing
 legacy projects may still use root-level `coordination/`.
 
 ## Required protocol

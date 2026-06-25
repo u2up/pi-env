@@ -399,6 +399,18 @@ if agent-coord-new --coord-dir "$workspace_dir/coordination" --type tdo \
   exit 1
 fi
 grep -q -- '--type tdo is not supported; use --type todo' "$tmp/tdo.err"
+for unsupported_item_type in task tasks; do
+  if agent-coord-new --coord-dir "$workspace_dir/coordination" \
+    --type "$unsupported_item_type" "Unsupported task item type" \
+    >"$tmp/$unsupported_item_type-type.out" 2>"$tmp/$unsupported_item_type-type.err"; then
+    printf 'agent-coord-new unexpectedly accepted --type %s\n' \
+      "$unsupported_item_type" >&2
+    exit 1
+  fi
+  grep -q -- \
+    "--type $unsupported_item_type is not a coordination item type; use --type issue --issue-type task" \
+    "$tmp/$unsupported_item_type-type.err"
+done
 
 todo_open_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
@@ -464,6 +476,20 @@ test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" --path "$actio
 test "$(agent-coord-cat \
   --coord-dir "$workspace_dir/coordination" \
   --path "${item_id%-001}")" = "$action_path"
+
+task_issue_path="$(cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --agent-id agent-a \
+  --role architect \
+  --issue-type Tasks \
+  "Task issue category item" | tail -n 1)"
+grep -q '^type: issue$' "$workspace_dir/coordination/$task_issue_path"
+grep -q '^issue_type: task$' "$workspace_dir/coordination/$task_issue_path"
+case "$task_issue_path" in
+  issues/open/*.yaml) ;;
+  *) printf 'unexpected task issue path: %s\n' "$task_issue_path" >&2; exit 1 ;;
+esac
+task_issue_id="$(grep '^id: ' "$workspace_dir/coordination/$task_issue_path" | sed 's/^id: //')"
 test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" "$todo_id")" = \
   "$(cat "$workspace_dir/coordination/$todo_path")"
 test "$(agent-coord-cat --coord-dir "$workspace_dir/coordination" --path "$todo_id")" = "$todo_path"
@@ -498,6 +524,14 @@ issue_type_filter_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" --issue-type bug issues open)"
 printf '%s\n' "$issue_type_filter_list" \
   | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
+task_issue_type_filter_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" --issue-type tasks issues open)"
+printf '%s\n' "$task_issue_type_filter_list" \
+  | grep -Eq "^$task_issue_id[[:space:]]+open[[:space:]]+Task issue category item$"
+if printf '%s\n' "$task_issue_type_filter_list" | grep -q "$item_id"; then
+  printf 'task issue type filter included non-task issue\n' >&2
+  exit 1
+fi
 issue_type_group_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" --group-by-issue-type issues open)"
 printf '%s\n' "$issue_type_group_list" \
@@ -562,6 +596,18 @@ if agent-coord-list --coord-dir "$workspace_dir/coordination" tdo \
   exit 1
 fi
 grep -q 'item type must be issues, todos,' "$tmp/list-tdo.err"
+for unsupported_list_type in task tasks; do
+  if agent-coord-list --coord-dir "$workspace_dir/coordination" \
+    "$unsupported_list_type" >"$tmp/list-$unsupported_list_type.out" \
+    2>"$tmp/list-$unsupported_list_type.err"; then
+    printf 'agent-coord-list unexpectedly accepted %s item type\n' \
+      "$unsupported_list_type" >&2
+    exit 1
+  fi
+  grep -q \
+    "$unsupported_list_type is not a coordination item type; use issues --issue-type task" \
+    "$tmp/list-$unsupported_list_type.err"
+done
 
 agent-coord-status --coord-dir "$workspace_dir/coordination" >/dev/null
 agent-coord-push \

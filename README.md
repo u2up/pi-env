@@ -82,8 +82,9 @@ agent-coord-status
 pi-env "Inspect this repository and review its state."
 ```
 
-This creates local coordination state under `.pi-env/` for agent task
-tracking. `.pi-env/` is operational state and should normally stay untracked.
+This creates local coordination state under `.pi-env/` for agent issue, TODO,
+and synchronization tracking. `.pi-env/` is operational state and should
+normally stay untracked.
 
 ## 1. Host prerequisites
 
@@ -956,9 +957,10 @@ agent-coord-push -m "Add PIENV documentation item"
 ```
 
 Issue items can use optional `--issue-type` categories such as `bug`,
-`feature-request`, `task`, `question`, or `improvement`. Use
-`agent-coord-list --issue-type bug issues open` to filter, or
-`agent-coord-list --group-by-issue-type issues` to sort grouped issue output.
+`feature-request`, `task`, `question`, or `improvement`; use `--type issue
+--issue-type task` for task-category work. Use `agent-coord-list --issue-type
+bug issues open` to filter, or `agent-coord-list --group-by-issue-type issues`
+to sort grouped issue output.
 
 When top-level `PROJECT.md` exists, omit `--project`; `PI_COORD_PROJECT` can
 remain set for coordination-domain selection without forcing legacy

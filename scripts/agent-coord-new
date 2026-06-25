@@ -180,6 +180,9 @@ if [ -z "$(coord_trim "$item_type")" ]; then
 fi
 raw_item_type_lc="$(printf '%s' "$item_type" | tr '[:upper:]' '[:lower:]')"
 case "$raw_item_type_lc" in
+  task|tasks)
+    coord_die "--type $item_type is not a coordination item type; use --type issue --issue-type task"
+    ;;
   tdo)
     coord_die "--type tdo is not supported; use --type todo"
     ;;

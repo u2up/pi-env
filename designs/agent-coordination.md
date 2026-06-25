@@ -35,7 +35,7 @@ An agent coordination repository is a dedicated Git repository that stores
 shared agent state for a project:
 
 - issues;
-- tasks and TODOs;
+- issue items, including `issue_type: task` work items;
 - bugs;
 - decisions;
 - notes;
@@ -50,11 +50,12 @@ For same-machine use, the shared remote can be a local bare Git repository.
 
 ## 2. Scope for `pi-env`
 
-`pi-env` should not become a task tracker or database. It can provide optional infrastructure and conventions:
+`pi-env` should not become a general tracker or database. It can provide
+optional infrastructure and conventions:
 
 - helper commands for initializing and cloning coordination repositories;
 - scaffolding for a standard directory layout;
-- simple issue/task templates;
+- simple issue and TODO templates;
 - documented Git synchronization protocol;
 - environment variables for selecting a project coordination domain;
 - optional instructions that tell agents where the coordination repo is and how to sync it.
@@ -161,7 +162,9 @@ coordination repositories for compatibility, but new scaffolds do not create
 
 `AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `agent-coord-init`. After initialization, the copies in the coordination repository are authoritative for that project coordination domain and can be edited/versioned like any other coordination state.
 
-Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions` for codebase-specific Pi behavior. Keep task state and cross-agent synchronization in the coordination repository.
+Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions`
+for codebase-specific Pi behavior. Keep issue, TODO, and cross-agent
+synchronization state in the coordination repository.
 
 ## 6. Item IDs and state
 
@@ -496,7 +499,10 @@ Use this skill when working in a project that contains a Git-backed agent coordi
 
 ## Coordination repository
 
-The coordination repository is the only synchronization source for agent task state. Find it at `.pi-env/coordination` unless `PI_COORD_DIR`, the user, or environment says otherwise; legacy projects may still use root-level `coordination/`.
+The coordination repository is the only synchronization source for agent issue,
+TODO, and coordination state. Find it at `.pi-env/coordination` unless
+`PI_COORD_DIR`, the user, or environment says otherwise; legacy projects may
+still use root-level `coordination/`.
 
 ## Required protocol
 

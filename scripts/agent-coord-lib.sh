@@ -198,7 +198,7 @@ coord_item_type_canonical() {
   local type canonical
   type="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
   case "$type" in
-    issue|issues|task|tasks)
+    issue|issues)
       canonical="issue"
       ;;
     functional|functionals|functional-req|functional-reqs|functional_req|functional_reqs|functional-requirement|functional-requirements|functional_requirement|functional_requirements|frq|frqs)
@@ -234,7 +234,7 @@ coord_item_type_code() {
   local type code
   type="$(coord_item_type_canonical "$1")"
   case "$type" in
-    issue|issues|task|tasks)
+    issue|issues)
       code="ISS"
       ;;
     functional-requirement|functional-requirements)
@@ -273,7 +273,7 @@ coord_item_type_dir() {
   local type dir
   type="$(coord_item_type_canonical "$1")"
   case "$type" in
-    issue|issues|task|tasks)
+    issue|issues)
       dir="issues"
       ;;
     functional-requirement|functional-requirements|quality-requirement|quality-requirements|constraint-requirement|constraint-requirements|requirement|requirements|req|reqs)
@@ -304,7 +304,7 @@ coord_item_type_uses_issue_status_dirs() {
   local type
   type="$(coord_item_type_canonical "$1")"
   case "$type" in
-    issue|issues|task|tasks)
+    issue|issues)
       return 0
       ;;
   esac
