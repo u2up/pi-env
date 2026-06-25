@@ -1173,12 +1173,15 @@ and Git history are the memory shared between jobs; a fresh conversation avoids
 stale context from a previous issue influencing item selection, review,
 verification, or lifecycle helper use.
 
-The command fails closed. Dirty project or coordination trees stop the loop; it
-will not reset, discard, or stash source changes for you. A failed
-coordination pull/rebase stops with the helper's error so you can resolve the
-conflict and rerun. A non-zero Pi job also stops the loop instead of moving on
-to another issue; inspect the terminal output and clean up any project or
-coordination changes before restarting.
+The command fails closed around role execution. Dirty project trees stop the
+loop before polling. A dirty coordination tree during idle pre-selection is
+treated as a busy checkout: the loop does not pull, inspect, select, claim,
+reset, discard, or stash, and it retries after the normal sleep. Dirty project
+or coordination trees after a role job remain fatal. A failed coordination
+pull/rebase stops with the helper's error so you can resolve the conflict and
+rerun. A non-zero Pi job also stops the loop instead of moving on to another
+issue; inspect the terminal output and clean up any project or coordination
+changes before restarting.
 
 Serial mode does not require tmux, per-role clones, worktrees, or
 reviewer/tester leases, and the local lock prevents two serial loops from
