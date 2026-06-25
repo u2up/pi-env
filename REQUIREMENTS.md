@@ -557,6 +557,13 @@ top-level current-state fields, `done: null`, `closed: null`,
 acceptance-criteria placeholder, chronological `events`, and linked Markdown
 `messages`. It must not commit or push automatically.
 
+For issue items, `agent-coord-new` must accept optional `--issue-type TYPE`
+category metadata. Supported built-in categories should include `bug`,
+`feature-request`, `task`, `question`, and `improvement`; project-specific
+slugs may be accepted for local categorization. `task` and `tasks` must not
+be accepted as structural `--type` aliases; task-category work must be
+created as `--type issue --issue-type task`.
+
 The generated item ID prefix must resolve in this order:
 
 1. explicit `--project-key`;
@@ -608,8 +615,9 @@ file edits:
 - `agent-coord-status` shows Git status and open/blocked/done item summaries;
 - `agent-coord-list` lists issue, TODO, note, decision, legacy requirement,
   or requirement-class IDs, statuses, and titles, optionally filtered by
-  status, and appends done-issue review/verification sub-status after the
-  title;
+  status, appends done-issue review/verification sub-status after the title,
+  and supports issue category filtering/grouping with `--issue-type`,
+  `--show-issue-type`, and `--group-by-issue-type`;
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
 - coordination commands that create item events or commits accept
@@ -764,7 +772,11 @@ The command must:
 
 - acquire a local lockfile under `.pi-env/locks/` before polling so two
   serial orchestrators do not accidentally operate in the same clone;
-- pull/rebase coordination before selecting work;
+- pull/rebase coordination before selecting work when the coordination
+  checkout is clean;
+- treat a dirty coordination checkout during idle pre-selection polling as
+  a temporary busy condition without pulling, inspecting, selecting,
+  claiming, stashing, resetting, or discarding;
 - stop rather than discard or auto-stash unexpected project changes;
 - select tester work from done issues with `reviewed: true` and
   `verified: false`;
@@ -1530,7 +1542,10 @@ a fake `pi` executable or dry-run mode to assert that:
   item;
 - the serial lock prevents two orchestrators from running in the same
   checkout;
-- unexpected dirty project state stops the loop instead of being discarded.
+- unexpected dirty project state stops the loop instead of being discarded;
+- dirty coordination state during idle pre-selection is treated as a busy
+  checkout without pulling, selecting, claiming, stashing, resetting, or
+  discarding.
 
 ## 5. Constraint requirements
 
@@ -1569,10 +1584,12 @@ working tree and one coordination working tree. It must not introduce
 parallel role execution, tmux orchestration, reviewer/tester leases, or
 shared-clone concurrent Git operations.
 
-The implementation must fail closed when either working tree is in an
-unexpected dirty state. It must not auto-reset, force-push, rewrite
-coordination history, or hide uncommitted source changes in order to keep
-polling.
+The implementation must fail closed when the project working tree is dirty
+before polling or when either working tree is dirty after a role job. During
+idle pre-selection polling only, a dirty coordination checkout may be treated
+as a temporary busy condition, but the implementation must not pull, inspect,
+select, claim, auto-reset, auto-stash, force-push, rewrite coordination
+history, or hide uncommitted source changes in order to keep polling.
 
 Later parallel automation must be designed as a separate phase using
 separate clones or worktrees and explicit coordination leases where needed.
