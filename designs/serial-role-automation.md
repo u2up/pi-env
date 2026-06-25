@@ -101,11 +101,15 @@ Before every Pi job the orchestrator should:
 - hold the default local lock at `.pi-env/locks/pi-serial-roles.lock`,
   creating `.pi-env/locks` when needed, so two serial workers cannot
   accidentally run in the same clone;
-- pull/rebase coordination before inspecting or mutating items;
 - ensure the project working tree is clean unless the previous role job left a
   documented failure state that the user must resolve;
-- ensure the coordination working tree is clean except during an intentional
-  helper mutation;
+- treat a dirty coordination checkout during idle pre-selection polling as a
+  temporary busy condition: do not pull/rebase, inspect, claim, reset, stash, or
+  discard; count the poll as idle and retry after the normal sleep;
+- pull/rebase coordination before inspecting or mutating items when the
+  coordination checkout is clean;
+- ensure the coordination working tree is clean before running a Pi job and
+  after every job completes, except during an intentional helper mutation;
 - stop rather than auto-reset, auto-stash, or discard project changes.
 
 Developer jobs must commit implementation changes before marking an item done

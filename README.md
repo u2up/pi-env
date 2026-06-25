@@ -1131,9 +1131,12 @@ pi-serial-roles --ui none --once
 ```
 
 Each poll holds `.pi-env/locks/pi-serial-roles.lock` and creates
-`.pi-env/locks` as needed. It requires clean project and coordination working
-trees, pulls/rebases coordination, selects at most one issue, and then runs one
-Pi job. Serial automation logs and future local diagnostics default under
+`.pi-env/locks` as needed. It requires a clean project working tree. A dirty
+coordination checkout before selection is treated as busy: the loop skips
+pulling, selecting, and claiming, then sleeps or exits according to the bounded
+idle options. Clean coordination is still required before a pull, before a Pi
+job, and after each job completes. Serial automation logs and future local
+diagnostics default under
 `.pi-env/logs`. Work priority is:
 
 1. tester: done issues with `reviewed: true` and `verified: false`;

@@ -344,18 +344,33 @@ coord_helper() {
   fi
 }
 
-ensure_clean_git() {
-  local dir label status
+git_worktree_status() {
+  local dir label
   dir="$1"
   label="$2"
   git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     || die "$label is not a Git working tree: $dir"
-  status="$(git -C "$dir" status --porcelain --untracked-files=normal)"
+  git -C "$dir" status --porcelain --untracked-files=normal
+}
+
+ensure_clean_git() {
+  local dir label status
+  dir="$1"
+  label="$2"
+  status="$(git_worktree_status "$dir" "$label")"
   if [ -n "$status" ]; then
     printf 'pi-serial-roles: unexpected dirty %s working tree: %s\n' "$label" "$dir" >&2
     printf '%s\n' "$status" >&2
     exit 1
   fi
+}
+
+is_clean_git() {
+  local dir label status
+  dir="$1"
+  label="$2"
+  status="$(git_worktree_status "$dir" "$label")"
+  [ -z "$status" ]
 }
 
 install_lock_traps() {
@@ -809,6 +824,20 @@ idle_polls=0
 while :; do
   selection=""
   ensure_clean_git "$project_root" "project"
+  if ! is_clean_git "$coord_dir" "coordination"; then
+    idle_polls=$((idle_polls + 1))
+    if [ "$dry_run" = "1" ]; then
+      printf 'selected role=none item=none\n'
+      exit 0
+    fi
+    if [ -n "$max_idle_polls" ] && [ "$idle_polls" -ge "$max_idle_polls" ]; then
+      note "idle poll limit reached ($idle_polls); exiting"
+      exit 0
+    fi
+    note "coordination repo busy; sleeping ${sleep_seconds}s before polling again"
+    sleep "$sleep_seconds"
+    continue
+  fi
   pull_coordination
 
   if selection="$(select_next_work)"; then
