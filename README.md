@@ -588,7 +588,7 @@ PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy i
 PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
 PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
-PI_COORD_ROOT=.pi-env/agent-remotes      # bare remotes; project paths map to /workspace, external paths to /agent-remotes
+PI_COORD_ROOT=.pi-env/agent-remotes      # explicit bare remotes; project paths map to /workspace, external paths to /agent-remotes
 PI_COORD_REMOTE_URL=git@example:repo.git # optional Git-server coordination remote URL; no local remotes mount required
 PI_COORD_PROJECT=pi-env                 # coordination project/domain name
 PI_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
@@ -905,7 +905,10 @@ If `PI_COORD_ROOT` is set to a project-local path, `pi-bwrap` rewrites it to the
 matching `/workspace/...` path. If it is set to an existing local path outside
 the project, `pi-bwrap` bind-mounts that directory read-write at
 `/agent-remotes` and rewrites `PI_COORD_ROOT=/agent-remotes` inside the
-sandbox.
+sandbox. Without explicit overrides, the sandbox launcher only recognizes
+project-local `.pi-env/coordination` and `.pi-env/agent-remotes`; root-level
+`coordination/` and `agent-remotes/` directories are not selected or mounted
+automatically.
 
 When `--remote` or `PI_COORD_REMOTE_URL` is set, helpers use that URL directly
 and do not create a local bare remote. The remote repository must already exist

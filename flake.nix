@@ -99,8 +99,6 @@
             PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
             PI_COORD_ROOT=.pi-env/agent-remotes Bare remotes root; project paths stay under /workspace,
                                            external paths bind at /agent-remotes
-            PI_BWRAP_COMPAT_AGENT_REMOTES=1
-                                           Opt in to legacy /workspace/agent-remotes bind
             PI_COORD_REMOTE_URL=url       Coordination Git remote URL passed through without local mounts
             PI_COORD_ROLE=architect       Active coordination role passed to helpers
             PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
@@ -338,18 +336,6 @@
                 fi
                 ;;
             esac
-          elif [ "''${PI_BWRAP_COMPAT_AGENT_REMOTES:-0}" = "1" ] \
-            && [ -z "''${PI_COORD_REMOTE_URL:-}" ] \
-            && [ ! -d "$project_root/.pi-env/agent-remotes" ] \
-            && [ ! -d "$project_root/.pi-env/coordination" ] \
-            && [ ! -d "$project_root/agent-remotes" ] \
-            && [ -d /workspace/agent-remotes ]; then
-            host_common_coord_root="$(realpath -m /workspace/agent-remotes)"
-            project_coord_root="$(realpath -m "$project_root/agent-remotes")"
-            if [ "$host_common_coord_root" != "$project_coord_root" ]; then
-              coord_root_bind_args=(--bind "$host_common_coord_root" /workspace/agent-remotes)
-              echo "pi-bwrap: compatibility: host /workspace/agent-remotes available at /workspace/agent-remotes" >&2
-            fi
           fi
 
           coord_bind_args=()
@@ -372,8 +358,6 @@
             esac
           elif [ -d "$project_root/.pi-env/coordination" ]; then
             host_coord_dir="$(realpath -m "$project_root/.pi-env/coordination")"
-          elif [ -d "$project_root/coordination" ]; then
-            host_coord_dir="$(realpath -m "$project_root/coordination")"
           fi
 
           if [ -n "$host_coord_dir" ]; then
@@ -496,7 +480,6 @@
           fi
           copy_env PI_COORD_REMOTE_URL
           copy_env PI_COORD_PROJECT
-          copy_env PI_COORD_WORKSPACE
           copy_env PI_COORD_AGENT_ID
           copy_env PI_COORD_PROJECT_KEY
           copy_env PI_COORD_ROLE

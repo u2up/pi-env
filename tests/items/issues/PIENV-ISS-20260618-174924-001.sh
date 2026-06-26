@@ -7,14 +7,7 @@ cd "$repo_root"
 
 flake=flake.nix
 tmpdir="$(mktemp -d)"
-created_workspace_remotes=0
-cleanup() {
-  rm -rf "$tmpdir"
-  if [ "$created_workspace_remotes" = 1 ]; then
-    rm -rf /workspace/agent-remotes
-  fi
-}
-trap cleanup EXIT
+trap 'rm -rf "$tmpdir"' EXIT
 
 script="$tmpdir/pi-bwrap"
 awk '
@@ -135,19 +128,9 @@ run_harness "$coord_project" "$coord_capture"
 test_grep '^PI_COORD_DIR$' "$coord_capture"
 test_grep '^/workspace/.pi-env/coordination$' "$coord_capture"
 
-if [ ! -e /workspace/agent-remotes ]; then
-  mkdir -p /workspace/agent-remotes
-  created_workspace_remotes=1
-fi
-
 compat_capture="$tmpdir/compat-capture"
 run_harness "$tmpdir/compat-project" "$compat_capture"
 assert_no_grep '^/workspace/agent-remotes$' "$compat_capture"
-
-compat_opt_in_capture="$tmpdir/compat-opt-in-capture"
-run_harness "$tmpdir/compat-project" "$compat_opt_in_capture" \
-  PI_BWRAP_COMPAT_AGENT_REMOTES=1
-test_grep '^/workspace/agent-remotes$' "$compat_opt_in_capture"
 
 modern_coord_project="$tmpdir/modern-coord-project"
 mkdir -p "$modern_coord_project/.pi-env/coordination"
