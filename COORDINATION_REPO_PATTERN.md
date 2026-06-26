@@ -68,7 +68,7 @@ implementation systems own implementation artifacts and execution evidence:
            | links to and is supported by
            v
 
-      Implementation Systems
+      Implementation Ecosystem
 
   Implementation repositories: source, tests, build config, docs
   Code review systems: pull requests, reviews, merge state
