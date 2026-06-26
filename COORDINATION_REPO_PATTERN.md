@@ -1,6 +1,6 @@
 # COORDINATION_REPO_PATTERN.md
 
-> **Status:** Draft 0.2
+> **Status:** Draft 0.3
 >
 > This document describes the Coordination Repository Pattern independently of
 > any specific implementation. It originated during the design of **pi-env**, but
@@ -26,6 +26,35 @@ humans, scripts, CI jobs, release tooling, and AI-assisted development tools can
 all participate through the same reviewable source of truth.
 
 Implementation repositories remain focused on source code and deliverables.
+
+---
+
+## 30-Second Example
+
+A coordination repository owns the durable project-state records:
+
+```text
+coordination-repo/
+  requirements/     desired behavior and constraints
+  decisions/        rationale and trade-offs
+  issues/           workflow, ownership, review, verification, acceptance
+  release-plans/    release intent and readiness notes
+```
+
+The implementation repository remains authoritative for implementation
+artifacts:
+
+```text
+implementation-repo/
+  src/
+  tests/
+  build/
+  docs/
+```
+
+A requirement can link to a decision, an issue can link to the requirement, and
+the issue can link to source commits, tests, pull requests, or CI evidence
+without moving ownership of those artifacts out of the implementation systems.
 
 ---
 
@@ -60,6 +89,12 @@ cannot do so reliably, and even human teams lose context over time.
 
 A coordination repository provides a single Git-native place for project state
 that should be explicit, attributable, reviewable, and traceable.
+
+Git is especially well-suited to coordination state because it provides durable
+history, attribution, branching, merging, review workflows, offline operation,
+and portable plain-text storage. Using Git for project state makes these
+properties available to coordination data without requiring every participant or
+automation tool to depend on one hosted service.
 
 AI agents and other automation increase the need for such state, but they are
 not a prerequisite for the pattern. The pattern is useful anywhere project
@@ -112,6 +147,17 @@ This distinction is the foundation of the pattern.
 
 ## Definitions
 
+### Project state
+
+Durable information required to understand, coordinate, review, and evolve a
+project beyond the implementation artifacts themselves.
+
+Project state includes intent, scope, constraints, decisions, ownership,
+lifecycle status, verification, acceptance, planning context, and links to
+supporting implementation evidence. It is distinct from source code, tests,
+build configuration, packages, and other deliverables, though it often refers to
+them.
+
 ### Coordination repository
 
 A Git repository dedicated to project coordination state. It stores artifacts
@@ -145,6 +191,26 @@ decision, note, risk, release task, bug, or other unit of project state.
 Implementations may use different item schemas and names. For example, one
 implementation may model task-like work as issues with a task category, while
 another may use a dedicated task item type.
+
+---
+
+## Common Artifact Types
+
+A coordination repository usually combines several kinds of project-state
+artifacts. The exact names and schemas are implementation-specific, but the
+following conceptual roles are common:
+
+* **Requirement**: desired behavior, quality, constraint, policy, or outcome.
+* **Decision**: selected approach plus rationale, alternatives, and trade-offs.
+* **Issue**: actionable workflow container with lifecycle, ownership, and
+  evidence.
+* **TODO**: lightweight reminder or follow-up that does not need the full issue
+  lifecycle.
+* **Note**: durable contextual information that should remain discoverable.
+
+Other domains may add risks, incidents, release plans, milestones, runbooks, or
+review records. The important property is that each artifact type has a clear
+coordination purpose and an explicit relationship to other project state.
 
 ---
 
@@ -272,7 +338,7 @@ The exact layout is implementation-specific.
 
 ---
 
-## Artifact Model
+## Artifact Representation
 
 A practical coordination repository usually combines structured metadata with
 human-readable prose.
@@ -468,7 +534,18 @@ one authoritative source. Other systems may mirror, summarize, link to, or
 notify about that state, but they should not silently compete as independent
 sources of truth.
 
-Common authority boundaries include:
+A typical division of authority is:
+
+| System | Common authoritative state |
+| --- | --- |
+| Implementation repository | Source code, tests, build configuration, and deliverable artifacts. |
+| Coordination repository | Requirements, decisions, lifecycle state, ownership, acceptance, and traceability. |
+| Issue tracker | Public intake, external discussion, labels, notifications, and user-facing status. |
+| Code review system | Pull request discussion, reviewer approvals, and merge status. |
+| CI system | Raw run results, logs, artifacts, and execution metadata. |
+| Chat system | Synchronous discussion and notifications, not durable project state. |
+
+The exact boundaries are domain-specific. Common authority boundaries include:
 
 * issue trackers owning public intake, discussion, and external notification;
 * coordination repositories owning implementation status, lifecycle state,
@@ -520,6 +597,34 @@ The two approaches can complement each other. For example, an issue tracker may
 serve as a public intake channel while the coordination repository stores the
 structured project state used for implementation planning, traceability,
 automation, and long-term history.
+
+---
+
+## Consequences and Trade-Offs
+
+Adopting a coordination repository creates useful discipline, but it also adds
+operational responsibility.
+
+Benefits include:
+
+* clearer separation between intent and implementation;
+* durable review history for requirements, decisions, and workflow state;
+* better traceability from project intent to implementation evidence;
+* a shared medium for humans and automation;
+* reduced dependence on one hosted project-management service.
+
+Costs and risks include:
+
+* another repository and workflow for participants to understand;
+* stale coordination state if actors do not update it promptly;
+* duplicated or conflicting state when authority rules are unclear;
+* semantic conflicts that Git cannot detect automatically;
+* possible exposure of sensitive planning, operational, or security context;
+* generated reports becoming misleading if their authoritative inputs are not
+  clear.
+
+These risks are manageable when the coordination domain defines authority,
+lifecycle, synchronization, review, and sensitivity rules explicitly.
 
 ---
 
