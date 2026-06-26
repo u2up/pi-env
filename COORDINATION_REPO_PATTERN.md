@@ -638,6 +638,9 @@ Built-in type codes include:
 Task-like work is represented as an issue with `category: task`, not as a
 separate structural `task` item type.
 
+Built-in issue categories are `bug`, `feature-request`, `task`, `question`,
+and `improvement`; project-specific slugs may be used for local categorization.
+
 The mental model is that an issue is an actionable workflow container: a bug
 tracks defect remediation, a feature request tracks desired capability, an
 improvement tracks refinement of existing behavior, a question tracks a needed
