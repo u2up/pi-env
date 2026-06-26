@@ -2,6 +2,8 @@
 
 > **Status:** Draft 0.3
 >
+> **Author:** Samo Pogačnik <samo_pogacnik@t-2.net>
+>
 > This document describes the Coordination Repository Pattern independently of
 > any specific implementation. It originated during the design of **pi-env**, but
 > is intended as a reusable architectural pattern for Git-backed project state.
@@ -909,6 +911,15 @@ shared memory between jobs.
 Parallel automation, multiple worktrees, leases, and cross-clone concurrency
 rules are future implementation concerns rather than requirements of the
 generic pattern.
+
+---
+
+## Acknowledgments
+
+This pattern was developed during work on `pi-env` and refined through
+independent review, discussion, and AI-assisted drafting and critique.
+
+AI-assisted review and drafting support was provided by Pi/ChatGPT.
 
 ---
 
