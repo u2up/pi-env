@@ -549,13 +549,11 @@ pi-env only chooses which root to expose for this run.
   `/resume` and `--continue` can access sessions for the directory/project
   without exposing all sessions;
 - passes `PI_COORD_ROOT`, `PI_COORD_REMOTE_URL`, `PI_COORD_PROJECT`,
-  `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, legacy
-  `PI_COORD_WORKSPACE` when set, and coordination directory context, mapping
-  project-local coordination paths to `/workspace/...`, binding explicit
-  external `PI_COORD_ROOT` paths at `/agent-remotes`, retaining an explicit
-  opt-in `/workspace/agent-remotes` compatibility bind for legacy local setups,
-  and explicitly mounting an external coordination clone with
-  `PI_BWRAP_COORDINATION_DIR`;
+  `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`, `PI_COORD_ROLE`, and
+  coordination directory context, mapping project-local coordination paths to
+  `/workspace/...`, binding explicit external `PI_COORD_ROOT` paths at
+  `/agent-remotes`, and explicitly mounting an external coordination clone
+  with `PI_BWRAP_COORDINATION_DIR`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or
   Docker sockets;
 - clears the environment, then passes only terminal basics and selected LLM
@@ -592,10 +590,8 @@ PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CON
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
 PI_COORD_ROOT=.pi-env/agent-remotes      # bare remotes; project paths map to /workspace, external paths to /agent-remotes
 PI_COORD_REMOTE_URL=git@example:repo.git # optional Git-server coordination remote URL; no local remotes mount required
-PI_BWRAP_COMPAT_AGENT_REMOTES=1         # opt in to legacy /workspace/agent-remotes bind
 PI_COORD_PROJECT=pi-env                 # coordination project/domain name
 PI_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
-PI_COORD_WORKSPACE=piws                 # deprecated compatibility alias for PI_COORD_PROJECT
 PI_COORD_ROLE=architect                 # active coordination role for helper commits/events
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_EXTRA_PATH=/nix/store/.../bin   # advanced: validated extra command dirs
@@ -798,16 +794,15 @@ Role definitions are Markdown files with frontmatter. Project roles live in
 `.pi/roles/*.md` beside other project Pi resources. Common roles can live in the
 host/common agent resource directory as `roles/*.md`; `pi-bwrap` imports that
 `roles/` directory with common `skills/` and `prompts/` when common import is
-enabled. A mounted coordination clone may also provide `coordination/roles` for
-that project coordination domain.
+enabled. A mounted coordination clone may also provide roles for that project
+coordination domain.
 
 Roles are merged by `name`; later sources override earlier ones:
 
 1. bundled base package roles;
 2. global/common agent roles imported into `/home/pi/.pi/agent/roles`;
 3. common roles from `PI_BWRAP_COMMON_AGENT_DIR/roles` when directly visible;
-4. coordination-domain roles from `$PI_COORD_DIR/roles` or
-   `coordination/roles`;
+4. coordination-domain roles from `$PI_COORD_DIR/roles`;
 5. project roles from `.pi/roles`.
 
 See `role-manager/ROLE_FILE_SCHEMA.md` for the full schema. See
@@ -852,10 +847,8 @@ See `designs/role-manager.md` for the architecture.
 selected project. They are plain Git/text-file tooling and are separate from
 `pi-start`. Install `#pi-coordination`, use the compatibility `#pi-runtime`
 bundle, or leave `includeCoordinationHelpers` enabled in `mkPiShell` when you
-want these commands. Legacy `projects/<project>/` and `workspace/` layouts can
-still be read, listed, linted, and migrated, but fresh projects default to the
-project-local `.pi-env/coordination` clone for the one project mounted at
-`/workspace` per invocation.
+want these commands. Projects use the project-local `.pi-env/coordination`
+clone for the one project mounted at `/workspace` per invocation.
 
 Guided setup with inferred, project-specific defaults:
 
@@ -906,15 +899,7 @@ $PI_COORD_ROOT/$PI_COORD_PROJECT-coordination.git
 If `PI_COORD_ROOT` is unset, helpers default to the project-local
 `.pi-env/agent-remotes` directory. Inside the pi-env sandbox, that is normally
 `/workspace/.pi-env/agent-remotes`, available through the standard project
-bind mount rather than a separate remotes mount. Existing root-level
-`agent-remotes/` directories remain compatibility detection paths. During
-migration, `pi-bwrap` can keep a narrow compatibility bind for an existing
-host `/workspace/agent-remotes`, but only when `PI_BWRAP_COMPAT_AGENT_REMOTES=1`
-is set, the selected project does not already provide a modern
-`.pi-env/coordination` or `.pi-env/agent-remotes`, does not provide legacy
-`agent-remotes/`, and no Git-server remote URL is configured. The bind is not
-automatic because Bubblewrap may need to create the mountpoint under the
-read-write `/workspace` project mount.
+bind mount rather than a separate remotes mount.
 
 If `PI_COORD_ROOT` is set to a project-local path, `pi-bwrap` rewrites it to the
 matching `/workspace/...` path. If it is set to an existing local path outside
@@ -932,16 +917,7 @@ It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, project
 `PROJECT.md` metadata, root `issues/`, `requirements/`, `todos/`,
 `decisions/`, and `notes/` directories, protocol docs, item-format docs, and
 `.pi/skills/agent-coordination/SKILL.md`. When `PI_COORD_DIR` is unset, fresh
-projects use `.pi-env/coordination`; existing root-level `coordination/`
-clones remain compatibility detection paths. New scaffolds do not include
-`WORKSPACE.md` or `workspace/` directories by default.
-
-Deprecated compatibility remains available for older automation:
-`PI_COORD_WORKSPACE` and `--workspace` are aliases for the project name when
-`PI_COORD_PROJECT`/`--project` is omitted, and helper commands print a
-non-fatal deprecation warning when those aliases are used. The
-`agent-coord-new --workspace-item` form can still create legacy `workspace/`
-items when explicitly requested, also with a warning.
+projects use `.pi-env/coordination`.
 
 Clone the same coordination domain elsewhere with:
 
@@ -963,8 +939,7 @@ bug issues open` to filter, or `agent-coord-list --group-by-category issues`
 to sort grouped issue output.
 
 When top-level `PROJECT.md` exists, omit `--project`; `PI_COORD_PROJECT` can
-remain set for coordination-domain selection without forcing legacy
-`projects/<project>/` item paths.
+remain set for coordination-domain selection while root item paths are used.
 
 Generated item IDs use a project item key prefix, a type code, a UTC timestamp,
 and a three-digit collision/order suffix that starts at `001`:
@@ -977,28 +952,23 @@ For example, an issue can be created as
 `PIENV-ISS-20260607-204155-001.yaml`; a functional requirement can be created as
 `PIENV-FRQ-20260607-204155-001.yaml`. Use
 `agent-coord-init --project-key PIENV` to set the initial project's stored key
-during scaffolding. Project-root keys are stored in top-level `PROJECT.md` as
-`item_key`. Legacy project keys may exist in `projects/<project>/PROJECT.md`,
-and legacy workspace item keys may exist in `WORKSPACE.md` for compatibility.
-Agents should use stored keys instead of inventing new ones.
+during scaffolding. Project-root keys are stored in top-level `PROJECT.md` as `item_key`. Agents
+should use stored keys instead of inventing new ones.
 
 Key resolution for `agent-coord-new` is:
 
 1. `--project-key KEY`;
-2. stored root project, legacy project, or compatibility-domain `item_key`;
+2. stored root project `item_key`;
 3. `PI_COORD_PROJECT_KEY` when no stored key exists;
 4. derived `--project` / `PI_COORD_PROJECT` for project items;
-5. derived coordination clone directory name for explicit legacy
-   workspace-level items.
+5. derived coordination clone directory name when no project name is set.
 
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
 backslashes, and other non-alphanumeric characters are removed. For example,
 `pi-env_test` becomes `PIENVTEST`. `--id ID` overrides the whole item ID.
 Built-in type codes are `ISS` for `issue`, `FRQ` for `functional-requirement`,
 `QRQ` for `quality-requirement`, `CRQ` for `constraint-requirement`, `TODO` for
-`todo`, `DEC` for `decision`, and `NOTE` for `note`. Generic `REQ` requirement
-IDs are legacy-only unless an explicit supersession or migration decision says
-otherwise.
+`todo`, `DEC` for `decision`, and `NOTE` for `note`.
 
 Lifecycle helpers are also available:
 
@@ -1029,17 +999,12 @@ needed, `blocked` means developer work cannot proceed, `done` means the
 developer believes implementation is complete, and `closed` means final
 accepted after review and verification.
 
-Functional, quality, constraint, and legacy requirements use the root-level
-`requirements/` directory in project-root coordination clones while preserving
-FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. TODO items use `todos/` and
-single top-level `body: |-` records without issue history. Existing
-`projects/<project>/requirements/`, `projects/<project>/todos/`, and
-`workspace/` typed item directories are legacy compatibility state for migrated
-coordination repos, not a primary multi-project workspace model. The
-`agent-coord-list requirements` command
-reports functional, quality, constraint, and legacy requirement items; use
-`functional`, `quality`, `constraint`, or `legacy-requirements` for
-class-specific listings. Done issue listings append
+Functional, quality, and constraint requirements use the root-level
+`requirements/` directory while preserving FRQ, QRQ, and CRQ item-ID type
+codes. TODO items use `todos/` and single top-level `body: |-` records without
+issue history. The `agent-coord-list requirements` command reports functional,
+quality, and constraint requirement items; use `functional`, `quality`, or
+`constraint` for class-specific listings. Done issue listings append
 review and verification sub-status after the title. Imported requirement items
 record traceability in a top-level `source_refs` list using stable strings such
 as old requirement IDs, `REQUIREMENTS.md#heading`, and `USE_CASES.md#section`;
@@ -1103,9 +1068,9 @@ shake-out before investing in parallel workers.
 Serial mode prerequisites:
 
 - run from a clean Git project root, or pass `--project-root DIR`;
-- provide a writable coordination checkout. Fresh projects default to
-  `.pi-env/coordination`; use `PI_COORD_DIR` or `--coord-dir DIR` for another
-  path, including legacy root-level `./coordination` clones;
+- provide a writable coordination checkout. Projects default to
+  `.pi-env/coordination`; use `PI_COORD_DIR` or `--coord-dir DIR` for an
+  explicit override path;
 - run from the pi-env devshell/profile so `pi-env`, `agent-coord-*` helpers,
   and `PI_ENV_ROLE_MANAGER_PACKAGE` are available, or pass explicit `--pi-env`
   and `--role-manager` paths;

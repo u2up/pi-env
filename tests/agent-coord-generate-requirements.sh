@@ -30,36 +30,35 @@ grep -F '#### TEST-031' "$stdout_file" >/dev/null
 grep -F '#### CRQ-009' "$stdout_file" >/dev/null
 grep -F '#### CRQ-010' "$stdout_file" >/dev/null
 grep -F '#### CRQ-010 — Requirement source of truth precedence' "$stdout_file" >/dev/null
-grep -F 'projects/<project>/requirements/' "$stdout_file" >/dev/null
+grep -F 'Requirement coordination items live under root `requirements/`' "$stdout_file" >/dev/null
 grep -F 'one renderable top-level `body: |-` block' "$stdout_file" >/dev/null
 
-mixed_coord="$tmpdir/mixed-coordination"
-mkdir -p "$mixed_coord/requirements" "$mixed_coord/projects/pi-env/requirements"
-cat > "$mixed_coord/projects/pi-env/requirements/PIENV-FRQ-20260618-000000-001.yaml" <<'EOF'
+root_coord="$tmpdir/root-coordination"
+mkdir -p "$root_coord/requirements"
+cat > "$root_coord/requirements/PIENV-FRQ-20260618-000000-001.yaml" <<'EOF'
 schema: coordination-item/v1
 id: PIENV-FRQ-20260618-000000-001
 type: functional-requirement
-requirement_key: MIX-001
+requirement_key: ROOT-001
 requirement_class: functional
 requirement_kind: detailed-behavior
 domain: test
 status: active
 project: pi-env
-title: "MIX-001"
+title: "ROOT-001"
 render_order: 1
-render_section: "3.9 Mixed layout requirements"
+render_section: "3.9 Root layout requirements"
 testable: no
 testability_note: fixture
 body: |-
-  #### MIX-001 Mixed root and legacy fixture
+  #### ROOT-001 Root-only fixture
 
-  Legacy requirements must render even when an empty root requirements/
-  directory exists during migration.
+  Root requirements must render from the coordination requirements directory.
 EOF
-mixed_output="$tmpdir/mixed-requirements.md"
+root_output="$tmpdir/root-requirements.md"
 scripts/agent-coord-generate-requirements \
-  --coordination-dir "$mixed_coord" > "$mixed_output"
-grep -F '#### MIX-001 Mixed root and legacy fixture' "$mixed_output" >/dev/null
+  --coordination-dir "$root_coord" > "$root_output"
+grep -F '#### ROOT-001 Root-only fixture' "$root_output" >/dev/null
 
 sample_requirement=".pi-env/coordination/requirements/PIENV-FRQ-20260612-210000-001.yaml"
 if [ ! -f "$sample_requirement" ]; then

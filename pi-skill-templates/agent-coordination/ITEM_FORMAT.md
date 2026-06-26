@@ -20,11 +20,7 @@ PIENV-ISS-20260607-204155-001.yaml
 PIENV-FRQ-20260607-204155-002.yaml
 ```
 
-`PROJECTKEY` is uppercase alphanumeric text. Project item keys are stored in
-root-layout `PROJECT.md` as `item_key`. Legacy project clones may store keys
-in `projects/<project>/PROJECT.md`. Top-level `WORKSPACE.md` keys and
-workspace-level item IDs are legacy compatibility metadata only; new pi-env
-project coordination should create project-scoped items.
+`PROJECTKEY` is uppercase alphanumeric text. Project item keys are stored in top-level `PROJECT.md` as `item_key`.
 
 `TYPECODE` is an uppercase item-type abbreviation. Built-in mappings are:
 
@@ -32,8 +28,6 @@ project coordination should create project-scoped items.
 - `FRQ`: `functional-requirement`;
 - `QRQ`: `quality-requirement`;
 - `CRQ`: `constraint-requirement`;
-- `REQ`: legacy generic `requirement` (do not use for new requirements
-  unless an explicit supersession or migration decision says otherwise);
 - `TODO`: `todo`;
 - `DEC`: `decision`;
 - `NOTE`: `note`.
@@ -45,8 +39,7 @@ sequence number.
 
 When `agent-coord-new` needs to derive a project key, it uppercases the source
 name and removes delimiters, whitespace, slashes, backslashes, pipes, and other
-non-alphanumeric characters. Project items derive from the project name;
-legacy workspace-level items derive from the coordination directory name.
+non-alphanumeric characters. Project items derive from the project name.
 `--id` may override the whole item ID when a caller needs to preserve or import
 an ID.
 
@@ -156,40 +149,22 @@ issues/open/
 issues/blocked/
 issues/done/
 issues/closed/
-projects/<project>/issues/open/      # legacy compatibility
-projects/<project>/issues/blocked/   # legacy compatibility
-projects/<project>/issues/done/      # legacy compatibility
-projects/<project>/issues/closed/    # legacy compatibility
-workspace/issues/open/               # legacy compatibility
-workspace/issues/blocked/            # legacy compatibility
-workspace/issues/done/               # legacy compatibility
-workspace/issues/closed/             # legacy compatibility
 ```
 
 Other item types live under their semantic type directory and do not mirror
 issue status directories by default. In project-root clones, all requirement
 classes share the root-level `requirements/` directory while preserving FRQ,
-QRQ, CRQ, and legacy REQ item-ID type codes. Legacy project/workspace layouts
-are compatibility state for migrated coordination repositories:
+QRQ, and CRQ item-ID type codes.
 
 ```text
-requirements/                           # functional, quality, constraint, and legacy requirements
+requirements/                           # functional, quality, and constraint requirements
 todos/                                  # lightweight TODO records
 decisions/
 notes/
-projects/<project>/requirements/        # legacy compatibility
-projects/<project>/todos/               # legacy compatibility
-projects/<project>/decisions/           # legacy compatibility
-projects/<project>/notes/               # legacy compatibility
-workspace/requirements/                 # legacy compatibility
-workspace/todos/                        # legacy compatibility
-workspace/decisions/                    # legacy compatibility
-workspace/notes/                        # legacy compatibility
 ```
 
-Generic `REQ` requirement IDs are legacy-only unless an explicit supersession or
-migration decision says otherwise. Preserve historical IDs and filenames; do not
-silently renumber or rewrite old items just to satisfy the FRQ/QRQ/CRQ taxonomy.
+Preserve historical IDs and filenames; do not silently renumber or rewrite old
+items just to satisfy the FRQ/QRQ/CRQ taxonomy.
 
 Projects may define additional type-specific status values, but should avoid
 moving test scripts when an item's lifecycle status changes.
@@ -229,30 +204,25 @@ testability_note: 'Documentation-only; verified by review.'
 
 Use `testable: yes` when the item should have a project-repository test script
 whose filename stem exactly matches the item ID. Use `testable: no` only with a
-short rationale, for example documentation-only work, a policy decision, a
-legacy closed item predating this convention, or coverage by another explicitly
-named requirement item.
+short rationale, for example documentation-only work, a policy decision, or
+coverage by another explicitly named requirement item.
 
 Executable item tests live in the project repository, not the coordination
-repository. Project item tests mirror the project and item-type path, but not
-issue status directories:
+repository. Project item tests mirror the root item type, but not issue status directories:
 
 ```text
-tests/items/<item-id>.sh
+tests/items/issues/<item-id>.sh
 tests/items/requirements/<item-id>.sh
-tests/items/projects/<project>/issues/<item-id>.sh        # legacy
-tests/items/projects/<project>/requirements/<item-id>.sh  # legacy
-tests/items/workspace/issues/<item-id>.sh                 # legacy
-tests/items/workspace/requirements/<item-id>.sh           # legacy
+tests/items/todos/<item-id>.sh
 ```
 
 Examples:
 
 ```text
-coordination/issues/closed/PIENV-ISS-20260607-204155-001.yaml
+.pi-env/coordination/issues/closed/PIENV-ISS-20260607-204155-001.yaml
 tests/items/PIENV-ISS-20260607-204155-001.sh
 
-coordination/requirements/PIENV-FRQ-20260607-204155-001.yaml
+.pi-env/coordination/requirements/PIENV-FRQ-20260607-204155-001.yaml
 tests/items/requirements/PIENV-FRQ-20260607-204155-001.sh
 ```
 

@@ -1,9 +1,6 @@
 # Agent Coordination Rules
 
 This repository is the authoritative coordination state for this project.
-Historical workspace-level state may exist for compatibility, but new pi-env
-coordination work is project-scoped.
-
 ## Required rules
 
 1. Treat this coordination repository as the only shared synchronization
@@ -39,10 +36,7 @@ coordination work is project-scoped.
 Use the stored `item_key` for the project key portion of generated
 coordination item IDs:
 
-- root-layout project items use top-level `PROJECT.md`;
-- legacy project items use `projects/<project>/PROJECT.md`;
-- top-level `WORKSPACE.md` keys are legacy compatibility metadata for existing
-  workspace-level items only.
+- project items use top-level `PROJECT.md`.
 
 Do not invent, rename, or silently change item keys. If a project key is
 missing, derive it from the project name by uppercasing it and removing
@@ -59,9 +53,7 @@ New item IDs use this shape and filenames use the item ID only:
 Built-in type codes are `ISS` for `issue`, `FRQ` for
 `functional-requirement`, `QRQ` for `quality-requirement`, `CRQ` for
 `constraint-requirement`, `TODO` for `todo`, `DEC` for `decision`, and `NOTE`
-for `note`. Legacy generic requirements use `REQ` for `requirement`; do not
-create new `REQ` IDs unless an explicit supersession or migration decision says
-otherwise. The UTC timestamp records creation time.
+for `note`. The UTC timestamp records creation time.
 The `NNN` collision/order suffix starts at `001` for each timestamp and is not
 a global sequence number. Historical items may keep legacy IDs and slug
 filenames.
@@ -82,13 +74,8 @@ The completion metric for managers, reviewers, and testers is therefore not
 
 Other item types live under semantic type directories. All requirement classes
 use the single root-level `requirements/` directory in project-root clones
-while preserving FRQ, QRQ, CRQ, and legacy REQ item-ID type codes. TODO items
-use `todos/` and the `TODO` item-ID type code. Existing
-`projects/<project>/requirements/`, `projects/<project>/todos/`, and
-`workspace/` typed directories are legacy compatibility state for migrated
-coordination repositories. Generic
-`REQ` IDs are legacy-only unless an explicit supersession or migration decision
-says otherwise. Do not mirror issue
+while preserving FRQ, QRQ, CRQ item-ID type codes. TODO items
+use `todos/` and the `TODO` item-ID type code. Do not mirror issue
 status directories in project test paths, and do not silently renumber or
 rewrite historical items to fit newer conventions.
 
@@ -134,17 +121,12 @@ cases such as documentation-only work, policy decisions, legacy closed items
 predating the convention, or explicit coverage by another requirement item.
 
 Item-matched tests live in the project repo under `tests/items/` and match the
-item ID exactly by filename stem. They mirror the project item path and item
-type, but not issue lifecycle status. Legacy workspace-level items may keep
-mirrored workspace test paths:
+item ID exactly by filename stem. They mirror the root item type, but not issue lifecycle status:
 
 ```text
-tests/items/<item-id>.sh
+tests/items/issues/<item-id>.sh
 tests/items/requirements/<item-id>.sh
-tests/items/projects/<project>/issues/<item-id>.sh        # legacy
-tests/items/projects/<project>/requirements/<item-id>.sh  # legacy
-tests/items/workspace/issues/<item-id>.sh                 # legacy
-tests/items/workspace/requirements/<item-id>.sh           # legacy
+tests/items/todos/<item-id>.sh
 ```
 
 Verification events should record exact commands run and pass/fail evidence.

@@ -40,7 +40,7 @@ shared agent state for a project:
 - decisions;
 - notes;
 - chronological agent event histories;
-- optional migration or legacy records for related projects.
+- optional migration records for related projects.
 
 For multi-agent work on the same project, the coordination repository is the
 only synchronization mechanism. Agents pull, edit, commit, and push
@@ -70,15 +70,9 @@ Use this rule:
 one bare coordination repo == one project coordination domain
 ```
 
-A coordination domain normally belongs to one selected project. The historical
-`PI_COORD_WORKSPACE` name and `workspace/` directory are compatibility labels
-for the coordination data model; they do not make pi-env a multi-project
-workspace manager. If several repositories need shared planning during a
-migration, the coordination repo may keep per-project directories as legacy or
-integration state, but each pi-env invocation still selects exactly one project
-root for `/workspace`.
-
-If projects are unrelated, use separate bare coordination repositories.
+A coordination domain belongs to one selected project. Each pi-env invocation
+selects exactly one project root for `/workspace`. If projects are unrelated,
+use separate bare coordination repositories.
 
 Example:
 
@@ -110,10 +104,8 @@ keeps pi-env state discoverable while avoiding root-level clutter:
   locks/                 # local process locks
 ```
 
-The preferred default coordination clone is `.pi-env/coordination`; the
-preferred default local bare remote root is `.pi-env/agent-remotes`. Legacy
-`coordination/` and `agent-remotes/` remain supported detection paths for
-existing projects and compatibility migrations.
+The default coordination clone is `.pi-env/coordination`; the default local
+bare remote root is `.pi-env/agent-remotes`.
 
 Do not merge project-owned Pi resources into `.pi-env/`. Project-specific
 rules, skills, prompts, roles, extensions, and settings stay in `AGENTS.md` and
@@ -156,9 +148,6 @@ Recommended project-root coordination layout inside `.pi-env/coordination`:
     agent-b.md
 ```
 
-Legacy `projects/<project>/` and `workspace/` layouts may remain in migrated
-coordination repositories for compatibility, but new scaffolds do not create
-`WORKSPACE.md` or `workspace/` directories by default.
 
 `AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `agent-coord-init`. After initialization, the copies in the coordination repository are authoritative for that project coordination domain and can be edited/versioned like any other coordination state.
 
@@ -182,22 +171,16 @@ decision, and `NOTE` for note. Generic `REQ` requirement IDs are legacy-only
 unless an explicit supersession or migration decision says otherwise. `NNN` is
 a three-digit
 collision/order suffix for the exact UTC
-timestamp and starts at `001`. Project-root item keys are stored in top-level
-`PROJECT.md` as `item_key`. Legacy project item keys may remain in
-`projects/<project>/PROJECT.md`; top-level `WORKSPACE.md` keys and
-workspace-level item IDs are legacy compatibility metadata only. New pi-env
-project coordination should create root project-scoped items.
+timestamp and starts at `001`. Project-root item keys are stored in top-level `PROJECT.md` as `item_key`. New
+pi-env project coordination creates root project-scoped items.
 
 Default key resolution for `agent-coord-new` should be:
 
 1. explicit `--project-key`;
 2. stored `item_key` in root `PROJECT.md`;
-3. stored `item_key` in legacy `projects/<project>/PROJECT.md`;
-4. legacy stored `item_key` in `WORKSPACE.md` for `--workspace-item`;
-5. `PI_COORD_PROJECT_KEY` when no stored key exists;
-6. derive from `--project` / `PI_COORD_PROJECT` for project items;
-7. derive from the coordination directory name only for explicit legacy
-   workspace-level items.
+3. `PI_COORD_PROJECT_KEY` when no stored key exists;
+4. derive from `--project` / `PI_COORD_PROJECT` for project items;
+5. derive from the coordination directory name when no project name is set.
 
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
 backslashes, and other non-alphanumeric characters are removed.
@@ -270,14 +253,10 @@ issues/closed/
 
 Other item types live under semantic type directories such as
 `requirements/`, `todos/`, `decisions/`, and `notes/`. Functional, quality,
-constraint, and legacy requirement items share root-level `requirements/` in
-project-root clones while preserving their item ID type codes. TODO items use
-`todos/`, the `TODO` ID type code, and single-body YAML records. Legacy
-`projects/<project>/requirements/`, `projects/<project>/todos/`, and
-`workspace/` layouts are compatibility state for migrated coordination
-repositories, not a primary multi-project workspace model. Preserve historical
-IDs and filenames; do not silently renumber, rewrite, or move old items just to
-satisfy a newer taxonomy.
+constraint requirement items share root-level `requirements/` while preserving
+their item ID type codes. TODO items use `todos/`, the `TODO` ID type code,
+and single-body YAML records. Preserve historical IDs and filenames; do not
+silently renumber, rewrite, or move old items just to satisfy a newer taxonomy.
 
 The state names are developer-centric: `open` means developer work is needed,
 `blocked` means developer work cannot proceed, `done` means the developer
@@ -286,11 +265,9 @@ review and verification. New items start with `reviewed: false` and
 `verified: false`, and declare `testable: yes` or `testable: no` with a
 `testability_note` when direct item-matched testing is not required.
 Item-matched tests live in the project repository under `tests/items/` and
-match the item ID by filename stem. Root-layout issue tests live directly under
-`tests/items/`; root-layout requirement tests may use
-`tests/items/requirements/`. Legacy project/workspace test paths remain
-accepted for older coordination clones. Tests intentionally do not mirror issue
-status directories.
+match the item ID by filename stem. Issue tests live under `tests/items/issues/`; requirement tests live under
+`tests/items/requirements/`. Tests intentionally do not mirror issue status
+directories.
 
 When marking an issue done, move it with `git mv`, set `status: done`, set
 `done:`, reset `reviewed: false` and `verified: false`, update `current:`,
@@ -381,7 +358,6 @@ PI_COORD_DIR=/workspace/.pi-env/coordination   # clone directory for this projec
 PI_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
 PI_COORD_ROLE=architect                # optional active role for role-aware commits
 PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
-PI_COORD_WORKSPACE=piws                # deprecated compatibility alias
 ```
 
 `bootstrap-coordination` can print and apply inferred values for these
@@ -395,22 +371,11 @@ these set, `agent-coord-clone` can infer:
 $PI_COORD_ROOT/$PI_COORD_PROJECT-coordination.git -> $PI_COORD_DIR
 ```
 
-`PI_COORD_WORKSPACE`, `--workspace`, and `--workspace-item` are deprecated
-compatibility APIs. They should keep working for older clones where practical,
-but helper commands should emit non-fatal diagnostics that point users to
-`PI_COORD_PROJECT`, `--project`, and the project-root item layout.
-
 When `PI_COORD_ROOT` is unset, helpers should prefer the project-visible
 `.pi-env/agent-remotes` directory. Inside the pi-env sandbox, or when
 `/workspace` resolves to the current project root, that default should be
 `/workspace/.pi-env/agent-remotes` so the same bare remote is usable from
-inside and outside Bubblewrap for this project. `pi-bwrap` should bind host
-`/workspace/agent-remotes` at that same sandbox path only when
-`PI_BWRAP_COMPAT_AGENT_REMOTES=1` opts in, the source exists, it is not already
-part of the selected project mount, and the selected project has not migrated
-to `.pi-env/coordination`, `.pi-env/agent-remotes`, or project-local legacy
-`agent-remotes`; this is an explicit compatibility aid for legacy local setups,
-not a general host workspace mount.
+inside and outside Bubblewrap for this project.
 
 ### 9.1 Optional role-aware identity
 
@@ -457,7 +422,7 @@ The installed files are the project coordination domain's authoritative rules. `
 
 ### 10.1 Required `AGENTS.md` rules
 
-The generated `coordination/AGENTS.md` should instruct agents:
+The generated `.pi-env/coordination/AGENTS.md` should instruct agents:
 
 1. Treat the coordination repository as the only shared synchronization source for agent work state.
 2. Pull/rebase before inspecting, selecting, creating, claiming, blocking, marking done, reviewing, verifying, closing, or otherwise modifying items.
@@ -490,7 +455,7 @@ Do not encode important state only in a commit message. The file content must re
 
 ### 10.3 Required Pi skill template
 
-`pi-env` should ship the canonical skill source as `pi-skill-templates/agent-coordination/SKILL.md`. `agent-coord-init` should copy it to `coordination/.pi/skills/agent-coordination/SKILL.md`. A generated skill should look like this in spirit:
+`pi-env` should ship the canonical skill source as `pi-skill-templates/agent-coordination/SKILL.md`. `agent-coord-init` should copy it to `.pi-env/coordination/.pi/skills/agent-coordination/SKILL.md`. A generated skill should look like this in spirit:
 
 ```markdown
 # Agent Coordination
@@ -501,8 +466,7 @@ Use this skill when working in a project that contains a Git-backed agent coordi
 
 The coordination repository is the only synchronization source for agent issue,
 TODO, and coordination state. Find it at `.pi-env/coordination` unless
-`PI_COORD_DIR`, the user, or environment says otherwise; legacy projects may
-still use root-level `coordination/`.
+`PI_COORD_DIR`, the user, or environment says otherwise.
 
 ## Required protocol
 
@@ -527,7 +491,7 @@ still use root-level `coordination/`.
 - Ask the user when ownership, stale claims, or conflicts are ambiguous.
 ```
 
-The skill should complement, not replace, `coordination/AGENTS.md`. If they differ, the checked-in coordination repository rules win.
+The skill should complement, not replace, `.pi-env/coordination/AGENTS.md`. If they differ, the checked-in coordination repository rules win.
 
 ### 10.4 Template ownership and updates
 
@@ -544,7 +508,7 @@ agent-coord-upgrade-rules
 
 Possible safe integrations:
 
-- print a reminder when `.pi-env/coordination` or legacy `./coordination` exists;
+- print a reminder when `.pi-env/coordination` exists;
 - provide generated/scaffolded coordination `AGENTS.md`, docs, and Pi skill templates through `agent-coord-init`;
 - provide an optional prompt/context snippet explaining the Git sync protocol;
 - allow users to mount/select the coordination repository explicitly when it is outside the project root.

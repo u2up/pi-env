@@ -252,9 +252,9 @@ for this workflow, including the coordination working clone and local bare
 remotes, must live under `.pi-env/` by default. Agents synchronize only by
 normal Git pull/commit/push operations. This use case remains opt-in, and
 default `pi-start` behavior must not mutate coordination state automatically.
-Compatibility names such as `PI_COORD_WORKSPACE` or `workspace/` in the
-coordination layout are coordination data-model labels, not a primary
-pi-env capability for managing multiple project roots.
+The coordination layout is root-only: the coordination clone contains root
+`PROJECT.md`, `issues/`, `requirements/`, `todos/`, `decisions/`, and
+`notes/` entries for the selected project.
 
 #### UC-024 Serial role automation workflow
 
@@ -490,12 +490,9 @@ unset, it must infer useful defaults from `PI_COORD_PROJECT`, the Git
 origin repository name, the Git root basename, or the current directory
 basename, in that order. It must support `--project-root DIR` to infer and
 initialize relative to another project directory; when doing so, stale
-context values from `PI_COORD_WORKSPACE`, `PI_COORD_DIR`,
-`PI_COORD_PROJECT`, and `PI_COORD_PROJECT_KEY` must not override the target
-directory's inferred defaults unless explicit options are supplied.
-`PI_COORD_WORKSPACE` and `--workspace` must remain deprecated compatibility
-aliases for the project name when `PI_COORD_PROJECT`/`--project` is omitted
-and should emit a non-fatal deprecation diagnostic when used. If the selected
+context values from `PI_COORD_DIR`, `PI_COORD_PROJECT`, and
+`PI_COORD_PROJECT_KEY` must not override the target directory's inferred
+defaults unless explicit options are supplied. If the selected
 coordination clone already exists but the
 planned local bare remote is missing or does not contain the clone's
 current branch, it must restore that bare remote from committed clone
@@ -519,23 +516,20 @@ It must install the rule/protocol templates into:
 It must also create the standard project-root directory skeleton:
 root-level `issues/open`, `issues/blocked`, `issues/done`,
 `issues/closed`, `requirements`, `decisions`, `notes`, and `agents`
-directories plus top-level `PROJECT.md` item-key metadata. New generated
-scaffolds must not include `WORKSPACE.md` or `workspace/` directories by
-default. The clone must be configured with `pull.rebase=true` and
+directories plus top-level `PROJECT.md` item-key metadata. The clone must be
+configured with `pull.rebase=true` and
 `rebase.autoStash=true`.
 
 When `--dir` and `PI_COORD_DIR` are omitted, fresh project-local
 coordination bootstraps must place the working clone at
 `<project-root>/.pi-env/coordination`, visible inside the sandbox as
-`/workspace/.pi-env/coordination`. Existing `coordination/` clones remain a
-supported legacy detection path.
+`/workspace/.pi-env/coordination` when the selected project is mounted there.
 
 When `--root` and `PI_COORD_ROOT` are omitted, coordination helpers must
 use a project-visible `.pi-env/agent-remotes` directory instead of the
 isolated sandbox `$HOME`. If `/workspace` resolves to the current project
 root, the default root must be `/workspace/.pi-env/agent-remotes`; otherwise
-it must be `<project-root>/.pi-env/agent-remotes`. Existing `agent-remotes/`
-roots remain a supported legacy detection path.
+it must be `<project-root>/.pi-env/agent-remotes`.
 
 #### CMD-011 `agent-coord-clone`
 
@@ -543,11 +537,8 @@ roots remain a supported legacy detection path.
 coordination clone directory and configure the clone with `pull.rebase=true`
 and `rebase.autoStash=true`. When no clone directory is selected with
 `--dir` or `PI_COORD_DIR`, the default target must be
-`<project-root>/.pi-env/coordination`, with legacy `coordination/` remaining
-readable when explicitly selected or detected for existing projects.
-`--workspace` must remain a deprecated compatibility alias for `--project`
-when `--project` is omitted and should emit a non-fatal deprecation
-diagnostic when used.
+`<project-root>/.pi-env/coordination`. Explicit `--dir` or `PI_COORD_DIR`
+values may select another coordination clone path.
 
 #### CMD-012 `agent-coord-new`
 
@@ -571,12 +562,10 @@ alias. `task` and `tasks` must not be accepted as structural
 The generated item ID prefix must resolve in this order:
 
 1. explicit `--project-key`;
-2. stored `item_key` metadata in root `PROJECT.md`, a legacy selected
-   project, or a compatibility coordination domain;
+2. stored `item_key` metadata in root `PROJECT.md`;
 3. `PI_COORD_PROJECT_KEY` when no stored key exists;
 4. derived `--project` / `PI_COORD_PROJECT` for project items;
-5. derived coordination clone directory name only for explicit legacy
-   workspace-level compatibility items.
+5. derived coordination clone directory name when no project name is set.
 
 Derived keys must be uppercased with delimiters, whitespace, pipes,
 slashes, backslashes, and other non-alphanumeric characters removed. Unless
@@ -589,27 +578,21 @@ slashes, backslashes, and other non-alphanumeric characters removed. Unless
 Built-in type codes must include `ISS` for `issue`, `FRQ` for
 `functional-requirement`, `QRQ` for `quality-requirement`, `CRQ` for
 `constraint-requirement`, `TODO` for `todo`, `DEC` for `decision`, and `NOTE`
-for `note`. Generic `REQ` IDs for `requirement` are legacy-only unless an explicit
-supersession or migration decision says otherwise. The `NNN` suffix must start
+for `note`. The `NNN` suffix must start
 at `001` for each timestamp and increment to avoid collisions in the local
 coordination checkout. Filenames for new generated items must use the item ID
 only. `--id` must override the whole item ID.
 
 Project-root item keys must be stored in top-level `PROJECT.md` as
-`item_key`; legacy project item keys may remain in
-`projects/<project>/PROJECT.md`; explicit workspace-level compatibility item
-keys may remain in `WORKSPACE.md`. When `--project` is omitted in a
-project-root clone, root item paths must be used even if `PI_COORD_PROJECT`
-is set for the coordination domain. In project-root clones, issue items must
+`item_key`. When `--project` is omitted in a project-root clone, root item
+paths must be used even if `PI_COORD_PROJECT` is set for the coordination
+domain. In project-root clones, issue items must
 be created under `issues/open`. Functional, quality, constraint, and legacy
 generic requirement items must be created under the root-level
-`requirements/` directory while preserving FRQ, QRQ, CRQ, and legacy REQ
-item-ID type codes. Decision, note, and custom item types must be created
-under semantic type directories by default. `--workspace-item` must remain an
-explicit deprecated compatibility option for `workspace/` items and should
-emit a non-fatal deprecation diagnostic when used. Existing historical items
-must not be silently renumbered or rewritten only to satisfy newer naming
-conventions.
+`requirements/` directory while preserving FRQ, QRQ, and CRQ item-ID type
+codes. Decision, note, and custom item types must be created under semantic
+type directories by default. Existing historical items must not be silently
+renumbered or rewritten only to satisfy newer naming conventions.
 
 #### CMD-013 Coordination lifecycle helpers
 
@@ -664,9 +647,9 @@ orphan scripts under `tests/items`. Its `--require-done-or-closed` option
 must fail when any issue item is not `done` or `closed`.
 
 Item-matched tests must live in the project repository under paths such as
-`tests/items/projects/<project>/issues/<item-id>.sh`,
-`tests/items/projects/<project>/requirements/<item-id>.sh`; they must not
-mirror issue status directories.
+`tests/items/issues/<item-id>.sh` and
+`tests/items/requirements/<item-id>.sh`; they must not mirror issue status
+directories.
 
 #### CMD-015 `agent-coord-upgrade-rules`
 
@@ -1088,25 +1071,13 @@ sandbox:
 - `PI_COORD_AGENT_ID`
 - `PI_COORD_PROJECT_KEY`
 - `PI_COORD_ROLE`
-- `PI_COORD_WORKSPACE` only as a deprecated compatibility alias
 
 If `PI_COORD_ROOT` points inside the selected project, the launcher must
 pass it into the sandbox as the corresponding `/workspace/...` path.
-Project-local `.pi-env/agent-remotes` is the preferred default for local bare
-remotes; legacy `agent-remotes` remains supported for existing projects.
+Project-local `.pi-env/agent-remotes` is the default for local bare remotes.
 
-If host `/workspace/agent-remotes` exists and is not already provided by
-the selected project mount, the launcher must bind it into the sandbox at
-`/workspace/agent-remotes` only when `PI_BWRAP_COMPAT_AGENT_REMOTES=1` opts in
-to legacy compatibility and the selected project does not already provide
-project-local `.pi-env/coordination`, `.pi-env/agent-remotes`, or legacy
-`agent-remotes`. This keeps common bare coordination remotes available through
-the same path during explicit compatibility migration without exposing legacy
-host remotes to modern `.pi-env` project state or creating compatibility
-mountpoints in fresh project checkouts by default.
-
-If a coordination clone is detected under the selected project, preferring
-`.pi-env/coordination` before legacy `coordination`, or selected with
+If a coordination clone is detected under the selected project at
+`.pi-env/coordination`, or selected with
 `PI_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set
 `PI_COORD_DIR` inside the sandbox to the sandbox-visible path.
 
@@ -1673,8 +1644,7 @@ If `read` or `bash` tools are enabled, copied auth files, exposed global extensi
 - Type: Constraint requirement
 - Requirement kind: architecture boundary
 
-Requirement coordination items under
-`coordination/projects/<project>/requirements/` are the preferred
+Requirement coordination items under root `requirements/` are the preferred
 authoritative source of truth for functional, quality, and constraint
 requirements when those items exist. Requirement changes for covered
 areas must be planned and recorded in those items first, including
@@ -1713,7 +1683,7 @@ immutable Nix-store tool paths already covered by the read-only
 
 ## 6. Coordination requirement item structure
 
-Requirement coordination items live under root `requirements/` or legacy `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`. Requirement items are current-state records: they store one renderable top-level `body: |-` block and do not store embedded `current`, `events`, or `messages` history.
+Requirement coordination items live under root `requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`. Requirement items are current-state records: they store one renderable top-level `body: |-` block and do not store embedded `current`, `events`, or `messages` history.
 
 Required fields for functional, quality, and constraint requirement items:
 

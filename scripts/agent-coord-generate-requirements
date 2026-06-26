@@ -10,10 +10,9 @@ Usage:
   agent-coord-generate-requirements --help
 
 Renders active requirement items from the coordination repository's root
-requirements directory or legacy projects/<project>/requirements directory as
-a deterministic Markdown requirements document. Requirement items keep
-coordination item-ID filenames; the public requirement key is read from
-requirement_key metadata.
+requirements directory as a deterministic Markdown requirements document.
+Requirement items keep coordination item-ID filenames; the public requirement
+key is read from requirement_key metadata.
 USAGE
 }
 
@@ -213,7 +212,7 @@ for (const item of items) {
 }
 print('## 6. Coordination requirement item structure');
 print();
-print('Requirement coordination items live under root `requirements/` or legacy `projects/<project>/requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`. Requirement items are current-state records: they store one renderable top-level `body: |-` block and do not store embedded `current`, `events`, or `messages` history.');
+print('Requirement coordination items live under root `requirements/` and keep item-ID filenames. Public requirement identity is stored in `requirement_key`; requirement classification is stored in `requirement_class`, `requirement_kind`, and `domain`. Requirement items are current-state records: they store one renderable top-level `body: |-` block and do not store embedded `current`, `events`, or `messages` history.');
 print();
 print('Required fields for functional, quality, and constraint requirement items:');
 print();

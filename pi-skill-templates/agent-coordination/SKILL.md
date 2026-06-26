@@ -11,8 +11,7 @@ project-scoped.
 The coordination repository is the only synchronization source for agent issue,
 TODO, and coordination state. For fresh pi-env projects, find it at
 `.pi-env/coordination` unless `PI_COORD_DIR`, the user, or project coordination
-rules say otherwise. Existing
-legacy projects may still use root-level `coordination/`.
+rules say otherwise.
 
 ## Required protocol
 
@@ -39,10 +38,7 @@ legacy projects may still use root-level `coordination/`.
 ## Item keys and IDs
 
 Use stored `item_key` metadata when creating items. Project-root item keys
-live in top-level `PROJECT.md`; legacy project clones may store keys in
-`projects/<project>/PROJECT.md`. Top-level `WORKSPACE.md` keys are legacy
-compatibility metadata for existing workspace-level items only. Do not invent
-or silently change keys.
+live in top-level `PROJECT.md`. Do not invent or silently change keys.
 
 New item IDs and filenames use:
 
@@ -52,16 +48,15 @@ New item IDs and filenames use:
 
 Use `ISS` for issue, `FRQ` for functional requirement, `QRQ` for quality
 requirement, `CRQ` for constraint requirement, `TODO` for todo, `DEC` for
-decision, and `NOTE` for note. Generic `REQ` requirement IDs are legacy-only
-unless an explicit supersession or migration decision says otherwise. The `NNN`
+decision, and `NOTE` for note. The `NNN`
 suffix starts at
 `001` for each UTC timestamp. Historical items may keep legacy IDs; do not
 rename, renumber, rewrite, or move them unless explicitly directed.
 
 `agent-coord-list notes` and `agent-coord-list todos` report note and TODO
 items by their YAML `status` values. `agent-coord-list requirements` reports
-functional, quality, constraint, and legacy requirement items. Use `functional`,
-`quality`, `constraint`, or `legacy-requirements` for class-specific listings.
+functional, quality, and constraint requirement items. Use `functional`,
+`quality`, or `constraint` for class-specific listings.
 
 ## Item history
 
@@ -93,16 +88,12 @@ not required.
 
 Item-matched tests are executable bash scripts in the project repo, not the
 coordination repo. Match the filename stem to the item ID and mirror the
-project item path plus item type, not issue status. Legacy workspace-level
-items may keep mirrored workspace test paths:
+root item type, not issue status:
 
 ```text
-tests/items/<item-id>.sh
+tests/items/issues/<item-id>.sh
 tests/items/requirements/<item-id>.sh
-tests/items/projects/<project>/issues/<item-id>.sh        # legacy
-tests/items/projects/<project>/requirements/<item-id>.sh  # legacy
-tests/items/workspace/issues/<item-id>.sh                 # legacy
-tests/items/workspace/requirements/<item-id>.sh           # legacy
+tests/items/todos/<item-id>.sh
 ```
 
 Verification messages should record exact commands and results. When available,
@@ -128,5 +119,5 @@ to be done or closed.
   verification.
 - Ask the user when ownership, stale claims, or conflicts are ambiguous.
 
-This skill complements, but does not replace, `coordination/AGENTS.md`. If
+This skill complements, but does not replace, `.pi-env/coordination/AGENTS.md`. If
 these files differ, the checked-in coordination repository rules win.

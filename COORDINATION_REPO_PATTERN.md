@@ -353,7 +353,8 @@ or a nested working clone that is ignored by the implementation repository:
 project-source/
   src/
   tests/
-  .coordination/        # separate Git repository, ignored by project-source
+  .pi-env/
+    coordination/       # separate Git repository, ignored by project-source
 ```
 
 The important boundary is Git ownership and responsibility:
