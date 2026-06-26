@@ -557,12 +557,16 @@ top-level current-state fields, `done: null`, `closed: null`,
 acceptance-criteria placeholder, chronological `events`, and linked Markdown
 `messages`. It must not commit or push automatically.
 
-For issue items, `agent-coord-new` must accept optional `--issue-type TYPE`
-category metadata. Supported built-in categories should include `bug`,
+For issue items, `agent-coord-new` must accept optional `--category CATEGORY`
+metadata. Supported built-in categories should include `bug`,
 `feature-request`, `task`, `question`, and `improvement`; project-specific
-slugs may be accepted for local categorization. `task` and `tasks` must not
-be accepted as structural `--type` aliases; task-category work must be
-created as `--type issue --issue-type task`.
+slugs may be accepted for local categorization. New issue items must write
+the category as a top-level `category:` field and must not write the legacy
+`issue_type:` field. Because there are no external coordination repositories
+requiring compatibility, `--issue-type` must not remain as a compatibility
+alias. `task` and `tasks` must not be accepted as structural
+`--type` aliases; task-category work must be created as
+`--type issue --category task`.
 
 The generated item ID prefix must resolve in this order:
 
@@ -616,8 +620,8 @@ file edits:
 - `agent-coord-list` lists issue, TODO, note, decision, legacy requirement,
   or requirement-class IDs, statuses, and titles, optionally filtered by
   status, appends done-issue review/verification sub-status after the title,
-  and supports issue category filtering/grouping with `--issue-type`,
-  `--show-issue-type`, and `--group-by-issue-type`;
+  and supports issue category filtering/grouping with `--category`,
+  `--show-category`, and `--group-by-category`;
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
 - coordination commands that create item events or commits accept
