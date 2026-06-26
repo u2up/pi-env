@@ -194,6 +194,25 @@ another may use a dedicated task item type.
 
 ---
 
+## Project State Concerns
+
+Project state is not one monolithic category. A coordination repository often
+organizes several related concerns:
+
+| Concern | Examples |
+| --- | --- |
+| Intent | Requirements, decisions, goals, and constraints. |
+| Execution | Issues, TODOs, ownership, blockers, and active work. |
+| Knowledge | Notes, runbooks, operational context, and migration context. |
+| Governance | Reviews, verification, acceptance, lifecycle rules, and release readiness. |
+| Traceability | Links, evidence, coverage reports, commits, tests, and external records. |
+
+The exact grouping is domain-specific, but making these concerns explicit helps
+participants decide what belongs in the coordination repository and how it
+relates to implementation artifacts and external systems.
+
+---
+
 ## Common Artifact Types
 
 A coordination repository usually combines several kinds of project-state
@@ -207,6 +226,10 @@ following conceptual roles are common:
 * **TODO**: lightweight reminder or follow-up that does not need the full issue
   lifecycle.
 * **Note**: durable contextual information that should remain discoverable.
+
+An issue is not limited to a defect report. More generally, it is an actionable
+workflow container: something that coordinates ownership, lifecycle, evidence,
+and acceptance for a unit of work, investigation, or inquiry.
 
 Other domains may add risks, incidents, release plans, milestones, runbooks, or
 review records. The important property is that each artifact type has a clear
@@ -338,7 +361,7 @@ The exact layout is implementation-specific.
 
 ---
 
-## Artifact Representation
+## Item Representation
 
 A practical coordination repository usually combines structured metadata with
 human-readable prose.
@@ -545,15 +568,12 @@ A typical division of authority is:
 | CI system | Raw run results, logs, artifacts, and execution metadata. |
 | Chat system | Synchronous discussion and notifications, not durable project state. |
 
-The exact boundaries are domain-specific. Common authority boundaries include:
+The exact boundaries are domain-specific. Typical refinements include:
 
-* issue trackers owning public intake, discussion, and external notification;
-* coordination repositories owning implementation status, lifecycle state,
+* issue trackers may own public intake, discussion, and external notification;
+* coordination repositories may own implementation status, lifecycle state,
   ownership, verification, acceptance, and traceability;
-* implementation repositories owning source code, tests, build configuration,
-  and release artifacts;
-* code review systems owning pull request review discussion and merge status;
-* CI systems owning raw run results and logs, while coordination items link to
+* CI systems may own raw run results and logs, while coordination items link to
   the evidence needed for project-state decisions.
 
 Mirrored or generated records should identify their authoritative input and
@@ -563,11 +583,9 @@ should normally be regenerated rather than hand-edited.
 
 ## Integration with Other Systems
 
-The Coordination Repository Pattern does not replace all other project systems.
-It integrates with them.
-
-Implementation repositories remain authoritative for source code, tests, build
-configuration, and deliverables.
+The Coordination Repository Pattern does not replace other project systems. It
+integrates with them according to the authority boundaries defined by the
+coordination domain.
 
 Issue trackers, project boards, CI systems, code review systems, release tools,
 and chat systems may remain useful. A coordination repository can link to them,
