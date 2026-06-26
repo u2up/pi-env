@@ -30,6 +30,15 @@ item_path="$(agent-coord-new \
 item_id="$(grep '^id: ' "coordination/$item_path" | sed 's/^id: //')"
 
 grep -q '^testable: yes$' "coordination/$item_path"
+cp "coordination/$item_path" "$tmp/item.clean.yaml"
+printf 'issue_type: bug\n' >>"coordination/$item_path"
+if agent-coord-lint \
+  --coord-dir coordination \
+  --project-root . >/dev/null 2>&1; then
+  printf 'expected lint to fail for legacy issue_type field\n' >&2
+  exit 1
+fi
+cp "$tmp/item.clean.yaml" "coordination/$item_path"
 case "$item_path" in
   projects/pi-env/issues/open/"$item_id".yaml) ;;
   *) printf 'unexpected item path: %s\n' "$item_path" >&2; exit 1 ;;

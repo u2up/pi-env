@@ -33,6 +33,7 @@ Checks:
   - every item declares testable: yes or testable: no;
   - testable: yes has a matching tests/items/**/*.sh script;
   - testable: no has a non-empty testability_note;
+  - items do not use legacy issue_type metadata;
   - issue items have embedded current/events/messages history;
   - requirement and todo items have current-state body records without
     embedded history;
@@ -232,6 +233,9 @@ while IFS= read -r file; do
   [ -n "$id" ] || lint_fail "$file is missing id"
   [ -n "$type" ] || lint_fail "$file is missing type"
   [ -n "$status" ] || lint_fail "$file is missing status"
+  if item_has_top_level_field "$file" issue_type; then
+    lint_fail "$file uses legacy issue_type metadata; use category"
+  fi
 
   stem="$(basename "$file")"
   stem="${stem%.yaml}"

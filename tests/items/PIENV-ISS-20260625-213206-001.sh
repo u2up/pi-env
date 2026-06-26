@@ -34,7 +34,7 @@ for unsupported_item_type in task tasks; do
     test_fail "agent-coord-new accepted --type $unsupported_item_type"
   fi
   test_grep \
-    "--type $unsupported_item_type is not a coordination item type; use --type issue --issue-type task" \
+    "--type $unsupported_item_type is not a coordination item type; use --type issue --category task" \
     "$tmp/new-$unsupported_item_type.err"
 
   if agent-coord-list --coord-dir "$coord_dir" "$unsupported_item_type" \
@@ -43,20 +43,38 @@ for unsupported_item_type in task tasks; do
     test_fail "agent-coord-list accepted item type $unsupported_item_type"
   fi
   test_grep \
-    "$unsupported_item_type is not a coordination item type; use issues --issue-type task" \
+    "$unsupported_item_type is not a coordination item type; use issues --category task" \
     "$tmp/list-$unsupported_item_type.err"
 done
 
-for issue_type_alias in task tasks; do
+if agent-coord-new --coord-dir "$coord_dir" \
+  --issue-type task "Legacy category flag" \
+  >"$tmp/new-legacy-category.out" \
+  2>"$tmp/new-legacy-category.err"; then
+  test_fail "agent-coord-new accepted legacy --issue-type"
+fi
+test_grep '--issue-type has been removed; use --category' \
+  "$tmp/new-legacy-category.err"
+
+if agent-coord-list --coord-dir "$coord_dir" \
+  --issue-type task issues \
+  >"$tmp/list-legacy-category.out" \
+  2>"$tmp/list-legacy-category.err"; then
+  test_fail "agent-coord-list accepted legacy --issue-type"
+fi
+test_grep '--issue-type has been removed; use category flags' \
+  "$tmp/list-legacy-category.err"
+
+for category_alias in task tasks; do
   issue_path="$(agent-coord-new \
     --coord-dir "$coord_dir" \
     --agent-id agent-a \
     --type issue \
-    --issue-type "$issue_type_alias" \
-    "Task issue category: $issue_type_alias" | tail -n 1)"
+    --category "$category_alias" \
+    "Task issue category: $category_alias" | tail -n 1)"
   test_file_exists "$coord_dir/$issue_path"
   test_grep '^type: issue$' "$coord_dir/$issue_path"
-  test_grep '^issue_type: task$' "$coord_dir/$issue_path"
+  test_grep '^category: task$' "$coord_dir/$issue_path"
   case "$issue_path" in
     issues/open/*.yaml) ;;
     *) test_fail "unexpected task issue path: $issue_path" ;;

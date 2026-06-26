@@ -635,7 +635,7 @@ Built-in type codes include:
 * `DEC` for decision;
 * `NOTE` for note.
 
-Task-like work is represented as an issue with `issue_type: task`, not as a
+Task-like work is represented as an issue with `category: task`, not as a
 separate structural `task` item type.
 
 The mental model is that an issue is an actionable workflow container: a bug

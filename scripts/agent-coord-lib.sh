@@ -311,7 +311,7 @@ coord_item_type_uses_issue_status_dirs() {
   return 1
 }
 
-coord_issue_type_canonical() {
+coord_category_canonical() {
   local type canonical
   type="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
   case "$type" in

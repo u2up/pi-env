@@ -274,14 +274,18 @@ action_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --agent-id agent-a \
   --role architect \
-  --issue-type Bug \
+  --category Bug \
   "Document pi config behavior" | tail -n 1)"
 
 test -f "$workspace_dir/coordination/$action_path"
 grep -q '^id: PIENV-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "$workspace_dir/coordination/$action_path"
 grep -q '^status: open$' "$workspace_dir/coordination/$action_path"
-grep -q '^issue_type: bug$' "$workspace_dir/coordination/$action_path"
+grep -q '^category: bug$' "$workspace_dir/coordination/$action_path"
+if grep -q '^issue_type:' "$workspace_dir/coordination/$action_path"; then
+  printf 'new issue unexpectedly contained legacy issue_type field\n' >&2
+  exit 1
+fi
 grep -q '^done: null$' "$workspace_dir/coordination/$action_path"
 grep -q '^reviewed: false$' "$workspace_dir/coordination/$action_path"
 grep -q '^verified: false$' "$workspace_dir/coordination/$action_path"
@@ -408,9 +412,18 @@ for unsupported_item_type in task tasks; do
     exit 1
   fi
   grep -q -- \
-    "--type $unsupported_item_type is not a coordination item type; use --type issue --issue-type task" \
+    "--type $unsupported_item_type is not a coordination item type; use --type issue --category task" \
     "$tmp/$unsupported_item_type-type.err"
 done
+
+if agent-coord-new --coord-dir "$workspace_dir/coordination" \
+  --issue-type task "Legacy issue type flag" \
+  >"$tmp/new-legacy-category.out" 2>"$tmp/new-legacy-category.err"; then
+  printf 'agent-coord-new unexpectedly accepted --issue-type\n' >&2
+  exit 1
+fi
+grep -q -- '--issue-type has been removed; use --category' \
+  "$tmp/new-legacy-category.err"
 
 todo_open_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
@@ -481,10 +494,10 @@ task_issue_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --agent-id agent-a \
   --role architect \
-  --issue-type Tasks \
+  --category Tasks \
   "Task issue category item" | tail -n 1)"
 grep -q '^type: issue$' "$workspace_dir/coordination/$task_issue_path"
-grep -q '^issue_type: task$' "$workspace_dir/coordination/$task_issue_path"
+grep -q '^category: task$' "$workspace_dir/coordination/$task_issue_path"
 case "$task_issue_path" in
   issues/open/*.yaml) ;;
   *) printf 'unexpected task issue path: %s\n' "$task_issue_path" >&2; exit 1 ;;
@@ -516,26 +529,37 @@ grep -q "$action_path" "$tmp/cat-ambiguous.err"
 issue_list="$(agent-coord-list --coord-dir "$workspace_dir/coordination" issues open)"
 printf '%s\n' "$issue_list" \
   | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
-issue_type_list="$(agent-coord-list \
-  --coord-dir "$workspace_dir/coordination" --show-issue-type issues open)"
-printf '%s\n' "$issue_type_list" \
+category_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" --show-category issues open)"
+printf '%s\n' "$category_list" \
   | grep -Eq "^bug[[:space:]]+$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
-issue_type_filter_list="$(agent-coord-list \
-  --coord-dir "$workspace_dir/coordination" --issue-type bug issues open)"
-printf '%s\n' "$issue_type_filter_list" \
+category_filter_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" --category bug issues open)"
+printf '%s\n' "$category_filter_list" \
   | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
-task_issue_type_filter_list="$(agent-coord-list \
-  --coord-dir "$workspace_dir/coordination" --issue-type tasks issues open)"
-printf '%s\n' "$task_issue_type_filter_list" \
+task_category_filter_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" --category tasks issues open)"
+printf '%s\n' "$task_category_filter_list" \
   | grep -Eq "^$task_issue_id[[:space:]]+open[[:space:]]+Task issue category item$"
-if printf '%s\n' "$task_issue_type_filter_list" | grep -q "$item_id"; then
-  printf 'task issue type filter included non-task issue\n' >&2
+if printf '%s\n' "$task_category_filter_list" | grep -q "$item_id"; then
+  printf 'task category filter included non-task issue\n' >&2
   exit 1
 fi
-issue_type_group_list="$(agent-coord-list \
-  --coord-dir "$workspace_dir/coordination" --group-by-issue-type issues open)"
-printf '%s\n' "$issue_type_group_list" \
+category_group_list="$(agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" --group-by-category issues open)"
+printf '%s\n' "$category_group_list" \
   | grep -Eq "^bug[[:space:]]+$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
+for legacy_category_flag in --issue-type --show-issue-type --group-by-issue-type; do
+  if agent-coord-list --coord-dir "$workspace_dir/coordination" \
+    "$legacy_category_flag" issues open \
+    >"$tmp/list-legacy-category.out" 2>"$tmp/list-legacy-category.err"; then
+    printf 'agent-coord-list unexpectedly accepted %s\n' \
+      "$legacy_category_flag" >&2
+    exit 1
+  fi
+  grep -q -- "$legacy_category_flag has been removed; use category flags" \
+    "$tmp/list-legacy-category.err"
+done
 requirement_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" functional-requirements accepted)"
 printf '%s\n' "$requirement_list" \
@@ -605,7 +629,7 @@ for unsupported_list_type in task tasks; do
     exit 1
   fi
   grep -q \
-    "$unsupported_list_type is not a coordination item type; use issues --issue-type task" \
+    "$unsupported_list_type is not a coordination item type; use issues --category task" \
     "$tmp/list-$unsupported_list_type.err"
 done
 

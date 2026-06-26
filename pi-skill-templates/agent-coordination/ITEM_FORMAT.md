@@ -63,7 +63,7 @@ linked to events.
 schema: coordination-item/v1
 id: PIENV-ISS-20260607-204155-001
 type: issue
-issue_type: bug
+category: bug
 status: open
 project: pi-env
 title: Document pi config behavior
@@ -136,7 +136,7 @@ body: |-
   Requirement text...
 ```
 
-Issue items may include optional `issue_type` category metadata for listing
+Issue items may include optional `category` metadata for listing
 and grouping. Recommended values include `bug`, `feature-request`, `task`,
 `question`, and `improvement`; project-specific slugs are allowed when a more
 specific category is useful. The top-level `type` field remains the structural

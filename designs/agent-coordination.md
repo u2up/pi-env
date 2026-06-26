@@ -35,7 +35,7 @@ An agent coordination repository is a dedicated Git repository that stores
 shared agent state for a project:
 
 - issues;
-- issue items, including `issue_type: task` work items;
+- issue items, including `category: task` work items;
 - bugs;
 - decisions;
 - notes;

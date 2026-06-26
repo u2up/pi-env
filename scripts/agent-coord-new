@@ -23,7 +23,7 @@ Options:
   --project-key KEY        Project key portion of generated IDs
   --workspace-item         Deprecated: create a legacy workspace/<type-directory> item
   --type TYPE              Item type; default: issue
-  --issue-type TYPE        Optional issue category: bug, feature-request, task, question, improvement, ...
+  --category CATEGORY      Optional issue category: bug, feature-request, task, question, improvement, ...
   --status STATUS          Initial status; default: open for issues, active otherwise
   --priority VALUE         Priority value; default: medium
   --owner ID               Initial owner; default: empty
@@ -59,7 +59,7 @@ project_id_key_arg=""
 project_id_key_env="${PI_COORD_PROJECT_KEY:-}"
 workspace_item=0
 item_type="issue"
-issue_type=""
+category=""
 status_arg=""
 priority="medium"
 owner=""
@@ -99,10 +99,13 @@ while [ "$#" -gt 0 ]; do
       item_type="$2"
       shift 2
       ;;
-    --issue-type)
-      [ "$#" -ge 2 ] || coord_die "--issue-type requires a value"
-      issue_type="$2"
+    --category)
+      [ "$#" -ge 2 ] || coord_die "--category requires a value"
+      category="$2"
       shift 2
+      ;;
+    --issue-type)
+      coord_die "--issue-type has been removed; use --category"
       ;;
     --status)
       [ "$#" -ge 2 ] || coord_die "--status requires a value"
@@ -148,6 +151,9 @@ while [ "$#" -gt 0 ]; do
       usage
       exit 0
       ;;
+    --*)
+      coord_die "unknown option: $1"
+      ;;
     *)
       title_parts+=("$1")
       shift
@@ -181,7 +187,7 @@ fi
 raw_item_type_lc="$(printf '%s' "$item_type" | tr '[:upper:]' '[:lower:]')"
 case "$raw_item_type_lc" in
   task|tasks)
-    coord_die "--type $item_type is not a coordination item type; use --type issue --issue-type task"
+    coord_die "--type $item_type is not a coordination item type; use --type issue --category task"
     ;;
   tdo)
     coord_die "--type tdo is not supported; use --type todo"
@@ -201,12 +207,12 @@ if coord_item_type_uses_issue_status_dirs "$item_type" && [ "$status_arg" != "op
 fi
 
 item_type="$(coord_item_type_canonical "$item_type")"
-if [ -n "$(coord_trim "$issue_type")" ]; then
+if [ -n "$(coord_trim "$category")" ]; then
   if ! coord_item_type_uses_issue_status_dirs "$item_type"; then
-    coord_die "--issue-type is only valid for issue items"
+    coord_die "--category is only valid for issue items"
   fi
-  issue_type="$(coord_issue_type_canonical "$issue_type")"
-  [ -n "$issue_type" ] || coord_die "--issue-type produced an empty category"
+  category="$(coord_category_canonical "$category")"
+  [ -n "$category" ] || coord_die "--category produced an empty category"
 fi
 type_dir="$(coord_item_type_dir "$item_type")"
 title="${title_parts[*]}"
@@ -421,7 +427,7 @@ EOF_ITEM
 schema: coordination-item/v1
 id: $item_id
 type: $item_type
-issue_type: $(coord_yaml_scalar "$issue_type")
+category: $(coord_yaml_scalar "$category")
 status: $status_arg
 project: $project_value
 title: $(coord_yaml_scalar "$title")
