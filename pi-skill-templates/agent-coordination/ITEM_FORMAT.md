@@ -220,7 +220,7 @@ Examples:
 
 ```text
 .pi-env/coordination/issues/closed/PIENV-ISS-20260607-204155-001.yaml
-tests/items/PIENV-ISS-20260607-204155-001.sh
+tests/items/issues/PIENV-ISS-20260607-204155-001.sh
 
 .pi-env/coordination/requirements/PIENV-FRQ-20260607-204155-001.yaml
 tests/items/requirements/PIENV-FRQ-20260607-204155-001.sh

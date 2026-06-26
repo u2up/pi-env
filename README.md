@@ -1232,14 +1232,15 @@ tests/role-manager-commands.sh
 ```
 
 Item-matched tests live in the project repository under `tests/items/` and
-match the item ID by filename stem. Root-layout issue tests live directly under
-`tests/items/`; requirement tests may use `tests/items/requirements/`. Legacy
-project/workspace test paths remain accepted for older coordination clones.
-They intentionally do not mirror issue lifecycle status directories:
+match the item ID by filename stem. Project item tests mirror the root item
+type, but not issue lifecycle status directories:
 
 ```text
-coordination/issues/closed/PIENV-ISS-20260607-204155-001.yaml
-tests/items/PIENV-ISS-20260607-204155-001.sh
+.pi-env/coordination/issues/closed/PIENV-ISS-20260607-204155-001.yaml
+tests/items/issues/PIENV-ISS-20260607-204155-001.sh
+
+.pi-env/coordination/requirements/PIENV-FRQ-20260607-204155-001.yaml
+tests/items/requirements/PIENV-FRQ-20260607-204155-001.sh
 ```
 
 ## 14. Notes
