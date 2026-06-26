@@ -50,13 +50,13 @@ if agent-coord-lint \
   exit 1
 fi
 
-mkdir -p tests/items
-cat >"tests/items/$item_id.sh" <<'EOF_TEST'
+mkdir -p tests/items/issues
+cat >"tests/items/issues/$item_id.sh" <<'EOF_TEST'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'item-matched test placeholder passed\n'
 EOF_TEST
-chmod +x "tests/items/$item_id.sh"
+chmod +x "tests/items/issues/$item_id.sh"
 
 agent-coord-lint \
   --coord-dir coordination \
@@ -217,11 +217,11 @@ if agent-coord-lint \
 fi
 sed -i "s/PIENV-FRQ-20260614-000000-999/$requirement_id/" designs/lint-coverage.md
 
-cat >tests/items/ORPHAN-ISS-20260607-204155-001.sh <<'EOF_TEST'
+cat >tests/items/issues/ORPHAN-ISS-20260607-204155-001.sh <<'EOF_TEST'
 #!/usr/bin/env bash
 set -euo pipefail
 EOF_TEST
-chmod +x tests/items/ORPHAN-ISS-20260607-204155-001.sh
+chmod +x tests/items/issues/ORPHAN-ISS-20260607-204155-001.sh
 
 if agent-coord-lint \
   --coord-dir coordination \
@@ -230,8 +230,8 @@ if agent-coord-lint \
   exit 1
 fi
 
-rm tests/items/ORPHAN-ISS-20260607-204155-001.sh
-chmod -x "tests/items/$item_id.sh"
+rm tests/items/issues/ORPHAN-ISS-20260607-204155-001.sh
+chmod -x "tests/items/issues/$item_id.sh"
 
 if agent-coord-lint \
   --coord-dir coordination \

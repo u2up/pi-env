@@ -17,7 +17,7 @@ git config --global user.email "coordination-test@example.invalid"
 
 project_root="$tmp/project"
 coord_dir="$project_root/coordination"
-mkdir -p "$coord_dir" "$project_root/tests/items" "$project_root/designs"
+mkdir -p "$coord_dir" "$project_root/tests/items/issues" "$project_root/designs"
 git -C "$coord_dir" init -q
 cat >"$coord_dir/PROJECT.md" <<'EOF_PROJECT'
 ---
@@ -66,12 +66,12 @@ case "$env_issue_path" in
 esac
 test ! -e "$coord_dir/projects/env-project"
 
-cat >"$project_root/tests/items/$issue_id.sh" <<'EOF_TEST'
+cat >"$project_root/tests/items/issues/$issue_id.sh" <<'EOF_TEST'
 #!/usr/bin/env bash
 set -euo pipefail
 true
 EOF_TEST
-chmod +x "$project_root/tests/items/$issue_id.sh"
+chmod +x "$project_root/tests/items/issues/$issue_id.sh"
 
 agent-coord-claim --coord-dir "$coord_dir" --agent-id agent-a --role developer --no-pull --no-push "$issue_id" >/dev/null
 agent-coord-done --coord-dir "$coord_dir" --agent-id agent-a --role developer --no-pull --no-push "$issue_id" >/dev/null

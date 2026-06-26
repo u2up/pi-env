@@ -41,9 +41,11 @@ Checks:
   - every tests/items/**/*.sh script matches an existing item ID;
   - design ## Covers entries reference active requirement keys and IDs.
 
-Issue status directories are not mirrored under tests/items. Root-layout item
-tests use:
-  tests/items/<item-id>.sh
+Issue status directories are not mirrored under tests/items. Project item
+tests mirror the root item type directory:
+  tests/items/issues/<item-id>.sh
+  tests/items/requirements/<item-id>.sh
+  tests/items/todos/<item-id>.sh
 USAGE
 }
 
@@ -131,11 +133,47 @@ item_status_dir() {
   esac
 }
 
+item_test_subdir() {
+  local type
+  type="$(coord_item_type_canonical "$1")"
+  case "$type" in
+    functional-requirement|quality-requirement|constraint-requirement)
+      printf 'requirements\n'
+      ;;
+    *)
+      coord_item_type_dir "$type"
+      ;;
+  esac
+}
+
 expected_test_path() {
-  local file id
+  local file id type subdir
   file="$1"
   id="$2"
-  printf '%s/tests/items/%s.sh\n' "$project_root" "$id"
+  type="$3"
+  subdir="$(item_test_subdir "$type")"
+  printf '%s/tests/items/%s/%s.sh\n' "$project_root" "$subdir" "$id"
+}
+
+item_file_for_id() {
+  local candidate file id_value stem
+  candidate="$1"
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    id_value="$(coord_item_value "$file" id || true)"
+    if [ "$id_value" = "$candidate" ]; then
+      printf '%s\n' "$file"
+      return 0
+    fi
+    stem="$(basename "$file")"
+    stem="${stem%.yaml}"
+    stem="${stem%.yml}"
+    if [ "$stem" = "$candidate" ]; then
+      printf '%s\n' "$file"
+      return 0
+    fi
+  done < <(coord_item_find_files)
+  return 1
 }
 
 normalize_bool() {
@@ -315,7 +353,7 @@ while IFS= read -r file; do
   if [ -z "$testable" ]; then
     lint_fail "$file must declare testable: yes or testable: no"
   elif [ "$testable" = "yes" ]; then
-    expected_test="$(expected_test_path "$file" "$id")"
+    expected_test="$(expected_test_path "$file" "$id" "$type")"
     if [ ! -f "$expected_test" ]; then
       lint_fail "$file is testable but missing $expected_test"
     elif [ ! -x "$expected_test" ]; then
@@ -338,8 +376,15 @@ if [ -d "$items_tests_dir" ]; then
     [ -n "$test_file" ] || continue
     test_id="$(basename "$test_file")"
     test_id="${test_id%.sh}"
-    if ! coord_item_id_exists "$test_id"; then
+    item_file="$(item_file_for_id "$test_id" || true)"
+    if [ -z "$item_file" ]; then
       lint_fail "$test_file does not match any coordination item id"
+      continue
+    fi
+    item_type="$(coord_item_value "$item_file" type || true)"
+    expected_test="$(expected_test_path "$item_file" "$test_id" "$item_type")"
+    if [ "$test_file" != "$expected_test" ]; then
+      lint_fail "$test_file must live at $expected_test"
     fi
   done < <(find "$items_tests_dir" -type f -name '*.sh' 2>/dev/null | sort)
 fi
