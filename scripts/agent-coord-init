@@ -22,7 +22,6 @@ Options:
   --remote URL      Existing coordination remote URL; default: PI_COORD_REMOTE_URL
   --project ID      Coordination project; default: PI_COORD_PROJECT or cwd name
   --project-key KEY Project item ID prefix; default: derived project
-  --workspace ID    Deprecated compatibility alias for --project when omitted
   --dir DIR         Working clone dir; default: PI_COORD_DIR or .pi-env/coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE       Coordination role; default: PI_COORD_ROLE
@@ -36,7 +35,6 @@ USAGE
 
 root="$(coord_default_root)"
 remote_url="${PI_COORD_REMOTE_URL:-}"
-legacy_workspace=""
 coord_dir="$(coord_default_dir)"
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
@@ -57,10 +55,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --workspace)
-      [ "$#" -ge 2 ] || coord_die "--workspace requires a value"
-      legacy_workspace="$2"
-      coord_deprecated "--workspace is a compatibility alias; use --project instead"
-      shift 2
+      coord_die "--workspace has been removed; use --project"
       ;;
     --dir)
       [ "$#" -ge 2 ] || coord_die "--dir requires a value"
@@ -102,11 +97,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$project_key" ]; then
-  if [ -n "$legacy_workspace" ]; then
-    project_key="$legacy_workspace"
-  else
-    project_key="$(coord_default_workspace)"
-  fi
+  project_key="$(coord_default_workspace)"
 fi
 [ -n "$project_key" ] || coord_die "project must not be empty"
 [ -n "$agent_id" ] || coord_die "agent id must not be empty"

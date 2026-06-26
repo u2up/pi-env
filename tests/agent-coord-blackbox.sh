@@ -28,25 +28,25 @@ test "$(git -C "$project_git" log -1 --format='%an <%ae>')" = "Project User <pro
 mkdir -p "$tmp/default-root"
 cd "$tmp/default-root"
 git init -q
-agent-coord-init \
+if agent-coord-init \
   --workspace default-demo \
   --agent-id agent-a \
-  --bare-only >"$tmp/default-root.out" 2>"$tmp/default-root.err"
-grep -q 'deprecated: --workspace is a compatibility alias; use --project instead' \
-  "$tmp/default-root.err"
+  --bare-only >"$tmp/default-root.out" 2>"$tmp/default-root.err"; then
+  printf 'expected --workspace to be rejected\n' >&2
+  exit 1
+fi
+grep -q -- '--workspace has been removed; use --project' "$tmp/default-root.err"
+agent-coord-init \
+  --project default-demo \
+  --agent-id agent-a \
+  --bare-only >/dev/null
 test -d "$tmp/default-root/.pi-env/agent-remotes/default-demo-coordination.git"
 test ! -e "$HOME/agent-remotes/default-demo-coordination.git"
 grep -Fxq '/.pi-env/' "$tmp/default-root/.git/info/exclude"
 
 if [ -d /workspace ] && [ "$(realpath -m /workspace)" = "$(realpath -m "$repo_root")" ]; then
   workspace_default_root="$(cd "$repo_root" && unset PI_COORD_ROOT && . "$PI_ENV_COORD_LIB" && coord_default_root)"
-  if [ -d "$repo_root/.pi-env/agent-remotes" ]; then
-    test "$workspace_default_root" = "/workspace/.pi-env/agent-remotes"
-  elif [ -d "$repo_root/agent-remotes" ]; then
-    test "$workspace_default_root" = "/workspace/agent-remotes"
-  else
-    test "$workspace_default_root" = "/workspace/.pi-env/agent-remotes"
-  fi
+  test "$workspace_default_root" = "/workspace/.pi-env/agent-remotes"
 fi
 
 fresh_default_project="$tmp/fresh-default-project"
@@ -300,22 +300,33 @@ grep -q '^      role: architect$' "$workspace_dir/coordination/$action_path"
 grep -q '^      # Document pi config behavior$' \
   "$workspace_dir/coordination/$action_path"
 
-explicit_key_path="$(cd "$workspace_dir" && agent-coord-new \
+if (cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --project other-project \
-  --project-key 'my_key | test/foo\bar' \
-  "Explicit project key item" | tail -n 1)"
-grep -q '^id: MYKEYTESTFOOBAR-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
-  "$workspace_dir/coordination/$explicit_key_path"
-grep -q '^item_key: MYKEYTESTFOOBAR$' \
-  "$workspace_dir/coordination/projects/other-project/PROJECT.md"
+  "Legacy project item" >/dev/null 2>"$tmp/project-option.err"); then
+  printf 'expected --project to be rejected for agent-coord-new\n' >&2
+  exit 1
+fi
+grep -q -- '--project has been removed' "$tmp/project-option.err"
 
-workspace_item_path="$(cd "$workspace_dir" && agent-coord-new \
+if (cd "$workspace_dir" && agent-coord-new \
+  --coord-dir coordination \
+  --project-key 'my_key | test/foo\bar' \
+  "Conflicting project key item" >/dev/null 2>"$tmp/project-key-conflict.err"); then
+  printf 'expected conflicting --project-key to be rejected\n' >&2
+  exit 1
+fi
+grep -q -- '--project-key conflicts with stored project item_key: PIENV' \
+  "$tmp/project-key-conflict.err"
+
+if (cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --workspace-item \
-  "Workspace coordination item" | tail -n 1)"
-grep -q '^id: PIENVTEST-ISS-[0-9]\{8\}-[0-9]\{6\}-001$' \
-  "$workspace_dir/coordination/$workspace_item_path"
+  "Workspace coordination item" >/dev/null 2>"$tmp/workspace-item.err"); then
+  printf 'expected --workspace-item to be rejected\n' >&2
+  exit 1
+fi
+grep -q -- '--workspace-item has been removed' "$tmp/workspace-item.err"
 
 requirement_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
@@ -364,20 +375,17 @@ case "$constraint_requirement_path" in
   *) printf 'unexpected constraint requirement path: %s\n' "$constraint_requirement_path" >&2; exit 1 ;;
 esac
 
-legacy_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
+if (cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
   --type requirement \
   --status accepted \
   --testable no \
   --testability-note "Covered by coordination helper smoke tests." \
-  "Legacy requirement item naming" | tail -n 1)"
-grep -q '^id: PIENV-REQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
-  "$workspace_dir/coordination/$legacy_requirement_path"
-grep -q '^type: requirement$' "$workspace_dir/coordination/$legacy_requirement_path"
-case "$legacy_requirement_path" in
-  requirements/*.yaml) ;;
-  *) printf 'unexpected legacy requirement path: %s\n' "$legacy_requirement_path" >&2; exit 1 ;;
-esac
+  "Legacy requirement item naming" >/dev/null 2>"$tmp/generic-req.err"); then
+  printf 'expected generic requirement creation to be rejected\n' >&2
+  exit 1
+fi
+grep -q 'generic requirement items have been removed' "$tmp/generic-req.err"
 
 todo_path="$(cd "$workspace_dir" && agent-coord-new \
   --coord-dir coordination \
@@ -458,7 +466,6 @@ esac
 requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$requirement_path" | sed 's/^id: //')"
 quality_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$quality_requirement_path" | sed 's/^id: //')"
 constraint_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$constraint_requirement_path" | sed 's/^id: //')"
-legacy_requirement_id="$(grep '^id: ' "$workspace_dir/coordination/$legacy_requirement_path" | sed 's/^id: //')"
 todo_id="$(grep '^id: ' "$workspace_dir/coordination/$todo_path" | sed 's/^id: //')"
 todo_open_id="$(grep '^id: ' "$workspace_dir/coordination/$todo_open_path" | sed 's/^id: //')"
 note_id="$(grep '^id: ' "$workspace_dir/coordination/$note_path" | sed 's/^id: //')"
@@ -572,16 +579,13 @@ printf '%s\n' "$all_requirement_list" \
   | grep -Eq "^$quality_requirement_id[[:space:]]+accepted[[:space:]]+Quality requirement item naming$"
 printf '%s\n' "$all_requirement_list" \
   | grep -Eq "^$constraint_requirement_id[[:space:]]+accepted[[:space:]]+Constraint requirement item naming$"
-printf '%s\n' "$all_requirement_list" \
-  | grep -Eq "^$legacy_requirement_id[[:space:]]+accepted[[:space:]]+Legacy requirement item naming$"
-legacy_requirement_list="$(agent-coord-list \
-  --coord-dir "$workspace_dir/coordination" legacy-requirements accepted)"
-printf '%s\n' "$legacy_requirement_list" \
-  | grep -Eq "^$legacy_requirement_id[[:space:]]+accepted[[:space:]]+Legacy requirement item naming$"
-if printf '%s\n' "$legacy_requirement_list" | grep -q "$requirement_id"; then
-  printf 'legacy requirement list included class requirement\n' >&2
+if agent-coord-list \
+  --coord-dir "$workspace_dir/coordination" legacy-requirements accepted \
+  >"$tmp/legacy-requirements.out" 2>"$tmp/legacy-requirements.err"; then
+  printf 'agent-coord-list unexpectedly accepted legacy requirements\n' >&2
   exit 1
 fi
+grep -q 'generic REQ requirement listing has been removed' "$tmp/legacy-requirements.err"
 decision_list="$(agent-coord-list \
   --coord-dir "$workspace_dir/coordination" decisions accepted)"
 printf '%s\n' "$decision_list" \

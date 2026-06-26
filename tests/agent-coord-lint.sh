@@ -24,7 +24,6 @@ agent-coord-init \
 
 item_path="$(agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type issue \
   "Lint item-matched tests" | tail -n 1)"
 item_id="$(grep '^id: ' "coordination/$item_path" | sed 's/^id: //')"
@@ -40,7 +39,7 @@ if agent-coord-lint \
 fi
 cp "$tmp/item.clean.yaml" "coordination/$item_path"
 case "$item_path" in
-  projects/pi-env/issues/open/"$item_id".yaml) ;;
+  issues/open/"$item_id".yaml) ;;
   *) printf 'unexpected item path: %s\n' "$item_path" >&2; exit 1 ;;
 esac
 
@@ -51,13 +50,13 @@ if agent-coord-lint \
   exit 1
 fi
 
-mkdir -p tests/items/projects/pi-env/issues
-cat >"tests/items/projects/pi-env/issues/$item_id.sh" <<'EOF_TEST'
+mkdir -p tests/items
+cat >"tests/items/$item_id.sh" <<'EOF_TEST'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'item-matched test placeholder passed\n'
 EOF_TEST
-chmod +x "tests/items/projects/pi-env/issues/$item_id.sh"
+chmod +x "tests/items/$item_id.sh"
 
 agent-coord-lint \
   --coord-dir coordination \
@@ -73,7 +72,6 @@ fi
 
 requirement_path="$(agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type functional-requirement \
   --testable no \
   --testability-note "Reviewed as a policy requirement." \
@@ -81,7 +79,7 @@ requirement_path="$(agent-coord-new \
 requirement_id="$(grep '^id: ' "coordination/$requirement_path" | sed 's/^id: //')"
 
 case "$requirement_path" in
-  projects/pi-env/requirements/"$requirement_id".yaml) ;;
+  requirements/"$requirement_id".yaml) ;;
   *) printf 'unexpected requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
 esac
 grep -q '^id: PIENV-FRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
@@ -105,14 +103,13 @@ cp "$tmp/requirement.clean.yaml" "coordination/$requirement_path"
 
 todo_path="$(agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type todos \
   --testable no \
   --testability-note "Lint covers TODO single-body records." \
   "Lint TODO item" | tail -n 1)"
 todo_id="$(grep '^id: ' "coordination/$todo_path" | sed 's/^id: //')"
 case "$todo_path" in
-  projects/pi-env/todos/"$todo_id".yaml) ;;
+  todos/"$todo_id".yaml) ;;
   *) printf 'unexpected todo path: %s\n' "$todo_path" >&2; exit 1 ;;
 esac
 grep -q '^id: PIENV-TODO-[0-9]\{8\}-[0-9]\{6\}-001$' \
@@ -135,14 +132,12 @@ cp "$tmp/todo.clean.yaml" "coordination/$todo_path"
 
 quality_requirement_path="$(agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type quality \
   --testable no \
   --testability-note "Reviewed as a quality requirement." \
   "Lint quality requirement item" | tail -n 1)"
 imported_requirement_path="$(agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type quality \
   --testable no \
   --testability-note "Imported from REQUIREMENTS.md; reviewed as policy." \
@@ -157,7 +152,6 @@ printf 'source_refs:\n  - "REQUIREMENTS.md#lint-imported-quality-requirement"\n'
   >>"coordination/$imported_requirement_path"
 imported_note_requirement_path="$(agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type functional-requirement \
   --testable no \
   --testability-note "Imported requirement is review-only for now." \
@@ -172,18 +166,20 @@ printf 'source_refs:\n  - "USE_CASES.md#lint-imported-note-wording"\n' \
   >>"coordination/$imported_note_requirement_path"
 constraint_requirement_path="$(agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type constraint \
   --testable no \
   --testability-note "Reviewed as a constraint requirement." \
   "Lint constraint requirement item" | tail -n 1)"
-legacy_requirement_path="$(agent-coord-new \
+if agent-coord-new \
   --coord-dir coordination \
-  --project pi-env \
   --type requirement \
   --testable no \
   --testability-note "Legacy requirement compatibility check." \
-  "Lint legacy requirement item" | tail -n 1)"
+  "Lint legacy requirement item" >/dev/null 2>"$tmp/legacy-requirement.err"; then
+  printf 'expected generic requirement creation to fail\n' >&2
+  exit 1
+fi
+grep -q 'generic requirement items have been removed' "$tmp/legacy-requirement.err"
 
 grep -q '^id: PIENV-QRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "coordination/$quality_requirement_path"
@@ -191,8 +187,6 @@ grep -q '^id: PIENV-QRQ-[0-9]\{8\}-[0-9]\{6\}-[0-9]\{3\}$' \
   "coordination/$imported_requirement_path"
 grep -q '^id: PIENV-CRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   "coordination/$constraint_requirement_path"
-grep -q '^id: PIENV-REQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
-  "coordination/$legacy_requirement_path"
 
 agent-coord-lint \
   --coord-dir coordination \
@@ -223,11 +217,11 @@ if agent-coord-lint \
 fi
 sed -i "s/PIENV-FRQ-20260614-000000-999/$requirement_id/" designs/lint-coverage.md
 
-cat >tests/items/projects/pi-env/issues/ORPHAN-ISS-20260607-204155-001.sh <<'EOF_TEST'
+cat >tests/items/ORPHAN-ISS-20260607-204155-001.sh <<'EOF_TEST'
 #!/usr/bin/env bash
 set -euo pipefail
 EOF_TEST
-chmod +x tests/items/projects/pi-env/issues/ORPHAN-ISS-20260607-204155-001.sh
+chmod +x tests/items/ORPHAN-ISS-20260607-204155-001.sh
 
 if agent-coord-lint \
   --coord-dir coordination \
@@ -236,8 +230,8 @@ if agent-coord-lint \
   exit 1
 fi
 
-rm tests/items/projects/pi-env/issues/ORPHAN-ISS-20260607-204155-001.sh
-chmod -x "tests/items/projects/pi-env/issues/$item_id.sh"
+rm tests/items/ORPHAN-ISS-20260607-204155-001.sh
+chmod -x "tests/items/$item_id.sh"
 
 if agent-coord-lint \
   --coord-dir coordination \

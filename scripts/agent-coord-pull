@@ -18,7 +18,7 @@ Usage:
   agent-coord-pull [options] [git pull args...]
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
+  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
   -h, --help        Show this help
 USAGE
 }

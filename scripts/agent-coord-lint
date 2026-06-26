@@ -18,7 +18,7 @@ Usage:
   agent-coord-lint [options]
 
 Options:
-  --coord-dir DIR            Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
+  --coord-dir DIR            Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
   --project-root DIR         Project repo containing tests/items; default: parent of coord dir
   --require-done-or-closed   Fail when any issue item is not done or closed
   --warn-legacy-ids          Warn about IDs that predate the new ID format
@@ -41,11 +41,8 @@ Checks:
   - every tests/items/**/*.sh script matches an existing item ID;
   - design ## Covers entries reference active requirement keys and IDs.
 
-Issue status directories are not mirrored under tests/items; the expected
-project-item test path is:
-  tests/items/projects/<project>/<type-dir>/<item-id>.sh
-
-Root-layout item tests use:
+Issue status directories are not mirrored under tests/items. Root-layout item
+tests use:
   tests/items/<item-id>.sh
 USAGE
 }
@@ -108,6 +105,12 @@ lint_warn() {
   warnings=$((warnings + 1))
 }
 
+for removed_path in WORKSPACE.md workspace projects; do
+  if [ -e "$removed_path" ]; then
+    lint_fail "$removed_path uses a removed legacy coordination layout; use root item directories"
+  fi
+done
+
 item_yaml_files() {
   while IFS= read -r file; do
     case "$file" in
@@ -129,39 +132,10 @@ item_status_dir() {
 }
 
 expected_test_path() {
-  local file id rest owner type_dir status_part
+  local file id
   file="$1"
   id="$2"
-  case "$file" in
-    projects/*/*)
-      owner="${file#projects/}"
-      owner="${owner%%/*}"
-      rest="${file#projects/$owner/}"
-      type_dir="${rest%%/*}"
-      if [ "$type_dir" = "issues" ]; then
-        status_part="${rest#issues/}"
-        status_part="${status_part%%/*}"
-        case "$status_part" in
-          open|blocked|done|closed)
-            ;;
-          *)
-            type_dir="issues"
-            ;;
-        esac
-      fi
-      printf '%s/tests/items/projects/%s/%s/%s.sh\n' \
-        "$project_root" "$owner" "$type_dir" "$id"
-      ;;
-    workspace/*)
-      rest="${file#workspace/}"
-      type_dir="${rest%%/*}"
-      printf '%s/tests/items/workspace/%s/%s.sh\n' \
-        "$project_root" "$type_dir" "$id"
-      ;;
-    *)
-      printf '%s/tests/items/%s.sh\n' "$project_root" "$id"
-      ;;
-  esac
+  printf '%s/tests/items/%s.sh\n' "$project_root" "$id"
 }
 
 normalize_bool() {
@@ -256,11 +230,11 @@ while IFS= read -r file; do
 
   canonical_type="$(coord_item_type_canonical "$type")"
   case "$canonical_type" in
-    functional-requirement|quality-requirement|constraint-requirement|requirement)
+    functional-requirement|quality-requirement|constraint-requirement)
       case "$file" in
-        projects/*/requirements/*.yaml|projects/*/requirements/*.yml|workspace/requirements/*.yaml|workspace/requirements/*.yml|requirements/*.yaml|requirements/*.yml)
+        requirements/*.yaml|requirements/*.yml)
           ;;
-        *) lint_fail "$file requirement item must live under a single requirements directory" ;;
+        *) lint_fail "$file requirement item must live under the root requirements directory" ;;
       esac
       if [ -z "$(coord_trim "$requirement_key")" ]; then
         lint_fail "$file requirement item is missing requirement_key"
@@ -272,7 +246,7 @@ while IFS= read -r file; do
         lint_fail "$file requirement item is missing domain"
       fi
       case "$canonical_type:$requirement_class" in
-        functional-requirement:functional|quality-requirement:quality|constraint-requirement:constraint|requirement:legacy|requirement:generic|requirement:requirement)
+        functional-requirement:functional|quality-requirement:quality|constraint-requirement:constraint)
           ;;
         *) lint_fail "$file requirement_class $requirement_class does not match type $type" ;;
       esac
@@ -284,11 +258,14 @@ while IFS= read -r file; do
         fi
       done
       ;;
+    requirement)
+      lint_fail "$file uses removed generic requirement type; use functional-requirement, quality-requirement, or constraint-requirement"
+      ;;
     todo)
       case "$file" in
-        projects/*/todos/*.yaml|projects/*/todos/*.yml|workspace/todos/*.yaml|workspace/todos/*.yml|todos/*.yaml|todos/*.yml)
+        todos/*.yaml|todos/*.yml)
           ;;
-        *) lint_fail "$file todo item must live under a todos directory" ;;
+        *) lint_fail "$file todo item must live under the root todos directory" ;;
       esac
       item_has_nonempty_top_level_body "$file" \
         || lint_fail "$file todo item is missing non-empty top-level body"

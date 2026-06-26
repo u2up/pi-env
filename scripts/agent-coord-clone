@@ -21,7 +21,6 @@ Options:
   --root DIR       Bare remote parent; default: PI_COORD_ROOT or .pi-env/agent-remotes
   --remote URL     Coordination remote URL; default: PI_COORD_REMOTE_URL
   --project ID     Coordination project; default: PI_COORD_PROJECT or cwd name
-  --workspace ID   Deprecated compatibility alias for --project when omitted
   --dir DIR        Clone target; default: PI_COORD_DIR or .pi-env/coordination
   -h, --help       Show this help
 
@@ -44,7 +43,6 @@ coord_set_or_add_origin_url() {
 
 root="$(coord_default_root)"
 project="${PI_COORD_PROJECT:-}"
-legacy_workspace=""
 coord_dir="$(coord_default_dir)"
 remote="${PI_COORD_REMOTE_URL:-}"
 remote_set=0
@@ -65,10 +63,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --workspace)
-      [ "$#" -ge 2 ] || coord_die "--workspace requires a value"
-      legacy_workspace="$2"
-      coord_deprecated "--workspace is a compatibility alias; use --project instead"
-      shift 2
+      coord_die "--workspace has been removed; use --project"
       ;;
     --project)
       [ "$#" -ge 2 ] || coord_die "--project requires a value"
@@ -97,11 +92,7 @@ done
 
 if [ -z "$remote" ]; then
   if [ -z "$project" ]; then
-    if [ -n "$legacy_workspace" ]; then
-      project="$legacy_workspace"
-    else
-      project="$(coord_default_workspace)"
-    fi
+    project="$(coord_default_workspace)"
   fi
   [ -n "$project" ] || coord_die "project must not be empty"
   root="$(coord_abs "$root")"

@@ -18,10 +18,10 @@ Usage:
   agent-coord-new [options] "Item title"
 
 Options:
-  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
-  --project KEY            Create under legacy projects/<key>/<type-directory>
+  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
+  --project KEY            Removed legacy option; root-layout items only
   --project-key KEY        Project key portion of generated IDs
-  --workspace-item         Deprecated: create a legacy workspace/<type-directory> item
+  --workspace-item         Removed legacy option; root-layout items only
   --type TYPE              Item type; default: issue
   --category CATEGORY      Optional issue category: bug, feature-request, task, question, improvement, ...
   --status STATUS          Initial status; default: open for issues, active otherwise
@@ -34,15 +34,11 @@ Options:
   --id ID                  Explicit item ID; default: timestamp ID with type code
   -h, --help               Show this help
 
-If --project is omitted, the item is created in the project-root layout when
-PROJECT.md plus root item folders are present, even when PI_COORD_PROJECT is
-set for the coordination domain. Without a root layout, PI_COORD_PROJECT is
-used for a legacy projects/<project> item when set. Legacy projects/<project>
-or workspace/ layouts remain readable; creating new legacy workspace-level
-items requires --workspace-item or an existing legacy workspace layout and
-emits a deprecation warning. The item key is resolved from --project-key,
-stored project metadata, PI_COORD_PROJECT_KEY, or a derived project name. It
-is uppercased and all non-alphanumeric characters are removed for item IDs.
+Items are created in the project-root layout only: PROJECT.md plus root item
+folders such as issues/, requirements/, todos/, decisions/, and notes/. The
+item key is resolved from --project-key, stored project metadata,
+PI_COORD_PROJECT_KEY, or a derived project name. It is uppercased and all
+non-alphanumeric characters are removed for item IDs.
 
 Generated IDs use:
   <PROJECTKEY>-<TYPECODE>-<YYYYMMDD-HHMMSS>-<NNN>
@@ -53,11 +49,8 @@ USAGE
 }
 
 coord_dir_opt=""
-project_key=""
-project_key_env="${PI_COORD_PROJECT:-}"
 project_id_key_arg=""
 project_id_key_env="${PI_COORD_PROJECT_KEY:-}"
-workspace_item=0
 item_type="issue"
 category=""
 status_arg=""
@@ -78,10 +71,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --project)
-      [ "$#" -ge 2 ] || coord_die "--project requires a value"
-      project_key="$2"
-      workspace_item=0
-      shift 2
+      coord_die "--project has been removed; create root-layout items and use --project-key for ID prefixes"
       ;;
     --project-key)
       [ "$#" -ge 2 ] || coord_die "--project-key requires a value"
@@ -89,10 +79,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --workspace-item)
-      workspace_item=1
-      project_key=""
-      coord_deprecated "--workspace-item creates legacy workspace/ items; prefer the project-root layout"
-      shift
+      coord_die "--workspace-item has been removed; create root-layout items"
       ;;
     --type)
       [ "$#" -ge 2 ] || coord_die "--type requires a value"
@@ -189,6 +176,9 @@ case "$raw_item_type_lc" in
   task|tasks)
     coord_die "--type $item_type is not a coordination item type; use --type issue --category task"
     ;;
+  requirement|requirements|req|reqs)
+    coord_die "generic requirement items have been removed; use --type functional-requirement, quality-requirement, or constraint-requirement"
+    ;;
   tdo)
     coord_die "--type tdo is not supported; use --type todo"
     ;;
@@ -219,24 +209,14 @@ title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
 cd "$coord_dir"
 
-root_item=0
-if [ -z "$project_key" ] && [ "$workspace_item" != "1" ]; then
-  if coord_write_root_items_by_default; then
-    root_item=1
-  elif [ -n "$project_key_env" ]; then
-    project_key="$project_key_env"
-  elif coord_has_legacy_workspace_layout; then
-    coord_deprecated "creating a legacy workspace/ item because this clone has a legacy workspace layout; prefer PROJECT.md with root item directories"
-    workspace_item=1
-  else
-    coord_die "no project-root layout found; initialize with agent-coord-init or pass --project for a legacy projects/<project> item"
-  fi
+if ! coord_write_root_items_by_default; then
+  coord_die "no project-root layout found; initialize with agent-coord-init and create root item directories"
 fi
 
 created="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
 
-if [ "$root_item" = "1" ]; then
+if true; then
   if coord_item_type_uses_issue_status_dirs "$item_type"; then
     item_root="$type_dir/open"
   else
@@ -264,84 +244,6 @@ if [ "$root_item" = "1" ]; then
     project_value="$(coord_sanitize_path_part "$(basename "$(pwd -P)")")"
   fi
   [ -n "$project_value" ] || project_value="project"
-elif [ "$workspace_item" = "1" ]; then
-  if coord_item_type_uses_issue_status_dirs "$item_type"; then
-    item_root="workspace/$type_dir/open"
-  else
-    item_root="workspace/$type_dir"
-  fi
-  project_value="workspace"
-  metadata_file="WORKSPACE.md"
-  stored_key="$(coord_metadata_item_key "$metadata_file")"
-  if [ -n "$project_id_key_arg" ] && [ -n "$stored_key" ]; then
-    if [ "$(coord_project_id_prefix "$project_id_key_arg")" != "$(coord_project_id_prefix "$stored_key")" ]; then
-      coord_die "--project-key conflicts with stored workspace item_key: $stored_key"
-    fi
-  fi
-  if [ -n "$project_id_key_arg" ]; then
-    project_id_key="$project_id_key_arg"
-  elif [ -n "$stored_key" ]; then
-    project_id_key="$stored_key"
-  elif [ -n "$project_id_key_env" ]; then
-    project_id_key="$project_id_key_env"
-  else
-    project_id_key="$(coord_workspace_dir_key .)"
-  fi
-  id_prefix="$(coord_project_id_prefix "$project_id_key")"
-  if [ ! -f "$metadata_file" ]; then
-    cat >"$metadata_file" <<EOF_WORKSPACE
----
-workspace: workspace
-item_key: $id_prefix
-created: $created
----
-
-# Workspace
-
-- Workspace item key: $id_prefix
-EOF_WORKSPACE
-  fi
-else
-  project_dir="$(coord_sanitize_path_part "$project_key")"
-  [ -n "$project_dir" ] || coord_die "project key produced an empty path"
-  if coord_item_type_uses_issue_status_dirs "$item_type"; then
-    item_root="projects/$project_dir/$type_dir/open"
-  else
-    item_root="projects/$project_dir/$type_dir"
-  fi
-  project_value="$project_dir"
-  metadata_file="projects/$project_dir/PROJECT.md"
-  stored_key="$(coord_metadata_item_key "$metadata_file")"
-  if [ -n "$project_id_key_arg" ] && [ -n "$stored_key" ]; then
-    if [ "$(coord_project_id_prefix "$project_id_key_arg")" != "$(coord_project_id_prefix "$stored_key")" ]; then
-      coord_die "--project-key conflicts with stored project item_key: $stored_key"
-    fi
-  fi
-  if [ -n "$project_id_key_arg" ]; then
-    project_id_key="$project_id_key_arg"
-  elif [ -n "$stored_key" ]; then
-    project_id_key="$stored_key"
-  elif [ -n "$project_id_key_env" ]; then
-    project_id_key="$project_id_key_env"
-  else
-    project_id_key="$project_key"
-  fi
-  id_prefix="$(coord_project_id_prefix "$project_id_key")"
-  if [ ! -f "$metadata_file" ]; then
-    mkdir -p "$(dirname "$metadata_file")"
-    cat >"$metadata_file" <<EOF_PROJECT
----
-project: $project_dir
-item_key: $id_prefix
-created: $created
----
-
-# Project: $project_dir
-
-- Project item key: $id_prefix
-- Source name: $project_key
-EOF_PROJECT
-  fi
 fi
 
 mkdir -p "$item_root"

@@ -23,13 +23,11 @@ Arguments:
                 quality-requirements, or constraint-requirements.
                 All requirement classes are stored under the single
                 requirements directory; requirements lists functional,
-                quality, constraint, and legacy requirement items;
-                legacy-requirements lists only generic legacy requirement
-                items.
+                quality, and constraint requirement items.
   STATUS        Optional status filter, for example open, closed, or accepted
 
 Options:
-  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
+  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
   --category CATEGORY      Only list issue items with this category
   --show-category          Add issue category as the first output column
   --group-by-category      Sort by issue category and add it as the first column
@@ -114,10 +112,10 @@ case "$raw_item_type_lc" in
 esac
 list_all_requirement_classes=0
 case "$raw_item_type_lc" in
-  legacy-requirement|legacy-requirements|legacy_requirement|legacy_requirements)
-    item_type="requirement"
+  legacy-requirement|legacy-requirements|legacy_requirement|legacy_requirements|req|reqs)
+    coord_die "generic REQ requirement listing has been removed; use functional-requirements, quality-requirements, or constraint-requirements"
     ;;
-  requirement|requirements|req|reqs)
+  requirement|requirements)
     item_type="requirement"
     list_all_requirement_classes=1
     ;;
@@ -129,7 +127,7 @@ case "$item_type" in
   issue|todo|note|decision|requirement|functional-requirement|quality-requirement|constraint-requirement)
     ;;
   *)
-    coord_die "item type must be issues, todos, notes, decisions, requirements, legacy-requirements, functional-requirements, quality-requirements, or constraint-requirements"
+    coord_die "item type must be issues, todos, notes, decisions, requirements, functional-requirements, quality-requirements, or constraint-requirements"
     ;;
 esac
 
@@ -168,7 +166,7 @@ while IFS= read -r file; do
   file_type="$(coord_item_type_canonical "$raw_type")"
   if [ "$list_all_requirement_classes" = "1" ]; then
     case "$file_type" in
-      requirement|functional-requirement|quality-requirement|constraint-requirement)
+      functional-requirement|quality-requirement|constraint-requirement)
         ;;
       *)
         continue

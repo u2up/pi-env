@@ -58,10 +58,13 @@ mkdir -p "$init_project/.pi-env/coordination/requirements" "$init_project/design
 cat >"$init_project/.pi-env/coordination/requirements/INIT-FRQ-001.yaml" <<'EOF_REQ'
 schema: coordination-item/v1
 id: INIT-FRQ-001
-type: requirement
+type: functional-requirement
 status: active
 project: init-demo
 requirement_key: INIT-001
+requirement_class: functional
+requirement_kind: detailed-behavior
+domain: requirements
 render_order: 1
 body: |-
   # INIT-001 Default coverage smoke
@@ -109,7 +112,7 @@ mkdir -p "$legacy_project/agent-remotes" "$legacy_project/coordination"
 git -C "$legacy_project" init -q
 legacy_root="$(cd "$legacy_project" && . "$PI_ENV_COORD_LIB" && coord_default_root)"
 legacy_dir="$(cd "$legacy_project" && . "$PI_ENV_COORD_LIB" && coord_default_dir)"
-test "$legacy_root" = "$legacy_project/agent-remotes"
-test "$legacy_dir" = "$legacy_project/coordination"
+test "$legacy_root" = "$legacy_project/.pi-env/agent-remotes"
+test "$legacy_dir" = "$legacy_project/.pi-env/coordination"
 
 printf 'PIENV-ISS-20260620-113310-001 passed\n'

@@ -50,24 +50,15 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$coord_dir" ]; then
-  if [ -d ".pi-env/coordination" ]; then
-    coord_dir=".pi-env/coordination"
-  elif [ -d "coordination" ]; then
-    coord_dir="coordination"
-  else
-    coord_dir=".pi-env/coordination"
-  fi
+  coord_dir=".pi-env/coordination"
 fi
 
 requirements_dirs=()
 if [ -d "$coord_dir/requirements" ]; then
   requirements_dirs+=("$coord_dir/requirements")
 fi
-if [ -d "$coord_dir/projects/$project/requirements" ]; then
-  requirements_dirs+=("$coord_dir/projects/$project/requirements")
-fi
 if [ "${#requirements_dirs[@]}" -eq 0 ]; then
-  echo "requirements directory not found: $coord_dir/requirements or $coord_dir/projects/$project/requirements" >&2
+  echo "requirements directory not found: $coord_dir/requirements" >&2
   exit 1
 fi
 

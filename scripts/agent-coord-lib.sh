@@ -27,18 +27,9 @@ coord_project_root() {
 }
 
 coord_default_root_for_project() {
-  local project_root pi_env_root legacy_root
+  local project_root
   project_root="$(coord_project_root)"
-  pi_env_root="$project_root/.pi-env/agent-remotes"
-  legacy_root="$project_root/agent-remotes"
-
-  if [ -d "$pi_env_root" ]; then
-    printf '%s\n' "$pi_env_root"
-  elif [ -d "$legacy_root" ]; then
-    printf '%s\n' "$legacy_root"
-  else
-    printf '%s\n' "$pi_env_root"
-  fi
+  printf '%s\n' "$project_root/.pi-env/agent-remotes"
 }
 
 coord_default_root() {
@@ -51,27 +42,13 @@ coord_default_root() {
 }
 
 coord_default_workspace() {
-  if [ -n "${PI_COORD_WORKSPACE:-}" ]; then
-    coord_deprecated "PI_COORD_WORKSPACE is a compatibility alias; use PI_COORD_PROJECT instead"
-    printf '%s\n' "$PI_COORD_WORKSPACE"
-  else
-    basename "$(pwd -P)"
-  fi
+  basename "$(pwd -P)"
 }
 
 coord_default_dir_for_project() {
-  local project_root pi_env_dir legacy_dir
+  local project_root
   project_root="$(coord_project_root)"
-  pi_env_dir="$project_root/.pi-env/coordination"
-  legacy_dir="$project_root/coordination"
-
-  if [ -d "$pi_env_dir" ]; then
-    printf '%s\n' "$pi_env_dir"
-  elif [ -d "$legacy_dir" ]; then
-    printf '%s\n' "$legacy_dir"
-  else
-    printf '%s\n' "$pi_env_dir"
-  fi
+  printf '%s\n' "$project_root/.pi-env/coordination"
 }
 
 coord_default_dir() {
@@ -173,7 +150,7 @@ coord_workspace_dir_key() {
   parent="$(dirname "$coord_dir")"
   key="$(basename "$parent")"
   if [ -z "$key" ] || [ "$key" = "/" ]; then
-    key="${PI_COORD_WORKSPACE:-workspace}"
+    key="workspace"
   fi
   printf '%s\n' "$key"
 }
@@ -445,13 +422,7 @@ coord_resolve_dir() {
       return
     fi
     project_root="$(coord_project_root)"
-    if [ -d "$project_root/.pi-env/coordination" ]; then
-      candidate="$project_root/.pi-env/coordination"
-    elif [ -d "$project_root/coordination" ]; then
-      candidate="$project_root/coordination"
-    else
-      candidate="$project_root/.pi-env/coordination"
-    fi
+    candidate="$project_root/.pi-env/coordination"
   fi
   [ -d "$candidate" ] || coord_die "coordination dir not found: $candidate"
   candidate="$(coord_abs "$candidate")"
@@ -677,14 +648,6 @@ coord_metadata_value() {
     value="$(coord_frontmatter_value "$file" "$key" || true)"
   fi
   printf '%s\n' "$value"
-}
-
-coord_has_legacy_layout() {
-  [ -f WORKSPACE.md ] || [ -d workspace ] || [ -d projects ]
-}
-
-coord_has_legacy_workspace_layout() {
-  [ -f WORKSPACE.md ] || [ -d workspace ]
 }
 
 coord_has_project_root_layout() {
@@ -1001,7 +964,7 @@ coord_append_activity() {
 
 coord_item_find_files() {
   local roots=() seen file id_value stem key
-  for root in issues requirements todos decisions notes workspace projects; do
+  for root in issues requirements todos decisions notes; do
     if [ -e "$root" ]; then
       roots+=("$root")
     fi

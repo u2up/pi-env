@@ -18,7 +18,7 @@ Usage:
   agent-coord-review [options] ITEM
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
+  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE       Coordination role; default: PI_COORD_ROLE
   --pass            Mark review passed; default
