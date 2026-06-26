@@ -52,6 +52,30 @@ implementation-repo/
   docs/
 ```
 
+Conceptually, the coordination repository owns durable coordination state while
+implementation systems own implementation artifacts and execution evidence:
+
+```text
+                 Coordination Repository
+          (durable project coordination state)
+
+  Requirements --+
+  Decisions -----+--> intent, scope, ownership,
+  Issues --------+    acceptance, and traceability
+  Notes ---------+
+
+           |
+           | links to and is supported by
+           v
+
+      Implementation Systems
+
+  Implementation repositories: source, tests, build config, docs
+  Code review systems: pull requests, reviews, merge state
+  CI systems: run results, logs, artifacts
+  Release systems: packages, deployments, release evidence
+```
+
 A requirement can link to a decision, an issue can link to the requirement, and
 the issue can link to source commits, tests, pull requests, or CI evidence
 without moving ownership of those artifacts out of the implementation systems.
@@ -149,14 +173,19 @@ This distinction is the foundation of the pattern.
 
 ### Project state
 
-Durable information required to understand, coordinate, review, and evolve a
-project beyond the implementation artifacts themselves.
+Within this pattern, project state means durable project coordination state:
+information required to understand, coordinate, review, and evolve a project
+beyond the implementation artifacts themselves.
 
 Project state includes intent, scope, constraints, decisions, ownership,
 lifecycle status, verification, acceptance, planning context, and links to
 supporting implementation evidence. It is distinct from source code, tests,
 build configuration, packages, and other deliverables, though it often refers to
 them.
+
+The pattern does not attempt to model all organizational project-management
+state, such as budgeting, staffing, legal approval, contracts, or procurement,
+unless a coordination domain explicitly chooses to include those concerns.
 
 ### Coordination repository
 
