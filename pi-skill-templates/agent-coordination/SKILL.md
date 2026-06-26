@@ -2,9 +2,8 @@
 
 Use this skill when working in a project that contains a Git-backed agent
 coordination repository, when asked to find, claim, or update work, or before
-making changes that affect shared agent state. Historical workspace-level
-coordination state may exist for compatibility, but new pi-env work is
-project-scoped.
+making changes that affect shared agent state. Pi-env coordination is
+project-scoped at `.pi-env/coordination` by default.
 
 ## Coordination repository
 
