@@ -607,6 +607,20 @@ implementation repository.
 
 Hosted Git remotes are also supported through explicit remote URLs.
 
+### Authority model
+
+In the `pi-env` reference implementation, the coordination repository is the
+authoritative source for project coordination state within the selected
+coordination domain. This includes requirements, issues, task-category work,
+decisions, notes, lifecycle status, ownership, review state, verification state,
+and traceability links.
+
+Implementation repositories remain authoritative for source code, tests, build
+configuration, and deliverable artifacts. External systems such as issue
+trackers, CI systems, pull requests, and chat may be referenced as evidence or
+used for intake and notification, but `pi-env` coordination helpers treat the
+coordination repository as the durable source of project-state truth.
+
 ### Scaffolded layout
 
 A fresh `pi-env` coordination repository includes files and directories such as:
