@@ -73,6 +73,14 @@ context. This keeps context size manageable: each agent can load the small set
 of relevant project-state files instead of inheriting an ever-growing session
 history.
 
+For example, a coordination repository might contain:
+
+* a requirement file saying CSV export is needed;
+* an issue file tracking implementation work;
+* a decision file explaining why streaming export was chosen;
+* links from the issue to pull request 42, implementation commits, and CI test
+  evidence.
+
 ---
 
 ## Core Principle
@@ -357,6 +365,24 @@ A typical protocol is:
 The exact protocol may vary, but coordination state should remain inspectable
 from a checkout and recoverable from Git history.
 
+### Concurrent Actors and Semantic Conflicts
+
+Git detects textual conflicts, but coordination state can also have semantic
+conflicts. Two actors may claim the same work, a stale owner may block progress,
+a generated report may race with a manual edit, or one actor may close work
+while another is still updating its requirements.
+
+Coordination domains should define concurrency rules appropriate to their risk
+level. Useful practices include:
+
+* claim or lease exclusive work before starting it;
+* record actor, role, and timestamp metadata on meaningful state transitions;
+* define when ownership is considered stale and how it can be reassigned;
+* pull or rebase and re-read relevant items before marking work done, reviewed,
+  verified, accepted, or released;
+* keep generated files clearly derived from authoritative source records;
+* prefer small, prompt commits over long-lived coordination branches.
+
 ---
 
 ## Work Lifecycles
@@ -431,6 +457,30 @@ A useful role-based workflow records:
 * which evidence was considered;
 * which next role or state is expected;
 * whether the transition is final or pending review.
+
+---
+
+## Authority Rules
+
+A coordination repository should explicitly define which project state it owns.
+For each field of project state, the coordination domain should define exactly
+one authoritative source. Other systems may mirror, summarize, link to, or
+notify about that state, but they should not silently compete as independent
+sources of truth.
+
+Common authority boundaries include:
+
+* issue trackers owning public intake, discussion, and external notification;
+* coordination repositories owning implementation status, lifecycle state,
+  ownership, verification, acceptance, and traceability;
+* implementation repositories owning source code, tests, build configuration,
+  and release artifacts;
+* code review systems owning pull request review discussion and merge status;
+* CI systems owning raw run results and logs, while coordination items link to
+  the evidence needed for project-state decisions.
+
+Mirrored or generated records should identify their authoritative input and
+should normally be regenerated rather than hand-edited.
 
 ---
 
