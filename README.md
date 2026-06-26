@@ -52,7 +52,7 @@ already available, try pi-env on an existing public repository:
 git clone https://github.com/spog/evm.git
 cd evm
 
-nix run github:why-ex/pi-env -- \
+nix run github:u2up/pi-env -- \
   "Summarize this repository and suggest safe first checks."
 ```
 
@@ -68,7 +68,7 @@ For tracked role-based agent work, enter the pi-env shell:
 
 ```bash
 cd evm
-nix develop github:why-ex/pi-env
+nix develop github:u2up/pi-env
 ```
 
 Then bootstrap a local coordination repository for the checkout and run Pi:
@@ -150,7 +150,7 @@ You normally do not need to install these separately for pi-env itself.
 Clone this repository and enter its devshell:
 
 ```bash
-git clone https://github.com/why-ex/pi-env.git ~/src/pi-env
+git clone https://github.com/u2up/pi-env.git ~/src/pi-env
 cd ~/src/pi-env
 nix develop
 ```
@@ -235,8 +235,8 @@ pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 Select another pi-env flake reference with either form:
 
 ```bash
-PI_ENV_FLAKE=github:why-ex/pi-env ~/src/pi-env/pi-env
-~/src/pi-env/pi-env --flake github:why-ex/pi-env
+PI_ENV_FLAKE=github:u2up/pi-env ~/src/pi-env/pi-env
+~/src/pi-env/pi-env --flake github:u2up/pi-env
 ```
 
 ## 4. Use pi-env through a project flake
@@ -276,7 +276,7 @@ reference that your team can access.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
 
-    # Local checkout example. A shared repo could use github:why-ex/pi-env.
+    # Local checkout example. A shared repo could use github:u2up/pi-env.
     pi-env.url = "git+file:///home/me/src/pi-env";
     pi-env.inputs.nixpkgs.follows = "nixpkgs";
     pi-env.inputs.flake-utils.follows = "flake-utils";
@@ -331,7 +331,7 @@ inputs = {
   # existing inputs...
 
   pi-env.url = "git+file:///home/me/src/pi-env";
-  # or: pi-env.url = "github:why-ex/pi-env";
+  # or: pi-env.url = "github:u2up/pi-env";
   pi-env.inputs.nixpkgs.follows = "nixpkgs";
   pi-env.inputs.flake-utils.follows = "flake-utils";
 };

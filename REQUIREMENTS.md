@@ -409,7 +409,7 @@ The core pi-env runtime must therefore keep precedence for launcher
 dependencies, while project-declared tools such as `make`, `gcc`,
 `pkg-config`, or `cmake` become discoverable to Pi tool commands.
 
-Direct `nix run github:why-ex/pi-env` usage is not required to infer a
+Direct `nix run github:u2up/pi-env` usage is not required to infer a
 target project's build tools automatically. Projects that need build or
 test tools inside the sandbox should either integrate pi-env through a
 project flake/devshell or use an explicit, documented extra-path opt-in.
