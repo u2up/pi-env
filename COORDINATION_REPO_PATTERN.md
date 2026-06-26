@@ -741,7 +741,8 @@ while still following the pattern.
 
 `pi-env` defaults to one coordination repository per selected project. Each
 `pi-env` run operates on one project root mounted at `/workspace` inside the
-sandbox.
+sandbox; `/workspace` is the sandbox path for that selected root, not a
+host-side multi-project workspace abstraction.
 
 Fresh local coordination state is placed under the project-local operational
 root:
@@ -759,21 +760,38 @@ its working clone is physically nested under the implementation checkout. The
 `.pi-env/` operational root should normally remain untracked by the
 implementation repository.
 
-Hosted Git remotes are also supported through explicit remote URLs.
+This project-local operational root is distinct from `pi-env`'s default
+sandbox home/state directory. Sensitive Pi runtime state such as copied auth,
+settings, sessions, imported common resources, and caches defaults outside the
+project under the user's XDG state location unless the user explicitly opts
+into project-local sandbox state.
+
+Hosted Git remotes are supported through explicit remote URLs. A coordination
+clone outside the selected project can also be mounted explicitly for a sandbox
+run; project-local `.pi-env/coordination` is visible through the normal
+`/workspace` project mount.
 
 ### Authority model
 
 In the `pi-env` reference implementation, the coordination repository is the
-authoritative source for project coordination state within the selected
-coordination domain. This includes requirements, issues, task-category work,
-decisions, notes, lifecycle status, ownership, review state, verification state,
-and traceability links.
+authoritative source for coordination records within the selected coordination
+domain. This includes requirement items, issues, task-category work, decision
+items when used, notes, lifecycle status, ownership, review state,
+verification state, and traceability links.
 
 Implementation repositories remain authoritative for source code, tests, build
-configuration, and deliverable artifacts. External systems such as issue
-trackers, CI systems, pull requests, and chat may be referenced as evidence or
-used for intake and notification, but `pi-env` coordination helpers treat the
-coordination repository as the durable source of project-state truth.
+configuration, deliverable artifacts, and source-repository design documents
+when those documents are the chosen place for implementation architecture
+rationale. For example, `pi-env` keeps architectural design documents in the
+implementation repository while using coordination requirement items and issue
+records for durable coordination state and traceability.
+
+External systems such as issue trackers, CI systems, pull requests, and chat
+may be referenced as evidence or used for intake and notification, but
+`pi-env` coordination helpers treat the coordination repository as the durable
+source for the project-state fields it owns. Generated summaries, coverage
+reports, and rendered requirements identify their authoritative inputs and are
+regenerated rather than treated as independent sources of truth.
 
 ### Scaffolded layout
 
@@ -804,28 +822,32 @@ agents/
 
 ### Helper commands
 
-`pi-env` packages optional coordination helpers, including:
+`pi-env` packages optional coordination helpers. The user-facing set includes:
 
 ```text
-bootstrap-coordination   infer defaults and initialize coordination state
-agent-coord-init         create and scaffold a coordination repository
-agent-coord-clone        clone an existing coordination repository
-agent-coord-status       show repository status and active items
-agent-coord-list         list items
-agent-coord-cat          print an item
-agent-coord-new          create a templated item
-agent-coord-claim        claim an issue item
-agent-coord-done         mark developer work done
-agent-coord-review       record review pass/fail
-agent-coord-verify       record verification pass/fail
-agent-coord-close        final-close reviewed and verified done items
-agent-coord-lint         validate coordination items and test linkage
-agent-coord-pull         pull/rebase coordination state
-agent-coord-push         commit and push coordination changes
+bootstrap-coordination       infer defaults and initialize coordination state
+agent-coord-init             create and scaffold a coordination repository
+agent-coord-clone            clone an existing coordination repository
+agent-coord-status           show repository status and active items
+agent-coord-list             list items
+agent-coord-cat              print an item
+agent-coord-new              create a templated item
+agent-coord-claim            claim an issue item
+agent-coord-done             mark developer work done
+agent-coord-review           record review pass/fail
+agent-coord-verify           record verification pass/fail
+agent-coord-close            final-close reviewed and verified done items
+agent-coord-lint             validate coordination items and test linkage
+agent-coord-pull             pull/rebase coordination state
+agent-coord-push             commit and push coordination changes
+agent-coord-upgrade-rules    preview/apply scaffolded rule-template updates
+pi-serial-roles              run serial developer/reviewer/tester jobs
 ```
 
-The helpers are plain Git/text-file tooling and are separate from the core
-sandbox launcher.
+Project-maintenance scripts may also generate rendered requirements or coverage
+reports from coordination items and design coverage tables. The helpers are
+plain Git/text-file tooling and are packaged separately from the core sandbox
+launcher.
 
 ### Item model
 
@@ -868,7 +890,9 @@ lightweight reminders outside the issue lifecycle.
 
 Issue items include current state near the top plus chronological events and
 linked Markdown message bodies. Requirement and TODO items are current-state
-records with renderable body blocks.
+records with renderable body blocks. Imported or generated requirement records
+may also carry source-reference metadata so generated requirements and coverage
+reports can preserve traceability to older documents or item IDs.
 
 ### Lifecycle semantics
 
