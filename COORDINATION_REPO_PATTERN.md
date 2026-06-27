@@ -1,6 +1,6 @@
 # COORDINATION_REPO_PATTERN.md
 
-> **Status:** Draft 0.4
+> **Status:** Draft 0.5
 >
 > **Author:** Samo Pogačnik <samo_pogacnik@t-2.net>
 >
@@ -213,6 +213,38 @@ Coordination repositories answer:
 
 This distinction is the foundation of the pattern.
 
+## Why a Dedicated Git Repository?
+
+The architectural unit is a dedicated Git repository because coordination state
+needs ownership, history, review, synchronization, and portability independent
+of any one implementation repository or hosted workflow tool.
+
+A directory inside an implementation repository can store planning files, but it
+couples coordination history to source history, release branches, access rules,
+and repository boundaries. That coupling becomes awkward when coordination spans
+multiple repositories, when planning should change without touching source
+branches, or when implementation history should not expose internal planning
+context.
+
+A database or issue tracker can be a useful system of record for selected
+workflow concerns, but it usually depends on a specific service, API,
+permission model, and availability boundary. A coordination repository instead
+uses the same durable mechanics as source control: clone, branch, review, diff,
+merge, archive, and recover. It remains readable from a checkout and usable by
+humans, scripts, CI jobs, and AI-assisted tools without requiring one central
+application to mediate all access.
+
+The repository boundary also makes authority explicit. The implementation
+repository owns deliverables; the coordination repository owns project intent,
+lifecycle state, decisions, acceptance, and traceability. Other tools may index,
+mirror, notify, or visualize that state, but the Git repository provides the
+portable architectural anchor.
+
+This does not mean Git should replace every workflow tool. The pattern uses Git
+where Git's strengths matter most: durable text artifacts, inspectable history,
+distributed synchronization, reviewable changes, and long-term independence
+from any one hosted service.
+
 ## Project-State Scope
 
 Project state is not one monolithic category. A coordination repository often
@@ -406,6 +438,25 @@ version-controlled, reviewable as text, available offline, shared between
 humans and automation, traceable over time, and portable across tools and
 hosting platforms.
 
+## Applicability
+
+Use this pattern when project coordination state must outlive transient
+conversation, span multiple tools or repositories, be reviewed like source
+changes, or be consumed safely by automation. It is especially useful for
+multi-actor projects, regulated or audit-sensitive work, long-running
+migrations, AI-assisted development, and projects where decisions and
+acceptance evidence must remain traceable.
+
+The pattern may be unnecessary for small, short-lived projects where source
+commits and a lightweight issue tracker already provide enough context. It may
+also be the wrong primary store for high-volume telemetry, large binary
+artifacts, real-time locking, private personnel data, or workflow state whose
+value depends mainly on a hosted product's notification and dashboard features.
+
+The central trade-off is discipline for durability: adopters gain portable,
+reviewable coordination history, but they must define authority boundaries and
+keep project state current.
+
 ## Why Not Only Use an Issue Tracker?
 
 Issue trackers remain valuable. They optimize web-based human interaction,
@@ -467,114 +518,54 @@ Git-native coordination layer that integrates naturally with existing systems.
 
 # Recommended Operational Practices
 
-The practices in this section are common ways to operate a coordination
-repository safely. They are guidance, not the minimum definition of the pattern.
-Small projects may adopt only a subset; larger or automated projects may need
-more explicit rules.
+The practices in this section are guidance, not the minimum definition of the
+pattern. Small projects may use only a subset; larger or automated projects may
+need explicit rules.
 
 ## Synchronization Protocol
 
-Because the coordination repository is a Git repository, Git provides both
-synchronization and conflict detection.
-
-A typical protocol is:
-
-1. Pull or rebase before reading, selecting, or changing shared state.
-2. Make a small, focused coordination change.
-3. Record meaningful state transitions in the coordination artifacts
-   themselves, not only in commit messages.
-4. Commit with a clear message.
-5. Push promptly.
-6. Resolve conflicts conservatively, preserving factual updates from all sides
-   when possible.
-7. Avoid force-pushing or rewriting shared coordination history unless the
-   coordination domain has an explicit recovery procedure.
+Treat the coordination repository like other shared Git state: pull or rebase
+before changing it, make focused changes, record important state transitions in
+the artifacts themselves, commit clearly, and push promptly. Resolve conflicts
+conservatively and avoid rewriting shared history unless the coordination
+domain has a recovery procedure.
 
 ## Concurrent Actors and Semantic Conflicts
 
-Git detects textual conflicts, but coordination state can also have semantic
-conflicts. Two actors may claim the same work, a stale owner may block
-progress, a generated report may race with a manual edit, or one actor may
-close work while another is still updating its requirements.
-
-Useful concurrency practices include:
-
-* claim or lease exclusive work before starting it;
-* record actor, role, and timestamp metadata on meaningful state transitions;
-* define when ownership is considered stale and how it can be reassigned;
-* pull or rebase and re-read relevant items before marking work done,
-  reviewed, verified, accepted, or released;
-* keep generated files clearly derived from authoritative source records;
-* prefer small, prompt commits over long-lived coordination branches.
+Git detects textual conflicts, but not all coordination conflicts are textual.
+Two actors can claim the same work, a generated report can race with a manual
+edit, or one actor can close work while another is updating related state.
+Useful mitigations include short-lived claims or leases, actor and timestamp
+metadata, stale-owner rules, re-reading relevant items before final state
+transitions, and clear separation between source records and generated files.
 
 ## Work Lifecycles
 
-The pattern does not mandate a single workflow. A coordination domain may
-define lifecycle states appropriate to its process.
+The pattern does not mandate one lifecycle. A domain may use a simple
+`open -> in-progress -> closed` flow or a more explicit sequence that separates
+proposal, implementation, review, verification, acceptance, and release
+inclusion. The important practice is to define what each state means, because
+"work completed" is not always the same as "project state accepted".
 
-Common states include:
+## Human, Automation, and Role Collaboration
 
-```text
-proposed -> accepted -> active -> done -> reviewed -> verified -> closed
-```
+Humans, scripts, CI jobs, bots, and AI-assisted tools can all be actors. Role
+labels such as planner, architect, implementer, reviewer, tester, operator, or
+release manager can clarify responsibility, but the pattern does not require a
+specific taxonomy or role manager.
 
-or, for simpler projects:
-
-```text
-open -> in-progress -> closed
-```
-
-More rigorous workflows may separate developer completion, peer review,
-verification or testing, final acceptance, and release inclusion. This
-separation is useful because "work completed" is not always the same as
-"project state accepted". The coordination repository should make the domain's
-meaning of each state explicit.
-
-## Human and Automation Collaboration
-
-The pattern does not assume that project work is performed by humans,
-automation, or AI systems alone.
-
-All actors interact through the same Git-backed project state. A human may add
-a requirement, a script may regenerate a coverage report, an AI coding agent may
-claim and complete a work item, a CI job may attach verification evidence, and
-a reviewer may record acceptance.
-
-The important property is not who made a change, but that the change is
-explicit, attributable, reviewable, and traceable.
-
-## Role-Based Workflows
-
-A coordination repository may support role-based workflows. Roles make
-responsibility explicit and help actors operate within bounded expectations.
-
-Example roles include planner, architect, implementer, reviewer, tester,
-release manager, operator, and incident responder. Roles can be used by humans,
-scripts, or AI-assisted tools. The pattern does not require a specific role
-taxonomy, role manager, scheduler, or automation runner.
-
-A useful role-based workflow records which role performed a state transition,
-which evidence was considered, which next role or state is expected, and
-whether the transition is final or pending review.
+A useful transition records who or what performed it, which evidence was
+considered, and what next state or role is expected.
 
 ## Adoption Checklist
 
-Projects adopting the pattern should decide:
+Before adopting the pattern, decide the coordination domain boundary, remote
+location, authoritative source records, generated outputs, item IDs, required
+metadata, lifecycle states, review expectations, conflict rules, automation
+permissions, evidence-linking conventions, and sensitivity exclusions.
 
-* the coordination domain boundary;
-* where the coordination repository remote lives;
-* whether working clones are external or nested inside implementation checkouts;
-* which files are authoritative source records and which files are generated;
-* item ID format and required metadata fields;
-* lifecycle states and transition rules;
-* review and verification expectations;
-* conflict handling protocol;
-* automation permissions;
-* how commits, tests, releases, and external systems are referenced;
-* how sensitive information is excluded.
-
-A small project can start with Markdown files and a simple status convention.
-More automated projects may add schemas, linting, generated reports, lifecycle
+A small project can start with Markdown files and a status convention. More
+automated projects may add schemas, linting, generated reports, lifecycle
 helpers, and role-based runners.
 
 ---
@@ -586,59 +577,21 @@ coordination helpers that implement one version of the Coordination Repository
 Pattern for sandboxed AI-assisted software development.
 
 This appendix is descriptive, not prescriptive. Other implementations may use
-different file layouts, schemas, lifecycle states, automation runners, or tools
+different layouts, schemas, lifecycle states, automation runners, or tools
 while still following the pattern.
 
 ## Overview
 
-`pi-env` defaults to one coordination repository per selected project. Each
-`pi-env` run operates on one project root mounted at `/workspace` inside the
-sandbox. Fresh local coordination state is placed under a project-local
-operational root:
+`pi-env` uses a project-local coordination repository and helper tooling to
+manage requirement items, issues, task-category work, decisions when used,
+notes, lifecycle status, ownership, review state, verification state, and
+traceability links within the selected coordination domain.
 
-```text
-.pi-env/
-  coordination/          # working coordination clone
-  agent-remotes/         # optional local bare coordination remotes
-  logs/
-  locks/
-```
-
-The `.pi-env/coordination` directory is a separate Git repository even though
-its working clone is physically nested under the implementation checkout. The
-`.pi-env/` operational root should normally remain untracked by the
-implementation repository.
-
-## Scaffolded layout
-
-A fresh `pi-env` coordination repository includes files and directories such as:
-
-```text
-AGENTS.md
-README.md
-PROJECT.md
-docs/
-  SYNC_PROTOCOL.md
-  ITEM_FORMAT.md
-.pi/
-  skills/
-    agent-coordination/
-      SKILL.md
-issues/
-requirements/
-todos/
-decisions/
-notes/
-agents/
-```
-
-## Authority model
-
-In the `pi-env` reference implementation, the coordination repository is the
-authoritative source for requirement items, issues, task-category work,
-decision items when used, notes, lifecycle status, ownership, review state,
-verification state, and traceability links within the selected coordination
-domain.
+The coordination repository is a separate Git repository even when its working
+clone is placed inside a project-local operational directory. Exact paths,
+scaffolded files, item schemas, helper commands, local remotes, logs, locks,
+and automation runners are implementation details of `pi-env`, not part of the
+pattern.
 
 Implementation repositories remain authoritative for source code, tests, build
 configuration, deliverable artifacts, and implementation design documents when
@@ -648,17 +601,14 @@ may be referenced as evidence or used for intake and notification.
 
 ## Further implementation details
 
-Detailed `pi-env` coordination behavior is maintained in existing design and
-package documents:
+Current `pi-env` documentation describes repository layout, item formats,
+helper commands, synchronization behavior, installed coordination rules, role
+context, and automation architecture. Treat those documents as the `pi-env`
+implementation contract rather than as requirements of the Coordination
+Repository Pattern.
 
-* [`designs/agent-coordination.md`](designs/agent-coordination.md) describes
-  coordination domains, project-local location, scaffolded layout, item IDs,
-  item state, Git synchronization, helper commands, and installed coordination
-  rules.
-* [`designs/serial-role-automation.md`](designs/serial-role-automation.md)
-  describes the serial developer/reviewer/tester runner and its safety model.
-* [`role-manager/README.md`](role-manager/README.md) describes role context used
-  by coordination helpers.
+See the [`pi-env` repository README](README.md), [`designs/`](designs/), and
+[`role-manager/`](role-manager/) for current implementation documentation.
 
 ---
 
