@@ -1,6 +1,6 @@
 # COORDINATION_REPO_PATTERN.md
 
-> **Status:** Draft 0.5
+> **Status:** Draft 1.0 candidate
 >
 > **Author:** Samo Pogačnik <samo_pogacnik@t-2.net>
 >
@@ -216,8 +216,8 @@ This distinction is the foundation of the pattern.
 ## Why a Dedicated Git Repository?
 
 The architectural unit is a dedicated Git repository because coordination state
-needs ownership, history, review, synchronization, and portability independent
-of any one implementation repository or hosted workflow tool.
+often needs ownership, history, review, synchronization, and portability
+independent of any one implementation repository or hosted workflow tool.
 
 A directory inside an implementation repository can store planning files, but it
 couples coordination history to source history, release branches, access rules,
@@ -226,13 +226,12 @@ multiple repositories, when planning should change without touching source
 branches, or when implementation history should not expose internal planning
 context.
 
-A database or issue tracker can be a useful system of record for selected
-workflow concerns, but it usually depends on a specific service, API,
-permission model, and availability boundary. A coordination repository instead
-uses the same durable mechanics as source control: clone, branch, review, diff,
-merge, archive, and recover. It remains readable from a checkout and usable by
-humans, scripts, CI jobs, and AI-assisted tools without requiring one central
-application to mediate all access.
+A database or issue tracker can be the right system of record for selected
+workflow concerns. The coordination repository addresses a narrower case:
+durable text artifacts that benefit from source-control mechanics such as
+clone, branch, review, diff, merge, archive, and recover. It remains readable
+from a checkout and usable by humans, scripts, CI jobs, and AI-assisted tools
+without requiring one central application to mediate all access.
 
 The repository boundary also makes authority explicit. The implementation
 repository owns deliverables; the coordination repository owns project intent,
@@ -317,9 +316,8 @@ ordinary peer-to-peer Git exchange. The pattern does not prescribe hosting.
 
 A coordination repository should usually be:
 
-* **Git-native**: important state is represented as version-controlled
-  artifacts that can be cloned, branched, committed, pushed, pulled, merged,
-  reviewed, and archived with standard Git workflows.
+* **Git-native**: important state is version-controlled and compatible with
+  standard clone, branch, commit, review, merge, and archive workflows.
 * **Human-readable**: important artifacts are understandable from a checkout
   without a specialized service. Markdown, YAML, TOML, JSON, and plain text are
   common choices.
@@ -330,11 +328,39 @@ A coordination repository should usually be:
   it became that way.
 * **Reviewable**: planning, priority, scope, acceptance, and architectural
   decisions leave an inspectable history.
-* **Distributed**: participants can clone, branch, merge, and review
-  coordination state using normal Git tooling.
+* **Distributed**: participants can work with coordination state using normal
+  Git tooling.
 * **Tool-independent**: the pattern does not depend on a specific AI model,
   coding agent, IDE, hosting platform, issue tracker, CI system, or project
   management service.
+
+## Authority Boundaries
+
+A coordination repository should explicitly define which project state it owns.
+For each field of project state, the coordination domain should identify one
+authoritative source. Other systems may mirror, summarize, link to, or notify
+about that state, but they should not silently compete as independent sources
+of truth.
+
+A typical division of authority is:
+
+| System | Common authoritative state |
+| --- | --- |
+| Implementation repository | Source code, tests, build configuration, and deliverable artifacts. |
+| Coordination repository | Requirements, decisions, lifecycle state, ownership, acceptance, and traceability. |
+| Issue tracker | Public intake, external discussion, labels, notifications, and user-facing status. |
+| Code review system | Pull request discussion, reviewer approvals, and merge status. |
+| CI system | Raw run results, logs, artifacts, and execution metadata. |
+| Chat system | Synchronous discussion and notifications, not durable project state. |
+
+The boundaries are domain-specific. For example, an issue tracker may own
+public intake and external discussion while the coordination repository owns
+implementation planning, lifecycle status, verification, acceptance, and
+traceability. CI systems may own raw logs while coordination items link to the
+specific evidence used for project-state decisions.
+
+Mirrored or generated records should identify their authoritative input and
+should normally be regenerated rather than hand-edited.
 
 ## Item Representation
 
@@ -370,34 +396,6 @@ Other implementations may store event history separately, keep Markdown files
 with front matter, use JSON records, or generate summary documents from item
 files. The pattern does not require one schema, but it benefits from stable
 IDs, explicit status, clear relationships, and durable links to evidence.
-
-## Authority Boundaries
-
-A coordination repository should explicitly define which project state it owns.
-For each field of project state, the coordination domain should identify one
-authoritative source. Other systems may mirror, summarize, link to, or notify
-about that state, but they should not silently compete as independent sources
-of truth.
-
-A typical division of authority is:
-
-| System | Common authoritative state |
-| --- | --- |
-| Implementation repository | Source code, tests, build configuration, and deliverable artifacts. |
-| Coordination repository | Requirements, decisions, lifecycle state, ownership, acceptance, and traceability. |
-| Issue tracker | Public intake, external discussion, labels, notifications, and user-facing status. |
-| Code review system | Pull request discussion, reviewer approvals, and merge status. |
-| CI system | Raw run results, logs, artifacts, and execution metadata. |
-| Chat system | Synchronous discussion and notifications, not durable project state. |
-
-The boundaries are domain-specific. For example, an issue tracker may own
-public intake and external discussion while the coordination repository owns
-implementation planning, lifecycle status, verification, acceptance, and
-traceability. CI systems may own raw logs while coordination items link to the
-specific evidence used for project-state decisions.
-
-Mirrored or generated records should identify their authoritative input and
-should normally be regenerated rather than hand-edited.
 
 ## Traceability
 
@@ -634,6 +632,9 @@ Areas for future exploration include:
 * safe automation permission models;
 * interoperability between issue trackers and coordination repositories;
 * interoperability between AI-assisted development tools.
+
+The pattern intentionally remains lightweight; future work should improve
+interoperability without increasing mandatory complexity.
 
 These may evolve into shared conventions or formal specifications while
 preserving the core principle:
