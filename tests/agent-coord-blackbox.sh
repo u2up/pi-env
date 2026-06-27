@@ -66,8 +66,30 @@ mkdir -p "$bootstrap_project_dir"
 git -C "$bootstrap_project_dir" init -q
 git -C "$bootstrap_project_dir" remote add origin git@example.invalid:example/other-project.git
 cd "$tmp"
+if bootstrap-coordination \
+  --workspace stale-workspace \
+  --project-root "$bootstrap_project_dir" \
+  --root "$tmp/bootstrap-remotes" \
+  --agent-id agent-b \
+  --print-only >"$tmp/bootstrap-workspace.out" 2>"$tmp/bootstrap-workspace.err"; then
+  printf 'expected bootstrap-coordination --workspace to be rejected\n' >&2
+  exit 1
+fi
+grep -q -- '--workspace has been removed; use --project' \
+  "$tmp/bootstrap-workspace.err"
+
+if PI_COORD_WORKSPACE=stale-workspace bootstrap-coordination \
+  --project-root "$bootstrap_project_dir" \
+  --root "$tmp/bootstrap-remotes" \
+  --agent-id agent-b \
+  --print-only >"$tmp/bootstrap-workspace-env.out" 2>"$tmp/bootstrap-workspace-env.err"; then
+  printf 'expected bootstrap-coordination PI_COORD_WORKSPACE to be rejected\n' >&2
+  exit 1
+fi
+grep -q -- 'PI_COORD_WORKSPACE has been removed; use PI_COORD_PROJECT' \
+  "$tmp/bootstrap-workspace-env.err"
+
 bootstrap_plan="$tmp/bootstrap-plan.txt"
-PI_COORD_WORKSPACE=stale-workspace \
 PI_COORD_DIR="$tmp/stale-coordination" \
 PI_COORD_PROJECT=stale-project \
 PI_COORD_PROJECT_KEY=STALE \
