@@ -121,12 +121,8 @@ fixed_grep 'PI_BWRAP_STATE_DIR=$PWD/.pi-env/state' README.md
 fixed_grep 'PI_COORD_ROOT=.pi-env/agent-remotes' "$script"
 
 prefer_project="$tmpdir/prefer-project"
-mkdir -p \
-  "$prefer_project/.pi-env/coordination/.git" \
-  "$prefer_project/coordination/.git"
-touch \
-  "$prefer_project/.pi-env/coordination/AGENTS.md" \
-  "$prefer_project/coordination/AGENTS.md"
+mkdir -p "$prefer_project/.pi-env/coordination/.git"
+touch "$prefer_project/.pi-env/coordination/AGENTS.md"
 prefer_capture="$tmpdir/prefer-capture"
 run_harness "$prefer_project" "$prefer_capture" "$prefer_project"
 assert_setenv "$prefer_capture" PI_COORD_DIR /workspace/.pi-env/coordination
@@ -156,17 +152,18 @@ legacy_project="$tmpdir/legacy-project"
 mkdir -p "$legacy_project/agent-remotes" "$legacy_project/coordination/.git"
 touch "$legacy_project/coordination/AGENTS.md"
 legacy_capture="$tmpdir/legacy-capture"
-run_harness "$legacy_project" "$legacy_capture" "$legacy_project" \
-  PI_COORD_ROOT="$legacy_project/agent-remotes"
-assert_setenv "$legacy_capture" PI_COORD_ROOT /workspace/agent-remotes
+run_harness "$legacy_project" "$legacy_capture" "$legacy_project"
 assert_no_line PI_COORD_DIR "$legacy_capture"
+assert_no_line PI_COORD_ROOT "$legacy_capture"
 assert_no_line /workspace/coordination "$legacy_capture"
+assert_no_line /workspace/agent-remotes "$legacy_capture"
 assert_no_line "$legacy_project/agent-remotes" "$legacy_capture"
 
-explicit_legacy_coord_capture="$tmpdir/explicit-legacy-coord-capture"
-run_harness "$legacy_project" "$explicit_legacy_coord_capture" "$legacy_project" \
-  PI_COORD_DIR=coordination
-assert_setenv "$explicit_legacy_coord_capture" PI_COORD_DIR /workspace/coordination
+explicit_project_coord_capture="$tmpdir/explicit-project-coord-capture"
+mkdir -p "$legacy_project/.pi-env/coordination/.git"
+run_harness "$legacy_project" "$explicit_project_coord_capture" "$legacy_project" \
+  PI_COORD_DIR=.pi-env/coordination
+assert_setenv "$explicit_project_coord_capture" PI_COORD_DIR /workspace/.pi-env/coordination
 
 workspace_env_capture="$tmpdir/workspace-env-capture"
 run_harness "$local_project" "$workspace_env_capture" "$local_project" \

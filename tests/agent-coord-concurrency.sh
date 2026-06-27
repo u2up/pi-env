@@ -20,14 +20,14 @@ agent-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
   --agent-id seed-agent \
-  --dir coordination >/dev/null
+  --dir .pi-env/coordination >/dev/null
 
 item_path="$(agent-coord-new \
-  --coord-dir coordination \
+  --coord-dir .pi-env/coordination \
   "Exercise concurrent claim handling" | tail -n 1)"
-item_id="$(grep '^id: ' "coordination/$item_path" | sed 's/^id: //')"
+item_id="$(grep '^id: ' ".pi-env/coordination/$item_path" | sed 's/^id: //')"
 agent-coord-push \
-  --coord-dir coordination \
+  --coord-dir .pi-env/coordination \
   -m "Add concurrent claim test item" >/dev/null
 
 cd "$tmp"

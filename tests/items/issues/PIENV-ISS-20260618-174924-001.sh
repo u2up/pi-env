@@ -81,15 +81,17 @@ assert_no_grep() {
 }
 
 project_local="$tmpdir/project-local"
-mkdir -p "$project_local/agent-remotes"
+mkdir -p "$project_local/.pi-env/agent-remotes"
 local_capture="$tmpdir/local-capture"
-run_harness "$project_local" "$local_capture"
+run_harness "$project_local" "$local_capture" \
+  PI_COORD_ROOT=.pi-env/agent-remotes
 
 test_grep '^--bind$' "$local_capture"
 test_grep "^$project_local$" "$local_capture"
 test_grep '^/workspace$' "$local_capture"
+test_grep '^PI_COORD_ROOT$' "$local_capture"
+test_grep '^/workspace/.pi-env/agent-remotes$' "$local_capture"
 assert_no_grep '^/agent-remotes$' "$local_capture"
-assert_no_grep '^PI_COORD_ROOT$' "$local_capture"
 
 external_root="$tmpdir/external-remotes"
 mkdir -p "$external_root"
@@ -149,5 +151,6 @@ mkdir -p "$legacy_remotes_project/agent-remotes"
 legacy_remotes_capture="$tmpdir/legacy-remotes-capture"
 run_harness "$legacy_remotes_project" "$legacy_remotes_capture"
 assert_no_grep '^/workspace/agent-remotes$' "$legacy_remotes_capture"
+assert_no_grep '^PI_COORD_ROOT$' "$legacy_remotes_capture"
 
 echo "simple coordination remote mount tests passed"

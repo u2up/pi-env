@@ -88,13 +88,13 @@ agent-coord-generate-requirements \
   --output "$tmp/requirements.md"
 grep -F '# INIT-001 Default coverage smoke' "$tmp/requirements.md" >/dev/null
 
-grep -F 'find it at `.pi-env/coordination`' \
+grep -F 'project-scoped at `.pi-env/coordination` by default.' \
   "$repo_root/pi-skill-templates/agent-coordination/SKILL.md" >/dev/null
 ! grep -F 'Find it at `./coordination`' \
   "$repo_root/pi-skill-templates/agent-coordination/SKILL.md" >/dev/null
 ! grep -F 'cd coordination && git pull --rebase' \
   "$repo_root/pi-skill-templates/agent-coordination/SKILL.md" >/dev/null
-grep -F 'Fresh projects default to' "$repo_root/README.md" >/dev/null
+grep -F 'projects use `.pi-env/coordination`.' "$repo_root/README.md" >/dev/null
 grep -F '.pi-env/coordination' "$repo_root/README.md" >/dev/null
 
 clone_project="$tmp/clone-project"
@@ -107,12 +107,12 @@ agent-coord-clone \
 test -f "$clone_project/.pi-env/coordination/AGENTS.md"
 grep -Fx '/.pi-env/' "$clone_project/.git/info/exclude" >/dev/null
 
-legacy_project="$tmp/legacy-project"
-mkdir -p "$legacy_project/agent-remotes" "$legacy_project/coordination"
-git -C "$legacy_project" init -q
-legacy_root="$(cd "$legacy_project" && . "$PI_ENV_COORD_LIB" && coord_default_root)"
-legacy_dir="$(cd "$legacy_project" && . "$PI_ENV_COORD_LIB" && coord_default_dir)"
-test "$legacy_root" = "$legacy_project/.pi-env/agent-remotes"
-test "$legacy_dir" = "$legacy_project/.pi-env/coordination"
+default_project="$tmp/default-project"
+mkdir -p "$default_project"
+git -C "$default_project" init -q
+default_root="$(cd "$default_project" && . "$PI_ENV_COORD_LIB" && coord_default_root)"
+default_dir="$(cd "$default_project" && . "$PI_ENV_COORD_LIB" && coord_default_dir)"
+test "$default_root" = "$default_project/.pi-env/agent-remotes"
+test "$default_dir" = "$default_project/.pi-env/coordination"
 
 printf 'PIENV-ISS-20260620-113310-001 passed\n'

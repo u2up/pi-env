@@ -25,21 +25,21 @@ agent-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
   --agent-id agent-a \
-  --dir coordination >/dev/null
+  --dir .pi-env/coordination >/dev/null
 
 help_text="$(agent-coord-list --help)"
 printf '%s\n' "$help_text" | grep -q 'issues, todos, notes' \
   || test_fail 'agent-coord-list help did not mention notes and todos'
 
 note_path="$(agent-coord-new \
-  --coord-dir coordination \
+  --coord-dir .pi-env/coordination \
   --type note \
   --status active \
   --testable no \
   --testability-note "Item test covers note list and cat behavior." \
   "Example note" | tail -n 1)"
 todo_path="$(agent-coord-new \
-  --coord-dir coordination \
+  --coord-dir .pi-env/coordination \
   --type todo \
   --status open \
   --testable no \
@@ -55,54 +55,54 @@ case "$todo_path" in
   *) test_fail "unexpected TODO path: $todo_path" ;;
 esac
 
-test_file_exists "coordination/$note_path"
-test_file_exists "coordination/$todo_path"
-test_grep '^type: note$' "coordination/$note_path"
-test_grep '^status: active$' "coordination/$note_path"
-test_grep '^type: todo$' "coordination/$todo_path"
-test_grep '^status: open$' "coordination/$todo_path"
+test_file_exists ".pi-env/coordination/$note_path"
+test_file_exists ".pi-env/coordination/$todo_path"
+test_grep '^type: note$' ".pi-env/coordination/$note_path"
+test_grep '^status: active$' ".pi-env/coordination/$note_path"
+test_grep '^type: todo$' ".pi-env/coordination/$todo_path"
+test_grep '^status: open$' ".pi-env/coordination/$todo_path"
 
-note_id="$(grep '^id: ' "coordination/$note_path" | sed 's/^id: //')"
-todo_id="$(grep '^id: ' "coordination/$todo_path" | sed 's/^id: //')"
+note_id="$(grep '^id: ' ".pi-env/coordination/$note_path" | sed 's/^id: //')"
+todo_id="$(grep '^id: ' ".pi-env/coordination/$todo_path" | sed 's/^id: //')"
 
-note_list="$(agent-coord-list --coord-dir coordination notes)"
+note_list="$(agent-coord-list --coord-dir .pi-env/coordination notes)"
 printf '%s\n' "$note_list" \
   | grep -Eq "^$note_id[[:space:]]+active[[:space:]]+Example note$" \
   || test_fail 'notes list omitted the note item'
 
-note_active_list="$(agent-coord-list --coord-dir coordination note active)"
+note_active_list="$(agent-coord-list --coord-dir .pi-env/coordination note active)"
 printf '%s\n' "$note_active_list" \
   | grep -Eq "^$note_id[[:space:]]+active[[:space:]]+Example note$" \
   || test_fail 'note active list omitted the note item'
-if agent-coord-list --coord-dir coordination note closed | grep -q "$note_id"; then
+if agent-coord-list --coord-dir .pi-env/coordination note closed | grep -q "$note_id"; then
   test_fail 'note closed list included an active note'
 fi
 
-todo_list="$(agent-coord-list --coord-dir coordination todos)"
+todo_list="$(agent-coord-list --coord-dir .pi-env/coordination todos)"
 printf '%s\n' "$todo_list" \
   | grep -Eq "^$todo_id[[:space:]]+open[[:space:]]+Example TODO$" \
   || test_fail 'todos list omitted the TODO item'
 
-todo_open_list="$(agent-coord-list --coord-dir coordination todo open)"
+todo_open_list="$(agent-coord-list --coord-dir .pi-env/coordination todo open)"
 printf '%s\n' "$todo_open_list" \
   | grep -Eq "^$todo_id[[:space:]]+open[[:space:]]+Example TODO$" \
   || test_fail 'todo open list omitted the TODO item'
-if agent-coord-list --coord-dir coordination todo active | grep -q "$todo_id"; then
+if agent-coord-list --coord-dir .pi-env/coordination todo active | grep -q "$todo_id"; then
   test_fail 'todo active list included an open TODO'
 fi
 
-test_eq "$(cat "coordination/$note_path")" \
-  "$(agent-coord-cat --coord-dir coordination "$note_id")" \
+test_eq "$(cat ".pi-env/coordination/$note_path")" \
+  "$(agent-coord-cat --coord-dir .pi-env/coordination "$note_id")" \
   'agent-coord-cat did not print note YAML by ID'
 test_eq "$note_path" \
-  "$(agent-coord-cat --coord-dir coordination --path "${note_id%-001}")" \
+  "$(agent-coord-cat --coord-dir .pi-env/coordination --path "${note_id%-001}")" \
   'agent-coord-cat did not resolve note unique prefix'
 
-test_eq "$(cat "coordination/$todo_path")" \
-  "$(agent-coord-cat --coord-dir coordination "$todo_id")" \
+test_eq "$(cat ".pi-env/coordination/$todo_path")" \
+  "$(agent-coord-cat --coord-dir .pi-env/coordination "$todo_id")" \
   'agent-coord-cat did not print TODO YAML by ID'
 test_eq "$todo_path" \
-  "$(agent-coord-cat --coord-dir coordination --path "${todo_id%-001}")" \
+  "$(agent-coord-cat --coord-dir .pi-env/coordination --path "${todo_id%-001}")" \
   'agent-coord-cat did not resolve TODO unique prefix'
 
 printf 'PIENV-ISS-20260621-084933-001 passed\n'

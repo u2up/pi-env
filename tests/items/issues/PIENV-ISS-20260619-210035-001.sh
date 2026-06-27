@@ -40,12 +40,12 @@ agent-coord-init \
   --root "$tmp/remotes" \
   --project portable-demo \
   --agent-id agent-a \
-  --dir coordination >/dev/null
+  --dir .pi-env/coordination >/dev/null
 
 remote="$tmp/remotes/portable-demo-coordination.git"
-init_expected="$(realpath -m --relative-to="$workspace/coordination" "$remote")"
+init_expected="$(realpath -m --relative-to="$workspace/.pi-env/coordination" "$remote")"
 assert_relative_origin \
-  "$workspace/coordination" \
+  "$workspace/.pi-env/coordination" \
   "$init_expected" \
   "agent-coord-init should store a clone-relative local origin"
 

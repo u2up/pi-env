@@ -25,7 +25,7 @@ if grep -R -n -E "$old_design_path_pattern" \
 fi
 
 if grep -n -E "${old_design_path_pattern}|designs/agent-coordination\.md|designs/role-manager\.md" \
-  REQUIREMENTS.md coordination/requirements/*.yaml scripts/agent-coord-generate-requirements 2>/dev/null; then
+  REQUIREMENTS.md .pi-env/coordination/requirements/*.yaml scripts/agent-coord-generate-requirements 2>/dev/null; then
   test_fail 'requirements content or generator links directly to design documents'
 fi
 

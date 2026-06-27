@@ -33,7 +33,8 @@ grep -F '#### CRQ-010 — Requirement source of truth precedence' "$stdout_file"
 grep -F 'Requirement coordination items live under root `requirements/`' "$stdout_file" >/dev/null
 grep -F 'one renderable top-level `body: |-` block' "$stdout_file" >/dev/null
 
-root_coord="$tmpdir/root-coordination"
+fixture_project="$tmpdir/fixture-project"
+root_coord="$fixture_project/.pi-env/coordination"
 mkdir -p "$root_coord/requirements"
 cat > "$root_coord/requirements/PIENV-FRQ-20260618-000000-001.yaml" <<'EOF'
 schema: coordination-item/v1
@@ -51,18 +52,19 @@ render_section: "3.9 Root layout requirements"
 testable: no
 testability_note: fixture
 body: |-
-  #### ROOT-001 Root-only fixture
+  #### ROOT-001 Project-local fixture
 
-  Root requirements must render from the coordination requirements directory.
+  Requirements must render from the project-local .pi-env coordination requirements directory.
 EOF
 root_output="$tmpdir/root-requirements.md"
 scripts/agent-coord-generate-requirements \
   --coordination-dir "$root_coord" > "$root_output"
-grep -F '#### ROOT-001 Root-only fixture' "$root_output" >/dev/null
+grep -F '#### ROOT-001 Project-local fixture' "$root_output" >/dev/null
 
 sample_requirement=".pi-env/coordination/requirements/PIENV-FRQ-20260612-210000-001.yaml"
 if [ ! -f "$sample_requirement" ]; then
-  sample_requirement="coordination/requirements/PIENV-FRQ-20260612-210000-001.yaml"
+  echo "missing canonical sample requirement: $sample_requirement" >&2
+  exit 1
 fi
 grep -F 'body: |-' "$sample_requirement" >/dev/null
 if grep -E '^(current|events|messages):' "$sample_requirement" >/dev/null; then

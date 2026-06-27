@@ -16,8 +16,8 @@ git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
 project_root="$tmp/project"
-coord_dir="$project_root/coordination"
-mkdir -p "$coord_dir" "$project_root/tests/items/issues" "$project_root/designs"
+coord_dir="$project_root/.pi-env/coordination"
+mkdir -p "$coord_dir" "$project_root/tests/items/issues" "$project_root/.pi-env" "$project_root/designs"
 git -C "$coord_dir" init -q
 cat >"$coord_dir/PROJECT.md" <<'EOF_PROJECT'
 ---
@@ -43,26 +43,26 @@ issue_path="$(agent-coord-new \
   --coord-dir "$coord_dir" \
   --agent-id agent-a \
   --role architect \
-  "Root layout issue" | tail -n 1)"
+  "Project-local root layout issue" | tail -n 1)"
 case "$issue_path" in
   issues/open/ROOTDEMO-ISS-*.yaml) ;;
-  *) printf 'unexpected root issue path: %s\n' "$issue_path" >&2; exit 1 ;;
+  *) printf 'unexpected project-local issue path: %s\n' "$issue_path" >&2; exit 1 ;;
 esac
 issue_id="$(basename "$issue_path" .yaml)"
 grep -q '^project: root-demo$' "$coord_dir/$issue_path"
-grep -q "^$issue_id[[:space:]]\+open[[:space:]]\+Root layout issue$" \
+grep -q "^$issue_id[[:space:]]\+open[[:space:]]\+Project-local root layout issue$" \
   <(agent-coord-list --coord-dir "$coord_dir" issues open)
-agent-coord-cat --coord-dir "$coord_dir" "$issue_id" | grep -q "^title: 'Root layout issue'$"
+agent-coord-cat --coord-dir "$coord_dir" "$issue_id" | grep -q "^title: 'Project-local root layout issue'$"
 agent-coord-status --coord-dir "$coord_dir" | grep -q "$issue_id"
 
 env_issue_path="$(PI_COORD_PROJECT=env-project agent-coord-new \
   --coord-dir "$coord_dir" \
   --testable no \
-  --testability-note "Root layout should ignore PI_COORD_PROJECT for paths." \
-  "Root layout env issue" | tail -n 1)"
+  --testability-note "Project-local layout should ignore PI_COORD_PROJECT for paths." \
+  "Project-local root layout env issue" | tail -n 1)"
 case "$env_issue_path" in
   issues/open/ROOTDEMO-ISS-*.yaml) ;;
-  *) printf 'unexpected env root issue path: %s\n' "$env_issue_path" >&2; exit 1 ;;
+  *) printf 'unexpected env project-local issue path: %s\n' "$env_issue_path" >&2; exit 1 ;;
 esac
 test ! -e "$coord_dir/projects/env-project"
 
@@ -88,16 +88,16 @@ requirement_path="$(agent-coord-new \
   --type functional \
   --testable no \
   --testability-note "Rendered by root layout test." \
-  "Root layout requirement" | tail -n 1)"
+  "Project-local root layout requirement" | tail -n 1)"
 case "$requirement_path" in
   requirements/ROOTDEMO-FRQ-*.yaml) ;;
-  *) printf 'unexpected root requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
+  *) printf 'unexpected project-local requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
 esac
 requirement_id="$(basename "$requirement_path" .yaml)"
 
 agent-coord-generate-requirements \
   --coordination-dir "$coord_dir" \
-  --project root-demo | grep -q 'Root layout requirement'
+  --project root-demo | grep -q 'Project-local root layout requirement'
 
 cat >"$project_root/designs/root.md" <<EOF_DESIGN
 # Root design
