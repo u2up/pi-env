@@ -4,6 +4,11 @@
 >
 > **Author:** Samo Pogačnik <samo_pogacnik@t-2.net>
 >
+> **Document license:** Creative Commons Attribution 4.0 International
+> (CC BY 4.0), <https://creativecommons.org/licenses/by/4.0/>.
+>
+> **Reference implementation:** `pi-env`, <https://github.com/u2up/pi-env>.
+>
 > This document describes the Coordination Repository Pattern independently of
 > any specific implementation. It originated during the design of **pi-env**, but
 > is intended as a reusable architectural pattern for Git-backed project state.
@@ -730,9 +735,9 @@ helpers, and role-based runners.
 
 ## Appendix A: pi-env Reference Implementation
 
-`pi-env` includes optional Git-backed coordination helpers that implement one
-version of the Coordination Repository Pattern for sandboxed AI-assisted
-software development.
+[`pi-env`](https://github.com/u2up/pi-env) includes optional Git-backed
+coordination helpers that implement one version of the Coordination Repository
+Pattern for sandboxed AI-assisted software development.
 
 This appendix is descriptive, not prescriptive. Other implementations may use
 different file layouts, schemas, lifecycle states, automation runners, or tools
