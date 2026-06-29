@@ -136,9 +136,9 @@ A coordination repository stores durable project-state artifacts such as:
 - links to implementation commits, tests, pull requests, CI results, and other
   evidence.
 
-For agentic coding, the coordination repository becomes shared project
-coordination state that humans and automation can both read and update through
-normal file and Git operations.
+For agentic coding, the coordination repository becomes durable shared project
+memory: project coordination state that humans and automation can both read and
+update through normal file and Git operations.
 
 It is not an agent-specific extension. It is an architectural coordination
 layer that an agentic coding harness, human developer, CI job, release script,
@@ -175,10 +175,12 @@ Because the coordination repository is just Git-backed content, different
 agentic coding systems can share it without agreeing on one runtime, model
 provider, memory service, or orchestration framework.
 
-That interoperability is the point. Coordination is no longer tied to a single
-agent session, provider-specific memory store, orchestration framework, or chat
-UI. One agent can update project state, another agent can continue from it, a
-human can review it, and CI or release automation can link evidence back to it.
+That interoperability is the point. The project, not any individual model
+provider, orchestration framework, chat system, or agent runtime, should own its
+durable coordination state. Coordination is no longer tied to a single agent
+session, provider-specific memory store, orchestration framework, or chat UI.
+One agent can update project state, another agent can continue from it, a human
+can review it, and CI or release automation can link evidence back to it.
 
 ---
 
@@ -291,8 +293,8 @@ Different systems are exploring memory services, vector databases, knowledge
 graphs, notebooks, issue trackers, MCP servers, and custom orchestration layers.
 Those approaches can be valuable.
 
-The Coordination Repository Pattern makes a distinct claim: some of this
-information is not merely retrieval context or conversation history. It is
+The Coordination Repository Pattern starts from a simple observation: some of
+this information is not merely retrieval context or conversation history. It is
 project coordination state. Project coordination state often deserves the same
 kind of durability, reviewability, and version history that source code already
 has.
