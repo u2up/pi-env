@@ -24,7 +24,7 @@ sandboxes, and participate in increasingly sophisticated workflows.
 
 But tool access is not the same as project coordination.
 
-A recurring gap remains:
+Agentic coding stacks have a coordination gap. A recurring question remains:
 
 > **Where does durable project coordination state live?**
 
@@ -136,9 +136,9 @@ A coordination repository stores durable project-state artifacts such as:
 - links to implementation commits, tests, pull requests, CI results, and other
   evidence.
 
-For agentic coding, the coordination repository becomes shared project memory
-that humans and automation can both read and update through normal file and Git
-operations.
+For agentic coding, the coordination repository becomes shared project
+coordination state that humans and automation can both read and update through
+normal file and Git operations.
 
 It is not an agent-specific extension. It is an architectural coordination
 layer that an agentic coding harness, human developer, CI job, release script,
@@ -172,12 +172,34 @@ These questions are not transient prompt details. They are coordination facts
 about the project.
 
 Because the coordination repository is just Git-backed content, different
-agentic systems can use it without agreeing on one runtime. A team could use
-Codex, Claude Code, Cursor, OpenHands, Aider, Goose, a custom agent framework,
-or ordinary scripts while still sharing the same durable coordination state.
+agentic coding systems can share it without agreeing on one runtime, model
+provider, memory service, or orchestration framework.
 
-That interoperability is the point. The coordination layer should outlive any
-single agent session, model provider, orchestration framework, or chat UI.
+That interoperability is the point. Coordination is no longer tied to a single
+agent session, provider-specific memory store, orchestration framework, or chat
+UI. One agent can update project state, another agent can continue from it, a
+human can review it, and CI or release automation can link evidence back to it.
+
+---
+
+## Why this is different from AI memory
+
+A coordination repository is not another name for agent memory.
+
+AI memory usually answers:
+
+> What has this agent seen?
+
+A coordination repository answers:
+
+> What does this project currently know?
+
+AI memory is often provider-specific, conversational, and difficult to review.
+A coordination repository is project-owned, reviewable, versioned, shared, and
+durable.
+
+AI memory can be useful context for an agent. Coordination state is durable
+project context for humans, agents, scripts, CI jobs, and release processes.
 
 ---
 
