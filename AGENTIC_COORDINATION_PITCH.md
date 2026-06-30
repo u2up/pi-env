@@ -301,6 +301,16 @@ has.
 
 ---
 
+## Acknowledgments
+
+This position paper was developed from the Coordination Repository Pattern work
+in `pi-env` and refined through independent review, discussion, and AI-assisted
+drafting and critique.
+
+AI-assisted review and drafting support was provided by Pi/ChatGPT.
+
+---
+
 ## Further reading
 
 For the formal pattern description, terminology, trade-offs, and operational
