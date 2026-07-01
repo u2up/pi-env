@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+append_path_entry() {
+  if [ -z "$1" ]; then
+    return 0
+  fi
+  if [ -z "${2:-}" ]; then
+    printf '%s' "$1"
+  else
+    printf '%s:%s' "$2" "$1"
+  fi
+}
+
 if [ -n "${PI_ENV_RUNTIME_PATH:-}" ]; then
-  export PATH="${PI_ENV_RUNTIME_PATH}:${PATH:-}"
+  export PATH="$(append_path_entry "$PI_ENV_RUNTIME_PATH" "${PATH:-}")"
 fi
 DEFAULT_PI_TOOLS="${PI_BWRAP_COMPILED_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
 if [ -n "${PI_BWRAP_DEFAULT_TOOLS:-}" ]; then
@@ -81,6 +92,31 @@ if ! command -v pi >/dev/null 2>&1; then
   echo "Install pi globally, or enter a shell that provides it, then retry." >&2
   exit 127
 fi
+
+resolve_required_tool() {
+  local env_name="$1"
+  local fallback_name="$2"
+  local value="${!env_name:-}"
+  if [ -z "$value" ]; then
+    value="$(command -v "$fallback_name" 2>/dev/null || true)"
+  fi
+  if [ -z "$value" ]; then
+    echo "pi-bwrap: required host tool was not found: $fallback_name" >&2
+    exit 127
+  fi
+  case "$value" in
+    /*) ;;
+    *)
+      echo "pi-bwrap: required host tool did not resolve to an absolute path: $fallback_name -> $value" >&2
+      exit 127
+      ;;
+  esac
+  printf '%s' "$value"
+}
+
+pi_bwrap_bash="$(resolve_required_tool PI_BWRAP_BASH bash)"
+pi_bwrap_env="$(resolve_required_tool PI_BWRAP_ENV env)"
+pi_bwrap_bwrap="$(resolve_required_tool PI_BWRAP_BWRAP bwrap)"
 
 project_root="${PI_BWRAP_PROJECT_ROOT:-}"
 if [ -z "$project_root" ]; then
@@ -429,10 +465,26 @@ if [ -n "${PI_BWRAP_EXTRA_PATH:-}" ]; then
 fi
 
 sandbox_path="${PI_ENV_RUNTIME_PATH:-}"
-if [ -n "$validated_extra_path" ]; then
-  sandbox_path="$sandbox_path:$validated_extra_path"
+sandbox_path="$(append_path_entry "$validated_extra_path" "$sandbox_path")"
+if [ -z "${PI_ENV_RUNTIME_PATH:-}" ]; then
+  old_ifs="$IFS"
+  IFS=:
+  for host_path_entry in ${PATH:-}; do
+    IFS="$old_ifs"
+    case "$host_path_entry" in
+      /nix/store/*)
+        if [ -d "$host_path_entry" ]; then
+          sandbox_path="$(append_path_entry "$host_path_entry" "$sandbox_path")"
+        fi
+        ;;
+    esac
+    IFS=:
+  done
+  IFS="$old_ifs"
 fi
-sandbox_path="$sandbox_path:/usr/local/bin:/usr/bin:/bin"
+sandbox_path="$(append_path_entry /usr/local/bin "$sandbox_path")"
+sandbox_path="$(append_path_entry /usr/bin "$sandbox_path")"
+sandbox_path="$(append_path_entry /bin "$sandbox_path")"
 
 if [ -n "${PI_COORD_ROOT:-}" ]; then
   set_env PI_COORD_ROOT "$sandbox_coord_root"
@@ -446,6 +498,18 @@ if [ -n "$sandbox_coord_dir" ]; then
   set_env PI_COORD_DIR "$sandbox_coord_dir"
 else
   copy_env PI_COORD_DIR
+fi
+
+host_runtime_bind_args=()
+if [ -z "${PI_ENV_RUNTIME_PATH:-}" ]; then
+  host_runtime_bind_args=(
+    --ro-bind-try /lib /lib
+    --ro-bind-try /lib64 /lib64
+    --ro-bind-try /usr/lib /usr/lib
+    --ro-bind-try /usr/lib64 /usr/lib64
+    --ro-bind-try "$pi_bwrap_bash" "$pi_bwrap_bash"
+    --ro-bind-try "$pi_bwrap_env" "$pi_bwrap_env"
+  )
 fi
 
 bwrap_args=(
@@ -481,9 +545,10 @@ bwrap_args=(
   --ro-bind-try /etc/pki /etc/pki
   --ro-bind-try /usr/local/bin /usr/local/bin
   --ro-bind-try /usr/local/lib/node_modules/@earendil-works/pi-coding-agent /usr/local/lib/node_modules/@earendil-works/pi-coding-agent
-  --symlink ${PI_BWRAP_BASH:-bash} /bin/bash
-  --symlink ${PI_BWRAP_BASH:-bash} /bin/sh
-  --symlink ${PI_BWRAP_ENV:-/usr/bin/env} /usr/bin/env
+  "${host_runtime_bind_args[@]}"
+  --symlink "$pi_bwrap_bash" /bin/bash
+  --symlink "$pi_bwrap_bash" /bin/sh
+  --symlink "$pi_bwrap_env" /usr/bin/env
   --bind "$project_root" /workspace
   "${coord_root_bind_args[@]}"
   --bind "$state_base/home" /home/pi
@@ -514,7 +579,7 @@ if [ "${PI_BWRAP_NET:-1}" = "1" ]; then
   bwrap_args+=(--share-net)
 fi
 
-exec ${PI_BWRAP_BWRAP:-bwrap} \
+exec "$pi_bwrap_bwrap" \
   "${env_args[@]}" \
   "${bwrap_args[@]}" \
-  -- ${PI_BWRAP_BASH:-bash} -lc 'exec pi "$@"' pi "${pi_args[@]}"
+  -- "$pi_bwrap_bash" -lc 'exec pi "$@"' pi "${pi_args[@]}"
