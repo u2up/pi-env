@@ -16,12 +16,12 @@ host_home="$tmpdir/host-home"
 mkdir -p "$fakebin" "$tmpdir/actual-tools" "$host_home"
 ln -s "$tmpdir/actual-tools" "$tmpdir/linked-tools"
 
-cat >"$fakebin/pi" <<'FAKE_PI'
+cat >"$tmpdir/actual-tools/pi" <<'FAKE_PI'
 #!/usr/bin/env bash
 echo 'fake pi should not run outside bwrap' >&2
 exit 99
 FAKE_PI
-chmod +x "$fakebin/pi"
+chmod +x "$tmpdir/actual-tools/pi"
 
 cat >"$fakebin/bwrap" <<'FAKE_BWRAP'
 #!/usr/bin/env bash
@@ -35,7 +35,7 @@ chmod +x "$tmpdir/host-bash" "$tmpdir/host-env"
 
 host_capture="$tmpdir/host-bwrap-args"
 HOME="$host_home" \
-  PATH="$fakebin:$PATH" \
+  PATH="$tmpdir/actual-tools:$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$host_capture" \
   PI_BWRAP_BASH="$tmpdir/host-bash" \
   PI_BWRAP_ENV="$tmpdir/host-env" \
@@ -83,12 +83,12 @@ done
 
 home_extra_status=0
 HOME="$host_home" \
-  PATH="$fakebin:$PATH" \
+  PATH="$tmpdir/actual-tools:$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$tmpdir/home-extra-args" \
   PI_BWRAP_BASH="$tmpdir/host-bash" \
   PI_BWRAP_ENV="$tmpdir/host-env" \
   PI_BWRAP_BWRAP="$fakebin/bwrap" \
-  PI_BWRAP_HOST_EXTRA_PATH="$host_home" \
+  PI_BWRAP_HOST_EXTRA_PATH="$tmpdir/actual-tools:$host_home" \
   PI_BWRAP_PROJECT_ROOT="$repo_root" \
   scripts/pi-bwrap -- --help >"$tmpdir/home-extra-output" 2>&1 || home_extra_status=$?
 test_eq 2 "$home_extra_status" 'host HOME extra path is rejected before bwrap'
@@ -101,7 +101,7 @@ nix_capture="$tmpdir/nix-bwrap-args"
 runtime_tool_path="$(dirname "$(command -v realpath)")"
 nix_host_extra_status=0
 HOME="$host_home" \
-  PATH="$fakebin:$PATH" \
+  PATH="$tmpdir/actual-tools:$fakebin:$PATH" \
   PI_ENV_RUNTIME_PATH="$runtime_tool_path" \
   PI_ENV_TEST_BWRAP_ARGS="$nix_capture" \
   PI_BWRAP_BASH="$tmpdir/host-bash" \
@@ -118,7 +118,7 @@ fi
 
 nix_extra_status=0
 HOME="$host_home" \
-  PATH="$fakebin:$PATH" \
+  PATH="$tmpdir/actual-tools:$fakebin:$PATH" \
   PI_ENV_RUNTIME_PATH="$runtime_tool_path" \
   PI_ENV_TEST_BWRAP_ARGS="$tmpdir/nix-unsafe-args" \
   PI_BWRAP_BASH="$tmpdir/host-bash" \

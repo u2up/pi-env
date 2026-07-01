@@ -9,6 +9,13 @@ fi
 role_manager_args=()
 if [ "${PI_ENV_ROLE_MANAGER_AUTO:-1}" != "0" ]; then
   role_manager_package="${PI_ENV_ROLE_MANAGER_PACKAGE:-}"
+  if [ -z "$role_manager_package" ]; then
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+    checkout_role_manager="$(cd "$script_dir/.." && pwd -P)/role-manager"
+    if [ -e "$checkout_role_manager" ]; then
+      role_manager_package="$checkout_role_manager"
+    fi
+  fi
   if [ -n "$role_manager_package" ] && [ -e "$role_manager_package" ]; then
     role_manager_args=(-e "$role_manager_package")
   fi

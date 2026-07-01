@@ -97,9 +97,14 @@ if [ "${1:-}" = "--" ]; then
   shift
 fi
 
-if ! command -v pi >/dev/null 2>&1; then
+pi_host_path="$(command -v pi 2>/dev/null || true)"
+if [ -z "$pi_host_path" ]; then
   echo "pi-bwrap: pi was not found on PATH before entering the sandbox." >&2
   echo "Install pi globally, or enter a shell that provides it, then retry." >&2
+  exit 127
+fi
+if ! pi_host_path="$(realpath -e "$pi_host_path" 2>/dev/null)"; then
+  echo "pi-bwrap: resolved host pi path does not exist: $(command -v pi 2>/dev/null || true)" >&2
   exit 127
 fi
 
@@ -135,6 +140,42 @@ host_runtime=0
 if [ -z "${PI_ENV_RUNTIME_PATH:-}" ]; then
   host_runtime=1
 fi
+host_home="${HOME:-}"
+if [ -n "$host_home" ]; then
+  canonical_host_home="$(realpath -m "$host_home")"
+else
+  canonical_host_home=""
+fi
+
+host_path_is_default_mounted() {
+  case "$1" in
+    /bin/*|/usr/bin/*|/usr/local/bin/*|/usr/local/lib/node_modules/@earendil-works/pi-coding-agent/*|/usr/local/lib/node_modules/@earendil-works/pi-coding-agent) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+host_path_is_under_host_extra_path() {
+  local path="$1"
+  local entry canonical_entry old_ifs
+  [ -n "${PI_BWRAP_HOST_EXTRA_PATH:-}" ] || return 1
+  old_ifs="$IFS"
+  IFS=:
+  for entry in $PI_BWRAP_HOST_EXTRA_PATH; do
+    IFS="$old_ifs"
+    [ -n "$entry" ] || { IFS=:; continue; }
+    if canonical_entry="$(realpath -e "$entry" 2>/dev/null)"; then
+      case "$path" in
+        "$canonical_entry"|"$canonical_entry"/*)
+          IFS="$old_ifs"
+          return 0
+          ;;
+      esac
+    fi
+    IFS=:
+  done
+  IFS="$old_ifs"
+  return 1
+}
 
 if [ "$host_runtime" = "1" ]; then
   for host_runtime_tool in "$pi_bwrap_bash" "$pi_bwrap_env"; do
@@ -147,8 +188,22 @@ if [ "$host_runtime" = "1" ]; then
     esac
   done
 
-  pi_host_path="$(command -v pi 2>/dev/null || true)"
-  if [ -n "$pi_host_path" ] && [ -f "$pi_host_path" ] && IFS= read -r pi_shebang <"$pi_host_path"; then
+  if [ -n "$canonical_host_home" ]; then
+    case "$pi_host_path" in
+      "$canonical_host_home"|"$canonical_host_home"/*)
+        echo "pi-bwrap: host runtime resolved pi under host HOME, which is not mounted by default: $pi_host_path" >&2
+        echo "pi-bwrap: install pi under /usr/local/bin, /usr/bin, or /bin; provide a safe command dir with PI_BWRAP_HOST_EXTRA_PATH; or use --runtime nix." >&2
+        exit 127
+        ;;
+    esac
+  fi
+  if ! host_path_is_default_mounted "$pi_host_path" && ! host_path_is_under_host_extra_path "$pi_host_path"; then
+    echo "pi-bwrap: host runtime resolved pi outside default sandbox mounts: $pi_host_path" >&2
+    echo "pi-bwrap: install pi under /usr/local/bin, /usr/bin, or /bin; add its directory with PI_BWRAP_HOST_EXTRA_PATH for a read-only bind; or use --runtime nix." >&2
+    exit 127
+  fi
+
+  if [ -f "$pi_host_path" ] && IFS= read -r pi_shebang <"$pi_host_path"; then
     case "$pi_shebang" in
       *'/usr/bin/env node'*)
         node_path="$(command -v node 2>/dev/null || true)"
@@ -215,8 +270,6 @@ mkdir -p \
   "$state_base/agent/sessions" \
   "$state_base/cache"
 chmod 700 "$state_base" "$state_base/home" "$state_base/home/.pi" "$state_base/home/.cache" "$state_base/home/.config" "$state_base/home/.config/git" "$state_base/agent" "$state_base/agent/sessions" "$state_base/cache" 2>/dev/null || true
-
-host_home="${HOME:-}"
 
 host_agent_dir="${PI_BWRAP_HOST_AGENT_DIR:-}"
 if [ -z "$host_agent_dir" ] && [ -n "${PI_CODING_AGENT_DIR:-}" ]; then
@@ -436,6 +489,74 @@ else
   pi_args=("$@")
 fi
 
+role_manager_bind_args=()
+role_manager_bind_count=0
+role_manager_resource_dir_added=0
+rewritten_package_path=""
+sandbox_path_for_host_resource() {
+  local host_path="$1"
+  case "$host_path" in
+    "$project_root")
+      rewritten_package_path=/workspace
+      return 0
+      ;;
+    "$project_root"/*)
+      rewritten_package_path="/workspace${host_path#"$project_root"}"
+      return 0
+      ;;
+  esac
+  if host_path_is_default_mounted "$host_path"; then
+    rewritten_package_path="$host_path"
+    return 0
+  fi
+  role_manager_bind_count=$((role_manager_bind_count + 1))
+  rewritten_package_path="/pi-env-resources/role-manager-$role_manager_bind_count"
+  if [ "$role_manager_resource_dir_added" = "0" ]; then
+    role_manager_bind_args+=(--dir /pi-env-resources)
+    role_manager_resource_dir_added=1
+  fi
+  role_manager_bind_args+=(--ro-bind "$host_path" "$rewritten_package_path")
+}
+
+rewrite_pi_package_path() {
+  local package_path="$1"
+  case "$package_path" in
+    /*) ;;
+    *) package_path="$(realpath -m "$PWD/$package_path")" ;;
+  esac
+  if [ ! -e "$package_path" ]; then
+    rewritten_package_path="$1"
+    return 0
+  fi
+  package_path="$(realpath -e "$package_path")"
+  sandbox_path_for_host_resource "$package_path"
+}
+
+rewritten_pi_args=()
+i=0
+while [ "$i" -lt "${#pi_args[@]}" ]; do
+  arg="${pi_args[$i]}"
+  case "$arg" in
+    -e|--extension|--package)
+      rewritten_pi_args+=("$arg")
+      i=$((i + 1))
+      if [ "$i" -lt "${#pi_args[@]}" ]; then
+        rewrite_pi_package_path "${pi_args[$i]}"
+        rewritten_pi_args+=("$rewritten_package_path")
+      fi
+      ;;
+    --extension=*|--package=*)
+      rewrite_pi_package_path "${arg#*=}"
+      rewritten_pi_args+=("${arg%%=*}=$rewritten_package_path")
+      ;;
+    *)
+      rewritten_pi_args+=("$arg")
+      ;;
+  esac
+  i=$((i + 1))
+done
+pi_args=("${rewritten_pi_args[@]}")
+
 env_args=(--clearenv)
 
 set_env() {
@@ -653,6 +774,7 @@ bwrap_args=(
   "${runtime_shell_args[@]}"
   --bind "$project_root" /workspace
   "${coord_root_bind_args[@]}"
+  "${role_manager_bind_args[@]}"
   --bind "$state_base/home" /home/pi
   --bind "$state_base/agent" /home/pi/.pi/agent
   "${extension_bind_args[@]}"
