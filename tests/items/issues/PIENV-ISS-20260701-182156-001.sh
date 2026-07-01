@@ -3,12 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 tmp="$(mktemp -d)"
-home_helper_root=""
 cleanup() {
   rm -rf "$tmp"
-  if [ -n "$home_helper_root" ]; then
-    rm -rf "$home_helper_root"
-  fi
 }
 trap cleanup EXIT
 
@@ -24,16 +20,35 @@ verify_home_helper_bind_visible() {
   local prefix="$1"
   local fakebin="$tmp/fakebin-home-helper"
   local capture="$tmp/home-helper-bwrap.out"
-  local helper_parent="/home/pi/.local/share/pi-env-test"
+  local real_realpath
+  real_realpath="$(command -v realpath)"
+  local helper_parent="$tmp/fake-home/pi/.local/share/pi-env-test"
+  local helper_root helper_dir helper_sandbox_dir
   mkdir -p "$fakebin" "$helper_parent"
-  home_helper_root="$(mktemp -d "$helper_parent/PIENV-ISS-20260701-182156-001.XXXXXX")"
-  local helper_dir="$home_helper_root/scripts"
+  helper_root="$(mktemp -d "$helper_parent/PIENV-ISS-20260701-182156-001.XXXXXX")"
+  helper_dir="$helper_root/scripts"
+  helper_sandbox_dir="/home/pi/.local/share/pi-env-test/${helper_root##*/}/scripts"
   mkdir -p "$helper_dir"
   cat >"$fakebin/pi" <<'FAKE_PI'
 #!/usr/bin/env bash
 exit 99
 FAKE_PI
   chmod +x "$fakebin/pi"
+  cat >"$fakebin/realpath" <<FAKE_REALPATH
+#!/usr/bin/env bash
+case "[\$*]" in
+  "[-e $helper_dir]")
+    printf '%s\\n' '$helper_sandbox_dir'
+    ;;
+  "[-m /home/pi]")
+    printf '%s\\n' /home/pi
+    ;;
+  *)
+    exec '$real_realpath' "\$@"
+    ;;
+esac
+FAKE_REALPATH
+  chmod +x "$fakebin/realpath"
   : >"$fakebin/host-bash"
   : >"$fakebin/host-env"
   chmod +x "$fakebin/host-bash" "$fakebin/host-env"
@@ -49,7 +64,7 @@ while [ "$#" -gt 0 ]; do
       shift 3
       ;;
     --ro-bind)
-      if [ "${3:-}" = "$PI_ENV_TEST_HELPER_DIR" ]; then
+      if [ "${3:-}" = "$PI_ENV_TEST_HELPER_SANDBOX_DIR" ]; then
         visible=1
       fi
       shift 3
@@ -69,7 +84,7 @@ FAKE_BWRAP
 
   HOME=/home/pi \
     PATH="$fakebin:$PATH" \
-    PI_ENV_TEST_HELPER_DIR="$helper_dir" \
+    PI_ENV_TEST_HELPER_SANDBOX_DIR="$helper_sandbox_dir" \
     PI_ENV_TEST_BWRAP_CAPTURE="$capture" \
     PI_BWRAP_BWRAP="$fakebin/bwrap" \
     PI_BWRAP_BASH="$fakebin/host-bash" \
@@ -77,6 +92,7 @@ FAKE_BWRAP
     PI_BWRAP_HOST_EXTRA_PATH="$fakebin" \
     PI_BWRAP_HOST_RO_PATHS="$helper_dir" \
     PI_BWRAP_PROJECT_ROOT="$repo_root" \
+    PI_BWRAP_STATE_DIR="$tmp/fake-home-state" \
     PI_BWRAP_IMPORT_COMMON=0 \
     PI_BWRAP_IMPORT_EXTENSIONS=0 \
     PI_BWRAP_IMPORT_GIT_CONFIG=0 \
