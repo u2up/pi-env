@@ -26,13 +26,16 @@ cat >"$fakebin/bwrap" <<'FAKE_BWRAP'
 printf '%s\n' "$@" >"$PI_ENV_TEST_BWRAP_ARGS"
 FAKE_BWRAP
 chmod +x "$fakebin/bwrap"
+: >"$tmpdir/host-bash"
+: >"$tmpdir/host-env"
+chmod +x "$tmpdir/host-bash" "$tmpdir/host-env"
 
 capture="$tmpdir/bwrap-args"
 PATH="$fakebin:$PATH" \
   PI_ENV_HOST_RUNTIME=1 \
   PI_ENV_TEST_BWRAP_ARGS="$capture" \
-  PI_BWRAP_BASH=/bin/bash \
-  PI_BWRAP_ENV=/usr/bin/env \
+  PI_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_BWRAP_ENV="$tmpdir/host-env" \
   PI_BWRAP_PROJECT_ROOT="$repo_root" \
   PI_BWRAP_IMPORT_COMMON=0 \
   PI_BWRAP_IMPORT_EXTENSIONS=0 \
@@ -50,10 +53,17 @@ case "$sandbox_path" in
     test_fail "host runtime sandbox PATH contains an empty entry: $sandbox_path"
     ;;
 esac
+case "$sandbox_path" in
+  *'/nix/store/'*)
+    test_fail "host runtime sandbox PATH inherited caller Nix-store entries: $sandbox_path"
+    ;;
+esac
 
-test_grep '^--symlink$' "$capture"
+if grep -qx -- '--symlink' "$capture"; then
+  test_fail 'host runtime should use host command directory binds instead of fixed shell symlinks'
+fi
 if grep -qx 'bash' "$capture"; then
-  test_fail 'host runtime used unresolved bash as a bwrap symlink or exec target'
+  test_fail 'host runtime used unresolved bash as a bwrap exec target'
 fi
 if ! grep -qx '/pi-env-tools/bash' "$capture"; then
   test_fail 'host runtime did not mount bash at a non-conflicting sandbox path'
@@ -61,14 +71,13 @@ fi
 if ! grep -qx '/pi-env-tools/env' "$capture"; then
   test_fail 'host runtime did not mount env at a non-conflicting sandbox path'
 fi
-if awk 'prev == "--ro-bind-try" && $0 == "/bin/bash" { getline; if ($0 == "/bin/bash") found = 1 } { prev = $0 } END { exit found ? 0 : 1 }' "$capture"; then
-  test_fail 'host runtime bind-mounted /bin/bash over itself'
-fi
-if awk 'prev == "--ro-bind-try" && $0 == "/usr/bin/env" { getline; if ($0 == "/usr/bin/env") found = 1 } { prev = $0 } END { exit found ? 0 : 1 }' "$capture"; then
-  test_fail 'host runtime bind-mounted /usr/bin/env over itself'
-fi
-if ! grep -qx -- '--ro-bind-try' "$capture"; then
-  test_fail 'host runtime did not add read-only host tool/library binds'
+for host_tool_dir in /bin /usr/bin; do
+  if ! awk -v dir="$host_tool_dir" 'prev == "--ro-bind-try" && $0 == dir { getline; if ($0 == dir) found = 1 } { prev = $0 } END { exit found ? 0 : 1 }' "$capture"; then
+    test_fail "host runtime did not bind host command directory read-only: $host_tool_dir"
+  fi
+done
+if awk 'prev == "--ro-bind" && $0 == "/nix/store" { getline; if ($0 == "/nix/store") found = 1 } { prev = $0 } END { exit found ? 0 : 1 }' "$capture"; then
+  test_fail 'host runtime still requires a /nix/store bind'
 fi
 
 echo 'host runtime launcher fake-bwrap test passed'

@@ -111,12 +111,53 @@ resolve_required_tool() {
       exit 127
       ;;
   esac
+  if ! value="$(realpath -e "$value" 2>/dev/null)"; then
+    echo "pi-bwrap: required host tool path does not exist: $fallback_name -> ${!env_name:-$value}" >&2
+    exit 127
+  fi
   printf '%s' "$value"
 }
 
 pi_bwrap_bash="$(resolve_required_tool PI_BWRAP_BASH bash)"
 pi_bwrap_env="$(resolve_required_tool PI_BWRAP_ENV env)"
 pi_bwrap_bwrap="$(resolve_required_tool PI_BWRAP_BWRAP bwrap)"
+host_runtime=0
+if [ -z "${PI_ENV_RUNTIME_PATH:-}" ]; then
+  host_runtime=1
+fi
+
+if [ "$host_runtime" = "1" ]; then
+  for host_runtime_tool in "$pi_bwrap_bash" "$pi_bwrap_env"; do
+    case "$host_runtime_tool" in
+      /nix/store/*)
+        echo "pi-bwrap: host runtime requires host bash/env tools, but resolved a Nix-store tool: $host_runtime_tool" >&2
+        echo "pi-bwrap: install host runtime tools, set PI_BWRAP_BASH/PI_BWRAP_ENV to host paths, or use the Nix runtime." >&2
+        exit 127
+        ;;
+    esac
+  done
+
+  pi_host_path="$(command -v pi 2>/dev/null || true)"
+  if [ -n "$pi_host_path" ] && [ -f "$pi_host_path" ] && IFS= read -r pi_shebang <"$pi_host_path"; then
+    case "$pi_shebang" in
+      *'/usr/bin/env node'*)
+        node_path="$(command -v node 2>/dev/null || true)"
+        if [ -z "$node_path" ] || ! node_path="$(realpath -e "$node_path" 2>/dev/null)"; then
+          echo "pi-bwrap: host runtime pi launcher requires node, but node was not found on PATH." >&2
+          exit 127
+        fi
+        case "$node_path" in
+          /bin/*|/usr/bin/*|/usr/local/bin/*) ;;
+          *)
+            echo "pi-bwrap: host runtime pi launcher requires node inside the sandbox, but node resolved outside mounted host command dirs: $node_path" >&2
+            echo "pi-bwrap: install node under /usr/local/bin, /usr/bin, or /bin, or use the Nix runtime." >&2
+            exit 127
+            ;;
+        esac
+        ;;
+    esac
+  fi
+fi
 
 project_root="${PI_BWRAP_PROJECT_ROOT:-}"
 if [ -z "$project_root" ]; then
@@ -466,22 +507,6 @@ fi
 
 sandbox_path="${PI_ENV_RUNTIME_PATH:-}"
 sandbox_path="$(append_path_entry "$validated_extra_path" "$sandbox_path")"
-if [ -z "${PI_ENV_RUNTIME_PATH:-}" ]; then
-  old_ifs="$IFS"
-  IFS=:
-  for host_path_entry in ${PATH:-}; do
-    IFS="$old_ifs"
-    case "$host_path_entry" in
-      /nix/store/*)
-        if [ -d "$host_path_entry" ]; then
-          sandbox_path="$(append_path_entry "$host_path_entry" "$sandbox_path")"
-        fi
-        ;;
-    esac
-    IFS=:
-  done
-  IFS="$old_ifs"
-fi
 sandbox_path="$(append_path_entry /usr/local/bin "$sandbox_path")"
 sandbox_path="$(append_path_entry /usr/bin "$sandbox_path")"
 sandbox_path="$(append_path_entry /bin "$sandbox_path")"
@@ -502,18 +527,31 @@ fi
 
 sandbox_bash="$pi_bwrap_bash"
 sandbox_env="$pi_bwrap_env"
-host_runtime_bind_args=()
+runtime_bind_args=()
+runtime_shell_args=(
+  --symlink "$sandbox_bash" /bin/bash
+  --symlink "$sandbox_bash" /bin/sh
+  --symlink "$sandbox_env" /usr/bin/env
+)
 if [ -z "${PI_ENV_RUNTIME_PATH:-}" ]; then
   sandbox_bash=/pi-env-tools/bash
   sandbox_env=/pi-env-tools/env
-  host_runtime_bind_args=(
+  runtime_bind_args=(
     --ro-bind-try /lib /lib
     --ro-bind-try /lib64 /lib64
     --ro-bind-try /usr/lib /usr/lib
     --ro-bind-try /usr/lib64 /usr/lib64
+    --ro-bind-try /bin /bin
+    --ro-bind-try /usr/bin /usr/bin
     --dir /pi-env-tools
     --ro-bind-try "$pi_bwrap_bash" "$sandbox_bash"
     --ro-bind-try "$pi_bwrap_env" "$sandbox_env"
+  )
+  runtime_shell_args=()
+else
+  runtime_bind_args=(
+    --dir /nix
+    --ro-bind /nix/store /nix/store
   )
 fi
 
@@ -539,7 +577,7 @@ bwrap_args=(
   --dir /usr/local/lib/node_modules
   --dir /usr/local/lib/node_modules/@earendil-works
   --dir /home
-  --ro-bind /nix/store /nix/store
+  "${runtime_bind_args[@]}"
   --ro-bind-try /etc/passwd /etc/passwd
   --ro-bind-try /etc/group /etc/group
   --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf
@@ -550,10 +588,7 @@ bwrap_args=(
   --ro-bind-try /etc/pki /etc/pki
   --ro-bind-try /usr/local/bin /usr/local/bin
   --ro-bind-try /usr/local/lib/node_modules/@earendil-works/pi-coding-agent /usr/local/lib/node_modules/@earendil-works/pi-coding-agent
-  "${host_runtime_bind_args[@]}"
-  --symlink "$sandbox_bash" /bin/bash
-  --symlink "$sandbox_bash" /bin/sh
-  --symlink "$sandbox_env" /usr/bin/env
+  "${runtime_shell_args[@]}"
   --bind "$project_root" /workspace
   "${coord_root_bind_args[@]}"
   --bind "$state_base/home" /home/pi
