@@ -12,6 +12,7 @@ explicit opt-in for users and teams that want it.
 | UC-025 | PIENV-FRQ-20260701-110508-001 |
 | RUNTIME-004 | PIENV-FRQ-20260701-110510-001 |
 | RUNTIME-005 | PIENV-FRQ-20260701-110512-001 |
+| INSTALL-001 | PIENV-FRQ-20260701-182129-001 |
 | PATH-006 | PIENV-FRQ-20260701-110514-001 |
 | FS-011 | PIENV-FRQ-20260701-110516-001 |
 | AGENT-017 | PIENV-FRQ-20260701-110518-001 |
@@ -58,10 +59,25 @@ under host home require a fail-closed diagnostic or an explicit read-only bind
 opt-in, with any outside path rewritten to its in-sandbox mount point before
 being passed to Pi.
 
-## 4. Documentation and verification
+## 4. Non-Nix installation
+
+The first non-Nix installation path should package pi-env files rather than a
+runtime toolchain. It should install command wrappers to a conventional prefix
+such as `~/.local` or `/usr/local`, install shared support files under a stable
+data directory such as `$PREFIX/share/pi-env`, and make installed wrappers
+resolve the same support paths Nix currently injects for coordination helpers,
+templates, and role-manager package data.
+
+This keeps the adoption path lightweight while preserving a clear boundary:
+non-Nix installs use host-provided tools and are not reproducible or pinned by
+pi-env. Nix remains the pinned runtime for teams that need reproducibility.
+
+## 5. Documentation and verification
 
 Docs must distinguish Bubblewrap sandboxing from runtime pinning: sandboxing is
 default; host runtime is unpinned; Nix runtime is reproducible and pinned.
 Blackbox tests should use fake `pi` and fake `bwrap` commands to assert mode
 selection, missing dependency handling, PATH construction, read-only mounts,
-and absence of sensitive default mounts.
+and absence of sensitive default mounts. Installer tests should install into a
+temporary prefix and verify representative installed commands can locate their
+support files without invoking Nix.

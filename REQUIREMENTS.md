@@ -473,6 +473,50 @@ Missing dependency diagnostics must:
 The implementation may treat some commands as optional when the feature that
 needs them is disabled, but optionality must be documented and tested.
 
+#### INSTALL-001 Non-Nix installation support
+
+pi-env should provide a supported non-Nix installation path for users who
+want the host-runtime workflow without entering a Nix development shell or
+consuming a flake output. The non-Nix installer must install the pi-env
+command wrappers and support files that Nix packages normally place on
+`PATH` or expose through environment variables.
+
+The installation path should, at minimum, support a user-local prefix such as
+`~/.local` and should be adaptable to a system prefix such as `/usr/local`
+when run with appropriate permissions. Installed commands must be able to
+locate their support files without requiring the user to keep running from a
+source checkout.
+
+Installed support files must include the coordination helper library,
+coordination templates, and role-manager package data needed by:
+
+- `pi-env`, `pi-start`, and `pi-bwrap`;
+- `bootstrap-coordination`;
+- `agent-coord-*` helper commands;
+- `pi-serial-roles`.
+
+The non-Nix installer may rely on host-provided runtime tools such as Bash,
+Bubblewrap, Git, jq, ripgrep, fd, Node, and the host `pi` command. It must
+not describe those tools as pinned or reproducible by pi-env. User-facing
+output and documentation must clearly state that Nix remains the
+reproducible pinned runtime while the non-Nix install uses host tools.
+
+Acceptance criteria:
+
+- A non-Nix user can install pi-env commands and support files under a chosen
+  prefix without invoking Nix.
+- Installed command wrappers set or otherwise resolve the equivalent support
+  paths for `PI_ENV_COORD_LIB`, `PI_ENV_COORD_TEMPLATE_DIR`, and
+  `PI_ENV_ROLE_MANAGER_PACKAGE`.
+- The installer checks or documents required host dependencies and reports
+  missing dependencies with host-runtime wording.
+- An uninstall or cleanup path is documented or provided for files installed
+  by the non-Nix installer.
+- README installation guidance distinguishes direct checkout, non-Nix
+  installed host runtime, and Nix-backed reproducible runtime workflows.
+- Existing direct-checkout and Nix flake/devshell workflows remain
+  compatible.
+
 ### 3.4 Command requirements
 
 #### CMD-001 `pi-bwrap` existence
