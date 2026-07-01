@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+pi-env - run Pi through the pi-env launcher
+
+Usage:
+  pi-env [--flake REF] [pi args...]
+  pi-env [--flake REF] --raw -- [pi args...]
+  pi-env --help
+
+Default mode delegates to pi-start, preserving pi-env defaults.
+Raw mode delegates to pi-bwrap for fully custom Pi arguments.
+Direct checkout mode can use host runtime when pi-start/pi-bwrap are on PATH
+or when PI_ENV_HOST_RUNTIME=1 is set; otherwise it enters nix develop.
+USAGE
+}
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+checkout_root="$(cd "$script_dir/.." && pwd -P)"
+flake_ref="${PI_ENV_FLAKE:-$checkout_root}"
+raw=0
+args=()
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --raw)
+      raw=1
+      shift
+      if [ "${1:-}" = "--" ]; then
+        shift
+      fi
+      break
+      ;;
+    --flake)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "pi-env: --flake requires an argument" >&2
+        exit 2
+      fi
+      flake_ref="$1"
+      shift
+      ;;
+    --flake=*)
+      flake_ref="${1#--flake=}"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+args+=("$@")
+
+pi_start="${PI_ENV_PI_START:-pi-start}"
+pi_bwrap="${PI_ENV_PI_BWRAP:-pi-bwrap}"
+
+if [ "${PI_ENV_HOST_RUNTIME:-0}" = "1" ]; then
+  pi_start="$script_dir/pi-start"
+  pi_bwrap="$script_dir/pi-bwrap"
+  export PI_ENV_PI_BWRAP="$pi_bwrap"
+fi
+
+if { [ -n "${PI_ENV_PI_START:-}" ] || command -v "$pi_start" >/dev/null 2>&1; } && \
+   { [ -n "${PI_ENV_PI_BWRAP:-}" ] || command -v "$pi_bwrap" >/dev/null 2>&1; }; then
+  if [ "$raw" = "1" ]; then
+    exec "$pi_bwrap" -- "${args[@]}"
+  fi
+  exec "$pi_start" "${args[@]}"
+fi
+
+if ! command -v nix >/dev/null 2>&1; then
+  echo "pi-env: nix was not found on PATH and pi-env commands are unavailable." >&2
+  echo "Install Nix, enter a pi-env devshell, add pi-start/pi-bwrap to PATH," >&2
+  echo "or set PI_ENV_HOST_RUNTIME=1 to use host runtime tools." >&2
+  exit 127
+fi
+
+nix_args=(develop "$flake_ref" -c pi-env)
+if [ "$raw" = "1" ]; then
+  nix_args+=(--raw --)
+fi
+exec nix "${nix_args[@]}" "${args[@]}"
