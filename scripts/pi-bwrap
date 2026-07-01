@@ -74,6 +74,7 @@ Environment knobs:
   PI_BWRAP_HOST_XDG_GIT_CONFIG=/path Host XDG git config (default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config)
   PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
   PI_BWRAP_EXTRA_PATH=/nix/store/.../bin[:...] Add validated Nix-store command dirs after pi-env runtime tools
+  PI_BWRAP_HOST_EXTRA_PATH=/opt/tools/bin[:...] Host runtime only: add validated host command dirs
   PI_BWRAP_NET=0                Disable network namespace sharing
   PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
   PI_COORD_ROOT=.pi-env/agent-remotes Bare remotes root; project paths stay under /workspace,
@@ -482,6 +483,16 @@ append_validated_extra_path() {
   fi
 }
 
+validated_host_extra_path=""
+host_extra_bind_args=()
+append_validated_host_extra_path() {
+  if [ -z "$validated_host_extra_path" ]; then
+    validated_host_extra_path="$1"
+  else
+    validated_host_extra_path="$validated_host_extra_path:$1"
+  fi
+}
+
 if [ -n "${PI_BWRAP_EXTRA_PATH:-}" ]; then
   old_ifs="$IFS"
   IFS=:
@@ -514,8 +525,49 @@ if [ -n "${PI_BWRAP_EXTRA_PATH:-}" ]; then
   IFS="$old_ifs"
 fi
 
+if [ -n "${PI_BWRAP_HOST_EXTRA_PATH:-}" ]; then
+  if [ "$host_runtime" != "1" ]; then
+    echo "pi-bwrap: PI_BWRAP_HOST_EXTRA_PATH is only supported in host runtime mode." >&2
+    exit 2
+  fi
+  old_ifs="$IFS"
+  IFS=:
+  for host_extra_path_entry in $PI_BWRAP_HOST_EXTRA_PATH; do
+    IFS="$old_ifs"
+    [ -n "$host_extra_path_entry" ] || { IFS=:; continue; }
+    case "$host_extra_path_entry" in
+      /*) ;;
+      *)
+        echo "pi-bwrap: unsafe PI_BWRAP_HOST_EXTRA_PATH entry is not absolute: $host_extra_path_entry" >&2
+        exit 2
+        ;;
+    esac
+    if [ ! -d "$host_extra_path_entry" ]; then
+      echo "pi-bwrap: unsafe PI_BWRAP_HOST_EXTRA_PATH entry is not an existing directory: $host_extra_path_entry" >&2
+      exit 2
+    fi
+    canonical_host_extra_path="$(realpath -e "$host_extra_path_entry")"
+    if [ -n "$host_home" ]; then
+      canonical_host_home="$(realpath -m "$host_home")"
+      case "$canonical_host_extra_path" in
+        "$canonical_host_home"|"$canonical_host_home"/*)
+          echo "pi-bwrap: unsafe PI_BWRAP_HOST_EXTRA_PATH entry under host HOME is not mounted by default: $host_extra_path_entry -> $canonical_host_extra_path" >&2
+          exit 2
+          ;;
+      esac
+    fi
+    append_validated_host_extra_path "$canonical_host_extra_path"
+    host_extra_bind_args+=(--ro-bind "$canonical_host_extra_path" "$canonical_host_extra_path")
+    IFS=:
+  done
+  IFS="$old_ifs"
+fi
+
 sandbox_path="${PI_ENV_RUNTIME_PATH:-}"
 sandbox_path="$(append_path_entry "$validated_extra_path" "$sandbox_path")"
+if [ "$host_runtime" = "1" ]; then
+  sandbox_path="$(append_path_entry "$validated_host_extra_path" "$sandbox_path")"
+fi
 sandbox_path="$(append_path_entry /usr/local/bin "$sandbox_path")"
 sandbox_path="$(append_path_entry /usr/bin "$sandbox_path")"
 sandbox_path="$(append_path_entry /bin "$sandbox_path")"
@@ -587,6 +639,7 @@ bwrap_args=(
   --dir /usr/local/lib/node_modules/@earendil-works
   --dir /home
   "${runtime_bind_args[@]}"
+  "${host_extra_bind_args[@]}"
   --ro-bind-try /etc/passwd /etc/passwd
   --ro-bind-try /etc/group /etc/group
   --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf

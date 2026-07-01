@@ -525,6 +525,9 @@ pi-env only chooses which root to expose for this run.
 - mounts the detected project root read-write at `/workspace`;
 - mounts `/nix/store` read-only so declared devshell tools can be exposed
   through validated extra command paths;
+- constructs the sandbox `PATH` from allowlisted host command directories
+  (`/usr/local/bin`, `/usr/bin`, and `/bin`) instead of inheriting the caller's
+  full host `PATH`;
 - mounts `/usr/local/bin` and the global Pi npm package read-only when present,
   so a global npm-installed `pi` works;
 - uses isolated `$HOME=/home/pi`;
@@ -554,6 +557,9 @@ pi-env only chooses which root to expose for this run.
   `/workspace/...`, binding explicit external `PI_COORD_ROOT` paths at
   `/agent-remotes`, and explicitly mounting an external coordination clone
   with `PI_BWRAP_COORDINATION_DIR`;
+- accepts additional host-runtime command directories only through
+  `PI_BWRAP_HOST_EXTRA_PATH`; entries must be absolute, existing directories,
+  are canonicalized, are mounted read-only, and are rejected under host `$HOME`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or
   Docker sockets;
 - clears the environment, then passes only terminal basics and selected LLM
@@ -594,7 +600,8 @@ PI_COORD_PROJECT=pi-env                 # coordination project/domain name
 PI_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
 PI_COORD_ROLE=architect                 # active coordination role for helper commits/events
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
-PI_BWRAP_EXTRA_PATH=/nix/store/.../bin   # advanced: validated extra command dirs
+PI_BWRAP_EXTRA_PATH=/nix/store/.../bin   # Nix runtime: validated /nix/store command dirs
+PI_BWRAP_HOST_EXTRA_PATH=/opt/tools/bin  # host runtime: validated read-only host command dirs
 PI_BWRAP_NET=0                          # disable network sharing
 PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 ```
