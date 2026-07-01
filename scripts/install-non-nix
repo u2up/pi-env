@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+command_names=(
+  pi-env
+  pi-start
+  pi-bwrap
+  bootstrap-coordination
+  agent-coord-init
+  agent-coord-clone
+  agent-coord-status
+  agent-coord-list
+  agent-coord-cat
+  agent-coord-pull
+  agent-coord-push
+  agent-coord-new
+  agent-coord-claim
+  agent-coord-done
+  agent-coord-review
+  agent-coord-verify
+  agent-coord-close
+  agent-coord-lint
+  agent-coord-generate-requirements
+  agent-coord-generate-requirements-coverage
+  agent-coord-upgrade-rules
+  pi-serial-roles
+  pi-env-uninstall
+)
+
+usage() {
+  cat <<'USAGE'
+install-non-nix - install pi-env for host-runtime use without Nix
+
+Usage:
+  scripts/install-non-nix [--prefix PREFIX] [--check-deps]
+  scripts/install-non-nix --uninstall [--prefix PREFIX]
+  scripts/install-non-nix --help
+
+Options:
+  --prefix PREFIX  Install prefix; default: $PREFIX or ~/.local
+  --check-deps     Check host tools before installing
+  --uninstall      Remove files listed in the installed manifest
+  -h, --help       Show this help
+
+The installer copies pi-env scripts and support data under
+PREFIX/share/pi-env, installs wrapper commands under PREFIX/bin, and writes a
+manifest that pi-env-uninstall can use later. It does not install or pin host
+runtime tools; use the Nix flake/devshell for a pinned runtime.
+USAGE
+}
+
+prefix="${PREFIX:-$HOME/.local}"
+check_deps=0
+uninstall=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --prefix)
+      [ "$#" -ge 2 ] || { echo "install-non-nix: --prefix requires a value" >&2; exit 2; }
+      prefix="$2"
+      shift 2
+      ;;
+    --prefix=*)
+      prefix="${1#--prefix=}"
+      shift
+      ;;
+    --check-deps)
+      check_deps=1
+      shift
+      ;;
+    --uninstall)
+      uninstall=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "install-non-nix: unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+case "$prefix" in
+  /*) ;;
+  *) prefix="$(pwd -P)/$prefix" ;;
+esac
+
+bin_dir="$prefix/bin"
+share_dir="$prefix/share/pi-env"
+manifest="$share_dir/install-manifest"
+
+find_source_root() {
+  local script_dir candidate
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  for candidate in "$(cd "$script_dir/.." && pwd -P)" "$script_dir" "$(pwd -P)"; do
+    if [ -f "$candidate/scripts/pi-env-launcher" ] && \
+       [ -f "$candidate/scripts/agent-coord-lib.sh" ] && \
+       [ -d "$candidate/role-manager" ] && \
+       [ -d "$candidate/pi-skill-templates" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  echo "install-non-nix: could not find pi-env release/source layout" >&2
+  echo "install-non-nix: expected scripts/, role-manager/, and pi-skill-templates/" >&2
+  return 1
+}
+
+check_host_dependencies() {
+  local missing=0 dep
+  for dep in bash bwrap git jq node pi env realpath sed grep awk find sort mkdir cp rm chmod ln dirname basename mktemp tar; do
+    if ! command -v "$dep" >/dev/null 2>&1; then
+      echo "install-non-nix: missing host dependency: $dep" >&2
+      missing=1
+    fi
+  done
+  if [ "$missing" = "1" ]; then
+    echo "install-non-nix: install the missing host tools, or use the Nix runtime for pinned tools." >&2
+    return 127
+  fi
+}
+
+write_manifest() {
+  local tmp_manifest="$manifest.tmp"
+  : > "$tmp_manifest"
+  for name in "${command_names[@]}"; do
+    printf '%s\n' "$bin_dir/$name" >> "$tmp_manifest"
+  done
+  find "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates" \
+    -mindepth 1 -type f -print | sort >> "$tmp_manifest"
+  find "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates" \
+    -depth -type d -print >> "$tmp_manifest"
+  printf '%s\n' "$share_dir" "$prefix/share" "$bin_dir" >> "$tmp_manifest"
+  mv "$tmp_manifest" "$manifest"
+}
+
+remove_empty_parents() {
+  local dir
+  for dir in "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates" "$share_dir" "$prefix/share" "$bin_dir"; do
+    rmdir "$dir" 2>/dev/null || true
+  done
+}
+
+run_uninstall() {
+  if [ ! -f "$manifest" ]; then
+    echo "install-non-nix: manifest not found: $manifest" >&2
+    exit 1
+  fi
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    case "$path" in
+      "$prefix"/*) ;;
+      *) echo "install-non-nix: refusing to remove path outside prefix: $path" >&2; exit 1 ;;
+    esac
+    if [ -d "$path" ]; then
+      rmdir "$path" 2>/dev/null || true
+    else
+      rm -f "$path"
+    fi
+  done < "$manifest"
+  rm -f "$manifest"
+  remove_empty_parents
+  echo "Removed pi-env files listed in $manifest"
+}
+
+install_wrapper() {
+  local name="$1" target="$2"
+  cat > "$bin_dir/$name" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-$share_dir/scripts/agent-coord-lib.sh}"
+export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-$share_dir/pi-skill-templates/agent-coordination}"
+export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-$share_dir/role-manager}"
+export PI_ENV_PI_START="\${PI_ENV_PI_START:-$bin_dir/pi-start}"
+export PI_ENV_PI_BWRAP="\${PI_ENV_PI_BWRAP:-$bin_dir/pi-bwrap}"
+exec /usr/bin/env bash "$share_dir/scripts/$target" "\$@"
+EOF
+  chmod +x "$bin_dir/$name"
+}
+
+install_uninstall_wrapper() {
+  cat > "$bin_dir/pi-env-uninstall" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec /usr/bin/env bash "$share_dir/scripts/install-non-nix" --uninstall --prefix "$prefix" "\$@"
+EOF
+  chmod +x "$bin_dir/pi-env-uninstall"
+}
+
+if [ "$uninstall" = "1" ]; then
+  run_uninstall
+  exit 0
+fi
+
+if [ "$check_deps" = "1" ]; then
+  check_host_dependencies
+fi
+
+source_root="$(find_source_root)"
+mkdir -p "$bin_dir" "$share_dir"
+rm -rf "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates"
+cp -R "$source_root/scripts" "$share_dir/scripts"
+cp -R "$source_root/role-manager" "$share_dir/role-manager"
+cp -R "$source_root/pi-skill-templates" "$share_dir/pi-skill-templates"
+chmod +x "$share_dir/scripts"/agent-coord-* \
+  "$share_dir/scripts/bootstrap-coordination" \
+  "$share_dir/scripts/pi-bwrap" \
+  "$share_dir/scripts/pi-env-launcher" \
+  "$share_dir/scripts/pi-serial-roles" \
+  "$share_dir/scripts/pi-start" \
+  "$share_dir/scripts/install-non-nix"
+
+for name in "${command_names[@]}"; do
+  case "$name" in
+    pi-env) install_wrapper "$name" pi-env-launcher ;;
+    pi-env-uninstall) ;;
+    *) install_wrapper "$name" "$name" ;;
+  esac
+done
+install_uninstall_wrapper
+write_manifest
+
+echo "Installed pi-env host-runtime commands to $bin_dir"
+echo "Installed support files to $share_dir"
+echo "Add $bin_dir to PATH if needed. Uninstall with: $bin_dir/pi-env-uninstall"

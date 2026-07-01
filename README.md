@@ -206,6 +206,37 @@ pi-env --help
 pi-bwrap --help
 ```
 
+### Non-Nix host-runtime installation
+
+For a conventional host-runtime install, use the non-Nix installer from a
+release/archive checkout:
+
+```bash
+./scripts/install-non-nix --prefix "$HOME/.local" --check-deps
+export PATH="$HOME/.local/bin:$PATH"
+pi-env --runtime host --help
+```
+
+The installer does not invoke Nix and does not install a pinned runtime
+toolchain. It copies pi-env commands to `$PREFIX/bin`, support files to
+`$PREFIX/share/pi-env`, and writes wrappers that resolve coordination support,
+coordination templates, and the role-manager package from that installed
+prefix. Host tools such as Bash, Bubblewrap, Git, jq, Node, the `pi` launcher,
+and standard POSIX text/file utilities must already be available. Use the Nix
+flake, devshell, or profile packages when you need the reproducible pinned
+runtime.
+
+Release artifacts can contain only the pi-env payload directories (`scripts/`,
+`role-manager/`, and `pi-skill-templates/`); end users do not need a Git clone
+for installation. Re-run the same command to upgrade or repair an install. To
+remove installed files later, use the manifest-backed uninstall command:
+
+```bash
+pi-env-uninstall
+# or, without PATH setup:
+"$HOME/.local/bin/pi-env-uninstall"
+```
+
 Inside `nix develop` the prompt is prefixed with `(nix-dev)`. The shell exports
 `PI_ENV_ROLE_MANAGER_PACKAGE` to the Nix-built role-manager package path and
 prints a short reminder unless `PI_ENV_QUIET` is set.
