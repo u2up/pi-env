@@ -75,6 +75,8 @@ Environment knobs:
   PI_BWRAP_DEFAULT_TOOLS="..."  Override default --tools list
   PI_BWRAP_EXTRA_PATH=/nix/store/.../bin[:...] Add validated Nix-store command dirs after pi-env runtime tools
   PI_BWRAP_HOST_EXTRA_PATH=/opt/tools/bin[:...] Host runtime only: add validated host command dirs
+  PI_BWRAP_HOST_RO_PATHS=/opt/pi-env/share/pi-env/scripts[:...]
+                                Host runtime only: bind extra support paths read-only
   PI_BWRAP_NET=0                Disable network namespace sharing
   PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
   PI_COORD_ROOT=.pi-env/agent-remotes Bare remotes root; project paths stay under /workspace,
@@ -606,6 +608,7 @@ append_validated_extra_path() {
 
 validated_host_extra_path=""
 host_extra_bind_args=()
+host_ro_bind_args=()
 append_validated_host_extra_path() {
   if [ -z "$validated_host_extra_path" ]; then
     validated_host_extra_path="$1"
@@ -679,6 +682,40 @@ if [ -n "${PI_BWRAP_HOST_EXTRA_PATH:-}" ]; then
     fi
     append_validated_host_extra_path "$canonical_host_extra_path"
     host_extra_bind_args+=(--ro-bind "$canonical_host_extra_path" "$canonical_host_extra_path")
+    IFS=:
+  done
+  IFS="$old_ifs"
+fi
+
+if [ -n "${PI_BWRAP_HOST_RO_PATHS:-}" ]; then
+  if [ "$host_runtime" != "1" ]; then
+    echo "pi-bwrap: PI_BWRAP_HOST_RO_PATHS is only supported in host runtime mode." >&2
+    exit 2
+  fi
+  old_ifs="$IFS"
+  IFS=:
+  for host_ro_path_entry in $PI_BWRAP_HOST_RO_PATHS; do
+    IFS="$old_ifs"
+    [ -n "$host_ro_path_entry" ] || { IFS=:; continue; }
+    case "$host_ro_path_entry" in
+      /*) ;;
+      *)
+        echo "pi-bwrap: unsafe PI_BWRAP_HOST_RO_PATHS entry is not absolute: $host_ro_path_entry" >&2
+        exit 2
+        ;;
+    esac
+    if [ ! -e "$host_ro_path_entry" ]; then
+      echo "pi-bwrap: unsafe PI_BWRAP_HOST_RO_PATHS entry does not exist: $host_ro_path_entry" >&2
+      exit 2
+    fi
+    canonical_host_ro_path="$(realpath -e "$host_ro_path_entry")"
+    case "$canonical_host_ro_path" in
+      /|/home|/tmp|/var|/usr|/usr/local)
+        echo "pi-bwrap: unsafe PI_BWRAP_HOST_RO_PATHS entry is too broad: $host_ro_path_entry -> $canonical_host_ro_path" >&2
+        exit 2
+        ;;
+    esac
+    host_ro_bind_args+=(--ro-bind "$canonical_host_ro_path" "$canonical_host_ro_path")
     IFS=:
   done
   IFS="$old_ifs"
@@ -761,6 +798,7 @@ bwrap_args=(
   --dir /home
   "${runtime_bind_args[@]}"
   "${host_extra_bind_args[@]}"
+  "${host_ro_bind_args[@]}"
   --ro-bind-try /etc/passwd /etc/passwd
   --ro-bind-try /etc/group /etc/group
   --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf

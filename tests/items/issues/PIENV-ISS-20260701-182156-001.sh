@@ -13,6 +13,42 @@ assert_executable() {
   [ -x "$1" ] || { echo "missing expected executable: $1" >&2; exit 1; }
 }
 
+make_serial_fixture() {
+  local fixture_root="$1"
+  local project_dir="$fixture_root/project"
+  local coord_dir="$fixture_root/coordination"
+  local remote_dir="$fixture_root/coordination.git"
+  mkdir -p "$project_dir" "$coord_dir/issues/open"
+  git -C "$project_dir" init -q
+  git -C "$project_dir" config user.email test@example.invalid
+  git -C "$project_dir" config user.name 'pi-env test'
+  printf 'fixture\n' >"$project_dir/README.md"
+  git -C "$project_dir" add README.md
+  git -C "$project_dir" commit -q -m 'Initial fixture project'
+
+  git -C "$coord_dir" init -q
+  git -C "$coord_dir" config user.email test@example.invalid
+  git -C "$coord_dir" config user.name 'pi-env test'
+  printf '# fixture coordination\n' >"$coord_dir/AGENTS.md"
+  cat >"$coord_dir/issues/open/PIENV-ISS-20260701-182156-001.yaml" <<'YAML'
+schema: coordination-item/v1
+id: PIENV-ISS-20260701-182156-001
+type: issue
+status: open
+project: pi-env
+title: Fixture issue
+owner: samo
+reviewed: false
+verified: false
+YAML
+  git -C "$coord_dir" add AGENTS.md issues/open/PIENV-ISS-20260701-182156-001.yaml
+  git -C "$coord_dir" commit -q -m 'Initial fixture coordination'
+  git init --bare -q "$remote_dir"
+  git -C "$coord_dir" remote add origin "$remote_dir"
+  git -C "$coord_dir" push -q -u origin HEAD
+  printf '%s\t%s\n' "$project_dir" "$coord_dir"
+}
+
 verify_install() {
   local prefix="$1"
   assert_executable "$prefix/bin/pi-env"
@@ -35,6 +71,22 @@ verify_install() {
     --project-root "$repo_root" \
     --coord-dir "$repo_root/.pi-env/coordination" \
     --max-jobs 0 >/dev/null
+
+  local dry_run_out fixture project_dir coord_dir
+  dry_run_out="$tmp/pi-serial-dry-run.out"
+  fixture="$(make_serial_fixture "$(mktemp -d "$tmp/serial-fixture.XXXXXX")")"
+  IFS=$'\t' read -r project_dir coord_dir <<<"$fixture"
+  PATH="$prefix/bin:$PATH" "$prefix/bin/pi-serial-roles" \
+    --project-root "$project_dir" \
+    --coord-dir "$coord_dir" \
+    --agent-id samo \
+    --dry-run >"$dry_run_out"
+  grep -F "PI_BWRAP_HOST_RO_PATHS=" "$dry_run_out" >/dev/null \
+    || { echo "dry-run did not pass host read-only bind paths" >&2; cat "$dry_run_out" >&2; exit 1; }
+  grep -F "/share/pi-env/scripts" "$dry_run_out" >/dev/null \
+    || { echo "dry-run did not bind installed helper scripts" >&2; cat "$dry_run_out" >&2; exit 1; }
+  grep -F "/share/pi-env/scripts/agent-coord-" "$dry_run_out" >/dev/null \
+    || { echo "dry-run did not prompt with installed helper path" >&2; cat "$dry_run_out" >&2; exit 1; }
 }
 
 source_prefix="$tmp/source prefix with dollar \$ and quote \""

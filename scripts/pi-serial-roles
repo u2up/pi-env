@@ -78,6 +78,7 @@ pi_env_cmd_opt=""
 role_manager_opt=""
 coord_helper_pi_dir=""
 coord_helper_extra_path=""
+coord_helper_host_ro_path=""
 tools="${PI_BWRAP_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
 role_cycle_done_tool="role_cycle_done"
 
@@ -601,6 +602,19 @@ merged_extra_path() {
   printf '%s\n' "$value"
 }
 
+merged_host_ro_paths() {
+  local value helper_dir
+  value="${PI_BWRAP_HOST_RO_PATHS:-}"
+  helper_dir="${coord_helper_host_ro_path:-}"
+  if [ -n "$helper_dir" ]; then
+    case ":$value:" in
+      *":$helper_dir:"*) ;;
+      *) value="$helper_dir${value:+:$value}" ;;
+    esac
+  fi
+  printf '%s\n' "$value"
+}
+
 shell_quote_command() {
   local first=1 arg
   for arg in "$@"; do
@@ -615,12 +629,13 @@ shell_quote_command() {
 }
 
 print_dry_run() {
-  local role item prompt pass_env extra_path pi_tools
+  local role item prompt pass_env extra_path host_ro_paths pi_tools
   role="$1"
   item="$2"
   prompt="$3"
   pass_env="$(merged_pass_env)"
   extra_path="$(merged_extra_path)"
+  host_ro_paths="$(merged_host_ro_paths)"
   pi_tools="$(tools_with_role_cycle_done "$tools")"
 
   printf 'selected role=%s item=%s\n' "$role" "$item"
@@ -648,6 +663,7 @@ print_dry_run() {
         "PI_BWRAP_PROJECT_ROOT=$project_root" \
         "PI_BWRAP_PASS_ENV=$pass_env" \
         "PI_BWRAP_EXTRA_PATH=$extra_path" \
+        "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
         "$pi_env_cmd" \
         --raw -- \
         -e "$role_manager_pi_arg" \
@@ -666,6 +682,7 @@ print_dry_run() {
         "PI_BWRAP_PROJECT_ROOT=$project_root" \
         "PI_BWRAP_PASS_ENV=$pass_env" \
         "PI_BWRAP_EXTRA_PATH=$extra_path" \
+        "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
         "$pi_env_cmd" \
         --raw -- \
         -e "$role_manager_pi_arg" \
@@ -685,6 +702,7 @@ print_dry_run() {
         "PI_BWRAP_PROJECT_ROOT=$project_root" \
         "PI_BWRAP_PASS_ENV=$pass_env" \
         "PI_BWRAP_EXTRA_PATH=$extra_path" \
+        "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
         "$pi_env_cmd" \
         --raw -- \
         -e "$role_manager_pi_arg" \
@@ -710,12 +728,13 @@ claim_developer_item() {
 }
 
 run_pi_job() {
-  local role item prompt pass_env extra_path pi_tools
+  local role item prompt pass_env extra_path host_ro_paths pi_tools
   role="$1"
   item="$2"
   prompt="$3"
   pass_env="$(merged_pass_env)"
   extra_path="$(merged_extra_path)"
+  host_ro_paths="$(merged_host_ro_paths)"
   pi_tools="$(tools_with_role_cycle_done "$tools")"
 
   if [ "$role" = "developer" ]; then
@@ -740,6 +759,7 @@ run_pi_job() {
           "PI_BWRAP_PROJECT_ROOT=$project_root" \
           "PI_BWRAP_PASS_ENV=$pass_env" \
           "PI_BWRAP_EXTRA_PATH=$extra_path" \
+          "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
           "$pi_env_cmd" \
           --raw -- \
           -e "$role_manager_pi_arg" \
@@ -757,6 +777,7 @@ run_pi_job() {
           "PI_BWRAP_PROJECT_ROOT=$project_root" \
           "PI_BWRAP_PASS_ENV=$pass_env" \
           "PI_BWRAP_EXTRA_PATH=$extra_path" \
+          "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
           "$pi_env_cmd" \
           --raw -- \
           -e "$role_manager_pi_arg" \
@@ -775,6 +796,7 @@ run_pi_job() {
           "PI_BWRAP_PROJECT_ROOT=$project_root" \
           "PI_BWRAP_PASS_ENV=$pass_env" \
           "PI_BWRAP_EXTRA_PATH=$extra_path" \
+          "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
           "$pi_env_cmd" \
           --raw -- \
           -e "$role_manager_pi_arg" \
@@ -795,8 +817,18 @@ role_manager_package="$(resolve_role_manager)"
 role_manager_pi_arg="$(role_manager_arg_for_pi "$role_manager_package" "$project_root")"
 coord_helper_pi_dir="$(coord_helper_dir_for_pi "$script_dir" "$project_root")"
 case "$coord_helper_pi_dir" in
-  /nix/store/*) coord_helper_extra_path="$coord_helper_pi_dir" ;;
-  *) coord_helper_extra_path="" ;;
+  /nix/store/*)
+    coord_helper_extra_path="$coord_helper_pi_dir"
+    coord_helper_host_ro_path=""
+    ;;
+  /workspace|/workspace/*)
+    coord_helper_extra_path=""
+    coord_helper_host_ro_path=""
+    ;;
+  *)
+    coord_helper_extra_path=""
+    coord_helper_host_ro_path="$script_dir"
+    ;;
 esac
 
 if [ -n "$lock_file_opt" ]; then
