@@ -17,9 +17,9 @@ or unrelated project data.
 - **Runtime tools**: by default, direct checkout launches use selected host
   tools inside the sandbox. This host runtime is convenient but unpinned:
   commands such as `pi`, `node`, `git`, `rg`, `jq`, `fd`, and `tar` come from
-  the host operating system or user installation. For reproducible team runs,
-  opt in to the Nix runtime/devshell, which supplies a pinned toolset on
-  `PATH`.
+  admitted host command directories rather than a pi-env lock file. For
+  reproducible team runs, opt in to the Nix runtime/devshell, which supplies a
+  pinned toolset on `PATH`.
 
 Nix provides reproducibility when selected; Bubblewrap provides the isolation
 boundary in both host and Nix runtime modes.
@@ -147,9 +147,11 @@ pi --version
 ```
 
 Node/npm are needed on the host for this Pi installation or upgrade step and
-for host-runtime launches that use the npm-installed Pi launcher. The pi-env
-Nix shell provides Node and the other runtime tools when you select the Nix
-runtime.
+for host-runtime launches that use the npm-installed Pi launcher. In host
+runtime mode, `node` for an npm-installed Pi launcher must resolve under
+`/usr/local/bin`, `/usr/bin`, or `/bin`; `PI_BWRAP_HOST_EXTRA_PATH` does not
+admit that launcher interpreter. The pi-env Nix shell provides Node and the
+other runtime tools when you select the Nix runtime.
 
 ### Provided by pi-env
 
@@ -632,19 +634,24 @@ pi-env only chooses which root to expose for this run.
 - shares the host network by default so Pi can reach model providers.
 
 In host runtime mode, pi-env also adds conservative read-only support mounts
-for system runtime files such as loader, library, share, certificate, locale,
-and alternatives directories when they exist. These support mounts let admitted
-host binaries run inside Bubblewrap; they are not a general host filesystem or
-home-directory mount.
+for system runtime files: `/lib`, `/lib64`, `/usr/lib`, `/usr/lib64`, `/bin`,
+`/usr/bin`, and certificate-related `/etc` paths when they exist. These support
+mounts let admitted host binaries run inside Bubblewrap; they are not a general
+host filesystem, `/usr/share`, locale, alternatives, or home-directory mount.
 
-If your `pi` command, `node`, or language-manager shims live under host `$HOME`
-(for example `~/.local/bin`, `~/.nvm`, `~/.asdf`, or a per-user npm prefix),
-host runtime rejects them by default because host `$HOME` is not mounted. Prefer
-a system/global install under `/usr/local/bin`, `/usr/bin`, or `/bin`, move the
-needed command directory outside `$HOME` and opt it in with
-`PI_BWRAP_HOST_EXTRA_PATH`, or use `--runtime nix` for pinned tools. Custom host
-tool directories admitted with `PI_BWRAP_HOST_EXTRA_PATH` are mounted read-only
-and only after validation.
+If your `pi` command or language-manager shims live under host `$HOME` (for
+example `~/.local/bin`, `~/.nvm`, `~/.asdf`, or a per-user npm prefix), host
+runtime rejects them by default because host `$HOME` is not mounted. Prefer a
+system/global install under `/usr/local/bin`, `/usr/bin`, or `/bin`, move a
+custom `pi` launcher or other needed command directory outside `$HOME` and opt
+it in with `PI_BWRAP_HOST_EXTRA_PATH`, or use `--runtime nix` for pinned tools.
+Custom host tool directories admitted with `PI_BWRAP_HOST_EXTRA_PATH` are
+mounted read-only and only after validation.
+
+When an admitted host `pi` launcher uses `#!/usr/bin/env node`, `node` itself
+must resolve under `/usr/local/bin`, `/usr/bin`, or `/bin`; the launcher check
+does not admit `node` from `PI_BWRAP_HOST_EXTRA_PATH`. Use a system/global Node
+install or `--runtime nix` when Node only exists in another custom directory.
 
 Important: with the `bash`/`read` tools enabled, auth copied into the sandbox
 and project sessions bind-mounted into the sandbox can be read by commands or
