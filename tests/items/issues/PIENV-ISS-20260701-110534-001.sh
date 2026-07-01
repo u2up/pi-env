@@ -31,6 +31,8 @@ capture="$tmpdir/bwrap-args"
 PATH="$fakebin:$PATH" \
   PI_ENV_HOST_RUNTIME=1 \
   PI_ENV_TEST_BWRAP_ARGS="$capture" \
+  PI_BWRAP_BASH=/bin/bash \
+  PI_BWRAP_ENV=/usr/bin/env \
   PI_BWRAP_PROJECT_ROOT="$repo_root" \
   PI_BWRAP_IMPORT_COMMON=0 \
   PI_BWRAP_IMPORT_EXTENSIONS=0 \
@@ -53,8 +55,17 @@ test_grep '^--symlink$' "$capture"
 if grep -qx 'bash' "$capture"; then
   test_fail 'host runtime used unresolved bash as a bwrap symlink or exec target'
 fi
-if ! grep -Eq '^/.*/bash$|^/[^/]*/bash$' "$capture"; then
-  test_fail 'host runtime did not pass an absolute bash path to bwrap'
+if ! grep -qx '/pi-env-tools/bash' "$capture"; then
+  test_fail 'host runtime did not mount bash at a non-conflicting sandbox path'
+fi
+if ! grep -qx '/pi-env-tools/env' "$capture"; then
+  test_fail 'host runtime did not mount env at a non-conflicting sandbox path'
+fi
+if awk 'prev == "--ro-bind-try" && $0 == "/bin/bash" { getline; if ($0 == "/bin/bash") found = 1 } { prev = $0 } END { exit found ? 0 : 1 }' "$capture"; then
+  test_fail 'host runtime bind-mounted /bin/bash over itself'
+fi
+if awk 'prev == "--ro-bind-try" && $0 == "/usr/bin/env" { getline; if ($0 == "/usr/bin/env") found = 1 } { prev = $0 } END { exit found ? 0 : 1 }' "$capture"; then
+  test_fail 'host runtime bind-mounted /usr/bin/env over itself'
 fi
 if ! grep -qx -- '--ro-bind-try' "$capture"; then
   test_fail 'host runtime did not add read-only host tool/library binds'

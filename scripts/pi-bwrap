@@ -500,15 +500,20 @@ else
   copy_env PI_COORD_DIR
 fi
 
+sandbox_bash="$pi_bwrap_bash"
+sandbox_env="$pi_bwrap_env"
 host_runtime_bind_args=()
 if [ -z "${PI_ENV_RUNTIME_PATH:-}" ]; then
+  sandbox_bash=/pi-env-tools/bash
+  sandbox_env=/pi-env-tools/env
   host_runtime_bind_args=(
     --ro-bind-try /lib /lib
     --ro-bind-try /lib64 /lib64
     --ro-bind-try /usr/lib /usr/lib
     --ro-bind-try /usr/lib64 /usr/lib64
-    --ro-bind-try "$pi_bwrap_bash" "$pi_bwrap_bash"
-    --ro-bind-try "$pi_bwrap_env" "$pi_bwrap_env"
+    --dir /pi-env-tools
+    --ro-bind-try "$pi_bwrap_bash" "$sandbox_bash"
+    --ro-bind-try "$pi_bwrap_env" "$sandbox_env"
   )
 fi
 
@@ -546,9 +551,9 @@ bwrap_args=(
   --ro-bind-try /usr/local/bin /usr/local/bin
   --ro-bind-try /usr/local/lib/node_modules/@earendil-works/pi-coding-agent /usr/local/lib/node_modules/@earendil-works/pi-coding-agent
   "${host_runtime_bind_args[@]}"
-  --symlink "$pi_bwrap_bash" /bin/bash
-  --symlink "$pi_bwrap_bash" /bin/sh
-  --symlink "$pi_bwrap_env" /usr/bin/env
+  --symlink "$sandbox_bash" /bin/bash
+  --symlink "$sandbox_bash" /bin/sh
+  --symlink "$sandbox_env" /usr/bin/env
   --bind "$project_root" /workspace
   "${coord_root_bind_args[@]}"
   --bind "$state_base/home" /home/pi
@@ -582,4 +587,4 @@ fi
 exec "$pi_bwrap_bwrap" \
   "${env_args[@]}" \
   "${bwrap_args[@]}" \
-  -- "$pi_bwrap_bash" -lc 'exec pi "$@"' pi "${pi_args[@]}"
+  -- "$sandbox_bash" -lc 'exec pi "$@"' pi "${pi_args[@]}"
