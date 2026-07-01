@@ -1,8 +1,8 @@
 # pi-env
 
-Run Pi Coding Agent against one selected project root in a reproducible,
-sandboxed environment instead of giving an AI agent direct access to your host
-environment.
+Run Pi Coding Agent against one selected project root in a sandboxed,
+optionally reproducible environment instead of giving an AI agent direct access
+to your host environment.
 
 AI coding agents can inspect files, run commands, edit code, and invoke tools.
 That is powerful, but it also creates risk when the agent process can see your
@@ -14,11 +14,15 @@ or unrelated project data.
 - **Bubblewrap sandbox**: limits what the agent can see. The selected project is
   mounted read-write at `/workspace`, `$HOME` is isolated, host credentials are
   not mounted wholesale, and auth/config import is explicit and configurable.
-- **Nix devshell/runtime**: supplies a pinned toolset on `PATH` such as `node`,
-  `git`, `rg`, `jq`, `fd`, `tar`, and the `pi-env` helper commands, so teams
-  and repeated runs use the same runtime tools.
+- **Runtime tools**: by default, direct checkout launches use selected host
+  tools inside the sandbox. This host runtime is convenient but unpinned:
+  commands such as `pi`, `node`, `git`, `rg`, `jq`, `fd`, and `tar` come from
+  the host operating system or user installation. For reproducible team runs,
+  opt in to the Nix runtime/devshell, which supplies a pinned toolset on
+  `PATH`.
 
-Nix provides reproducibility; Bubblewrap provides the isolation boundary.
+Nix provides reproducibility when selected; Bubblewrap provides the isolation
+boundary in both host and Nix runtime modes.
 Each pi-env run has one primary project root. That root is mounted read-write
 at `/workspace` inside the sandbox; `/workspace` is the sandbox path name, not a
 host-side multi-project workspace manager. The role-manager package and Git-backed coordination helpers remain available
@@ -45,22 +49,40 @@ Most users start with one of two workflows:
 
 ## 60-second example
 
-Assuming Linux, Git, Nix with flakes, and a configured host `pi` command are
-already available, try pi-env on an existing public repository:
+Assuming Linux, Git, and a configured host `pi` command are already available,
+try pi-env on an existing public repository:
 
 ```bash
 git clone https://github.com/spog/evm.git
 cd evm
 
+git clone https://github.com/u2up/pi-env.git ~/src/pi-env
+~/src/pi-env/pi-env \
+  "Summarize this repository and suggest safe first checks."
+```
+
+That direct checkout command starts in the default **host runtime** mode: Pi
+runs inside the Bubblewrap sandbox, but runtime tools are unpinned host tools.
+You can make the selection explicit or opt in to the reproducible Nix runtime:
+
+```bash
+~/src/pi-env/pi-env --runtime host "Inspect this repo with host tools."
+~/src/pi-env/pi-env --runtime nix "Inspect this repo with pinned Nix tools."
+```
+
+You can also use the Nix flake app directly when you want the pinned runtime
+without cloning first:
+
+```bash
 nix run github:u2up/pi-env -- \
   "Summarize this repository and suggest safe first checks."
 ```
 
-This runs Pi against the cloned repository with that repository mounted
-read-write at `/workspace` inside the Bubblewrap sandbox. It is intended for
-inspection. If you ask Pi to build or test a project, declare the project's
-build tools in a devshell (recommended) or pass an explicit validated extra
-Nix-store path as described below.
+All of these run Pi against the cloned repository with that repository mounted
+read-write at `/workspace` inside the Bubblewrap sandbox. They are intended for
+inspection. If you ask Pi to build or test a project, supply the project's
+build tools with the host runtime policy or declare them in a devshell for the
+Nix runtime as described below.
 
 ### Optional: enable local coordination for the example
 
@@ -93,8 +115,6 @@ Install or configure these on the host before using this repository.
 ### Required host dependencies
 
 - **Linux** with unprivileged user namespaces/Bubblewrap support.
-- **Nix** with flakes enabled. You can either enable the `nix-command` and
-  `flakes` experimental features globally or pass them when running Nix.
 - **`pi-coding-agent`** installed on the host and available as `pi` on `PATH`.
   `pi-env` does not pin or install Pi itself.
 - **Model credentials** for Pi, either in Pi's normal auth files under
@@ -102,11 +122,20 @@ Install or configure these on the host before using this repository.
   `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`.
 - **Git** or another way to fetch this repository.
 
+### Optional Nix dependency
+
+Install **Nix** with flakes enabled for Nix runtime workflows (`--runtime nix`,
+`nix run`, `nix develop`, profile installs, or project flake integration). You
+can either enable the `nix-command` and `flakes` experimental features globally
+or pass them when running Nix. Direct checkout use defaults to the host runtime
+and does not require Nix.
+
 Quick checks:
 
 ```bash
-nix --version
 pi --version
+# Needed only for Nix runtime workflows:
+nix --version
 ```
 
 If Pi is not installed yet, install it using the upstream package. A common npm
@@ -117,13 +146,15 @@ npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
 pi --version
 ```
 
-Node/npm are only needed on the host for this Pi installation or upgrade step.
-The pi-env Nix shell provides Node and the runtime tools used inside pi-env.
+Node/npm are needed on the host for this Pi installation or upgrade step and
+for host-runtime launches that use the npm-installed Pi launcher. The pi-env
+Nix shell provides Node and the other runtime tools when you select the Nix
+runtime.
 
 ### Provided by pi-env
 
-When you enter the devshell, run the checkout launcher, or consume pi-env as a
-flake, Nix supplies the runtime tools used by the wrappers:
+When you enter the devshell, select `--runtime nix`, run `nix run`, or consume
+pi-env as a flake, Nix supplies the pinned runtime tools used by the wrappers:
 
 ```text
 bash bubblewrap cacert coreutils fd findutils gawk git gnugrep gnused
@@ -147,10 +178,15 @@ You normally do not need to install these separately for pi-env itself.
 
 ## 2. Install pi-env
 
-Clone this repository and enter its devshell:
+Clone this repository for direct host-runtime use:
 
 ```bash
 git clone https://github.com/u2up/pi-env.git ~/src/pi-env
+```
+
+Enter the devshell when you want Nix-pinned pi-env commands and helper tools:
+
+```bash
 cd ~/src/pi-env
 nix develop
 ```
@@ -199,7 +235,9 @@ already exist.
 
 Use direct mode for local, ad hoc, or internal runs where selecting a pi-env
 checkout is enough and the target project does not need to pin pi-env in its
-own `flake.lock`.
+own `flake.lock`. Direct checkout startup defaults to **host runtime** mode:
+`pi-env` still enters the Bubblewrap sandbox, but command-line tools are the
+unpinned host tools admitted by pi-env's conservative mount policy.
 
 From the target project directory, run this checkout's launcher:
 
@@ -219,11 +257,24 @@ pi-env
 pi-env "Inspect this repo"
 ```
 
-The checkout launcher uses `nix develop` for the selected pi-env flake only
-when `pi-start` and `pi-bwrap` are not already on `PATH`. It preserves the
-current project as the detected project root; inside the sandbox that project is
+The checkout launcher defaults to host runtime mode. It preserves the current
+project as the detected project root; inside the sandbox that project is
 mounted read-write at `/workspace`. The pi-env checkout is only the source of
 launcher code and runtime policy.
+
+Select a runtime explicitly with `--runtime` or `PI_ENV_RUNTIME`:
+
+```bash
+~/src/pi-env/pi-env --runtime host "Inspect this repo"
+~/src/pi-env/pi-env --runtime nix "Inspect this repo with pinned tools"
+PI_ENV_RUNTIME=nix ~/src/pi-env/pi-env
+```
+
+Use `--runtime host` for direct startup with unpinned host tools. Use
+`--runtime nix`, `nix run`, `nix develop`, profile packages, or project flake
+integration when you need the reproducible/pinned Nix runtime. `--runtime auto`
+keeps compatibility with environments that already provide pi-env commands and
+falls back to the Nix runtime when needed.
 
 Use `--raw --` when you want to pass arguments directly to Pi through
 `pi-bwrap` instead of using the `pi-start` defaults:
@@ -371,10 +422,13 @@ devShells.default = pi-env.lib.mkPiShell {
 
 ### Project-specific build and test tools
 
-pi-env keeps its default runtime intentionally small. It includes the tools the
-launcher needs, such as `git`, `rg`, `jq`, and Node, but it does not bundle every
-compiler or build system a target repository might need. Nix should supply those
-project tools explicitly; Bubblewrap remains the isolation boundary.
+pi-env keeps its default runtime intentionally small. Host runtime mode uses
+unpinned host tools from the conservative sandbox `PATH`; Nix runtime mode uses
+the pinned tools provided by this flake. Neither mode bundles every compiler or
+build system a target repository might need. Add host-runtime tools explicitly
+with `PI_BWRAP_HOST_EXTRA_PATH`, or declare reproducible project tools in the
+consuming project's Nix flake. Bubblewrap remains the isolation boundary in both
+modes.
 
 For builds or tests, declare tools in the consuming project's flake:
 
@@ -392,16 +446,20 @@ devShells.default = pi-env.lib.mkPiShell {
 ```
 
 `mkPiShell` turns the `extraPackages` `bin` outputs into `PI_BWRAP_EXTRA_PATH`.
-`pi-bwrap` validates those entries before starting the sandbox, accepts only
-canonical `/nix/store` directories, and then appends them after the core pi-env
-runtime path. Since `/nix/store` is already mounted read-only, no host `/bin`,
-host `/usr/bin`, project-writable directory, or scan of the whole store is
-needed. pi-env does not infer tools from a repository automatically.
+In Nix runtime mode, `pi-bwrap` validates those entries before starting the
+sandbox, accepts only canonical `/nix/store` directories, and then appends them
+after the core pi-env runtime path. Since `/nix/store` is already mounted
+read-only, no host `/bin`, host `/usr/bin`, project-writable directory, or scan
+of the whole store is needed. pi-env does not infer tools from a repository
+automatically.
 
-Advanced users may set `PI_BWRAP_EXTRA_PATH` directly to a colon-separated list
-of command directories, but entries must be absolute existing directories that
-canonicalize under `/nix/store`; unsafe entries such as `/tmp/bin`, `$HOME/bin`,
-`./bin`, `/usr/bin`, or `/bin` are rejected before Pi starts.
+Advanced Nix-runtime users may set `PI_BWRAP_EXTRA_PATH` directly to a
+colon-separated list of command directories, but entries must be absolute
+existing directories that canonicalize under `/nix/store`; unsafe entries such
+as `/tmp/bin`, `$HOME/bin`, `./bin`, `/usr/bin`, or `/bin` are rejected before
+Pi starts. Host-runtime users should use `PI_BWRAP_HOST_EXTRA_PATH` instead;
+those entries are canonicalized, must exist, are mounted read-only, and are
+rejected under host `$HOME`.
 
 #### Add pi-env to an existing devshell
 
@@ -436,6 +494,7 @@ Start Pi with pi-env defaults:
 pi-env
 ```
 
+Direct checkout `pi-env` defaults to host runtime mode. In all runtime modes,
 `pi-env` delegates to `pi-start`, which runs the sandbox with the default tool
 allowlist, `--continue`, and the default role-manager package when available:
 
@@ -443,10 +502,16 @@ allowlist, `--continue`, and the default role-manager package when available:
 pi-bwrap --tools read,bash,edit,write,grep,find,ls --continue -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
 ```
 
+Select the runtime with `--runtime host|nix|auto` or
+`PI_ENV_RUNTIME=host|nix|auto`; the command-line option wins. Host runtime is
+unpinned and uses admitted host tools. Nix runtime is reproducible and pinned
+by the selected pi-env flake, entering `nix develop` when needed.
+
 For custom Pi arguments, use raw mode:
 
 ```bash
 pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+pi-env --runtime nix --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
 ### `pi-start`
@@ -565,6 +630,21 @@ pi-env only chooses which root to expose for this run.
 - clears the environment, then passes only terminal basics and selected LLM
   provider variables;
 - shares the host network by default so Pi can reach model providers.
+
+In host runtime mode, pi-env also adds conservative read-only support mounts
+for system runtime files such as loader, library, share, certificate, locale,
+and alternatives directories when they exist. These support mounts let admitted
+host binaries run inside Bubblewrap; they are not a general host filesystem or
+home-directory mount.
+
+If your `pi` command, `node`, or language-manager shims live under host `$HOME`
+(for example `~/.local/bin`, `~/.nvm`, `~/.asdf`, or a per-user npm prefix),
+host runtime rejects them by default because host `$HOME` is not mounted. Prefer
+a system/global install under `/usr/local/bin`, `/usr/bin`, or `/bin`, move the
+needed command directory outside `$HOME` and opt it in with
+`PI_BWRAP_HOST_EXTRA_PATH`, or use `--runtime nix` for pinned tools. Custom host
+tool directories admitted with `PI_BWRAP_HOST_EXTRA_PATH` are mounted read-only
+and only after validation.
 
 Important: with the `bash`/`read` tools enabled, auth copied into the sandbox
 and project sessions bind-mounted into the sandbox can be read by commands or
