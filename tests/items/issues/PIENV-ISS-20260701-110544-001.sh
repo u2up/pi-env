@@ -12,9 +12,14 @@ cleanup() {
 trap cleanup EXIT
 
 fakebin="$tmpdir/fakebin"
+nixless_bin="$tmpdir/nixless-bin"
 host_home="$tmpdir/host-home"
 unrelated_project="$tmpdir/unrelated-project"
-mkdir -p "$fakebin" "$host_home/bin" "$host_home/.ssh" "$host_home/.aws" "$unrelated_project"
+mkdir -p "$fakebin" "$nixless_bin" "$host_home/bin" "$host_home/.ssh" "$host_home/.aws" "$unrelated_project"
+for cmd in bash dirname; do
+  cmd_path="$(command -v "$cmd")" || test_fail "test setup could not find required command: $cmd"
+  ln -s "$cmd_path" "$nixless_bin/$cmd"
+done
 
 cat >"$fakebin/pi" <<'FAKE_PI'
 #!/usr/bin/env bash
@@ -163,7 +168,7 @@ fi
 nix_missing_status=0
 env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_BWRAP \
   HOME="$host_home" \
-  PATH="$PATH" \
+  PATH="$nixless_bin" \
   ./pi-env --runtime nix --raw -- --help >"$tmpdir/missing-nix-output" 2>&1 || nix_missing_status=$?
 test_eq 127 "$nix_missing_status" 'explicit nix runtime reports missing nix'
 test_grep "runtime mode 'nix' requires nix" "$tmpdir/missing-nix-output"
