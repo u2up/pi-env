@@ -68,6 +68,13 @@ data directory such as `$PREFIX/share/pi-env`, and make installed wrappers
 resolve the same support paths Nix currently injects for coordination helpers,
 templates, and role-manager package data.
 
+End-user installation should not require cloning the full pi-env repository.
+Direct checkout installation can remain available for contributors, but the
+normal non-Nix path should work from a published release archive, downloaded
+installer, or equivalent artifact. Uninstall should likewise work from installed
+state, such as an installed uninstall command or manifest, without needing the
+original source checkout.
+
 This keeps the adoption path lightweight while preserving a clear boundary:
 non-Nix installs use host-provided tools and are not reproducible or pinned by
 pi-env. Nix remains the pinned runtime for teams that need reproducibility.
@@ -79,5 +86,6 @@ default; host runtime is unpinned; Nix runtime is reproducible and pinned.
 Blackbox tests should use fake `pi` and fake `bwrap` commands to assert mode
 selection, missing dependency handling, PATH construction, read-only mounts,
 and absence of sensitive default mounts. Installer tests should install into a
-temporary prefix and verify representative installed commands can locate their
-support files without invoking Nix.
+temporary prefix from both source-checkout and release/archive-style layouts,
+then verify representative installed commands can locate their support files
+without invoking Nix.

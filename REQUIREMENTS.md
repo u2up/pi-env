@@ -487,6 +487,12 @@ when run with appropriate permissions. Installed commands must be able to
 locate their support files without requiring the user to keep running from a
 source checkout.
 
+Installation and deinstallation should not require cloning the full pi-env
+repository. The project may support direct checkout installation as a
+contributor convenience, but end-user install and uninstall flows should work
+from a published release artifact, downloaded installer, or already installed
+manifest/uninstall command.
+
 Installed support files must include the coordination helper library,
 coordination templates, and role-manager package data needed by:
 
@@ -504,14 +510,15 @@ reproducible pinned runtime while the non-Nix install uses host tools.
 Acceptance criteria:
 
 - A non-Nix user can install pi-env commands and support files under a chosen
-  prefix without invoking Nix.
+  prefix without invoking Nix or cloning the full pi-env repository.
 - Installed command wrappers set or otherwise resolve the equivalent support
   paths for `PI_ENV_COORD_LIB`, `PI_ENV_COORD_TEMPLATE_DIR`, and
   `PI_ENV_ROLE_MANAGER_PACKAGE`.
 - The installer checks or documents required host dependencies and reports
   missing dependencies with host-runtime wording.
 - An uninstall or cleanup path is documented or provided for files installed
-  by the non-Nix installer.
+  by the non-Nix installer, and it can run without access to the original
+  source checkout.
 - README installation guidance distinguishes direct checkout, non-Nix
   installed host runtime, and Nix-backed reproducible runtime workflows.
 - Existing direct-checkout and Nix flake/devshell workflows remain
