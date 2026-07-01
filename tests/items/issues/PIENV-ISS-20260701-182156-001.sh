@@ -31,13 +31,13 @@ verify_install() {
 
   "$prefix/bin/agent-coord-status" --help >/dev/null
   "$prefix/bin/bootstrap-coordination" --help >/dev/null
-
-  grep -q "PI_ENV_COORD_LIB=.*$prefix/share/pi-env/scripts/agent-coord-lib.sh" "$prefix/bin/agent-coord-status"
-  grep -q "PI_ENV_COORD_TEMPLATE_DIR=.*$prefix/share/pi-env/pi-skill-templates/agent-coordination" "$prefix/bin/agent-coord-status"
-  grep -q "PI_ENV_ROLE_MANAGER_PACKAGE=.*$prefix/share/pi-env/role-manager" "$prefix/bin/pi-start"
+  PATH="$prefix/bin:$PATH" "$prefix/bin/pi-serial-roles" \
+    --project-root "$repo_root" \
+    --coord-dir "$repo_root/.pi-env/coordination" \
+    --max-jobs 0 >/dev/null
 }
 
-source_prefix="$tmp/source-prefix"
+source_prefix="$tmp/source prefix with dollar \$ and quote \""
 "$repo_root/scripts/install-non-nix" --prefix "$source_prefix"
 verify_install "$source_prefix"
 "$source_prefix/bin/pi-env-uninstall"

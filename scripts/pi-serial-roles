@@ -297,11 +297,10 @@ role_manager_arg_for_pi() {
       printf '/workspace%s\n' "${candidate#"$project_root"}"
       ;;
     *)
-      if [ "$dry_run" = "1" ] || [ -n "$pi_env_cmd_opt" ]; then
-        printf '%s\n' "$candidate"
-      else
-        die "role-manager path is outside the project and /nix/store: $candidate; run pi-serial-roles from the pi-env devshell/profile or pass a Nix-store --role-manager path"
-      fi
+      # pi-bwrap rewrites and read-only binds external package paths passed
+      # with -e/--package.  Allow installed non-Nix role-manager packages here
+      # instead of rejecting them before pi-bwrap can make them available.
+      printf '%s\n' "$candidate"
       ;;
   esac
 }
@@ -321,11 +320,10 @@ coord_helper_dir_for_pi() {
       printf '/workspace%s\n' "${candidate#"$project_root"}"
       ;;
     *)
-      if [ "$dry_run" = "1" ] || [ -n "$pi_env_cmd_opt" ]; then
-        printf '%s\n' "$candidate"
-      else
-        die "coordination helper scripts are outside the project and /nix/store: $candidate; run pi-serial-roles from the pi-env devshell/profile or from a checkout mounted as the project root"
-      fi
+      # Installed non-Nix helper paths may be outside the project.  Do not
+      # reject them during startup; host-runtime launches can bind or otherwise
+      # expose the installed support directory as needed.
+      printf '%s\n' "$candidate"
       ;;
   esac
 }

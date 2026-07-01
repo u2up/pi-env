@@ -165,26 +165,42 @@ run_uninstall() {
   echo "Removed pi-env files listed in $manifest"
 }
 
+shell_quote() {
+  printf '%q' "$1"
+}
+
 install_wrapper() {
   local name="$1" target="$2"
+  local bin_dir_q share_dir_q target_q
+  bin_dir_q="$(shell_quote "$bin_dir")"
+  share_dir_q="$(shell_quote "$share_dir")"
+  target_q="$(shell_quote "$target")"
   cat > "$bin_dir/$name" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-$share_dir/scripts/agent-coord-lib.sh}"
-export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-$share_dir/pi-skill-templates/agent-coordination}"
-export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-$share_dir/role-manager}"
-export PI_ENV_PI_START="\${PI_ENV_PI_START:-$bin_dir/pi-start}"
-export PI_ENV_PI_BWRAP="\${PI_ENV_PI_BWRAP:-$bin_dir/pi-bwrap}"
-exec /usr/bin/env bash "$share_dir/scripts/$target" "\$@"
+pi_env_bin_dir=$bin_dir_q
+pi_env_share_dir=$share_dir_q
+pi_env_script_target=$target_q
+export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-\$pi_env_share_dir/scripts/agent-coord-lib.sh}"
+export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-\$pi_env_share_dir/pi-skill-templates/agent-coordination}"
+export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-\$pi_env_share_dir/role-manager}"
+export PI_ENV_PI_START="\${PI_ENV_PI_START:-\$pi_env_bin_dir/pi-start}"
+export PI_ENV_PI_BWRAP="\${PI_ENV_PI_BWRAP:-\$pi_env_bin_dir/pi-bwrap}"
+exec /usr/bin/env bash "\$pi_env_share_dir/scripts/\$pi_env_script_target" "\$@"
 EOF
   chmod +x "$bin_dir/$name"
 }
 
 install_uninstall_wrapper() {
+  local prefix_q share_dir_q
+  prefix_q="$(shell_quote "$prefix")"
+  share_dir_q="$(shell_quote "$share_dir")"
   cat > "$bin_dir/pi-env-uninstall" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-exec /usr/bin/env bash "$share_dir/scripts/install-non-nix" --uninstall --prefix "$prefix" "\$@"
+pi_env_prefix=$prefix_q
+pi_env_share_dir=$share_dir_q
+exec /usr/bin/env bash "\$pi_env_share_dir/scripts/install-non-nix" --uninstall --prefix "\$pi_env_prefix" "\$@"
 EOF
   chmod +x "$bin_dir/pi-env-uninstall"
 }
