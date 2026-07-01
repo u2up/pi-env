@@ -27,8 +27,13 @@ USAGE
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 checkout_root="$(cd "$script_dir/.." && pwd -P)"
 flake_ref="${PI_ENV_FLAKE:-$checkout_root}"
-runtime_mode="${PI_ENV_RUNTIME:-}"
+runtime_mode=""
+runtime_selector_set=0
 runtime_cli_set=0
+if [ "${PI_ENV_RUNTIME+x}" = "x" ]; then
+  runtime_mode="$PI_ENV_RUNTIME"
+  runtime_selector_set=1
+fi
 raw=0
 args=()
 
@@ -66,11 +71,13 @@ while [ "$#" -gt 0 ]; do
         exit 2
       fi
       runtime_mode="$1"
+      runtime_selector_set=1
       runtime_cli_set=1
       shift
       ;;
     --runtime=*)
       runtime_mode="${1#--runtime=}"
+      runtime_selector_set=1
       runtime_cli_set=1
       shift
       ;;
@@ -86,10 +93,10 @@ done
 
 args+=("$@")
 
-if [ -z "$runtime_mode" ]; then
+if [ "$runtime_selector_set" = "0" ]; then
   if [ "${PI_ENV_HOST_RUNTIME:-0}" = "1" ]; then
     runtime_mode="host"
-  elif [ -n "${PI_ENV_RUNTIME_PATH:-}" ] || { [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_BWRAP:-}" ]; }; then
+  elif [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_BWRAP:-}" ]; then
     runtime_mode="auto"
   else
     runtime_mode="host"

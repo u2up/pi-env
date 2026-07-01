@@ -57,6 +57,30 @@ if [ -e "$nix_capture" ]; then
   test_fail 'direct checkout default runtime invoked nix develop'
 fi
 
+stale_default_host_capture="$tmpdir/stale-default-host-bwrap-args"
+stale_default_nix_capture="$tmpdir/stale-default-nix-args"
+PATH="$fakebin:$original_path" \
+  PI_ENV_RUNTIME_PATH="$tmpdir/stale-nix-runtime/bin" \
+  PI_ENV_TEST_BWRAP_ARGS="$stale_default_host_capture" \
+  PI_ENV_TEST_NIX_ARGS="$stale_default_nix_capture" \
+  PI_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_BWRAP_ENV="$tmpdir/host-env" \
+  PI_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_BWRAP_IMPORT_COMMON=0 \
+  PI_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_BWRAP_IMPORT_AUTH=0 \
+  PI_BWRAP_IMPORT_SESSIONS=0 \
+  ./pi-env --raw -- --help
+
+test_file_exists "$stale_default_host_capture"
+if [ -e "$stale_default_nix_capture" ]; then
+  test_fail 'direct checkout default runtime with stale runtime path invoked nix develop'
+fi
+if grep -F -- '/nix/store' "$stale_default_host_capture" >/dev/null 2>&1; then
+  test_fail 'direct checkout default runtime used stale Nix runtime bind arguments'
+fi
+
 explicit_host_capture="$tmpdir/explicit-host-bwrap-args"
 PI_ENV_RUNTIME_PATH="$tmpdir/fake-nix-runtime/bin"
 PATH="$fakebin:$original_path" \
@@ -108,5 +132,15 @@ if PI_ENV_RUNTIME=bogus ./pi-env --raw -- --help >/dev/null 2>"$tmpdir/invalid.e
   test_fail 'invalid PI_ENV_RUNTIME was accepted'
 fi
 test_grep 'invalid PI_ENV_RUNTIME value: bogus' "$tmpdir/invalid.err"
+
+if PI_ENV_RUNTIME= ./pi-env --raw -- --help >/dev/null 2>"$tmpdir/empty-env.err"; then
+  test_fail 'empty PI_ENV_RUNTIME was accepted'
+fi
+test_grep 'invalid PI_ENV_RUNTIME value:' "$tmpdir/empty-env.err"
+
+if ./pi-env --runtime= --raw -- --help >/dev/null 2>"$tmpdir/empty-cli.err"; then
+  test_fail 'empty --runtime= was accepted'
+fi
+test_grep 'invalid --runtime value:' "$tmpdir/empty-cli.err"
 
 echo 'pi-env runtime mode selection test passed'
