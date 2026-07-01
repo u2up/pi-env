@@ -80,4 +80,36 @@ if awk 'prev == "--ro-bind" && $0 == "/nix/store" { getline; if ($0 == "/nix/sto
   test_fail 'host runtime still requires a /nix/store bind'
 fi
 
-echo 'host runtime launcher fake-bwrap test passed'
+cat >"$fakebin/realpath" <<'FAKE_REALPATH'
+#!/usr/bin/env bash
+echo 'fake realpath should not run before PI_ENV_RUNTIME_PATH tools' >&2
+exit 42
+FAKE_REALPATH
+chmod +x "$fakebin/realpath"
+
+runtime_tool_path="$(dirname "$(command -v realpath)")"
+runtime_capture="$tmpdir/runtime-bwrap-args"
+PATH="$fakebin:$PATH" \
+  PI_ENV_RUNTIME_PATH="$runtime_tool_path" \
+  PI_ENV_TEST_BWRAP_ARGS="$runtime_capture" \
+  PI_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_BWRAP_ENV="$tmpdir/host-env" \
+  PI_BWRAP_BWRAP="$fakebin/bwrap" \
+  PI_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_BWRAP_IMPORT_COMMON=0 \
+  PI_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_BWRAP_IMPORT_AUTH=0 \
+  PI_BWRAP_IMPORT_SESSIONS=0 \
+  scripts/pi-bwrap -- --help
+
+test_file_exists "$runtime_capture"
+runtime_sandbox_path="$(awk 'prev == "--setenv" && $0 == "PATH" { getline; print; exit } { prev = $0 }' "$runtime_capture")"
+case "$runtime_sandbox_path" in
+  "$runtime_tool_path":*) ;;
+  *)
+    test_fail "Nix runtime sandbox PATH did not keep PI_ENV_RUNTIME_PATH first: $runtime_sandbox_path"
+    ;;
+esac
+
+echo 'launcher runtime path precedence fake-bwrap test passed'

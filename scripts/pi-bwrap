@@ -3,17 +3,26 @@ set -euo pipefail
 
 append_path_entry() {
   if [ -z "$1" ]; then
-    return 0
-  fi
-  if [ -z "${2:-}" ]; then
+    printf '%s' "${2:-}"
+  elif [ -z "${2:-}" ]; then
     printf '%s' "$1"
   else
     printf '%s:%s' "$2" "$1"
   fi
 }
 
+prepend_path_entry() {
+  if [ -z "$1" ]; then
+    printf '%s' "${2:-}"
+  elif [ -z "${2:-}" ]; then
+    printf '%s' "$1"
+  else
+    printf '%s:%s' "$1" "$2"
+  fi
+}
+
 if [ -n "${PI_ENV_RUNTIME_PATH:-}" ]; then
-  export PATH="$(append_path_entry "$PI_ENV_RUNTIME_PATH" "${PATH:-}")"
+  export PATH="$(prepend_path_entry "$PI_ENV_RUNTIME_PATH" "${PATH:-}")"
 fi
 DEFAULT_PI_TOOLS="${PI_BWRAP_COMPILED_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
 if [ -n "${PI_BWRAP_DEFAULT_TOOLS:-}" ]; then
