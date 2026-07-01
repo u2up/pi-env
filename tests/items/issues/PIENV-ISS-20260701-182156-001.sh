@@ -3,7 +3,14 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+home_helper_root=""
+cleanup() {
+  rm -rf "$tmp"
+  if [ -n "$home_helper_root" ]; then
+    rm -rf "$home_helper_root"
+  fi
+}
+trap cleanup EXIT
 
 assert_file() {
   [ -e "$1" ] || { echo "missing expected file: $1" >&2; exit 1; }
@@ -11,6 +18,73 @@ assert_file() {
 
 assert_executable() {
   [ -x "$1" ] || { echo "missing expected executable: $1" >&2; exit 1; }
+}
+
+verify_home_helper_bind_visible() {
+  local prefix="$1"
+  local fakebin="$tmp/fakebin-home-helper"
+  local capture="$tmp/home-helper-bwrap.out"
+  local helper_parent="/home/pi/.local/share/pi-env-test"
+  mkdir -p "$fakebin" "$helper_parent"
+  home_helper_root="$(mktemp -d "$helper_parent/PIENV-ISS-20260701-182156-001.XXXXXX")"
+  local helper_dir="$home_helper_root/scripts"
+  mkdir -p "$helper_dir"
+  cat >"$fakebin/pi" <<'FAKE_PI'
+#!/usr/bin/env bash
+exit 99
+FAKE_PI
+  chmod +x "$fakebin/pi"
+  : >"$fakebin/host-bash"
+  : >"$fakebin/host-env"
+  chmod +x "$fakebin/host-bash" "$fakebin/host-env"
+  cat >"$fakebin/bwrap" <<'FAKE_BWRAP'
+#!/usr/bin/env bash
+visible=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --bind)
+      if [ "${3:-}" = /home/pi ]; then
+        visible=0
+      fi
+      shift 3
+      ;;
+    --ro-bind)
+      if [ "${3:-}" = "$PI_ENV_TEST_HELPER_DIR" ]; then
+        visible=1
+      fi
+      shift 3
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+if [ "$visible" != 1 ]; then
+  echo 'host helper bind would be masked by the sandbox HOME bind' >&2
+  exit 86
+fi
+printf 'visible\n' >"$PI_ENV_TEST_BWRAP_CAPTURE"
+FAKE_BWRAP
+  chmod +x "$fakebin/bwrap"
+
+  HOME=/home/pi \
+    PATH="$fakebin:$PATH" \
+    PI_ENV_TEST_HELPER_DIR="$helper_dir" \
+    PI_ENV_TEST_BWRAP_CAPTURE="$capture" \
+    PI_BWRAP_BWRAP="$fakebin/bwrap" \
+    PI_BWRAP_BASH="$fakebin/host-bash" \
+    PI_BWRAP_ENV="$fakebin/host-env" \
+    PI_BWRAP_HOST_EXTRA_PATH="$fakebin" \
+    PI_BWRAP_HOST_RO_PATHS="$helper_dir" \
+    PI_BWRAP_PROJECT_ROOT="$repo_root" \
+    PI_BWRAP_IMPORT_COMMON=0 \
+    PI_BWRAP_IMPORT_EXTENSIONS=0 \
+    PI_BWRAP_IMPORT_GIT_CONFIG=0 \
+    PI_BWRAP_IMPORT_AUTH=0 \
+    PI_BWRAP_IMPORT_SESSIONS=0 \
+    "$prefix/bin/pi-bwrap" -- --help
+  grep -Fx visible "$capture" >/dev/null \
+    || { echo 'fake bwrap did not confirm helper visibility' >&2; exit 1; }
 }
 
 make_serial_fixture() {
@@ -87,6 +161,7 @@ verify_install() {
     || { echo "dry-run did not bind installed helper scripts" >&2; cat "$dry_run_out" >&2; exit 1; }
   grep -F "/share/pi-env/scripts/agent-coord-" "$dry_run_out" >/dev/null \
     || { echo "dry-run did not prompt with installed helper path" >&2; cat "$dry_run_out" >&2; exit 1; }
+  verify_home_helper_bind_visible "$prefix"
 }
 
 source_prefix="$tmp/source prefix with dollar \$ and quote \""
