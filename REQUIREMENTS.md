@@ -282,6 +282,31 @@ Acceptance criteria:
 - The design explains that tmux and per-role clone locking are deferred
   until a later parallel-worker phase.
 
+#### UC-025 Host runtime sandbox default workflow
+
+A user must be able to run `pi-env` from a normal checkout without first
+entering `nix develop` and without `pi-env` automatically invoking Nix.
+The default direct-launch behavior should run Pi inside the Bubblewrap
+workspace sandbox using a conservative, allowlisted host runtime.
+
+Nix remains a first-class reproducible runtime. Users must be able to opt
+into the Nix-backed runtime explicitly, and invocations that already enter
+through Nix package, app, profile, or development-shell outputs may continue
+to use the Nix-backed runtime by default.
+
+Acceptance criteria:
+
+- Direct checkout `pi-env` starts in host runtime mode unless the caller
+  requests another runtime.
+- `pi-env --runtime host` and `PI_ENV_RUNTIME=host` select host runtime
+  mode explicitly.
+- `pi-env --runtime nix` and `PI_ENV_RUNTIME=nix` select the existing
+  pinned Nix runtime behavior.
+- The command output or diagnostics make the selected runtime mode clear
+  when reporting missing tools or startup failures.
+- Bubblewrap sandboxing, isolated HOME, filtered environment, and the
+  `/workspace` project mount remain the default in both runtime modes.
+
 ### 3.2 Flake and package requirements
 
 #### FLAKE-001 Inputs
@@ -413,6 +438,40 @@ Direct `nix run github:u2up/pi-env` usage is not required to infer a
 target project's build tools automatically. Projects that need build or
 test tools inside the sandbox should either integrate pi-env through a
 project flake/devshell or use an explicit, documented extra-path opt-in.
+
+#### RUNTIME-004 Runtime mode selection
+
+The launcher stack must support explicit runtime modes named `host` and
+`nix`. Runtime mode may be selected by a command-line option such as
+`--runtime host|nix|auto` or by `PI_ENV_RUNTIME=host|nix|auto`, with the
+command-line option taking precedence over the environment variable.
+
+Direct checkout use should default to host runtime mode. Nix-provided
+package, app, profile, and development-shell entrypoints should keep using
+Nix-backed paths unless the implementation explicitly documents and tests a
+safe host-mode override for those entrypoints.
+
+Runtime mode selection must be resolved before any fallback that would
+invoke `nix develop`. If host mode is selected and required host tools are
+missing, the launcher must fail with host-mode diagnostics rather than
+silently entering Nix.
+
+#### RUNTIME-005 Host runtime dependency preflight
+
+Host runtime mode must validate required host commands before constructing
+the Bubblewrap command. At minimum, host mode must check for the commands
+needed by the launcher itself, Bubblewrap, project-root detection, state
+preparation, and Pi startup.
+
+Missing dependency diagnostics must:
+
+- identify that the selected runtime is `host`;
+- list the missing command names;
+- explain that host runtime tools are not pinned by pi-env;
+- suggest installing missing host packages or retrying with the Nix runtime.
+
+The implementation may treat some commands as optional when the feature that
+needs them is disabled, but optionality must be documented and tested.
 
 ### 3.4 Command requirements
 
@@ -799,6 +858,24 @@ The selected project root must be mounted read-write at `/workspace`. The path n
 
 If the host cwd is inside the project root, the sandbox cwd must be the corresponding path under `/workspace`. Otherwise, the sandbox cwd must be `/workspace`.
 
+#### PATH-006 Conservative host tool path exposure
+
+Host runtime mode must not blindly inherit the caller's full host `PATH`.
+It must construct the sandbox `PATH` from a documented allowlist of host
+command directories, defaulting to common system locations such as
+`/usr/local/bin`, `/usr/bin`, and `/bin` when they exist.
+
+Additional host command directories may be admitted only through an explicit
+host-runtime opt-in variable or option. Each admitted directory must be
+absolute, canonicalized, exist on the host, and be mounted read-only into
+the sandbox. Paths under the host home directory should be rejected by
+default or require a separate, clearly documented explicit opt-in.
+
+Nix-mode `PI_BWRAP_EXTRA_PATH` semantics must remain constrained to
+validated `/nix/store` paths. Host-mode extra path semantics must be kept
+separate or guarded by explicit runtime-mode checks so Nix safety guarantees
+are not weakened accidentally.
+
 ### 3.6 Sandbox filesystem requirements
 
 #### FS-001 Home isolation
@@ -857,6 +934,23 @@ The sandbox must make reasonable read-only host support files available when pre
 #### FS-010 No sensitive host mounts
 
 The launcher must not mount host `~/.ssh`, cloud credential directories, Docker sockets, or the host home directory by default.
+
+#### FS-011 Host runtime support mounts
+
+Host runtime mode must mount only the host filesystem locations needed to
+execute the admitted host tools, Pi, and documented support files. Command
+directories and support directories admitted for host runtime must be
+read-only unless a requirement explicitly states otherwise.
+
+Host runtime mode may mount common system runtime locations needed by
+dynamically linked host binaries, such as system library, loader, share,
+certificate, and alternatives directories, when present. It must still avoid
+mounting the host home directory, SSH keys, cloud credentials, Docker
+sockets, or unrelated project trees by default.
+
+Nix mode must retain the existing read-only `/nix/store` behavior. Host
+mode should mount `/nix/store` only when explicitly needed for admitted host
+paths or when the selected runtime is Nix-backed.
 
 ### 3.7 Pi agent resource requirements
 
@@ -960,6 +1054,24 @@ Session directory names must be derived by normalizing the path, stripping the l
 #### AGENT-015 Session migration
 
 Before bind-mounting host sessions, the launcher may copy existing sandbox session `*.jsonl` files into the host project session directory without overwriting existing files.
+
+#### AGENT-017 Host Pi and role-manager source policy
+
+Host runtime mode must define how the sandbox reaches the host `pi` command
+and optional role-manager package without mounting the host home directory
+by default.
+
+The default policy should support system or globally installed Pi paths that
+are already covered by host runtime read-only mounts. If `pi` resolves to a
+path under the host home directory or another unmounted custom location,
+pi-env must fail with an actionable diagnostic or require an explicit
+read-only bind opt-in.
+
+Role-manager auto-loading must continue to work in host mode when a safe
+package path is available from the pi-env checkout, an installed package, or
+an explicit environment variable. Paths outside the project and outside
+already mounted runtime locations must be bound read-only and rewritten to
+their in-sandbox locations before being passed to Pi.
 
 #### AGENT-016 Fresh role session per serial job
 
@@ -1170,6 +1282,26 @@ pi-env
 The getting-started text must also mention that `pi-start`/`pi-env`
 default startup loads the role-manager package when available, while
 `PI_ENV_ROLE_MANAGER_AUTO=0` disables that behavior.
+
+#### DOC-004 Host default and Nix opt-in documentation
+
+User-facing documentation must describe host runtime mode as the normal
+direct-start path and Nix runtime mode as the reproducible pinned opt-in.
+
+Documentation updates must include:
+
+- revised host prerequisites that make Nix optional for direct host-runtime
+  use;
+- examples for direct host-default startup, explicit `--runtime host`, and
+  explicit `--runtime nix`;
+- clear statements that host runtime tools are unpinned and supplied by the
+  host operating system or user installation;
+- conservative host path and mount policy, including how to admit additional
+  host tool directories;
+- guidance for users whose `pi` command or language-manager tools live
+  under the host home directory;
+- confirmation that `nix run`, `nix develop`, and flake integration remain
+  supported for reproducible team workflows.
 
 ### 4.2 Blackbox verification requirements
 
@@ -1522,6 +1654,28 @@ a fake `pi` executable or dry-run mode to assert that:
   checkout without pulling, selecting, claiming, stashing, resetting, or
   discarding.
 
+#### TEST-033 Host runtime blackbox coverage
+
+The host runtime implementation must have blackbox-style tests that do not
+contact a real model provider and can inspect launcher behavior with fake
+`pi` and/or fake `bwrap` commands.
+
+Coverage must verify that:
+
+- direct checkout `pi-env` in default mode does not invoke `nix develop`;
+- explicit Nix runtime selection preserves the existing Nix-backed path;
+- explicit host runtime selection fails before Bubblewrap when required
+  host dependencies are missing;
+- host-mode sandbox `PATH` is constructed from documented allowlisted host
+  paths rather than arbitrary caller `PATH` inheritance;
+- admitted host command and support paths are mounted read-only;
+- host `$HOME`, SSH keys, cloud credentials, Docker sockets, and unrelated
+  project trees are not mounted by default;
+- a `pi` path under host `$HOME` fails closed or requires an explicit
+  documented opt-in;
+- role-manager and coordination helper behavior either works in host mode
+  or fails with clear diagnostics.
+
 ## 5. Constraint requirements
 
 ### 3.8 Constraint requirements
@@ -1568,6 +1722,23 @@ history, or hide uncommitted source changes in order to keep polling.
 
 Later parallel automation must be designed as a separate phase using
 separate clones or worktrees and explicit coordination leases where needed.
+
+#### CRQ-014 Host runtime disclosure boundary
+
+Host runtime mode trades reproducible Nix-pinned tools for lower startup
+friction. Documentation and diagnostics must not describe host runtime as
+reproducible or version-pinned by pi-env.
+
+The product messaging must distinguish three properties:
+
+- Bubblewrap sandboxing remains enabled by default.
+- Host runtime mode uses unpinned host tools and dependencies.
+- Nix runtime mode provides the pinned reproducible toolset.
+
+Host runtime support must not weaken the default no-host-home and no-secret
+mount guarantees. Any opt-in that admits host paths under `$HOME`, custom
+language-manager installations, or other sensitive locations must be
+explicit and documented as a broader trust decision.
 
 #### CRQ-001 — One coordination domain is one bare Git repository
 
