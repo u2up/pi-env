@@ -57,6 +57,27 @@ if [ -e "$nix_capture" ]; then
   test_fail 'direct checkout default runtime invoked nix develop'
 fi
 
+explicit_host_capture="$tmpdir/explicit-host-bwrap-args"
+PI_ENV_RUNTIME_PATH="$tmpdir/fake-nix-runtime/bin"
+PATH="$fakebin:$original_path" \
+  PI_ENV_RUNTIME=host \
+  PI_ENV_RUNTIME_PATH="$PI_ENV_RUNTIME_PATH" \
+  PI_ENV_TEST_BWRAP_ARGS="$explicit_host_capture" \
+  PI_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_BWRAP_ENV="$tmpdir/host-env" \
+  PI_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_BWRAP_IMPORT_COMMON=0 \
+  PI_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_BWRAP_IMPORT_AUTH=0 \
+  PI_BWRAP_IMPORT_SESSIONS=0 \
+  ./pi-env --raw -- --help
+
+test_file_exists "$explicit_host_capture"
+if grep -F -- '/nix/store' "$explicit_host_capture" >/dev/null 2>&1; then
+  test_fail 'explicit host runtime used Nix runtime bind arguments'
+fi
+
 explicit_nix_capture="$tmpdir/explicit-nix-args"
 PATH="$fakebin:$original_path" \
   PI_ENV_TEST_NIX_ARGS="$explicit_nix_capture" \

@@ -113,6 +113,7 @@ exec_host_runtime() {
   local host_pi_start="$script_dir/pi-start"
   local host_pi_bwrap="$script_dir/pi-bwrap"
   export PI_ENV_HOST_RUNTIME=1
+  unset PI_ENV_RUNTIME_PATH
   export PI_ENV_PI_BWRAP="$host_pi_bwrap"
   if [ "$raw" = "1" ]; then
     exec "$host_pi_bwrap" -- "${args[@]}"
