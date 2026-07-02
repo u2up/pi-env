@@ -1,33 +1,43 @@
 # pi-env
 
-Run Pi Coding Agent against one selected project root in a sandboxed,
-optionally reproducible environment instead of giving an AI agent direct access
-to your host environment.
+`pi-env` runs Pi Coding Agent safely against one selected project, with optional
+guaranteed-reproducible tooling and optional managed agentic coordination.
 
-AI coding agents can inspect files, run commands, edit code, and invoke tools.
-That is powerful, but it also creates risk when the agent process can see your
-whole home directory, SSH keys, cloud credentials, Docker socket, shell config,
-or unrelated project data.
+It is built around three layers:
 
-`pi-env` addresses this with two separate layers:
+1. **Sandboxed project isolation with Bubblewrap**
 
-- **Bubblewrap sandbox**: limits what the agent can see. The selected project is
-  mounted read-write at `/workspace`, `$HOME` is isolated, host credentials are
-  not mounted wholesale, and auth/config import is explicit and configurable.
-- **Runtime tools**: by default, direct checkout launches use selected host
-  tools inside the sandbox. This host runtime is convenient but unpinned:
-  commands such as `pi`, `node`, `git`, `rg`, `jq`, `fd`, and `tar` come from
-  admitted host command directories rather than a pi-env lock file. For
-  reproducible team runs, opt in to the Nix runtime/devshell, which supplies a
-  pinned toolset on `PATH`.
+   Every run is confined to a mandatory Bubblewrap sandbox where the selected
+   project is mounted read-write at `/workspace`. The agent does not receive
+   wholesale access to your home directory, credentials, shell configuration,
+   Docker socket, or unrelated projects.
 
-Nix provides reproducibility when selected; Bubblewrap provides the isolation
-boundary in both host and Nix runtime modes.
-Each pi-env run has one primary project root. That root is mounted read-write
-at `/workspace` inside the sandbox; `/workspace` is the sandbox path name, not a
-host-side multi-project workspace manager. The role-manager package and Git-backed coordination helpers remain available
-for tracked role-based agent workflows, but the core value is simple: a safer,
-repeatable environment for running Pi against one codebase at a time.
+   **Problem addressed:** reducing the blast radius of agentic coding tools
+   that can inspect files, run commands, and edit code.
+
+2. **Optional guaranteed-reproducible runtime with Nix**
+
+   When selected, the Nix runtime provides pinned tools and dependencies so
+   teams can run the agent with the same command-line environment across
+   machines. Direct host-runtime mode remains available for convenience, but is
+   intentionally unpinned.
+
+   **Problem addressed:** avoiding “works on my machine” drift in agent runs,
+   checks, and development tooling.
+
+3. **Optional coordination repository for managed agentic development**
+
+   `pi-env` includes Git-backed coordination helpers and role workflows for
+   teams that want structured multi-agent or multi-role development. This acts
+   as a reference implementation of the
+   [coordination repository pattern](https://github.com/u2up/coordination-repository-pattern):
+   requirements, decisions, ownership, handoffs, and validation can be tracked
+   outside the working project.
+
+   **Problem addressed:** preventing ad-hoc agent work from becoming hard to
+   audit, reproduce, assign, or hand off.
+
+In short:
 
 ```text
 Without pi-env:
