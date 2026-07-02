@@ -13,6 +13,7 @@ scripts=(
   tests/agent-coord-generate-requirements-coverage.sh
   tests/flake-package-boundary.sh
   tests/design-covers.sh
+  tests/install-non-nix.sh
   tests/coordination-items-closed-or-done.sh
   tests/role-manager-package.sh
   tests/role-manager-schema.sh

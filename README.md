@@ -228,7 +228,22 @@ runtime.
 
 Release artifacts can contain only the pi-env payload directories (`scripts/`,
 `role-manager/`, and `pi-skill-templates/`); end users do not need a Git clone
-for installation. Re-run the same command to upgrade or repair an install. To
+for installation. Prefer tagged releases or release artifact URLs for stable
+installs, for example `--ref v0.1.0` or `--artifact-url URL`.
+
+For latest/development testing, the installer can bootstrap itself from a
+GitHub branch archive when no local payload is present:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/u2up/pi-env/main/scripts/install-non-nix \
+  | bash -s -- --ref main --prefix "$HOME/.local" --check-deps
+```
+
+`--ref main` is mutable and non-reproducible; treat it as a development/latest
+channel, not the recommended stable install path. Use `--repo OWNER/REPO` for
+forks, or `--artifact-url URL` to install from a specific archive URL.
+
+Re-run the same command to upgrade or repair an install. To
 remove installed files later, use the manifest-backed uninstall command:
 
 ```bash
