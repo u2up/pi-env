@@ -4,8 +4,8 @@ This file is generated from active requirement items and `designs/*.md`.
 
 ## Summary
 
-- Requirements: 161
-- Covered by design: 161
+- Requirements: 162
+- Covered by design: 162
 - Not covered by design: 0
 
 ## Coverage by requirement
@@ -54,6 +54,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | RUNTIME-004 | PIENV-FRQ-20260701-110510-001 | designs/host-runtime.md |
 | RUNTIME-005 | PIENV-FRQ-20260701-110512-001 | designs/host-runtime.md |
 | INSTALL-001 | PIENV-FRQ-20260701-182129-001 | designs/host-runtime.md |
+| INSTALL-002 | PIENV-FRQ-20260702-064100-001 | designs/host-runtime.md |
 | CMD-001 | PIENV-FRQ-20260612-210000-032 | designs/launcher-layering.md |
 | CMD-002 | PIENV-FRQ-20260612-210000-033 | designs/launcher-layering.md |
 | CMD-003 | PIENV-FRQ-20260612-210000-034 | designs/launcher-layering.md |

@@ -13,6 +13,7 @@ explicit opt-in for users and teams that want it.
 | RUNTIME-004 | PIENV-FRQ-20260701-110510-001 |
 | RUNTIME-005 | PIENV-FRQ-20260701-110512-001 |
 | INSTALL-001 | PIENV-FRQ-20260701-182129-001 |
+| INSTALL-002 | PIENV-FRQ-20260702-064100-001 |
 | PATH-006 | PIENV-FRQ-20260701-110514-001 |
 | FS-011 | PIENV-FRQ-20260701-110516-001 |
 | AGENT-017 | PIENV-FRQ-20260701-110518-001 |
@@ -71,9 +72,16 @@ templates, and role-manager package data.
 End-user installation should not require cloning the full pi-env repository.
 Direct checkout installation can remain available for contributors, but the
 normal non-Nix path should work from a published release archive, downloaded
-installer, or equivalent artifact. Uninstall should likewise work from installed
-state, such as an installed uninstall command or manifest, without needing the
-original source checkout.
+installer, or equivalent artifact. The installer may operate as a bootstrapper:
+when the local payload is absent and the user supplies an explicit remote ref or
+artifact URL, it fetches the payload into a temporary directory and installs
+from there. `main` branch installs must be explicit and documented as mutable
+latest/development installs, while tagged releases or release artifacts remain
+the preferred stable channel.
+
+Uninstall should work from installed state, such as an installed uninstall
+command or manifest, without needing the original source checkout, network
+access, or temporary downloaded artifact.
 
 This keeps the adoption path lightweight while preserving a clear boundary:
 non-Nix installs use host-provided tools and are not reproducible or pinned by

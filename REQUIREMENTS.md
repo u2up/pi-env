@@ -524,6 +524,46 @@ Acceptance criteria:
 - Existing direct-checkout and Nix flake/devshell workflows remain
   compatible.
 
+#### INSTALL-002 Remote-ref non-Nix installer bootstrap
+
+The non-Nix installer should be able to run as a small bootstrap script when
+the full pi-env payload is not already present locally. In bootstrap mode, it
+must fetch an explicit pi-env source artifact, unpack it to a temporary
+directory, and continue installation from that artifact using the same
+installed file layout as local payload installs.
+
+The bootstrap interface must support installing from the upstream `main`
+branch when the user explicitly requests that ref. Main-branch installation is
+mutable and not reproducible, so it must be documented as a development or
+latest channel rather than the recommended stable path. Tagged release refs or
+release artifacts should remain the preferred stable installation channel.
+
+The installer should record origin information in installed state or the
+install manifest when available, including the repository, ref or version,
+artifact URL, and checksum if one was verified. Future upgrade and uninstall
+behavior may use this origin metadata, but uninstall must not require network
+access or the original source checkout.
+
+Acceptance criteria:
+
+- A user can bootstrap installation without cloning the full repository by
+  running the installer script and passing an explicit remote ref such as
+  `--ref main`.
+- `--ref main` fetches the GitHub branch archive or equivalent artifact for
+  the configured repository, then installs from the fetched payload.
+- Stable documentation prefers tagged releases or release artifacts and labels
+  `main` installation as mutable, development/latest, and not reproducible.
+- The installer supports configurable origin inputs such as repository and/or
+  artifact URL while preserving safe defaults for the upstream pi-env repo.
+- The installer records origin metadata in the install manifest or adjacent
+  installed state when the install came from a remote artifact.
+- Bootstrap downloads use a temporary directory and clean it up after success
+  or failure where practical.
+- Uninstall continues to work from installed state without network access,
+  the original source checkout, or the downloaded temporary artifact.
+- Existing local payload installation from a checkout or release archive
+  remains compatible.
+
 ### 3.4 Command requirements
 
 #### CMD-001 `pi-bwrap` existence
