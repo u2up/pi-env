@@ -118,6 +118,35 @@ This creates local coordination state under `.pi-env/` for agent issue, TODO,
 and synchronization tracking. `.pi-env/` is operational state and should
 normally stay untracked.
 
+### Simple coordination workflow
+
+A typical human-and-agent workflow with a coordination repository is:
+
+1. **Bootstrap or clone coordination state** for the project. For local-only
+   experiments this is `.pi-env/coordination`; for team use, point it at a
+   shared Git remote.
+2. **Capture project knowledge there**: requirements, decisions, notes, issues,
+   TODOs, ownership, and validation expectations that should survive beyond one
+   chat session.
+3. **Pick or create a work item** before starting implementation. Pull the
+   coordination repo, inspect open items, and claim or assign one when work
+   begins.
+4. **Run Pi with the project and coordination state mounted**. The agent can use
+   the coordination repository as shared memory and should record meaningful
+   events, decisions, handoffs, and validation results there.
+5. **Review two diffs separately**: project-source changes in the project repo,
+   and coordination changes in the coordination repo. Commit/push each to its
+   own repository when accepted.
+6. **Repeat from coordination state**, not from chat history. The next human or
+   agent pulls the coordination repo and sees the current requirements,
+   decisions, item status, and handoff notes.
+
+In short, the project repository remains the source of product code, while the
+coordination repository is the source of shared process memory and work state.
+For a serial automation loop that applies this pattern across developer,
+reviewer, and tester roles, see
+[Serial role automation](#serial-role-automation).
+
 ## 1. Host prerequisites
 
 Install or configure these on the host before using this repository.
