@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
+  # shellcheck source=/dev/null
+  . "$PI_ENV_COORD_LIB"
+else
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  # shellcheck source=agent-coord-lib.sh
+  . "$script_dir/agent-coord-lib.sh"
+fi
+
+usage() {
+  cat <<'USAGE'
+agent-coord-repo - manage coordination repo registry records
+
+Usage:
+  agent-coord-repo [--coord-dir DIR] add REPO_ID [--remote URL ...]
+  agent-coord-repo [--coord-dir DIR] rename OLD_ID NEW_ID
+  agent-coord-repo [--coord-dir DIR] retire REPO_ID [--force]
+  agent-coord-repo [--coord-dir DIR] list [--all|--active|--retired]
+  agent-coord-repo [--coord-dir DIR] show REPO_ID
+
+Repo ids are lowercase path components: letters, digits, dots, underscores,
+and hyphens, starting with a letter and ending with a letter or digit.
+USAGE
+}
+
+coord_dir_opt=""
+if [ "${1:-}" = "--coord-dir" ]; then
+  [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
+  coord_dir_opt="$2"
+  shift 2
+fi
+case "${1:-}" in -h|--help) usage; exit 0;; esac
+cmd="${1:-}"
+[ -n "$cmd" ] || { usage; exit 1; }
+shift
+coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+cd "$coord_dir"
+
+repo_manifest() { printf 'repos/%s/REPO.md\n' "$1"; }
+
+repo_assert_valid() {
+  coord_repo_id_is_valid "$1" || coord_die "invalid repo id '$1'"
+}
+
+repo_find_any() {
+  local repo_id file manifest_repo alias matches found_alias count
+  repo_id="$1"
+  matches=""
+  [ -d repos ] || true
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    manifest_repo="$(coord_repo_manifest_value "$file" repo_id || true)"
+    [ -n "$manifest_repo" ] || manifest_repo="$(basename "$(dirname "$file")")"
+    if [ "$manifest_repo" = "$repo_id" ]; then
+      matches="${matches}${manifest_repo}:canonical:${file}"$'\n'
+      continue
+    fi
+    found_alias="no"
+    while IFS= read -r alias; do
+      [ "$alias" = "$repo_id" ] && found_alias="yes"
+    done < <(coord_repo_manifest_list_values "$file" aliases)
+    if [ "$found_alias" = "yes" ]; then
+      matches="${matches}${manifest_repo}:alias:${file}"$'\n'
+    fi
+  done < <(find repos -mindepth 2 -maxdepth 2 -name REPO.md -type f 2>/dev/null | sort)
+  count="$(printf '%s' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
+  [ "$count" != "0" ] || return 1
+  [ "$count" = "1" ] || coord_die "repo id '$repo_id' is ambiguous in coordination registry"
+  printf '%s' "$matches" | sed '/^$/d'
+}
+
+repo_status() {
+  local file status
+  file="$1"
+  status="$(coord_repo_manifest_value "$file" status || true)"
+  [ -n "$status" ] || status="active"
+  printf '%s\n' "$status"
+}
+
+repo_set_status() {
+  coord_set_frontmatter "$1" "status=$2" "updated=$(coord_timestamp_iso)"
+}
+
+repo_write_index() {
+  local tmp file repo_id status
+  tmp="$(mktemp)"
+  {
+    printf '# Coordination repositories\n\n'
+    printf '| Repo | Status | Aliases |\n'
+    printf '|------|--------|---------|\n'
+    while IFS= read -r file; do
+      repo_id="$(coord_repo_manifest_value "$file" repo_id || true)"
+      [ -n "$repo_id" ] || repo_id="$(basename "$(dirname "$file")")"
+      status="$(repo_status "$file")"
+      aliases="$(coord_repo_manifest_list_values "$file" aliases | paste -sd ', ' -)"
+      printf '| %s | %s | %s |\n' "$repo_id" "$status" "$aliases"
+    done < <(find repos -mindepth 2 -maxdepth 2 -name REPO.md -type f 2>/dev/null | sort)
+  } >"$tmp"
+  mv "$tmp" REPOS.md
+}
+
+case "$cmd" in
+  add)
+    [ "$#" -ge 1 ] || coord_die "add requires REPO_ID"
+    repo_id="$1"; shift
+    repo_assert_valid "$repo_id"
+    remotes=()
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --remote) [ "$#" -ge 2 ] || coord_die "--remote requires a value"; remotes+=("$2"); shift 2 ;;
+        *) coord_die "unknown add option: $1" ;;
+      esac
+    done
+    if repo_find_any "$repo_id" >/dev/null; then coord_die "repo id or alias already exists: $repo_id"; fi
+    mkdir -p "repos/$repo_id/issues/open" "repos/$repo_id/issues/blocked" "repos/$repo_id/issues/done" "repos/$repo_id/issues/closed"
+    item_key="$(coord_project_id_prefix "$repo_id")"
+    created="$(coord_timestamp_iso)"
+    {
+      printf -- '---\n'
+      printf 'repo_id: %s\n' "$repo_id"
+      printf 'status: active\n'
+      printf 'item_key: %s\n' "$item_key"
+      printf 'created: %s\nupdated: %s\n' "$created" "$created"
+      printf 'aliases: []\n'
+      printf 'remotes:'
+      if [ "${#remotes[@]}" -eq 0 ]; then printf ' []\n'; else printf '\n'; for remote in "${remotes[@]}"; do printf '  - %s\n' "$(coord_yaml_scalar "$remote")"; done; fi
+      printf -- '---\n\n# %s\n' "$repo_id"
+    } >"$(repo_manifest "$repo_id")"
+    repo_write_index
+    printf 'repos/%s/REPO.md\n' "$repo_id"
+    ;;
+  rename)
+    [ "$#" -eq 2 ] || coord_die "rename requires OLD_ID NEW_ID"
+    old_id="$1"; new_id="$2"
+    repo_assert_valid "$old_id"; repo_assert_valid "$new_id"
+    old_match="$(repo_find_any "$old_id")" || coord_die "repo not found: $old_id"
+    [ "$(printf '%s' "$old_match" | cut -d: -f2)" = "canonical" ] || coord_die "rename requires canonical repo id, not alias: $old_id"
+    if repo_find_any "$new_id" >/dev/null; then coord_die "repo id or alias already exists: $new_id"; fi
+    old_path="repos/$old_id"; new_path="repos/$new_id"
+    [ -d "$old_path" ] || coord_die "repo directory missing: $old_path"
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      git add -A "$old_path"
+      git mv "$old_path" "$new_path"
+    else
+      mv "$old_path" "$new_path"
+    fi
+    manifest="$(repo_manifest "$new_id")"
+    existing_aliases="$(coord_repo_manifest_list_values "$manifest" aliases | sed '/^$/d')"
+    tmp="$(mktemp)"
+    new_item_key="$(coord_project_id_prefix "$new_id")"
+    awk -v repo_id="$new_id" -v item_key="$new_item_key" -v updated="$(coord_timestamp_iso)" -v old_id="$old_id" -v aliases="$existing_aliases" '
+      BEGIN { split(aliases, a, "\n") }
+      NR == 1 && $0 == "---" { in_fm=1; print; next }
+      in_fm && $0 == "---" {
+        if (!saw_aliases) {
+          print "aliases:"; print "  - " old_id; for (i in a) if (a[i] != "" && a[i] != old_id) print "  - " a[i]
+        }
+        in_fm=0; print; next
+      }
+      in_fm && /^repo_id:/ { print "repo_id: " repo_id; next }
+      in_fm && /^item_key:/ { print "item_key: " item_key; next }
+      in_fm && /^updated:/ { print "updated: " updated; next }
+      in_fm && /^aliases:/ { print "aliases:"; print "  - " old_id; for (i in a) if (a[i] != "" && a[i] != old_id) print "  - " a[i]; saw_aliases=1; skip_aliases=1; next }
+      skip_aliases && /^[[:space:]]*-[[:space:]]*/ { next }
+      skip_aliases && /^[^[:space:]]/ { skip_aliases=0 }
+      { print }
+    ' "$manifest" >"$tmp"
+    mv "$tmp" "$manifest"
+    repo_write_index
+    printf 'repos/%s/REPO.md\n' "$new_id"
+    ;;
+  retire)
+    force="no"
+    [ "$#" -ge 1 ] || coord_die "retire requires REPO_ID"
+    repo_id="$1"; shift
+    while [ "$#" -gt 0 ]; do case "$1" in --force) force="yes"; shift;; *) coord_die "unknown retire option: $1";; esac; done
+    repo_assert_valid "$repo_id"
+    match="$(repo_find_any "$repo_id")" || coord_die "repo not found: $repo_id"
+    canonical="$(printf '%s' "$match" | cut -d: -f1)"
+    manifest="$(printf '%s' "$match" | cut -d: -f3-)"
+    if [ "$force" != "yes" ]; then
+      for state in open blocked done; do
+        if find "repos/$canonical/issues/$state" -type f \( -name '*.yaml' -o -name '*.yml' \) 2>/dev/null | grep -q .; then
+          coord_die "repo '$canonical' has $state issues; use --force to retire anyway"
+        fi
+      done
+    fi
+    repo_set_status "$manifest" retired
+    repo_write_index
+    printf 'retired %s\n' "$canonical"
+    ;;
+  list)
+    filter="all"
+    while [ "$#" -gt 0 ]; do case "$1" in --all) filter="all";; --active) filter="active";; --retired) filter="retired";; *) coord_die "unknown list option: $1";; esac; shift; done
+    while IFS= read -r file; do
+      repo_id="$(coord_repo_manifest_value "$file" repo_id || true)"; [ -n "$repo_id" ] || repo_id="$(basename "$(dirname "$file")")"
+      status="$(repo_status "$file")"
+      [ "$filter" = "all" ] || [ "$filter" = "$status" ] || continue
+      printf '%s\t%s\n' "$repo_id" "$status"
+    done < <(find repos -mindepth 2 -maxdepth 2 -name REPO.md -type f 2>/dev/null | sort)
+    ;;
+  show)
+    [ "$#" -eq 1 ] || coord_die "show requires REPO_ID"
+    repo_assert_valid "$1"
+    match="$(repo_find_any "$1")" || coord_die "repo not found: $1"
+    read -r canonical kind file <<<"$(printf '%s' "$match" | awk -F: '{print $1, $2, substr($0, index($0,$3))}')"
+    if [ "$kind" = "alias" ]; then coord_note "repo id '$1' is an alias for '$canonical'"; fi
+    printf '%s\n' "$file"
+    sed -n '1,120p' "$file"
+    ;;
+  *) usage; exit 1 ;;
+esac

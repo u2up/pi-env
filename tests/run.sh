@@ -9,6 +9,7 @@ scripts=(
   tests/agent-coord-concurrency.sh
   tests/agent-coord-lint.sh
   tests/agent-coord-root-layout.sh
+  tests/agent-coord-repo.sh
   tests/agent-coord-generate-requirements.sh
   tests/agent-coord-generate-requirements-coverage.sh
   tests/flake-package-boundary.sh

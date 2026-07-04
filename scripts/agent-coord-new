@@ -21,6 +21,7 @@ Options:
   --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
   --project KEY            Removed legacy option; root-layout items only
   --project-key KEY        Project key portion of generated IDs
+  --repo-id ID             Create the item under repos/{repo_id}
   --workspace-item         Removed legacy option; root-layout items only
   --type TYPE              Item type; default: issue
   --category CATEGORY      Optional issue category: bug, feature-request, task, question, improvement, ...
@@ -51,6 +52,7 @@ USAGE
 coord_dir_opt=""
 project_id_key_arg=""
 project_id_key_env="${PI_COORD_PROJECT_KEY:-}"
+repo_id_arg=""
 item_type="issue"
 category=""
 status_arg=""
@@ -76,6 +78,11 @@ while [ "$#" -gt 0 ]; do
     --project-key)
       [ "$#" -ge 2 ] || coord_die "--project-key requires a value"
       project_id_key_arg="$2"
+      shift 2
+      ;;
+    --repo-id)
+      [ "$#" -ge 2 ] || coord_die "--repo-id requires a value"
+      repo_id_arg="$2"
       shift 2
       ;;
     --workspace-item)
@@ -209,7 +216,16 @@ title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
 cd "$coord_dir"
 
-if ! coord_write_root_items_by_default; then
+if [ -n "$repo_id_arg" ]; then
+  repo_id="$(coord_registry_canonical_repo_id "$repo_id_arg" "$coord_dir")"
+  metadata_file="repos/$repo_id/REPO.md"
+  [ -f "$metadata_file" ] || coord_die "repo manifest missing: $metadata_file"
+  if coord_item_type_uses_issue_status_dirs "$item_type"; then
+    item_root="repos/$repo_id/$type_dir/open"
+  else
+    item_root="repos/$repo_id/$type_dir"
+  fi
+elif ! coord_write_root_items_by_default; then
   coord_die "no project-root layout found; initialize with agent-coord-init and create root item directories"
 fi
 
@@ -217,12 +233,14 @@ created="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
 
 if true; then
-  if coord_item_type_uses_issue_status_dirs "$item_type"; then
-    item_root="$type_dir/open"
-  else
-    item_root="$type_dir"
+  if [ -z "$repo_id_arg" ]; then
+    if coord_item_type_uses_issue_status_dirs "$item_type"; then
+      item_root="$type_dir/open"
+    else
+      item_root="$type_dir"
+    fi
+    metadata_file="PROJECT.md"
   fi
-  metadata_file="PROJECT.md"
   stored_key="$(coord_metadata_item_key "$metadata_file")"
   if [ -n "$project_id_key_arg" ] && [ -n "$stored_key" ]; then
     if [ "$(coord_project_id_prefix "$project_id_key_arg")" != "$(coord_project_id_prefix "$stored_key")" ]; then
@@ -240,6 +258,9 @@ if true; then
   fi
   id_prefix="$(coord_project_id_prefix "$project_id_key")"
   project_value="$(coord_metadata_value "$metadata_file" project)"
+  if [ -z "$project_value" ] && [ -n "$repo_id_arg" ]; then
+    project_value="$repo_id"
+  fi
   if [ -z "$project_value" ]; then
     project_value="$(coord_sanitize_path_part "$(basename "$(pwd -P)")")"
   fi

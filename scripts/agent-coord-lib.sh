@@ -99,67 +99,126 @@ coord_infer_repo_id_from_remote() {
   printf '%s\n' "$name"
 }
 
+coord_registry_repo_id_for_remote() {
+  local remote coord_dir repos_dir file repo_id hit matches count registered
+  remote="$1"
+  coord_dir="${2:-}"
+  repos_dir="$(coord_registry_path "$coord_dir")"
+  [ -d "$repos_dir" ] || return 1
+  matches=""
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    repo_id="$(coord_repo_manifest_value "$file" repo_id || true)"
+    [ -n "$repo_id" ] || repo_id="$(basename "$(dirname "$file")")"
+    hit="no"
+    while IFS= read -r registered; do
+      [ "$registered" = "$remote" ] && hit="yes"
+    done < <(coord_repo_manifest_list_values "$file" remotes)
+    [ "$hit" = "yes" ] && matches="${matches}${repo_id}"$'\n'
+  done < <(find "$repos_dir" -mindepth 2 -maxdepth 2 -name REPO.md -type f 2>/dev/null | sort)
+  count="$(printf '%s' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
+  [ "$count" != "0" ] || return 1
+  [ "$count" = "1" ] || coord_die "git remote origin '$remote' is ambiguous in coordination registry"
+  printf '%s' "$matches" | sed '/^$/d'
+}
+
+coord_repo_id_is_valid() {
+  local repo_id
+  repo_id="$1"
+  [[ "$repo_id" =~ ^[a-z][a-z0-9._-]*[a-z0-9]$ ]] || return 1
+  case "$repo_id" in
+    *..*|.*|*-|*/*) return 1 ;;
+  esac
+  return 0
+}
+
+coord_repo_manifest_value() {
+  local file key
+  file="$1"
+  key="$2"
+  coord_frontmatter_value "$file" "$key"
+}
+
+coord_repo_manifest_list_values() {
+  local file key
+  file="$1"
+  key="$2"
+  awk -v key="$key" '
+    function unquote(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      gsub(/^'"'"'|'"'"'$/, "", value)
+      gsub(/^"|"$/, "", value)
+      return value
+    }
+    NR == 1 && $0 == "---" { in_fm=1; next }
+    in_fm && $0 == "---" { exit }
+    in_fm && $0 ~ "^" key ":[[:space:]]*$" { in_list=1; next }
+    in_list && /^[[:space:]]*-[[:space:]]*/ {
+      line=$0; sub("^[[:space:]]*-[[:space:]]*", "", line); print unquote(line); next
+    }
+    in_list && /^[^[:space:]]/ { exit }
+  ' "$file"
+}
+
 coord_registry_path() {
   local coord_dir
   coord_dir="${1:-}"
   [ -n "$coord_dir" ] || coord_dir="$(coord_default_dir)"
-  printf '%s/repositories.yaml\n' "$(coord_abs "$coord_dir")"
+  printf '%s/repos\n' "$(coord_abs "$coord_dir")"
 }
 
 coord_registry_canonical_repo_id() {
-  local repo_id coord_dir registry result
+  local repo_id coord_dir repos_dir file manifest_repo status alias matches match_count found_alias
   repo_id="$1"
   coord_dir="${2:-}"
-  registry="$(coord_registry_path "$coord_dir")"
-  if [ ! -f "$registry" ]; then
+  repos_dir="$(coord_registry_path "$coord_dir")"
+  if ! coord_repo_id_is_valid "$repo_id"; then
+    coord_die "invalid repo id '$repo_id'; use lowercase letters, digits, dots, underscores, and hyphens with no path separators"
+  fi
+  if [ ! -d "$repos_dir" ]; then
     printf '%s\n' "$repo_id"
     return 0
   fi
-  result="$(awk -v wanted="$repo_id" '
-    function unquote(value) {
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-      gsub(/^"|"$/, "", value)
-      return value
-    }
-    function finish() {
-      if (repo != "") {
-        canonical = (canon != "" ? canon : repo)
-        if ((active == "" || active == "true" || active == "yes") && (repo == wanted || alias_hit)) {
-          print canonical ":" (repo == wanted ? "canonical" : "alias")
-          found=1
-          exit
-        }
-      }
-      repo=""; canon=""; active=""; alias_hit=0; in_aliases=0
-    }
-    /^[[:space:]]*-/ && $0 ~ /repo_id:/ { finish() }
-    /repo_id:/ {
-      line=$0; sub("^.*repo_id:[[:space:]]*", "", line); repo=unquote(line)
-    }
-    /canonical_repo_id:/ {
-      line=$0; sub("^.*canonical_repo_id:[[:space:]]*", "", line); canon=unquote(line)
-    }
-    /active:/ {
-      line=$0; sub("^.*active:[[:space:]]*", "", line); active=tolower(unquote(line))
-    }
-    /aliases:[[:space:]]*$/ { in_aliases=1; next }
-    in_aliases && /^[[:space:]]*-[[:space:]]*/ {
-      line=$0; sub("^[[:space:]]*-[[:space:]]*", "", line); if (unquote(line) == wanted) alias_hit=1; next
-    }
-    in_aliases && /^[^[:space:]]/ { in_aliases=0 }
-    END { if (!found) finish() }
-  ' "$registry")"
-  if [ -z "$result" ]; then
-    coord_die "repo id '$repo_id' is not active in coordination registry: $registry"
+
+  matches=""
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    manifest_repo="$(coord_repo_manifest_value "$file" repo_id || true)"
+    [ -n "$manifest_repo" ] || manifest_repo="$(basename "$(dirname "$file")")"
+    status="$(coord_repo_manifest_value "$file" status || true)"
+    [ -n "$status" ] || status="active"
+    if [ "$manifest_repo" = "$repo_id" ]; then
+      matches="${matches}${manifest_repo}:canonical:${status}"$'\n'
+      continue
+    fi
+    found_alias="no"
+    while IFS= read -r alias; do
+      [ "$alias" = "$repo_id" ] && found_alias="yes"
+    done < <(coord_repo_manifest_list_values "$file" aliases)
+    if [ "$found_alias" = "yes" ]; then
+      matches="${matches}${manifest_repo}:alias:${status}"$'\n'
+    fi
+  done < <(find "$repos_dir" -mindepth 2 -maxdepth 2 -name REPO.md -type f 2>/dev/null | sort)
+
+  match_count="$(printf '%s' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [ "$match_count" = "0" ]; then
+    coord_die "repo id '$repo_id' is not registered in coordination registry: $repos_dir"
   fi
-  if [ "${result##*:}" = "alias" ]; then
-    coord_note "repo id '$repo_id' is an alias; update .pi-coordination.yaml to '${result%%:*}'"
+  if [ "$match_count" != "1" ]; then
+    coord_die "repo id '$repo_id' is ambiguous in coordination registry"
   fi
-  printf '%s\n' "${result%%:*}"
+  status="$(printf '%s' "$matches" | cut -d: -f3)"
+  if [ "$status" != "active" ]; then
+    coord_die "repo id '$repo_id' is retired in coordination registry"
+  fi
+  if [ "$(printf '%s' "$matches" | cut -d: -f2)" = "alias" ]; then
+    coord_note "repo id '$repo_id' is an alias; update .pi-coordination.yaml to '$(printf '%s' "$matches" | cut -d: -f1)'"
+  fi
+  printf '%s\n' "$(printf '%s' "$matches" | cut -d: -f1)"
 }
 
 coord_resolve_repo_id() {
-  local explicit coord_dir repo_id source canonical
+  local explicit coord_dir repo_id source canonical remote
   explicit="${1:-}"
   coord_dir="${2:-}"
   if [ -n "$explicit" ]; then
@@ -172,10 +231,15 @@ coord_resolve_repo_id() {
     repo_id="$(coord_impl_config_value repo_id || true)"
     if [ -n "$repo_id" ]; then
       source=".pi-coordination.yaml"
-    elif repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)" && [ -n "$repo_id" ]; then
-      source="git remote origin"
     else
-      coord_die "missing repo id; pass --repo-id, set PI_COORD_REPO_ID, add repo_id to .pi-coordination.yaml, or configure git remote origin"
+      remote="$(git remote get-url origin 2>/dev/null || true)"
+      if [ -n "$remote" ] && repo_id="$(coord_registry_repo_id_for_remote "$remote" "$coord_dir" 2>/dev/null || true)" && [ -n "$repo_id" ]; then
+        source="coordination registry remote"
+      elif repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)" && [ -n "$repo_id" ]; then
+        source="git remote origin"
+      else
+        coord_die "missing repo id; pass --repo-id, set PI_COORD_REPO_ID, add repo_id to .pi-coordination.yaml, or configure git remote origin"
+      fi
     fi
   fi
   canonical="$(coord_registry_canonical_repo_id "$repo_id" "$coord_dir")"
@@ -1140,6 +1204,13 @@ coord_item_find_files() {
       roots+=("$root")
     fi
   done
+  if [ -d repos ]; then
+    while IFS= read -r root; do
+      [ -n "$root" ] && roots+=("$root")
+    done < <(find repos -mindepth 2 -maxdepth 2 -type d \
+      \( -name issues -o -name requirements -o -name todos -o -name decisions -o -name notes \) \
+      2>/dev/null | sort)
+  fi
   [ "${#roots[@]}" -gt 0 ] || return 0
 
   seen=$'\n'

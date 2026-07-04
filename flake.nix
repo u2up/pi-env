@@ -89,6 +89,7 @@
         "agent-coord-pull"
         "agent-coord-push"
         "agent-coord-new"
+        "agent-coord-repo"
         "agent-coord-claim"
         "agent-coord-done"
         "agent-coord-review"
@@ -283,6 +284,7 @@
 
           pi-coordination-smoke = smokeCheck "pi-env-coordination-smoke" [ piCoordination ] ''
             command -v agent-coord-status >/dev/null
+            command -v agent-coord-repo >/dev/null
             command -v agent-coord-lint >/dev/null
             command -v bootstrap-coordination >/dev/null
             agent-coord-lint --help >/dev/null
