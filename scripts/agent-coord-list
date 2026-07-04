@@ -290,5 +290,9 @@ while IFS= read -r file; do
 done < <(coord_item_find_files)
 
 if [ "$group_by_category" = "1" ] && [ -n "$rows_file" ]; then
-  sort -t "$tab" -k1,1 -k2,2 "$rows_file"
+  if [ "$show_repo" = "1" ]; then
+    sort -t "$tab" -k2,2 -k1,1 -k3,3 "$rows_file"
+  else
+    sort -t "$tab" -k1,1 -k2,2 "$rows_file"
+  fi
 fi

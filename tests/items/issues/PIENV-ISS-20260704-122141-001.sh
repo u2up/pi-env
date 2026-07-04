@@ -97,6 +97,7 @@ EOF_RETIRED
 make_issue "$coord_dir/repos/alpha/issues/open/ALPHA-ISS-1.yaml" ALPHA-ISS-1 open bug "Alpha bug"
 make_issue "$coord_dir/repos/alpha/issues/open/ALPHA-ISS-2.yaml" ALPHA-ISS-2 open task "Alpha task"
 make_issue "$coord_dir/repos/beta/issues/open/BETA-ISS-1.yaml" BETA-ISS-1 open task "Beta task"
+make_issue "$coord_dir/repos/beta/issues/open/BETA-ISS-2.yaml" BETA-ISS-2 open bug "Beta bug"
 git -C "$coord_dir" add -A
 git -C "$coord_dir" commit -q -m 'Seed repo-aware fixtures'
 
@@ -108,6 +109,7 @@ case "$created_path" in
   repos/alpha/issues/open/ALPHA-ISS-*.yaml) ;;
   *) printf 'unexpected active repo issue path: %s\n' "$created_path" >&2; exit 1 ;;
 esac
+created_id="$(basename "$created_path" .yaml)"
 
 if (cd "$tmp" && agent-coord-new --coord-dir "$coord_dir" "No active repo" >"$tmp/no-repo.out" 2>"$tmp/no-repo.err"); then
   printf 'agent-coord-new unexpectedly accepted missing active repo\n' >&2
@@ -137,6 +139,18 @@ fi
 all_list="$(agent-coord-list --coord-dir "$coord_dir" issues open --all-repos)"
 printf '%s\n' "$all_list" | grep -q $'alpha\tALPHA-ISS-1\topen\tAlpha bug'
 printf '%s\n' "$all_list" | grep -q $'beta\tBETA-ISS-1\topen\tBeta task'
+
+all_grouped="$(agent-coord-list --coord-dir "$coord_dir" issues open --all-repos --group-by-category)"
+printf '%s\n' "$all_grouped" | grep -q $'alpha\tbug\tALPHA-ISS-1\topen\tAlpha bug'
+printf '%s\n' "$all_grouped" | grep -q $'beta\ttask\tBETA-ISS-1\topen\tBeta task'
+expected_grouped=$'alpha\tbug\tALPHA-ISS-1\topen\tAlpha bug\nbeta\tbug\tBETA-ISS-2\topen\tBeta bug'
+expected_grouped="$expected_grouped
+alpha	improvement	$created_id	open	Created in active repo"
+expected_grouped="$expected_grouped"$'\nalpha\ttask\tALPHA-ISS-2\topen\tAlpha task\nbeta\ttask\tBETA-ISS-1\topen\tBeta task'
+if [ "$all_grouped" != "$expected_grouped" ]; then
+  printf 'all-repos category grouping sorted incorrectly:\n%s\n' "$all_grouped" >&2
+  exit 1
+fi
 
 bug_list="$(cd "$impl_dir" && agent-coord-list --coord-dir "$coord_dir" issues open --category bug)"
 printf '%s\n' "$bug_list" | grep -q 'ALPHA-ISS-1'
