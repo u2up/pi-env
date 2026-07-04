@@ -145,7 +145,10 @@ for i in "${!implementation_refs[@]}"; do
   coord_write_implementation_ref_yaml "" "${implementation_refs[$i]}" >/dev/null
 done
 
-if [ ${#implementation_refs[@]} -eq 0 ] && { [ -n "$repo_id_opt${PI_COORD_REPO_ID:-}" ] || [ -f "$(coord_impl_config_path "$project_dir")" ]; }; then
+if [ ${#implementation_refs[@]} -eq 0 ] \
+  && { [ -n "$repo_id_opt${PI_COORD_REPO_ID:-}" ] \
+    || [ -f "$(coord_impl_config_path "$project_dir")" ] \
+    || git -C "$project_dir" remote get-url origin >/dev/null 2>&1; }; then
   resolved_repo_id="$(cd "$project_dir" && coord_resolve_repo_id "$repo_id_opt" "$coord_dir")"
   project_branch="$(git -C "$project_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
   project_commit="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || true)"

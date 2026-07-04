@@ -24,6 +24,9 @@ YAML
 project="$tmp/project"
 mkdir -p "$project"
 git -C "$project" init -q
+git -C "$project" config user.name "Project Test"
+git -C "$project" config user.email "project-test@example.invalid"
+git -C "$project" commit --allow-empty -m "Project commit" >/dev/null
 git -C "$project" remote add origin git@example.com:org/remote-api.git
 cat >"$project/.pi-coordination.yaml" <<'YAML'
 version: 1
@@ -71,6 +74,40 @@ YAML
 
   rm .pi-coordination.yaml
   [ "$(coord_resolve_repo_id '' "$coord_dir")" = "remote-api" ]
+
+  command_coord_dir="$tmp/command-coordination"
+  mkdir -p "$command_coord_dir/issues/open"
+  git -C "$command_coord_dir" init -q
+  git -C "$command_coord_dir" config user.name "Coordination Test"
+  git -C "$command_coord_dir" config user.email "coordination-test@example.invalid"
+  cp "$coord_dir/repositories.yaml" "$command_coord_dir/repositories.yaml"
+  cat >"$command_coord_dir/issues/open/REMOTE-001.yaml" <<'YAML'
+schema: coordination-item/v1
+id: REMOTE-001
+type: issue
+status: claimed
+owner: agent-a
+updated: 2026-07-04T00:00:00Z
+done: null
+closed: null
+reviewed: false
+verified: false
+events: []
+messages: []
+YAML
+  git -C "$command_coord_dir" add .
+  git -C "$command_coord_dir" commit -m "Seed coordination item" >/dev/null
+  "$repo_root/scripts/agent-coord-done" \
+    --coord-dir "$command_coord_dir" \
+    --agent-id agent-a \
+    --role developer \
+    --no-pull \
+    --no-push \
+    REMOTE-001 >/dev/null
+  done_item="$command_coord_dir/issues/done/REMOTE-001.yaml"
+  grep -q '^      - repo: remote-api$' "$done_item"
+  grep -q '^        branch: master$\|^        branch: main$' "$done_item"
+  grep -q "^        commit: $(git rev-parse HEAD)$" "$done_item"
 
   git remote remove origin
   if bash -c '. "$1"; coord_resolve_repo_id "" "$2"' bash "$lib" "$coord_dir" >"$tmp/missing.out" 2>"$tmp/missing.err"; then
