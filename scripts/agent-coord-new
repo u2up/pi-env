@@ -214,19 +214,28 @@ fi
 type_dir="$(coord_item_type_dir "$item_type")"
 title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+repo_id=""
+if coord_item_type_uses_issue_status_dirs "$item_type" && [ -d "$coord_dir/repos" ]; then
+  repo_err="$(mktemp "${TMPDIR:-/tmp}/agent-coord-new-repo.XXXXXX")" || coord_die "failed to create temporary file"
+  if ! repo_id="$(coord_resolve_repo_id "$repo_id_arg" "$coord_dir" 2>"$repo_err")"; then
+    cat "$repo_err" >&2
+    rm -f "$repo_err"
+    coord_die "new issue items require a resolvable active --repo-id in repo-scoped coordination domains"
+  fi
+  cat "$repo_err" >&2
+  rm -f "$repo_err"
+fi
 cd "$coord_dir"
 
-if [ -n "$repo_id_arg" ]; then
+if coord_item_type_uses_issue_status_dirs "$item_type" && [ -d repos ]; then
+  metadata_file="repos/$repo_id/REPO.md"
+  [ -f "$metadata_file" ] || coord_die "repo manifest missing: $metadata_file"
+  item_root="repos/$repo_id/$type_dir/open"
+elif [ -n "$repo_id_arg" ]; then
   repo_id="$(coord_registry_canonical_repo_id "$repo_id_arg" "$coord_dir")"
   metadata_file="repos/$repo_id/REPO.md"
   [ -f "$metadata_file" ] || coord_die "repo manifest missing: $metadata_file"
-  if coord_item_type_uses_issue_status_dirs "$item_type"; then
-    item_root="repos/$repo_id/$type_dir/open"
-  else
-    item_root="repos/$repo_id/$type_dir"
-  fi
-elif coord_item_type_uses_issue_status_dirs "$item_type" && [ -d repos ]; then
-  coord_die "new issue items must specify --repo-id in repo-scoped coordination domains"
+  item_root="repos/$repo_id/$type_dir"
 elif ! coord_write_root_items_by_default; then
   coord_die "no project-root layout found; initialize with agent-coord-init and create root item directories"
 fi
@@ -235,7 +244,7 @@ created="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
 
 if true; then
-  if [ -z "$repo_id_arg" ]; then
+  if [ -z "$repo_id" ]; then
     if coord_item_type_uses_issue_status_dirs "$item_type"; then
       item_root="$type_dir/open"
     else

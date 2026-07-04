@@ -28,6 +28,9 @@ Arguments:
 
 Options:
   --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
+  --repo-id REPO_ID        List issue items for one repository
+  --all-repos              List issue items across all repositories and root issues
+  --show-repo              Add issue repository id as the first output column
   --category CATEGORY      Only list issue items with this category
   --show-category          Add issue category as the first output column
   --group-by-category      Sort by issue category and add it as the first column
@@ -39,12 +42,18 @@ Output columns are tab-separated:
 With --show-category or --group-by-category, output columns are:
   category, item id, status, title
 
+With --all-repos, issue output includes a leading repo id column. Root issues
+use '-' as the repo id.
+
 Done issue titles include review and verification sub-status:
   title (reviewed:true|false, verified:true|false)
 USAGE
 }
 
 coord_dir_opt=""
+repo_id_arg=""
+all_repos=0
+show_repo=0
 category_filter=""
 show_category=0
 group_by_category=0
@@ -56,6 +65,19 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
       coord_dir_opt="$2"
       shift 2
+      ;;
+    --repo-id)
+      [ "$#" -ge 2 ] || coord_die "--repo-id requires a value"
+      repo_id_arg="$2"
+      shift 2
+      ;;
+    --all-repos)
+      all_repos=1
+      shift
+      ;;
+    --show-repo)
+      show_repo=1
+      shift
       ;;
     --category)
       [ "$#" -ge 2 ] || coord_die "--category requires a value"
@@ -148,7 +170,27 @@ if [ -n "$(coord_trim "$category_filter")" ]; then
   [ -n "$category_filter" ] || coord_die "--category produced an empty category"
 fi
 
+if { [ -n "$repo_id_arg" ] || [ "$all_repos" = "1" ] || [ "$show_repo" = "1" ]; } \
+  && { [ "$item_type" != "issue" ] || [ "$list_all_requirement_classes" = "1" ]; }; then
+  coord_die "--repo-id, --all-repos, and --show-repo can only be used with issue lists"
+fi
+if [ -n "$repo_id_arg" ] && [ "$all_repos" = "1" ]; then
+  coord_die "--repo-id and --all-repos cannot be used together"
+fi
+
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+
+repo_filter=""
+if [ "$item_type" = "issue" ] && [ "$list_all_requirement_classes" != "1" ]; then
+  if [ "$all_repos" = "1" ]; then
+    show_repo=1
+  elif [ -n "$repo_id_arg" ]; then
+    repo_filter="$(coord_resolve_repo_id "$repo_id_arg" "$coord_dir")"
+  elif [ -d "$coord_dir/repos" ]; then
+    repo_filter="$(coord_resolve_repo_id "" "$coord_dir" 2>/dev/null || true)"
+  fi
+fi
+
 cd "$coord_dir"
 
 tab="$(printf '\t')"
@@ -163,6 +205,16 @@ while IFS= read -r file; do
 
   raw_type="$(coord_item_value "$file" type || true)"
   [ -n "$raw_type" ] || continue
+  file_repo="-"
+  case "$file" in
+    repos/*/issues/*)
+      file_repo="${file#repos/}"
+      file_repo="${file_repo%%/*}"
+      ;;
+  esac
+  if [ -n "$repo_filter" ] && [ "$file_repo" != "$repo_filter" ]; then
+    continue
+  fi
   file_type="$(coord_item_type_canonical "$raw_type")"
   if [ "$list_all_requirement_classes" = "1" ]; then
     case "$file_type" in
@@ -220,7 +272,11 @@ while IFS= read -r file; do
     title="$title (reviewed:$reviewed, verified:$verified)"
   fi
 
-  if [ "$show_category" = "1" ]; then
+  if [ "$show_repo" = "1" ] && [ "$show_category" = "1" ]; then
+    row="${file_repo}	${category}	${id}	${status}	${title}"
+  elif [ "$show_repo" = "1" ]; then
+    row="${file_repo}	${id}	${status}	${title}"
+  elif [ "$show_category" = "1" ]; then
     row="${category}	${id}	${status}	${title}"
   else
     row="${id}	${status}	${title}"

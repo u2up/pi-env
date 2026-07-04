@@ -18,18 +18,31 @@ Usage:
   agent-coord-status [options]
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
-  -h, --help        Show this help
+  --coord-dir DIR     Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
+  --repo-id REPO_ID   Show issue queue for one repository
+  --all-repos         Show issues across all repositories and root issues
+  -h, --help          Show this help
 USAGE
 }
 
 coord_dir_opt=""
+repo_id_arg=""
+all_repos=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --coord-dir)
       [ "$#" -ge 2 ] || coord_die "--coord-dir requires a value"
       coord_dir_opt="$2"
       shift 2
+      ;;
+    --repo-id)
+      [ "$#" -ge 2 ] || coord_die "--repo-id requires a value"
+      repo_id_arg="$2"
+      shift 2
+      ;;
+    --all-repos)
+      all_repos=1
+      shift
       ;;
     -h|--help)
       usage
@@ -42,9 +55,30 @@ while [ "$#" -gt 0 ]; do
 done
 
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
+
+if [ -n "$repo_id_arg" ] && [ "$all_repos" = "1" ]; then
+  coord_die "--repo-id and --all-repos cannot be used together"
+fi
+
+repo_filter=""
+if [ "$all_repos" != "1" ]; then
+  if [ -n "$repo_id_arg" ]; then
+    repo_filter="$(coord_resolve_repo_id "$repo_id_arg" "$coord_dir")"
+  elif [ -d "$coord_dir/repos" ]; then
+    repo_filter="$(coord_resolve_repo_id "" "$coord_dir" 2>/dev/null || true)"
+  fi
+fi
+
 cd "$coord_dir"
 
 printf 'Repository: %s\n' "$coord_dir"
+if [ "$all_repos" = "1" ]; then
+  printf 'Issue scope: all repos\n'
+elif [ -n "$repo_filter" ]; then
+  printf 'Issue scope: repo %s\n' "$repo_filter"
+else
+  printf 'Issue scope: domain\n'
+fi
 git status --short --branch
 printf '\nItems:\n'
 
@@ -59,6 +93,13 @@ while IFS= read -r file; do
   reviewed="$(coord_item_value "$file" reviewed || true)"
   verified="$(coord_item_value "$file" verified || true)"
   title="$(coord_item_value "$file" title || true)"
+  file_repo="-"
+  case "$file" in
+    repos/*/issues/*)
+      file_repo="${file#repos/}"
+      file_repo="${file_repo%%/*}"
+      ;;
+  esac
   if [ -z "$title" ]; then
     title="$(grep -m 1 '^# ' "$file" | sed 's/^# //' || true)"
   fi
@@ -72,12 +113,22 @@ while IFS= read -r file; do
   [ -n "$reviewed" ] || reviewed="-"
   [ -n "$verified" ] || verified="-"
   [ -n "$title" ] || title="(untitled)"
-  printf -- '- %s [%s] owner=%s reviewed=%s verified=%s priority=%s %s (%s)\n' \
-    "$id" "$status" "$owner" "$reviewed" "$verified" "$priority" "$title" "$file"
+  printf -- '- %s [%s] repo=%s owner=%s reviewed=%s verified=%s priority=%s %s (%s)\n' \
+    "$id" "$status" "$file_repo" "$owner" "$reviewed" "$verified" "$priority" "$title" "$file"
 done < <(
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     if coord_item_type_uses_issue_status_dirs "$(coord_item_value "$file" type || true)"; then
+      file_repo="-"
+      case "$file" in
+        repos/*/issues/*)
+          file_repo="${file#repos/}"
+          file_repo="${file_repo%%/*}"
+          ;;
+      esac
+      if [ -n "$repo_filter" ] && [ "$file_repo" != "$repo_filter" ]; then
+        continue
+      fi
       case "$(coord_item_value "$file" status || true)" in
         closed) ;;
         *) printf '%s\n' "$file" ;;
