@@ -66,6 +66,12 @@ git -C "$impl_dir" init -q
 git -C "$impl_dir" remote add origin https://example.invalid/not-delta.git
 resolved_remote_repo="$(cd "$impl_dir" && bash -c '. "$0"; coord_resolve_repo_id "" "$1"' "$repo_root/scripts/agent-coord-lib.sh" "$coord_dir")"
 test "$resolved_remote_repo" = delta
+agent-coord-repo --coord-dir "$coord_dir" add epsilon --remote https://example.invalid/not-delta.git >/dev/null
+if cd "$impl_dir" && bash -c '. "$0"; coord_resolve_repo_id "" "$1"' "$repo_root/scripts/agent-coord-lib.sh" "$coord_dir" >"$tmp/amb-remote.out" 2>"$tmp/amb-remote.err"; then
+  printf 'ambiguous registry remote unexpectedly resolved\n' >&2
+  exit 1
+fi
+grep -q 'ambiguous' "$tmp/amb-remote.err"
 
 agent-coord-repo --coord-dir "$coord_dir" add beta >/dev/null
 agent-coord-repo --coord-dir "$coord_dir" rename beta gamma >/dev/null

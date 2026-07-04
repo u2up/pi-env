@@ -218,7 +218,7 @@ coord_registry_canonical_repo_id() {
 }
 
 coord_resolve_repo_id() {
-  local explicit coord_dir repo_id source canonical remote
+  local explicit coord_dir repo_id source canonical remote registry_err registry_status
   explicit="${1:-}"
   coord_dir="${2:-}"
   if [ -n "$explicit" ]; then
@@ -233,11 +233,25 @@ coord_resolve_repo_id() {
       source=".pi-coordination.yaml"
     else
       remote="$(git remote get-url origin 2>/dev/null || true)"
-      if [ -n "$remote" ] && repo_id="$(coord_registry_repo_id_for_remote "$remote" "$coord_dir" 2>/dev/null || true)" && [ -n "$repo_id" ]; then
-        source="coordination registry remote"
-      elif repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)" && [ -n "$repo_id" ]; then
+      if [ -n "$remote" ]; then
+        registry_err="$(mktemp "${TMPDIR:-/tmp}/agent-coord-remote.XXXXXX")" || coord_die "failed to create temporary file"
+        if repo_id="$(coord_registry_repo_id_for_remote "$remote" "$coord_dir" 2>"$registry_err")" && [ -n "$repo_id" ]; then
+          rm -f "$registry_err"
+          source="coordination registry remote"
+        else
+          registry_status="$?"
+          if [ -s "$registry_err" ]; then
+            cat "$registry_err" >&2
+            rm -f "$registry_err"
+            return "$registry_status"
+          fi
+          rm -f "$registry_err"
+          repo_id=""
+        fi
+      fi
+      if [ -z "$repo_id" ] && repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)" && [ -n "$repo_id" ]; then
         source="git remote origin"
-      else
+      elif [ -z "$repo_id" ]; then
         coord_die "missing repo id; pass --repo-id, set PI_COORD_REPO_ID, add repo_id to .pi-coordination.yaml, or configure git remote origin"
       fi
     fi
