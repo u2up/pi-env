@@ -88,6 +88,117 @@ case "$alias_issue_path" in
   *) printf 'unexpected alias issue path: %s\n' "$alias_issue_path" >&2; exit 1 ;;
 esac
 grep -q "alias; update" "$tmp/new-alias.err"
+alias_issue_id="$(basename "$alias_issue_path" .yaml)"
+agent-coord-cat --coord-dir "$coord_dir" --path "$alias_issue_id" \
+  | grep -q "^repos/gamma/issues/open/$alias_issue_id.yaml$"
+
+agent-coord-claim \
+  --coord-dir "$coord_dir" \
+  --agent-id agent-a \
+  --role developer \
+  --no-pull \
+  --no-push \
+  "$alias_issue_id" >/dev/null
+grep -q '^status: claimed$' "$coord_dir/$alias_issue_path"
+
+done_path="$(agent-coord-done \
+  --coord-dir "$coord_dir" \
+  --agent-id agent-a \
+  --role developer \
+  --result "Repo issue implemented." \
+  --implementation-ref \
+  "delta:main@0123456789abcdef0123456789abcdef01234567" \
+  --no-pull \
+  --no-push \
+  "$alias_issue_id" | tail -n 1)"
+test "$done_path" = "repos/gamma/issues/done/$alias_issue_id.yaml"
+test -f "$coord_dir/$done_path"
+test ! -e "$coord_dir/repos/gamma/issues/open/$alias_issue_id.yaml"
+grep -q '^status: done$' "$coord_dir/$done_path"
+grep -q '^      - repo: delta$' "$coord_dir/$done_path"
+
+agent-coord-review \
+  --coord-dir "$coord_dir" \
+  --agent-id reviewer-a \
+  --role reviewer \
+  --pass \
+  --result "Repo issue reviewed." \
+  --no-pull \
+  --no-push \
+  "$alias_issue_id" >/dev/null
+grep -q '^reviewed: true$' "$coord_dir/$done_path"
+
+agent-coord-verify \
+  --coord-dir "$coord_dir" \
+  --agent-id tester-a \
+  --role tester \
+  --pass \
+  --result "Repo issue verified." \
+  --no-pull \
+  --no-push \
+  "$alias_issue_id" >/dev/null
+grep -q '^verified: true$' "$coord_dir/$done_path"
+
+closed_path="$(agent-coord-close \
+  --coord-dir "$coord_dir" \
+  --agent-id tester-a \
+  --role tester \
+  --result "Repo issue closed." \
+  --no-pull \
+  --no-push \
+  "$alias_issue_id" | tail -n 1)"
+test "$closed_path" = "repos/gamma/issues/closed/$alias_issue_id.yaml"
+test -f "$coord_dir/$closed_path"
+test ! -e "$coord_dir/repos/gamma/issues/done/$alias_issue_id.yaml"
+grep -q '^status: closed$' "$coord_dir/$closed_path"
+grep -q '^project: gamma$' "$coord_dir/$closed_path"
+grep -q '^    type: claimed$' "$coord_dir/$closed_path"
+grep -q '^    type: done$' "$coord_dir/$closed_path"
+grep -q '^    type: reviewed$' "$coord_dir/$closed_path"
+grep -q '^    type: verified$' "$coord_dir/$closed_path"
+grep -q '^    type: closed$' "$coord_dir/$closed_path"
+
+repo_fail_path="$(agent-coord-new --coord-dir "$coord_dir" --repo-id gamma "Repo failure path" | tail -n 1)"
+repo_fail_id="$(basename "$repo_fail_path" .yaml)"
+agent-coord-claim \
+  --coord-dir "$coord_dir" \
+  --agent-id agent-a \
+  --role developer \
+  --no-pull \
+  --no-push \
+  "$repo_fail_id" >/dev/null
+agent-coord-done \
+  --coord-dir "$coord_dir" \
+  --agent-id agent-a \
+  --role developer \
+  --result "Ready for repo-scoped failure." \
+  --implementation-ref \
+  "gamma:main@0123456789abcdef0123456789abcdef01234567" \
+  --no-pull \
+  --no-push \
+  "$repo_fail_id" >/dev/null
+review_failed_path="$(agent-coord-review \
+  --coord-dir "$coord_dir" \
+  --agent-id reviewer-a \
+  --role reviewer \
+  --fail \
+  --result "Repo issue needs work." \
+  --no-pull \
+  --no-push \
+  "$repo_fail_id" | tail -n 1)"
+test "$review_failed_path" = "repos/gamma/issues/open/$repo_fail_id.yaml"
+grep -q '^status: open$' "$coord_dir/$review_failed_path"
+grep -q '^owner: null$' "$coord_dir/$review_failed_path"
+grep -q '^    type: review_failed$' "$coord_dir/$review_failed_path"
+
+mkdir -p "$coord_dir/issues/open"
+cp "$coord_dir/$review_failed_path" "$coord_dir/issues/open/$repo_fail_id.yaml"
+if agent-coord-cat --coord-dir "$coord_dir" "$repo_fail_id" >"$tmp/dup.out" 2>"$tmp/dup.err"; then
+  printf 'duplicate repo-scoped issue id unexpectedly resolved\n' >&2
+  exit 1
+fi
+grep -q "multiple items match $repo_fail_id" "$tmp/dup.err"
+rm -f "$coord_dir/issues/open/$repo_fail_id.yaml"
 
 for bad in Alpha .alpha alpha/one alpha-; do
   if agent-coord-repo --coord-dir "$coord_dir" add "$bad" >"$tmp/bad.out" 2>"$tmp/bad.err"; then
