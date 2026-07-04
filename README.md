@@ -134,8 +134,17 @@ win: repo id resolution is `--repo-id`, `PI_COORD_REPO_ID`,
 `.pi-coordination.yaml`, then Git remote-name inference; coordination remote
 resolution is explicit `--remote`, `PI_COORD_REMOTE_URL`, then
 `.pi-coordination.yaml`. The coordination repository registry remains
-authoritative for canonical and active repo ids when `repositories.yaml` is
-present.
+authoritative for canonical and active repo ids when `repositories.yaml` or the
+`repos/<repo_id>/REPO.md` registry is present.
+
+`agent-coord-lint` validates repo manifests and all repo-scoped issue structure
+under `repos/<repo_id>/issues/<status>`. Item-matched issue tests are expected
+only for the current implementation repo resolved from `--repo-id`,
+`PI_COORD_REPO_ID`, `.pi-coordination.yaml`, or Git remote registry data.
+`--all-repos` keeps structural validation across every registered repo but does
+not require tests from unavailable implementation checkouts unless `--repo-id`
+selects that repo explicitly. Root `issues/` paths are migration-compatible by
+default with warnings; set `PI_COORD_LINT_ROOT_ISSUES=fail` to reject them.
 
 ### Simple coordination workflow
 

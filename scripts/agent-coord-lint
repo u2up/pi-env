@@ -20,6 +20,9 @@ Usage:
 Options:
   --coord-dir DIR            Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
   --project-root DIR         Project repo containing tests/items; default: parent of coord dir
+  --repo-id ID               Repo whose repo-scoped issue tests are available
+  --all-repos                Validate all repo-scoped items structurally; do not require
+                             repo-scoped issue tests unless --repo-id resolves one repo
   --require-done-or-closed   Fail when any issue item is not done or closed
   --warn-legacy-ids          Warn about IDs that predate the new ID format
   -h, --help                 Show this help
@@ -34,6 +37,7 @@ Checks:
   - testable: yes has a matching tests/items/**/*.sh script;
   - testable: no has a non-empty testability_note;
   - items do not use legacy issue_type metadata;
+  - repo manifests are valid and repo-scoped issues live under active repos;
   - issue items have embedded current/events/messages history;
   - requirement and todo items have current-state body records without
     embedded history;
@@ -46,11 +50,21 @@ tests mirror the root item type directory:
   tests/items/issues/<item-id>.sh
   tests/items/requirements/<item-id>.sh
   tests/items/todos/<item-id>.sh
+
+When repos/<repo_id>/issues are present, lint defaults item-matched issue test
+checks to the current implementation repo resolved from --repo-id,
+PI_COORD_REPO_ID, .pi-coordination.yaml, or Git remote registry data. --all-repos
+validates every repo structurally but skips repo-scoped issue test requirements
+for repos whose implementation checkout is not selected by --repo-id. Root
+issues/ paths are allowed during migration with a warning; set
+PI_COORD_LINT_ROOT_ISSUES=fail to reject them.
 USAGE
 }
 
 coord_dir_opt=""
 project_root_opt=""
+repo_id_opt=""
+all_repos=0
 require_done_or_closed=0
 warn_legacy_ids=0
 
@@ -65,6 +79,15 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -ge 2 ] || coord_die "--project-root requires a value"
       project_root_opt="$2"
       shift 2
+      ;;
+    --repo-id)
+      [ "$#" -ge 2 ] || coord_die "--repo-id requires a value"
+      repo_id_opt="$2"
+      shift 2
+      ;;
+    --all-repos)
+      all_repos=1
+      shift
       ;;
     --require-done-or-closed)
       require_done_or_closed=1
@@ -91,6 +114,20 @@ else
   project_root="$(dirname "$coord_dir")"
 fi
 
+resolved_repo_id=""
+repo_err=""
+if [ -n "$repo_id_opt" ]; then
+  resolved_repo_id="$(coord_registry_canonical_repo_id "$repo_id_opt" "$coord_dir")"
+else
+  repo_err="$(mktemp "${TMPDIR:-/tmp}/agent-coord-lint-repo.XXXXXX")" || coord_die "failed to create temporary file"
+  if resolved_repo_id="$(cd "$project_root" && coord_resolve_repo_id "" "$coord_dir" 2>"$repo_err")"; then
+    :
+  else
+    resolved_repo_id=""
+  fi
+  rm -f "$repo_err"
+fi
+
 cd "$coord_dir"
 
 failures=0
@@ -114,6 +151,36 @@ for removed_path in WORKSPACE.md workspace projects; do
   fi
 done
 
+if [ -d repos ]; then
+  while IFS= read -r repo_dir; do
+    [ -n "$repo_dir" ] || continue
+    repo_id="${repo_dir#repos/}"
+    manifest="$repo_dir/REPO.md"
+    if ! coord_repo_id_is_valid "$repo_id"; then
+      lint_fail "$repo_dir has invalid repo id directory name"
+      continue
+    fi
+    if [ ! -f "$manifest" ]; then
+      lint_fail "$repo_dir is missing REPO.md"
+      continue
+    fi
+    manifest_repo_id="$(coord_repo_manifest_value "$manifest" repo_id || true)"
+    [ -n "$manifest_repo_id" ] || lint_fail "$manifest is missing repo_id"
+    if [ -n "$manifest_repo_id" ]; then
+      coord_repo_id_is_valid "$manifest_repo_id" \
+        || lint_fail "$manifest has invalid repo_id $manifest_repo_id"
+      [ "$manifest_repo_id" = "$repo_id" ] \
+        || lint_fail "$manifest repo_id $manifest_repo_id does not match directory $repo_id"
+    fi
+    manifest_status="$(coord_repo_manifest_value "$manifest" status || true)"
+    [ -n "$manifest_status" ] || manifest_status="active"
+    case "$manifest_status" in
+      active|inactive|retired) ;;
+      *) lint_fail "$manifest has invalid status $manifest_status" ;;
+    esac
+  done < <(find repos -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+fi
+
 item_yaml_files() {
   while IFS= read -r file; do
     case "$file" in
@@ -126,12 +193,38 @@ item_status_dir() {
   local file
   file="$1"
   case "$file" in
-    issues/open/*|*/issues/open/*) printf 'open\n' ;;
-    issues/blocked/*|*/issues/blocked/*) printf 'blocked\n' ;;
-    issues/done/*|*/issues/done/*) printf 'done\n' ;;
-    issues/closed/*|*/issues/closed/*) printf 'closed\n' ;;
+    issues/open/*|repos/*/issues/open/*) printf 'open\n' ;;
+    issues/blocked/*|repos/*/issues/blocked/*) printf 'blocked\n' ;;
+    issues/done/*|repos/*/issues/done/*) printf 'done\n' ;;
+    issues/closed/*|repos/*/issues/closed/*) printf 'closed\n' ;;
     *) printf '\n' ;;
   esac
+}
+
+item_repo_id() {
+  local file rest
+  file="$1"
+  case "$file" in
+    repos/*/*)
+      rest="${file#repos/}"
+      printf '%s\n' "${rest%%/*}"
+      ;;
+    *) printf '\n' ;;
+  esac
+}
+
+should_check_item_test() {
+  local file type repo_id
+  file="$1"
+  type="$2"
+  if coord_item_type_uses_issue_status_dirs "$type"; then
+    repo_id="$(item_repo_id "$file")"
+    if [ -n "$repo_id" ]; then
+      [ -n "$resolved_repo_id" ] && [ "$repo_id" = "$resolved_repo_id" ]
+      return
+    fi
+  fi
+  return 0
 }
 
 item_test_subdir() {
@@ -336,9 +429,36 @@ while IFS= read -r file; do
       || lint_fail "$file issue item is missing events history"
     item_has_top_level_field "$file" messages \
       || lint_fail "$file issue item is missing messages history"
+    repo_id="$(item_repo_id "$file")"
+    if [ -n "$repo_id" ]; then
+      if ! coord_repo_id_is_valid "$repo_id"; then
+        lint_fail "$file is under invalid repo id $repo_id"
+      elif [ ! -f "repos/$repo_id/REPO.md" ]; then
+        lint_fail "$file is under unregistered repo id $repo_id"
+      else
+        repo_manifest_id="$(coord_repo_manifest_value "repos/$repo_id/REPO.md" repo_id || true)"
+        repo_manifest_status="$(coord_repo_manifest_value "repos/$repo_id/REPO.md" status || true)"
+        [ -n "$repo_manifest_status" ] || repo_manifest_status="active"
+        [ "$repo_manifest_id" = "$repo_id" ] \
+          || lint_fail "$file repo manifest id $repo_manifest_id does not match $repo_id"
+        [ "$repo_manifest_status" = "active" ] \
+          || lint_fail "$file is under non-active repo id $repo_id (status: $repo_manifest_status)"
+      fi
+    else
+      case "$file" in
+        issues/*)
+          if [ "${PI_COORD_LINT_ROOT_ISSUES:-warn}" = "fail" ]; then
+            lint_fail "$file uses root issues/ during repo-scope migration"
+          else
+            lint_warn "$file uses root issues/ during repo-scope migration"
+          fi
+          ;;
+      esac
+    fi
+
     dir_status="$(item_status_dir "$file")"
     if [ -z "$dir_status" ]; then
-      lint_fail "$file issue item is not under an issues status directory"
+      lint_fail "$file issue item is not under a valid issues status directory"
     elif [ "$dir_status" = "open" ]; then
       case "$status" in
         open|claimed) ;;
@@ -367,11 +487,13 @@ while IFS= read -r file; do
   if [ -z "$testable" ]; then
     lint_fail "$file must declare testable: yes or testable: no"
   elif [ "$testable" = "yes" ]; then
-    expected_test="$(expected_test_path "$file" "$id" "$type")"
-    if [ ! -f "$expected_test" ]; then
-      lint_fail "$file is testable but missing $expected_test"
-    elif [ ! -x "$expected_test" ]; then
-      lint_fail "$expected_test must be executable"
+    if should_check_item_test "$file" "$type"; then
+      expected_test="$(expected_test_path "$file" "$id" "$type")"
+      if [ ! -f "$expected_test" ]; then
+        lint_fail "$file is testable but missing $expected_test"
+      elif [ ! -x "$expected_test" ]; then
+        lint_fail "$expected_test must be executable"
+      fi
     fi
   else
     if [ -z "$(coord_trim "$testability_note")" ]; then
@@ -396,6 +518,10 @@ if [ -d "$items_tests_dir" ]; then
       continue
     fi
     item_type="$(coord_item_value "$item_file" type || true)"
+    if ! should_check_item_test "$item_file" "$item_type"; then
+      lint_fail "$test_file matches repo-scoped item outside selected repo; use --repo-id for that implementation repo"
+      continue
+    fi
     expected_test="$(expected_test_path "$item_file" "$test_id" "$item_type")"
     if [ "$test_file" != "$expected_test" ]; then
       lint_fail "$test_file must live at $expected_test"
