@@ -118,6 +118,25 @@ This creates local coordination state under `.pi-env/` for agent issue, TODO,
 and synchronization tracking. `.pi-env/` is operational state and should
 normally stay untracked.
 
+Implementation repositories may commit a small root-level attachment hint named
+`.pi-coordination.yaml` so helpers can find their shared coordination domain:
+
+```yaml
+version: 1
+coordination_domain: my-product
+coordination_remote: git@example.com:org/my-product-coordination.git
+repo_id: backend-api
+```
+
+The file is read from the implementation repository root, not from inside the
+coordination checkout. Explicit command options and environment variables still
+win: repo id resolution is `--repo-id`, `PI_COORD_REPO_ID`,
+`.pi-coordination.yaml`, then Git remote-name inference; coordination remote
+resolution is explicit `--remote`, `PI_COORD_REMOTE_URL`, then
+`.pi-coordination.yaml`. The coordination repository registry remains
+authoritative for canonical and active repo ids when `repositories.yaml` is
+present.
+
 ### Simple coordination workflow
 
 A typical human-and-agent workflow with a coordination repository is:

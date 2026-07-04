@@ -26,6 +26,152 @@ coord_project_root() {
   coord_abs "$root"
 }
 
+coord_impl_config_path() {
+  local project_root
+  project_root="${1:-}"
+  if [ -z "$project_root" ]; then
+    project_root="$(coord_project_root)"
+  fi
+  printf '%s/.pi-coordination.yaml\n' "$(coord_abs "$project_root")"
+}
+
+coord_impl_config_value() {
+  local key project_root file value
+  key="$1"
+  project_root="${2:-}"
+  file="$(coord_impl_config_path "$project_root")"
+  value=""
+  if [ -f "$file" ]; then
+    value="$(awk -v key="$key" '
+      /^[[:space:]]*#/ { next }
+      index($0, key ":") == 1 {
+        sub("^[^:]+:[[:space:]]*", "")
+        print
+        exit
+      }
+    ' "$file")"
+  fi
+  coord_yaml_unquote "$value"
+}
+
+coord_repo_name_from_url() {
+  local url name
+  url="$1"
+  url="${url%%\#*}"
+  url="${url%%\?*}"
+  url="${url%/}"
+  name="${url##*/}"
+  name="${name%.git}"
+  printf '%s\n' "$name"
+}
+
+coord_infer_repo_id_from_remote() {
+  local remote name
+  remote="$(git remote get-url origin 2>/dev/null || true)"
+  [ -n "$remote" ] || return 1
+  name="$(coord_repo_name_from_url "$remote")"
+  [ -n "$name" ] || return 1
+  printf '%s\n' "$name"
+}
+
+coord_registry_path() {
+  local coord_dir
+  coord_dir="${1:-}"
+  [ -n "$coord_dir" ] || coord_dir="$(coord_default_dir)"
+  printf '%s/repositories.yaml\n' "$(coord_abs "$coord_dir")"
+}
+
+coord_registry_canonical_repo_id() {
+  local repo_id coord_dir registry result
+  repo_id="$1"
+  coord_dir="${2:-}"
+  registry="$(coord_registry_path "$coord_dir")"
+  if [ ! -f "$registry" ]; then
+    printf '%s\n' "$repo_id"
+    return 0
+  fi
+  result="$(awk -v wanted="$repo_id" '
+    function unquote(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      gsub(/^"|"$/, "", value)
+      return value
+    }
+    function finish() {
+      if (repo != "") {
+        canonical = (canon != "" ? canon : repo)
+        if ((active == "" || active == "true" || active == "yes") && (repo == wanted || alias_hit)) {
+          print canonical ":" (repo == wanted ? "canonical" : "alias")
+          found=1
+          exit
+        }
+      }
+      repo=""; canon=""; active=""; alias_hit=0; in_aliases=0
+    }
+    /^[[:space:]]*-/ && $0 ~ /repo_id:/ { finish() }
+    /repo_id:/ {
+      line=$0; sub("^.*repo_id:[[:space:]]*", "", line); repo=unquote(line)
+    }
+    /canonical_repo_id:/ {
+      line=$0; sub("^.*canonical_repo_id:[[:space:]]*", "", line); canon=unquote(line)
+    }
+    /active:/ {
+      line=$0; sub("^.*active:[[:space:]]*", "", line); active=tolower(unquote(line))
+    }
+    /aliases:[[:space:]]*$/ { in_aliases=1; next }
+    in_aliases && /^[[:space:]]*-[[:space:]]*/ {
+      line=$0; sub("^[[:space:]]*-[[:space:]]*", "", line); if (unquote(line) == wanted) alias_hit=1; next
+    }
+    in_aliases && /^[^[:space:]]/ { in_aliases=0 }
+    END { if (!found) finish() }
+  ' "$registry")"
+  if [ -z "$result" ]; then
+    coord_die "repo id '$repo_id' is not active in coordination registry: $registry"
+  fi
+  if [ "${result##*:}" = "alias" ]; then
+    coord_note "repo id '$repo_id' is an alias; update .pi-coordination.yaml to '${result%%:*}'"
+  fi
+  printf '%s\n' "${result%%:*}"
+}
+
+coord_resolve_repo_id() {
+  local explicit coord_dir repo_id source canonical
+  explicit="${1:-}"
+  coord_dir="${2:-}"
+  if [ -n "$explicit" ]; then
+    repo_id="$explicit"
+    source="--repo-id"
+  elif [ -n "${PI_COORD_REPO_ID:-}" ]; then
+    repo_id="$PI_COORD_REPO_ID"
+    source="PI_COORD_REPO_ID"
+  else
+    repo_id="$(coord_impl_config_value repo_id || true)"
+    if [ -n "$repo_id" ]; then
+      source=".pi-coordination.yaml"
+    elif repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)" && [ -n "$repo_id" ]; then
+      source="git remote origin"
+    else
+      coord_die "missing repo id; pass --repo-id, set PI_COORD_REPO_ID, add repo_id to .pi-coordination.yaml, or configure git remote origin"
+    fi
+  fi
+  canonical="$(coord_registry_canonical_repo_id "$repo_id" "$coord_dir")"
+  [ -n "$canonical" ] || coord_die "empty repo id resolved from $source"
+  printf '%s\n' "$canonical"
+}
+
+coord_resolve_coordination_remote() {
+  local explicit remote
+  explicit="${1:-}"
+  if [ -n "$explicit" ]; then
+    printf '%s\n' "$explicit"
+  elif [ -n "${PI_COORD_REMOTE_URL:-}" ]; then
+    printf '%s\n' "$PI_COORD_REMOTE_URL"
+  else
+    remote="$(coord_impl_config_value coordination_remote || true)"
+    [ -n "$remote" ] || return 1
+    printf '%s\n' "$remote"
+  fi
+}
+
 coord_default_root_for_project() {
   local project_root
   project_root="$(coord_project_root)"

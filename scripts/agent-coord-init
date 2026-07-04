@@ -28,7 +28,8 @@ Options:
   --bare-only       Only create the bare remote
   -h, --help        Show this help
 
-Remote precedence is explicit --remote, then PI_COORD_REMOTE_URL, then:
+Remote precedence is explicit --remote, then PI_COORD_REMOTE_URL,
+then .pi-coordination.yaml coordination_remote, then:
   <root>/<project>-coordination.git
 USAGE
 }
@@ -95,6 +96,10 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
+
+if [ -z "$remote_url" ]; then
+  remote_url="$(coord_resolve_coordination_remote "" 2>/dev/null || true)"
+fi
 
 if [ -z "$project_key" ]; then
   project_key="$(coord_default_workspace)"

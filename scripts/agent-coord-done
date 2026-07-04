@@ -22,6 +22,8 @@ Options:
   --agent-id ID               Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE                 Coordination role; default: PI_COORD_ROLE
   --result TEXT               Result/message text; default: Done.
+  --repo-id ID                Implementation repository id; default: PI_COORD_REPO_ID,
+                               .pi-coordination.yaml, or git remote inference
   --implementation-ref REF    Implementation ref in repo:branch@full-commit form;
                                may be repeated
   --no-pull                   Do not pull/rebase before marking done
@@ -39,6 +41,7 @@ pull_first=1
 push_after=1
 force=0
 item_query=""
+repo_id_opt=""
 implementation_refs=()
 
 while [ "$#" -gt 0 ]; do
@@ -61,6 +64,11 @@ while [ "$#" -gt 0 ]; do
     --result)
       [ "$#" -ge 2 ] || coord_die "--result requires a value"
       result="$2"
+      shift 2
+      ;;
+    --repo-id)
+      [ "$#" -ge 2 ] || coord_die "--repo-id requires a value"
+      repo_id_opt="$2"
       shift 2
       ;;
     --implementation-ref)
@@ -97,6 +105,7 @@ done
 [ -n "$item_query" ] || coord_die "item is required"
 [ -n "$agent_id" ] || coord_die "agent id must not be empty"
 
+project_dir="$(coord_project_root)"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
 cd "$coord_dir"
 
@@ -123,10 +132,29 @@ if [ -n "$owner" ] && [ "$owner" != "$agent_id" ] && [ "$force" != "1" ]; then
   coord_die "item is owned by $owner; use --force to mark it done"
 fi
 
-for ref in "${implementation_refs[@]}"; do
+for i in "${!implementation_refs[@]}"; do
+  ref="${implementation_refs[$i]}"
   [ -n "$ref" ] || continue
-  coord_write_implementation_ref_yaml "" "$ref" >/dev/null
+  repo_part="${ref%%:*}"
+  if [ -n "$repo_part" ] && [ "$repo_part" != "$ref" ]; then
+    canonical_repo_part="$(coord_registry_canonical_repo_id "$repo_part" "$coord_dir")"
+    if [ "$canonical_repo_part" != "$repo_part" ]; then
+      implementation_refs[$i]="$canonical_repo_part:${ref#*:}"
+    fi
+  fi
+  coord_write_implementation_ref_yaml "" "${implementation_refs[$i]}" >/dev/null
 done
+
+if [ ${#implementation_refs[@]} -eq 0 ] && { [ -n "$repo_id_opt${PI_COORD_REPO_ID:-}" ] || [ -f "$(coord_impl_config_path "$project_dir")" ]; }; then
+  resolved_repo_id="$(cd "$project_dir" && coord_resolve_repo_id "$repo_id_opt" "$coord_dir")"
+  project_branch="$(git -C "$project_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  project_commit="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || true)"
+  if [ -n "$project_branch" ] && [ "$project_branch" != "HEAD" ] && [[ "$project_commit" =~ ^[0-9A-Fa-f]{40}$ ]]; then
+    implementation_refs+=("$resolved_repo_id:$project_branch@$project_commit")
+  else
+    coord_note "resolved repo id: $resolved_repo_id"
+  fi
+fi
 
 item_path="$(coord_move_issue_item_to_status "$item_path" done)"
 
