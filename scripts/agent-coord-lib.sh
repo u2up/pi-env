@@ -18,12 +18,37 @@ coord_abs() {
 }
 
 coord_project_root() {
-  local root
-  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-  if [ -z "$root" ]; then
-    root="$(pwd -P)"
+  local root abs_root pwd_abs project_root
+
+  if [ -n "${PI_COORD_PROJECT_ROOT:-}" ]; then
+    coord_abs "$PI_COORD_PROJECT_ROOT"
+    return
   fi
-  coord_abs "$root"
+
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$root" ]; then
+    abs_root="$(coord_abs "$root")"
+    case "$abs_root" in
+      */.pi-env/coordination|*/.pi-env/coordination/*)
+        project_root="${abs_root%%/.pi-env/coordination*}"
+        coord_abs "$project_root"
+        return
+        ;;
+    esac
+    printf '%s\n' "$abs_root"
+    return
+  fi
+
+  pwd_abs="$(pwd -P)"
+  case "$pwd_abs" in
+    */.pi-env/coordination|*/.pi-env/coordination/*)
+      project_root="${pwd_abs%%/.pi-env/coordination*}"
+      coord_abs "$project_root"
+      ;;
+    *)
+      coord_abs "$pwd_abs"
+      ;;
+  esac
 }
 
 coord_impl_config_path() {

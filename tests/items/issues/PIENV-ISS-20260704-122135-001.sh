@@ -52,6 +52,23 @@ YAML
   [ "$alias_output" = "backend-api" ]
   grep -q "api-old' is an alias" "$tmp/alias.err"
 
+  nested_coord="$project/.pi-env/coordination"
+  mkdir -p "$nested_coord/docs"
+  git -C "$nested_coord" init -q
+  touch "$nested_coord/AGENTS.md" \
+    "$nested_coord/docs/SYNC_PROTOCOL.md" \
+    "$nested_coord/docs/ITEM_FORMAT.md"
+  (
+    cd "$nested_coord"
+    # shellcheck source=/dev/null
+    . "$lib"
+    [ "$(coord_project_root)" = "$project" ]
+    [ "$(coord_impl_config_path)" = "$project/.pi-coordination.yaml" ]
+    [ "$(coord_impl_config_value repo_id)" = "api-old" ]
+    [ "$(coord_resolve_repo_id '' "$coord_dir" 2>"$tmp/nested-alias.err")" = "backend-api" ]
+    grep -q "api-old' is an alias" "$tmp/nested-alias.err"
+  )
+
   rm .pi-coordination.yaml
   [ "$(coord_resolve_repo_id '' "$coord_dir")" = "remote-api" ]
 
