@@ -167,8 +167,82 @@ coord_registry_path() {
   printf '%s/repos\n' "$(coord_abs "$coord_dir")"
 }
 
+coord_legacy_registry_path() {
+  local coord_dir
+  coord_dir="${1:-}"
+  [ -n "$coord_dir" ] || coord_dir="$(coord_default_dir)"
+  printf '%s/repositories.yaml\n' "$(coord_abs "$coord_dir")"
+}
+
+coord_legacy_registry_matches() {
+  local repo_id coord_dir file
+  repo_id="$1"
+  coord_dir="${2:-}"
+  file="$(coord_legacy_registry_path "$coord_dir")"
+  [ -f "$file" ] || return 1
+  awk -v want="$repo_id" '
+    function trim(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      gsub(/^'"'"'|'"'"'$/, "", value)
+      gsub(/^"|"$/, "", value)
+      return value
+    }
+    function emit_aliases(  i) {
+      for (i in aliases) {
+        if (i == want) print repo ":alias:" status
+      }
+      delete aliases
+    }
+    function finish_record() {
+      if (repo == "") return
+      if (status == "") status="active"
+      if (repo == want) print repo ":canonical:" status
+      emit_aliases()
+    }
+    /^[[:space:]]*-[[:space:]]*repo_id:/ {
+      finish_record()
+      repo=$0
+      sub(/^[[:space:]]*-[[:space:]]*repo_id:[[:space:]]*/, "", repo)
+      repo=trim(repo)
+      status="active"
+      in_aliases=0
+      next
+    }
+    repo != "" && /^[[:space:]]*repo_id:/ {
+      repo=$0
+      sub(/^[[:space:]]*repo_id:[[:space:]]*/, "", repo)
+      repo=trim(repo)
+      next
+    }
+    repo != "" && /^[[:space:]]*active:/ {
+      active=$0
+      sub(/^[[:space:]]*active:[[:space:]]*/, "", active)
+      active=trim(active)
+      status=(active == "false" || active == "no" || active == "0") ? "inactive" : "active"
+      in_aliases=0
+      next
+    }
+    repo != "" && /^[[:space:]]*status:/ {
+      status=$0
+      sub(/^[[:space:]]*status:[[:space:]]*/, "", status)
+      status=trim(status)
+      in_aliases=0
+      next
+    }
+    repo != "" && /^[[:space:]]*aliases:[[:space:]]*$/ { in_aliases=1; next }
+    repo != "" && in_aliases && /^[[:space:]]*-[[:space:]]*/ {
+      alias=$0
+      sub(/^[[:space:]]*-[[:space:]]*/, "", alias)
+      aliases[trim(alias)]=1
+      next
+    }
+    repo != "" && /^[[:space:]]*[A-Za-z_][A-Za-z0-9_-]*:/ { in_aliases=0; next }
+    END { finish_record() }
+  ' "$file"
+}
+
 coord_registry_canonical_repo_id() {
-  local repo_id coord_dir repos_dir file manifest_repo status alias matches match_count found_alias
+  local repo_id coord_dir repos_dir file manifest_repo status alias matches match_count found_alias legacy_file
   repo_id="$1"
   coord_dir="${2:-}"
   repos_dir="$(coord_registry_path "$coord_dir")"
@@ -176,11 +250,15 @@ coord_registry_canonical_repo_id() {
     coord_die "invalid repo id '$repo_id'; use lowercase letters, digits, dots, underscores, and hyphens with no path separators"
   fi
   if [ ! -d "$repos_dir" ]; then
-    printf '%s\n' "$repo_id"
-    return 0
-  fi
-
-  matches=""
+    legacy_file="$(coord_legacy_registry_path "$coord_dir")"
+    if [ -f "$legacy_file" ]; then
+      matches="$(coord_legacy_registry_matches "$repo_id" "$coord_dir")"
+    else
+      printf '%s\n' "$repo_id"
+      return 0
+    fi
+  else
+    matches=""
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     manifest_repo="$(coord_repo_manifest_value "$file" repo_id || true)"
@@ -199,8 +277,9 @@ coord_registry_canonical_repo_id() {
       matches="${matches}${manifest_repo}:alias:${status}"$'\n'
     fi
   done < <(find "$repos_dir" -mindepth 2 -maxdepth 2 -name REPO.md -type f 2>/dev/null | sort)
+  fi
 
-  match_count="$(printf '%s' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
+  match_count="$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
   if [ "$match_count" = "0" ]; then
     coord_die "repo id '$repo_id' is not registered in coordination registry: $repos_dir"
   fi
@@ -209,6 +288,9 @@ coord_registry_canonical_repo_id() {
   fi
   status="$(printf '%s' "$matches" | cut -d: -f3)"
   if [ "$status" != "active" ]; then
+    if [ "$status" = "inactive" ]; then
+      coord_die "repo id '$repo_id' is not active in coordination registry"
+    fi
     coord_die "repo id '$repo_id' is retired in coordination registry"
   fi
   if [ "$(printf '%s' "$matches" | cut -d: -f2)" = "alias" ]; then
