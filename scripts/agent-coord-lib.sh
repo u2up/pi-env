@@ -1294,7 +1294,7 @@ coord_append_activity() {
 }
 
 coord_item_find_files() {
-  local roots=() seen file id_value stem key
+  local roots=() root
   for root in issues requirements todos decisions notes; do
     if [ -e "$root" ]; then
       roots+=("$root")
@@ -1309,28 +1309,10 @@ coord_item_find_files() {
   fi
   [ "${#roots[@]}" -gt 0 ] || return 0
 
-  seen=$'\n'
-  while IFS= read -r file; do
-    [ -n "$file" ] || continue
-    id_value="$(coord_item_value "$file" id || true)"
-    if [ -n "$id_value" ]; then
-      key="$id_value"
-    else
-      stem="$(basename "$file")"
-      stem="${stem%.yaml}"
-      stem="${stem%.yml}"
-      stem="${stem%.md}"
-      key="$stem"
-    fi
-    case "$seen" in
-      *$'\n'"$key"$'\n'*) continue ;;
-    esac
-    seen="${seen}${key}"$'\n'
-    printf '%s\n' "$file"
-  done < <(find "${roots[@]}" \
+  find "${roots[@]}" \
     -type f \
     \( -name '*.yaml' -o -name '*.yml' -o -name '*.md' \) \
-    2>/dev/null | sort)
+    2>/dev/null | sort
 }
 
 coord_find_item() {

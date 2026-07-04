@@ -225,6 +225,8 @@ if [ -n "$repo_id_arg" ]; then
   else
     item_root="repos/$repo_id/$type_dir"
   fi
+elif coord_item_type_uses_issue_status_dirs "$item_type" && [ -d repos ]; then
+  coord_die "new issue items must specify --repo-id in repo-scoped coordination domains"
 elif ! coord_write_root_items_by_default; then
   coord_die "no project-root layout found; initialize with agent-coord-init and create root item directories"
 fi

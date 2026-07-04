@@ -96,6 +96,7 @@ cd "$coord_dir"
 failures=0
 warnings=0
 items_seen=0
+item_identity_seen=$'\n'
 
 lint_fail() {
   printf 'agent-coord-lint: FAIL: %s\n' "$*" >&2
@@ -252,6 +253,19 @@ while IFS= read -r file; do
   stem="$(basename "$file")"
   stem="${stem%.yaml}"
   stem="${stem%.yml}"
+  if [ -n "$id" ]; then
+    identity_key="$id"
+  else
+    identity_key="$stem"
+  fi
+  case "$item_identity_seen" in
+    *$'\n'"$identity_key"$'\n'*)
+      lint_fail "$file duplicates item id $identity_key"
+      ;;
+    *)
+      item_identity_seen="${item_identity_seen}${identity_key}"$'\n'
+      ;;
+  esac
 
   if printf '%s' "$id" | grep -Eq '^[A-Z0-9]+-[A-Z0-9]{1,4}-[0-9]{8}-[0-9]{6}-[0-9]{3}$'; then
     if [ "$stem" != "$id" ]; then
