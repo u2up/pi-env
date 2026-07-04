@@ -17,6 +17,7 @@ assert_file() {
 local_prefix="$workdir/local-prefix"
 "$repo_root/scripts/install-non-nix" --prefix "$local_prefix"
 assert_file "$local_prefix/bin/pi-env"
+assert_file "$local_prefix/bin/agent-coord-repo"
 assert_file "$local_prefix/share/pi-env/install-manifest"
 [ ! -f "$local_prefix/share/pi-env/install-origin" ] || {
   echo "local install unexpectedly wrote remote origin metadata" >&2
@@ -47,6 +48,7 @@ remote_prefix="$workdir/remote-prefix"
 )
 
 assert_file "$remote_prefix/bin/pi-env"
+assert_file "$remote_prefix/bin/agent-coord-repo"
 assert_file "$remote_prefix/share/pi-env/install-origin"
 grep -qx 'repository=test-owner/test-repo' "$remote_prefix/share/pi-env/install-origin"
 grep -qx 'ref=main' "$remote_prefix/share/pi-env/install-origin"
