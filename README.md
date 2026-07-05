@@ -143,8 +143,14 @@ only for the current implementation repo resolved from `--repo-id`,
 `PI_COORD_REPO_ID`, `.pi-coordination.yaml`, or Git remote registry data.
 `--all-repos` keeps structural validation across every registered repo but does
 not require tests from unavailable implementation checkouts unless `--repo-id`
-selects that repo explicitly. Root `issues/` paths are migration-compatible by
-default with warnings; set `PI_COORD_LINT_ROOT_ISSUES=fail` to reject them.
+selects that repo explicitly. Fresh `agent-coord-init` scaffolds the initial implementation namespace at
+`repos/<repo_id>/issues/{open,blocked,done,closed}` and writes
+`repos/<repo_id>/REPO.md` plus `REPOS.md`. Existing root-layout domains can move
+tracked root issue files with `agent-coord-repo migrate-root-issues <repo_id>`;
+the command creates or validates the target repo manifest, uses `git mv` for
+tracked files, and refuses target overwrites or duplicate issue ids. Root
+`issues/` paths are migration-compatible by default with warnings; set
+`PI_COORD_LINT_ROOT_ISSUES=fail` to reject them.
 
 ### Simple coordination workflow
 

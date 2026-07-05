@@ -59,6 +59,13 @@ agent-coord-init \
 
 test -d "$fresh_default_project/.pi-env/agent-remotes/fresh-default-coordination.git"
 test -f "$fresh_default_project/.pi-env/coordination/AGENTS.md"
+test -d "$fresh_default_project/.pi-env/coordination/repos/fresh-default/issues/open"
+test -d "$fresh_default_project/.pi-env/coordination/repos/fresh-default/issues/blocked"
+test -d "$fresh_default_project/.pi-env/coordination/repos/fresh-default/issues/done"
+test -d "$fresh_default_project/.pi-env/coordination/repos/fresh-default/issues/closed"
+test -f "$fresh_default_project/.pi-env/coordination/repos/fresh-default/REPO.md"
+grep -q '^repo_id: fresh-default$' "$fresh_default_project/.pi-env/coordination/repos/fresh-default/REPO.md"
+test ! -e "$fresh_default_project/.pi-env/coordination/issues"
 grep -Fxq '/.pi-env/' "$fresh_default_project/.git/info/exclude"
 
 bootstrap_project_dir="$tmp/bootstrap-project"
@@ -101,7 +108,8 @@ bootstrap-coordination \
 
 test -d "$tmp/bootstrap-remotes/other-project-coordination.git"
 test -f "$bootstrap_project_dir/.pi-env/coordination/AGENTS.md"
-test -d "$bootstrap_project_dir/.pi-env/coordination/issues/open"
+test -d "$bootstrap_project_dir/.pi-env/coordination/repos/other-project/issues/open"
+test -f "$bootstrap_project_dir/.pi-env/coordination/repos/other-project/REPO.md"
 test ! -e "$bootstrap_project_dir/.pi-env/coordination/WORKSPACE.md"
 test ! -e "$bootstrap_project_dir/.pi-env/coordination/workspace"
 test ! -e "$bootstrap_project_dir/.pi-env/coordination/functional-requirements"
@@ -256,8 +264,11 @@ test -f .pi-env/coordination/AGENTS.md
 test -f .pi-env/coordination/docs/SYNC_PROTOCOL.md
 test -f .pi-env/coordination/docs/ITEM_FORMAT.md
 test -f .pi-env/coordination/.pi/skills/agent-coordination/SKILL.md
-test -d .pi-env/coordination/issues/open
-test -d .pi-env/coordination/issues/done
+test -d .pi-env/coordination/repos/pi-env/issues/open
+test -d .pi-env/coordination/repos/pi-env/issues/done
+test -f .pi-env/coordination/repos/pi-env/REPO.md
+grep -q '^repo_id: pi-env$' .pi-env/coordination/repos/pi-env/REPO.md
+test ! -e .pi-env/coordination/issues
 test ! -e .pi-env/coordination/WORKSPACE.md
 test ! -e .pi-env/coordination/workspace
 test ! -e .pi-env/coordination/functional-requirements
@@ -271,6 +282,7 @@ grep -q '^item_key: PIENV$' .pi-env/coordination/PROJECT.md
 git -C .pi-env/coordination config --get pull.rebase | grep -qx true
 git -C .pi-env/coordination config --get rebase.autoStash | grep -qx true
 test "$(git -C .pi-env/coordination remote get-url origin)" = "../../../remotes/pi-env-coordination.git"
+export PI_COORD_REPO_ID=pi-env
 
 cd "$tmp"
 agent-coord-clone \
@@ -528,7 +540,7 @@ task_issue_path="$(cd "$workspace_dir" && agent-coord-new \
 grep -q '^type: issue$' "$workspace_dir/.pi-env/coordination/$task_issue_path"
 grep -q '^category: task$' "$workspace_dir/.pi-env/coordination/$task_issue_path"
 case "$task_issue_path" in
-  issues/open/*.yaml) ;;
+  repos/pi-env/issues/open/*.yaml) ;;
   *) printf 'unexpected task issue path: %s\n' "$task_issue_path" >&2; exit 1 ;;
 esac
 task_issue_id="$(grep '^id: ' "$workspace_dir/.pi-env/coordination/$task_issue_path" | sed 's/^id: //')"
@@ -793,7 +805,7 @@ review_failed_path="$(agent-coord-review \
   --result "Needs more work." \
   "$review_fail_id" | tail -n 1)"
 
-test "$review_failed_path" = "issues/open/$review_fail_id.yaml"
+test "$review_failed_path" = "repos/pi-env/issues/open/$review_fail_id.yaml"
 grep -q '^status: open$' "$workspace_dir/.pi-env/coordination/$review_failed_path"
 grep -q '^owner: null$' "$workspace_dir/.pi-env/coordination/$review_failed_path"
 grep -q '^done: null$' "$workspace_dir/.pi-env/coordination/$review_failed_path"
@@ -834,7 +846,7 @@ verification_failed_path="$(PI_COORD_ROLE=tester agent-coord-verify \
   --result "Needs more verification work." \
   "$verify_fail_id" | tail -n 1)"
 
-test "$verification_failed_path" = "issues/open/$verify_fail_id.yaml"
+test "$verification_failed_path" = "repos/pi-env/issues/open/$verify_fail_id.yaml"
 grep -q '^status: open$' "$workspace_dir/.pi-env/coordination/$verification_failed_path"
 grep -q '^owner: null$' "$workspace_dir/.pi-env/coordination/$verification_failed_path"
 grep -q '^done: null$' "$workspace_dir/.pi-env/coordination/$verification_failed_path"

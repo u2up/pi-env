@@ -21,6 +21,7 @@ agent-coord-init \
   --project pi-env \
   --agent-id agent-a \
   --dir .pi-env/coordination >/dev/null
+export PI_COORD_REPO_ID=pi-env
 
 item_path="$(agent-coord-new \
   --coord-dir .pi-env/coordination \
@@ -39,7 +40,7 @@ if agent-coord-lint \
 fi
 cp "$tmp/item.clean.yaml" ".pi-env/coordination/$item_path"
 case "$item_path" in
-  issues/open/"$item_id".yaml) ;;
+  repos/pi-env/issues/open/"$item_id".yaml) ;;
   *) printf 'unexpected item path: %s\n' "$item_path" >&2; exit 1 ;;
 esac
 

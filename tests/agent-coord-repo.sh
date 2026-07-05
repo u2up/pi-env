@@ -29,12 +29,56 @@ mkdir -p "$coord_dir/issues/open" "$coord_dir/issues/blocked" "$coord_dir/issues
 git -C "$coord_dir" add -A
 git -C "$coord_dir" commit -q -m "Initialize registry test"
 
+cat >"$coord_dir/issues/open/ROOT-ISS-1.yaml" <<'EOF_ROOT_ISSUE'
+schema: coordination-item/v1
+id: ROOT-ISS-1
+type: issue
+status: open
+project: root
+EOF_ROOT_ISSUE
+git -C "$coord_dir" add issues/open/ROOT-ISS-1.yaml
+git -C "$coord_dir" commit -q -m "Add root issue"
+agent-coord-repo --coord-dir "$coord_dir" migrate-root-issues root-repo >/dev/null
+test -f "$coord_dir/repos/root-repo/REPO.md"
+test -f "$coord_dir/repos/root-repo/issues/open/ROOT-ISS-1.yaml"
+test ! -e "$coord_dir/issues/open/ROOT-ISS-1.yaml"
+git -C "$coord_dir" diff --cached --name-status | grep -q $'^R.*issues/open/ROOT-ISS-1.yaml.*repos/root-repo/issues/open/ROOT-ISS-1.yaml$'
+git -C "$coord_dir" commit -q -m "Migrate root issue"
+
+cat >"$coord_dir/issues/open/ROOT-ISS-1.yaml" <<'EOF_DUP_ISSUE'
+schema: coordination-item/v1
+id: ROOT-ISS-1
+type: issue
+status: open
+project: root
+EOF_DUP_ISSUE
+if agent-coord-repo --coord-dir "$coord_dir" migrate-root-issues root-repo >"$tmp/migrate-dup.out" 2>"$tmp/migrate-dup.err"; then
+  printf 'duplicate root issue unexpectedly migrated\n' >&2
+  exit 1
+fi
+grep -q 'target already exists' "$tmp/migrate-dup.err"
+rm -f "$coord_dir/issues/open/ROOT-ISS-1.yaml"
+cat >"$coord_dir/issues/open/ROOT-ISS-DUP.yaml" <<'EOF_DUP_ID'
+schema: coordination-item/v1
+id: ROOT-ISS-1
+type: issue
+status: open
+project: root
+EOF_DUP_ID
+if agent-coord-repo --coord-dir "$coord_dir" migrate-root-issues root-repo >"$tmp/migrate-dup-id.out" 2>"$tmp/migrate-dup-id.err"; then
+  printf 'duplicate issue id unexpectedly migrated\n' >&2
+  exit 1
+fi
+grep -q 'duplicate issue id' "$tmp/migrate-dup-id.err"
+rm -f "$coord_dir/issues/open/ROOT-ISS-DUP.yaml"
+
 agent-coord-repo --coord-dir "$coord_dir" add alpha --remote https://example.invalid/alpha.git >/dev/null
 test -f "$coord_dir/repos/alpha/REPO.md"
 for state in open blocked done closed; do
   test -d "$coord_dir/repos/alpha/issues/$state"
 done
-agent-coord-repo --coord-dir "$coord_dir" list --active | grep -q $'^alpha\tactive$'
+agent-coord-repo --coord-dir "$coord_dir" list --active >"$tmp/list-active.out"
+grep -q $'^alpha\tactive$' "$tmp/list-active.out"
 agent-coord-repo --coord-dir "$coord_dir" show alpha | grep -q '^repo_id: alpha$'
 
 issue_path="$(agent-coord-new --coord-dir "$coord_dir" --repo-id alpha "Alpha issue" | tail -n 1)"

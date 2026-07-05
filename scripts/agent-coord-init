@@ -22,6 +22,8 @@ Options:
   --remote URL      Existing coordination remote URL; default: PI_COORD_REMOTE_URL
   --project ID      Coordination project; default: PI_COORD_PROJECT or cwd name
   --project-key KEY Project item ID prefix; default: derived project
+  --repo-id ID      Initial implementation repo id; default: PI_COORD_REPO_ID,
+                   .pi-coordination.yaml repo_id, git remote, or project
   --dir DIR         Working clone dir; default: PI_COORD_DIR or .pi-env/coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE       Coordination role; default: PI_COORD_ROLE
@@ -41,6 +43,7 @@ agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
 project_key="${PI_COORD_PROJECT:-}"
 project_id_key="${PI_COORD_PROJECT_KEY:-}"
+repo_id_arg="${PI_COORD_REPO_ID:-}"
 bare_only=0
 
 while [ "$#" -gt 0 ]; do
@@ -83,6 +86,11 @@ while [ "$#" -gt 0 ]; do
       project_id_key="$2"
       shift 2
       ;;
+    --repo-id)
+      [ "$#" -ge 2 ] || coord_die "--repo-id requires a value"
+      repo_id_arg="$2"
+      shift 2
+      ;;
     --bare-only)
       bare_only=1
       shift
@@ -106,6 +114,28 @@ if [ -z "$project_key" ]; then
 fi
 [ -n "$project_key" ] || coord_die "project must not be empty"
 [ -n "$agent_id" ] || coord_die "agent id must not be empty"
+
+initial_repo_source=""
+initial_repo_id="$repo_id_arg"
+if [ -n "$initial_repo_id" ]; then
+  initial_repo_source="--repo-id or PI_COORD_REPO_ID"
+else
+  initial_repo_id="$(coord_impl_config_value repo_id || true)"
+  if [ -n "$initial_repo_id" ]; then
+    initial_repo_source=".pi-coordination.yaml"
+  else
+    initial_repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)"
+    if [ -n "$initial_repo_id" ]; then
+      initial_repo_source="git remote origin"
+    else
+      initial_repo_id="$(coord_sanitize_path_part "$project_key")"
+      initial_repo_source="project"
+    fi
+  fi
+fi
+[ -n "$initial_repo_id" ] || coord_die "initial repo id must not be empty"
+coord_repo_id_is_valid "$initial_repo_id" \
+  || coord_die "invalid initial repo id '$initial_repo_id' from $initial_repo_source; use --repo-id with lowercase letters, digits, dots, underscores, and hyphens"
 
 remote_git_dir=""
 if [ -n "$remote_url" ]; then
@@ -183,10 +213,10 @@ project_item_key="$(coord_project_id_prefix "$project_id_key")"
 mkdir -p \
   docs \
   ".pi/skills/agent-coordination" \
-  issues/open \
-  issues/blocked \
-  issues/done \
-  issues/closed \
+  "repos/$initial_repo_id/issues/open" \
+  "repos/$initial_repo_id/issues/blocked" \
+  "repos/$initial_repo_id/issues/done" \
+  "repos/$initial_repo_id/issues/closed" \
   requirements \
   todos \
   decisions \
@@ -212,10 +242,35 @@ is needed, \`blocked\` means developer work cannot proceed, \`done\` means the
 developer believes implementation is complete, and \`closed\` means final
 accepted after review and verification.
 
+New issue items are stored under \`repos/<repo_id>/issues/<state>\`.
 New item IDs use \`<KEY>-<TYPE>-<YYYYMMDD-HHMMSS>-<NNN>\`, with \`NNN\`
 starting at \`001\` for each timestamp. Testable items are linked to project
 repo scripts by matching item and test filename stems.
 EOF_README
+
+cat >REPOS.md <<EOF_REPOS
+# Coordination repositories
+
+| Repo | Status | Aliases |
+|------|--------|---------|
+| $initial_repo_id | active |  |
+EOF_REPOS
+
+initial_item_key="$(coord_project_id_prefix "$initial_repo_id")"
+cat >"repos/$initial_repo_id/REPO.md" <<EOF_REPO
+---
+repo_id: $initial_repo_id
+status: active
+item_key: $initial_item_key
+project: $initial_repo_id
+created: $created
+updated: $created
+aliases: []
+remotes: []
+---
+
+# $initial_repo_id
+EOF_REPO
 
 cat >PROJECT.md <<EOF_PROJECT
 ---
@@ -241,7 +296,7 @@ cat >"agents/$agent_file.md" <<EOF_AGENT
 
 EOF_AGENT
 
-find issues requirements todos decisions notes agents -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
+find repos requirements todos decisions notes agents -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
 
 actor="$(coord_effective_actor "$agent_id" "$role")"
 if coord_commit_all_if_changed "Initialize coordination repository" "$actor"; then

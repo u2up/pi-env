@@ -18,6 +18,7 @@ Usage:
   agent-coord-repo [--coord-dir DIR] add REPO_ID [--remote URL ...]
   agent-coord-repo [--coord-dir DIR] rename OLD_ID NEW_ID
   agent-coord-repo [--coord-dir DIR] retire REPO_ID [--force]
+  agent-coord-repo [--coord-dir DIR] migrate-root-issues REPO_ID [--remote URL ...]
   agent-coord-repo [--coord-dir DIR] list [--all|--active|--retired]
   agent-coord-repo [--coord-dir DIR] show REPO_ID
 
@@ -123,6 +124,7 @@ case "$cmd" in
       printf 'repo_id: %s\n' "$repo_id"
       printf 'status: active\n'
       printf 'item_key: %s\n' "$item_key"
+      printf 'project: %s\n' "$repo_id"
       printf 'created: %s\nupdated: %s\n' "$created" "$created"
       printf 'aliases: []\n'
       printf 'remotes:'
@@ -162,6 +164,7 @@ case "$cmd" in
       }
       in_fm && /^repo_id:/ { print "repo_id: " repo_id; next }
       in_fm && /^item_key:/ { print "item_key: " item_key; next }
+      in_fm && /^project:/ { print "project: " repo_id; next }
       in_fm && /^updated:/ { print "updated: " updated; next }
       in_fm && /^aliases:/ { print "aliases:"; print "  - " old_id; for (i in a) if (a[i] != "" && a[i] != old_id) print "  - " a[i]; saw_aliases=1; skip_aliases=1; next }
       skip_aliases && /^[[:space:]]*-[[:space:]]*/ { next }
@@ -171,6 +174,78 @@ case "$cmd" in
     mv "$tmp" "$manifest"
     repo_write_index
     printf 'repos/%s/REPO.md\n' "$new_id"
+    ;;
+  migrate-root-issues)
+    [ "$#" -ge 1 ] || coord_die "migrate-root-issues requires REPO_ID"
+    repo_id="$1"; shift
+    repo_assert_valid "$repo_id"
+    remotes=()
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --remote) [ "$#" -ge 2 ] || coord_die "--remote requires a value"; remotes+=("$2"); shift 2 ;;
+        *) coord_die "unknown migrate-root-issues option: $1" ;;
+      esac
+    done
+    if match="$(repo_find_any "$repo_id" 2>/dev/null)"; then
+      canonical="$(printf '%s' "$match" | cut -d: -f1)"
+      manifest="$(printf '%s' "$match" | cut -d: -f3-)"
+      [ "$(repo_status "$manifest")" = "active" ] || coord_die "repo '$canonical' is not active"
+    else
+      mkdir -p "repos/$repo_id/issues/open" "repos/$repo_id/issues/blocked" "repos/$repo_id/issues/done" "repos/$repo_id/issues/closed"
+      item_key="$(coord_project_id_prefix "$repo_id")"
+      created="$(coord_timestamp_iso)"
+      {
+        printf -- '---\n'
+        printf 'repo_id: %s\n' "$repo_id"
+        printf 'status: active\n'
+        printf 'item_key: %s\n' "$item_key"
+        printf 'project: %s\n' "$repo_id"
+        printf 'created: %s\nupdated: %s\n' "$created" "$created"
+        printf 'aliases: []\n'
+        printf 'remotes:'
+        if [ "${#remotes[@]}" -eq 0 ]; then printf ' []\n'; else printf '\n'; for remote in "${remotes[@]}"; do printf '  - %s\n' "$(coord_yaml_scalar "$remote")"; done; fi
+        printf -- '---\n\n# %s\n' "$repo_id"
+      } >"$(repo_manifest "$repo_id")"
+      repo_write_index
+      canonical="$repo_id"
+    fi
+    for state in open blocked done closed; do mkdir -p "repos/$canonical/issues/$state"; done
+    declare -A seen_ids
+    sources=()
+    if [ -d issues ]; then
+      for state in open blocked done closed; do
+        [ -d "issues/$state" ] || continue
+        while IFS= read -r src; do
+          [ -n "$src" ] || continue
+          base="$(basename "$src")"
+          target="repos/$canonical/issues/$state/$base"
+          [ ! -e "$target" ] || coord_die "target already exists: $target"
+          id="$(awk '/^id:[[:space:]]*/ { sub(/^id:[[:space:]]*/, ""); print; exit }' "$src")"
+          [ -n "$id" ] || coord_die "issue file is missing id: $src"
+          [ -z "${seen_ids[$id]+x}" ] || coord_die "duplicate issue id '$id' in root issues: $src and ${seen_ids[$id]}"
+          seen_ids[$id]="$src"
+          while IFS= read -r existing; do
+            [ -n "$existing" ] || continue
+            existing_id="$(awk '/^id:[[:space:]]*/ { sub(/^id:[[:space:]]*/, ""); print; exit }' "$existing")"
+            [ "$existing_id" != "$id" ] || coord_die "duplicate issue id '$id' already exists in $existing"
+          done < <(find "repos/$canonical/issues" -type f \( -name '*.yaml' -o -name '*.yml' \) 2>/dev/null)
+          sources+=("$state:$src:$target")
+        done < <(find "issues/$state" -maxdepth 1 -type f \( -name '*.yaml' -o -name '*.yml' \) 2>/dev/null | sort)
+      done
+    fi
+    [ "${#sources[@]}" -gt 0 ] || coord_die "no root issue files found to migrate"
+    for entry in "${sources[@]}"; do
+      state="${entry%%:*}"
+      rest="${entry#*:}"
+      src="${rest%%:*}"
+      target="${rest#*:}"
+      if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git ls-files --error-unmatch "$src" >/dev/null 2>&1; then
+        git mv "$src" "$target"
+      else
+        mv "$src" "$target"
+      fi
+      printf '%s -> %s\n' "$src" "$target"
+    done
     ;;
   retire)
     force="no"
