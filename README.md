@@ -1470,12 +1470,14 @@ tests/role-manager-loader.sh
 tests/role-manager-commands.sh
 ```
 
-Item-matched tests live in the project repository under `tests/items/` and
-match the item ID by filename stem. Project item tests mirror the root item
-type, but not issue lifecycle status directories:
+Item-matched tests live in the owning implementation repository under
+`tests/items/` and match the item ID by filename stem. Issue items belong to a
+single repo namespace under `repos/{repo_id}/issues/{status}`, but project item
+tests mirror only the root item type; they do not mirror repo namespaces or
+issue lifecycle status directories:
 
 ```text
-.pi-env/coordination/issues/closed/PIENV-ISS-20260607-204155-001.yaml
+.pi-env/coordination/repos/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml
 tests/items/issues/PIENV-ISS-20260607-204155-001.sh
 
 .pi-env/coordination/requirements/PIENV-FRQ-20260607-204155-001.yaml
