@@ -228,7 +228,7 @@ case "$cmd" in
             [ -n "$existing" ] || continue
             existing_id="$(awk '/^id:[[:space:]]*/ { sub(/^id:[[:space:]]*/, ""); print; exit }' "$existing")"
             [ "$existing_id" != "$id" ] || coord_die "duplicate issue id '$id' already exists in $existing"
-          done < <(find "repos/$canonical/issues" -type f \( -name '*.yaml' -o -name '*.yml' \) 2>/dev/null)
+          done < <(find repos -path '*/issues/*' -type f \( -name '*.yaml' -o -name '*.yml' \) 2>/dev/null)
           sources+=("$state:$src:$target")
         done < <(find "issues/$state" -maxdepth 1 -type f \( -name '*.yaml' -o -name '*.yml' \) 2>/dev/null | sort)
       done

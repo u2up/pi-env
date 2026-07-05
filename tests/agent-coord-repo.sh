@@ -72,6 +72,28 @@ fi
 grep -q 'duplicate issue id' "$tmp/migrate-dup-id.err"
 rm -f "$coord_dir/issues/open/ROOT-ISS-DUP.yaml"
 
+agent-coord-repo --coord-dir "$coord_dir" add other-repo >/dev/null
+cat >"$coord_dir/repos/other-repo/issues/open/OTHER-ISS-1.yaml" <<'EOF_GLOBAL_DUP_ID'
+schema: coordination-item/v1
+id: GLOBAL-DUP-1
+type: issue
+status: open
+project: other-repo
+EOF_GLOBAL_DUP_ID
+cat >"$coord_dir/issues/open/ROOT-GLOBAL-DUP.yaml" <<'EOF_ROOT_GLOBAL_DUP_ID'
+schema: coordination-item/v1
+id: GLOBAL-DUP-1
+type: issue
+status: open
+project: root
+EOF_ROOT_GLOBAL_DUP_ID
+if agent-coord-repo --coord-dir "$coord_dir" migrate-root-issues root-repo >"$tmp/migrate-global-dup-id.out" 2>"$tmp/migrate-global-dup-id.err"; then
+  printf 'global duplicate issue id unexpectedly migrated\n' >&2
+  exit 1
+fi
+grep -q 'duplicate issue id' "$tmp/migrate-global-dup-id.err"
+rm -f "$coord_dir/issues/open/ROOT-GLOBAL-DUP.yaml"
+
 agent-coord-repo --coord-dir "$coord_dir" add alpha --remote https://example.invalid/alpha.git >/dev/null
 test -f "$coord_dir/repos/alpha/REPO.md"
 for state in open blocked done closed; do
