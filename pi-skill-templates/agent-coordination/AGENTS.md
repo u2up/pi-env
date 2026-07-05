@@ -103,9 +103,13 @@ under `todos/` with one top-level `body: |-` block. Requirement and TODO items
 must not contain top-level `current`, `events`, or `messages` sections.
 
 When changing requirements, update the corresponding requirement item first.
-Then regenerate `REQUIREMENTS.md` from the requirement items. Do not edit
-`REQUIREMENTS.md` as the primary source for a requirement that already has an
-active coordination requirement item.
+Then consult top-level `PROJECT.md` `domain_generated_files` metadata to find
+which implementation repo owns domain-wide generated outputs such as
+`REQUIREMENTS.md` and `REQUIREMENTS_COVERAGE.md`. Regenerate and commit those
+files only in the declared implementation repo. If no matching path is
+declared, ask before updating generated outputs. Do not edit generated files as
+the primary source for a requirement that already has an active coordination
+requirement item.
 
 Do not add or maintain a separate Markdown `## Activity` section in item files.
 It duplicates issue event history and will drift.

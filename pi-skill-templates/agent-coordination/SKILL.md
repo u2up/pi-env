@@ -12,7 +12,10 @@ implementation repository.
 The coordination repository is the only synchronization source for agent issue,
 TODO, and coordination state in its domain. Issues are repo-scoped under
 `repos/{repo_id}/issues/{status}/`; requirements, decisions, and domain notes
-remain shared at the domain root. For fresh pi-env projects, find the clone at
+remain shared at the domain root. Domain-wide generated files that are committed
+to an implementation repo are declared in top-level `PROJECT.md` under
+`domain_generated_files`; ask before regenerating them when no matching path is
+declared. For fresh pi-env projects, find the clone at
 `.pi-env/coordination` unless `PI_COORD_DIR`, the user, or project coordination
 rules say otherwise.
 

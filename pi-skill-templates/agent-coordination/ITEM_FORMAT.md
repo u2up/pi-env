@@ -267,6 +267,26 @@ namespace and records the old id as an alias with warnings; retire keeps the
 namespace for history but prevents new issue creation unless a force option is
 used by policy.
 
+## Domain generated files
+
+Top-level `PROJECT.md` may declare generated, domain-wide files that are
+committed to implementation repositories. Use canonical active repo ids from
+`repos/{repo_id}/REPO.md`; paths are relative to the named implementation repo
+root:
+
+```yaml
+domain_generated_files:
+  - repo_id: backend-api
+    paths:
+      - REQUIREMENTS.md
+      - REQUIREMENTS_COVERAGE.md
+```
+
+The listed repo owns regeneration commits for those paths. An empty or missing
+list means no owner has been declared yet. Generated files are secondary views;
+update coordination items first, then regenerate the files in the declared
+implementation repo.
+
 ## Source references
 
 Imported requirement items should record where they came from in a top-level

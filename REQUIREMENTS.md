@@ -259,7 +259,10 @@ The coordination clone contains root `PROJECT.md`, shared `requirements/`,
 `todos/`, `decisions/`, and `notes/` entries, plus repo-scoped issue
 namespaces under `repos/<repo_id>/issues/<status>`. Each issue belongs to
 exactly one implementation repo by path; cross-repo work should use one issue
-per repo linked by stable item IDs.
+per repo linked by stable item IDs. Top-level `PROJECT.md` must define any
+domain-wide generated files that are committed to implementation
+repositories, including the canonical `repo_id` that owns each repo-root
+relative path such as `REQUIREMENTS.md` or `REQUIREMENTS_COVERAGE.md`.
 
 #### UC-024 Serial role automation workflow
 

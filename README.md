@@ -135,9 +135,26 @@ win: repo id resolution is `--repo-id`, `PI_COORD_REPO_ID`,
 resolution is explicit `--remote`, `PI_COORD_REMOTE_URL`, then
 `.pi-env-coordination.yaml`. No legacy implementation attachment filename is
 read as a fallback. The coordination repository registry remains authoritative
-for canonical and active repo ids when
-`repositories.yaml` or the
+for canonical and active repo ids when `repositories.yaml` or the
 `repos/<repo_id>/REPO.md` registry is present.
+
+Domain-wide generated files that are committed to implementation repositories
+are declared in the coordination clone's top-level `PROJECT.md`, not in the
+per-repo attachment hint:
+
+```yaml
+domain_generated_files:
+  - repo_id: backend-api
+    paths:
+      - REQUIREMENTS.md
+      - REQUIREMENTS_COVERAGE.md
+```
+
+The `repo_id` must be a canonical active repository id from the coordination
+registry, and `paths` are relative to that implementation repository root.
+Agents should regenerate and commit those paths only in the named
+implementation repository; if the field is absent, empty, or ambiguous, add an
+explicit coordination-domain decision before updating generated outputs.
 
 `agent-coord-lint` validates repo manifests and all repo-scoped issue structure
 under `repos/<repo_id>/issues/<status>`. Item-matched issue tests are expected
@@ -1144,6 +1161,18 @@ docs, and `.pi/skills/agent-coordination/SKILL.md`. The repo manifest at
 `repos/<repo_id>/REPO.md` is the authoritative registry record for that
 implementation repo. When `PI_COORD_DIR` is unset, fresh projects use
 `.pi-env/coordination`.
+
+Top-level `PROJECT.md` can also declare which implementation repo commits
+shared generated outputs for the domain, with paths relative to the named
+implementation repo root, for example:
+
+```yaml
+domain_generated_files:
+  - repo_id: pi-env
+    paths:
+      - REQUIREMENTS.md
+      - REQUIREMENTS_COVERAGE.md
+```
 
 Clone the same coordination domain elsewhere with:
 
