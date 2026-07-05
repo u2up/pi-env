@@ -39,7 +39,9 @@ sequence number.
 
 When `agent-coord-new` needs to derive a project key, it uppercases the source
 name and removes delimiters, whitespace, slashes, backslashes, pipes, and other
-non-alphanumeric characters. Project items derive from the project name.
+non-alphanumeric characters. Domain-common items derive from the coordination domain or project metadata.
+Repo-scoped issue items derive from the owning repo's `repos/{repo_id}/REPO.md`
+metadata when present.
 `--id` may override the whole item ID when a caller needs to preserve or import
 an ID.
 
@@ -142,19 +144,24 @@ declared by design documents and generated coverage reports.
 
 ## Item types and directories
 
-Issue items use developer-centric status directories:
+Issue items use developer-centric status directories inside the owning repo
+namespace:
 
 ```text
-issues/open/
-issues/blocked/
-issues/done/
-issues/closed/
+repos/{repo_id}/issues/open/
+repos/{repo_id}/issues/blocked/
+repos/{repo_id}/issues/done/
+repos/{repo_id}/issues/closed/
 ```
 
-Other item types live under their semantic type directory and do not mirror
-issue status directories by default. In project-root clones, all requirement
-classes share the root-level `requirements/` directory while preserving FRQ,
-QRQ, and CRQ item-ID type codes.
+Historical root `issues/{status}/` paths may exist during migration, but new
+issue items should be created under `repos/{repo_id}/issues/{status}/`.
+
+Other item types live under shared semantic type directories and do not mirror
+issue status directories by default. Requirements, decisions, and domain notes
+remain common to the coordination domain. All requirement classes share the
+root-level `requirements/` directory while preserving FRQ, QRQ, and CRQ item-ID
+type codes.
 
 ```text
 requirements/                           # functional, quality, and constraint requirements
@@ -208,7 +215,8 @@ short rationale, for example documentation-only work, a policy decision, or
 coverage by another explicitly named requirement item.
 
 Executable item tests live in the project repository, not the coordination
-repository. Project item tests mirror the root item type, but not issue status directories:
+repository. Project item tests mirror the root item type, but not issue status directories
+or repo namespaces:
 
 ```text
 tests/items/issues/<item-id>.sh
@@ -219,7 +227,7 @@ tests/items/todos/<item-id>.sh
 Examples:
 
 ```text
-.pi-env/coordination/issues/closed/PIENV-ISS-20260607-204155-001.yaml
+.pi-env/coordination/repos/pi-env/issues/closed/PIENV-ISS-20260607-204155-001.yaml
 tests/items/issues/PIENV-ISS-20260607-204155-001.sh
 
 .pi-env/coordination/requirements/PIENV-FRQ-20260607-204155-001.yaml
@@ -229,6 +237,35 @@ tests/items/requirements/PIENV-FRQ-20260607-204155-001.sh
 A verification event should record the exact test command(s) and result. The
 test script itself should remain in the project repo so it evolves with the
 code commit it verifies.
+
+## Repository namespaces
+
+A coordination domain can cover several implementation repositories. Each pi
+session is still attached to one implementation repository, and each issue item
+belongs to one repository by its `repos/{repo_id}/issues/{status}/` path. Use
+one issue per implementation repo for cross-repo work and link them with stable
+item IDs in `related:` or message text. Avoid path-only references so repo-id
+renames do not require rewriting old links.
+
+Repository manifests live at `repos/{repo_id}/REPO.md` and are authoritative
+for canonical repo ids, aliases, remotes, and active/retired status. Older
+`repositories.yaml` registries may be read for compatibility; helpers should
+warn when an alias or ambiguous remote is used.
+
+Minimal implementation attachment file in an implementation repo root:
+
+```yaml
+version: 1
+coordination_domain: my-product
+coordination_remote: git@example.com:org/my-product-coordination.git
+repo_id: backend-api
+```
+
+Repo-id lifecycle operations should be explicit: add creates
+`repos/{repo_id}/REPO.md` and issue status directories; rename moves the
+namespace and records the old id as an alias with warnings; retire keeps the
+namespace for history but prevents new issue creation unless a force option is
+used by policy.
 
 ## Source references
 

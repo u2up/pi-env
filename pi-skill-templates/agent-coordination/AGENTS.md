@@ -1,6 +1,10 @@
 # Agent Coordination Rules
 
-This repository is the authoritative coordination state for this project.
+This repository is the authoritative coordination state for its coordination domain.
+A domain can cover one or more implementation repositories, but each pi session
+works in one implementation repository. Issue items belong to exactly one
+registered repository namespace by path.
+
 ## Required rules
 
 1. Treat this coordination repository as the only shared synchronization
@@ -36,7 +40,8 @@ This repository is the authoritative coordination state for this project.
 Use the stored `item_key` for the project key portion of generated
 coordination item IDs:
 
-- project items use top-level `PROJECT.md`.
+- coordination-domain defaults use top-level `PROJECT.md`;
+- repo-scoped issue items use `repos/{repo_id}/REPO.md`.
 
 Do not invent, rename, or silently change item keys. If a project key is
 missing, derive it from the project name by uppercasing it and removing
@@ -60,28 +65,34 @@ filenames.
 
 ## Item types and directories
 
-Issue directory names are intentionally developer-centric:
+Issue directory names are intentionally developer-centric and live under the
+owning implementation repo namespace:
 
-- `issues/open/`: developer work is available or required.
-- `issues/blocked/`: developer work is required but cannot proceed yet.
-- `issues/done/`: the developer believes implementation is complete; review
+- `repos/{repo_id}/issues/open/`: developer work is available or required.
+- `repos/{repo_id}/issues/blocked/`: developer work is required but cannot proceed yet.
+- `repos/{repo_id}/issues/done/`: the developer believes implementation is complete; review
   and verification are still pending or in progress.
-- `issues/closed/`: final accepted state after the item is done, reviewed,
+- `repos/{repo_id}/issues/closed/`: final accepted state after the item is done, reviewed,
   and verified.
+
+Historical root `issues/{status}/` paths may exist during migration, but new
+issue work should use `repos/{repo_id}/issues/{status}/`.
 
 The completion metric for managers, reviewers, and testers is therefore not
 "done". It is `status: closed` with `reviewed: true` and `verified: true`.
 
-Other item types live under semantic type directories. All requirement classes
-use the single root-level `requirements/` directory in project-root clones
-while preserving FRQ, QRQ, CRQ item-ID type codes. TODO items
-use `todos/` and the `TODO` item-ID type code. Do not mirror issue
+Other item types live under semantic type directories shared by the coordination
+domain. All requirement classes use the single root-level `requirements/`
+directory while preserving FRQ, QRQ, CRQ item-ID type codes. Decisions, domain
+notes, and TODO items are also domain-common unless a local rule says
+otherwise; TODO items use `todos/` and the `TODO` item-ID type code. Do not mirror issue
 status directories in project test paths, and do not silently renumber or
 rewrite historical items to fit newer conventions.
 
 ## Item format
 
-Coordination items are YAML files under the status or type directories.
+Coordination items are YAML files under repo-scoped issue status directories or
+shared semantic type directories.
 Issue current state is stored near the top (`status`, `owner`, `updated`,
 `done`, `closed`, `reviewed`, `verified`, `testable`, `testability_note`, and
 `current`), while authoritative issue history is stored in chronological
@@ -120,8 +131,9 @@ bash script in the project repository. Use `testable: no` only for special
 cases such as documentation-only work, policy decisions, legacy closed items
 predating the convention, or explicit coverage by another requirement item.
 
-Item-matched tests live in the project repo under `tests/items/` and match the
-item ID exactly by filename stem. They mirror the root item type, but not issue lifecycle status:
+Item-matched tests live in the owning implementation repo under `tests/items/`
+and match the item ID exactly by filename stem. They mirror the root item type,
+but not issue lifecycle status or repo namespace:
 
 ```text
 tests/items/issues/<item-id>.sh
@@ -135,9 +147,10 @@ verification.
 
 ## State transitions
 
-- Create: add a new YAML item under `issues/open/` or the appropriate typed
-  directory, with `reviewed: false`, `verified: false`, `testable: yes` or
-  `testable: no`, an `opened` event, and an initial message.
+- Create: add a new YAML item under `repos/{repo_id}/issues/open/` or the
+  appropriate shared typed directory, with `reviewed: false`,
+  `verified: false`, `testable: yes` or `testable: no`, an `opened` event,
+  and an initial message.
 - Claim: keep the issue item under `open/`, set `status: claimed`, set
   `owner: <agent-id>`, update `updated:` and `current:`, append a `claimed`
   event and linked message, commit, and push.

@@ -253,9 +253,13 @@ for this workflow, including the coordination working clone and local bare
 remotes, must live under `.pi-env/` by default. Agents synchronize only by
 normal Git pull/commit/push operations. This use case remains opt-in, and
 default `pi-start` behavior must not mutate coordination state automatically.
-The coordination layout is root-only: the coordination clone contains root
-`PROJECT.md`, `issues/`, `requirements/`, `todos/`, `decisions/`, and
-`notes/` entries for the selected project.
+A coordination domain can cover multiple implementation repositories, but
+each pi-env invocation remains attached to one selected implementation repo.
+The coordination clone contains root `PROJECT.md`, shared `requirements/`,
+`todos/`, `decisions/`, and `notes/` entries, plus repo-scoped issue
+namespaces under `repos/<repo_id>/issues/<status>`. Each issue belongs to
+exactly one implementation repo by path; cross-repo work should use one issue
+per repo linked by stable item IDs.
 
 #### UC-024 Serial role automation workflow
 
@@ -664,12 +668,13 @@ It must install the rule/protocol templates into:
 - `docs/ITEM_FORMAT.md`
 - `.pi/skills/agent-coordination/SKILL.md`
 
-It must also create the standard project-root directory skeleton:
-root-level `issues/open`, `issues/blocked`, `issues/done`,
-`issues/closed`, `requirements`, `decisions`, `notes`, and `agents`
-directories plus top-level `PROJECT.md` item-key metadata. The clone must be
-configured with `pull.rebase=true` and
-`rebase.autoStash=true`.
+It must also create the standard coordination-domain skeleton: top-level
+`PROJECT.md` item-key metadata; shared `requirements`, `decisions`, `notes`,
+and `agents` directories; and an initial implementation namespace at
+`repos/<repo_id>/issues/open`, `repos/<repo_id>/issues/blocked`,
+`repos/<repo_id>/issues/done`, and `repos/<repo_id>/issues/closed` with a
+`repos/<repo_id>/REPO.md` registry manifest. The clone must be configured
+with `pull.rebase=true` and `rebase.autoStash=true`.
 
 When `--dir` and `PI_COORD_DIR` are omitted, fresh project-local
 coordination bootstraps must place the working clone at
@@ -734,11 +739,13 @@ at `001` for each timestamp and increment to avoid collisions in the local
 coordination checkout. Filenames for new generated items must use the item ID
 only. `--id` must override the whole item ID.
 
-Project-root item keys must be stored in top-level `PROJECT.md` as
-`item_key`. When `--project` is omitted in a project-root clone, root item
-paths must be used even if `PI_COORD_PROJECT` is set for the coordination
-domain. In project-root clones, issue items must
-be created under `issues/open`. Functional, quality, constraint, and legacy
+Domain item keys must be stored in top-level `PROJECT.md` as `item_key`.
+Repo-scoped issue keys may come from `repos/<repo_id>/REPO.md`. When
+`--project` is omitted in a coordination-domain clone, domain-common item
+paths must be used even if `PI_COORD_PROJECT` is set for domain selection.
+Issue items must be created under `repos/<repo_id>/issues/open`, resolving
+the repo id from `--repo-id`, `PI_COORD_REPO_ID`, `.pi-env-coordination.yaml`,
+or registry remote metadata. Functional, quality, constraint, and legacy
 generic requirement items must be created under the root-level
 `requirements/` directory while preserving FRQ, QRQ, and CRQ item-ID type
 codes. Decision, note, and custom item types must be created under semantic

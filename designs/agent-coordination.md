@@ -67,12 +67,14 @@ The coordination repositories themselves should remain normal Git repositories c
 Use this rule:
 
 ```text
-one bare coordination repo == one project coordination domain
+one bare coordination repo == one coordination domain
 ```
 
-A coordination domain belongs to one selected project. Each pi-env invocation
-selects exactly one project root for `/workspace`. If projects are unrelated,
-use separate bare coordination repositories.
+A coordination domain may span multiple implementation repositories. Each
+pi-env invocation still selects exactly one implementation project root for
+`/workspace`, and each issue belongs to exactly one repo namespace by path. If
+projects are unrelated and should not share requirements, decisions, or domain
+notes, use separate bare coordination repositories.
 
 Example:
 
@@ -120,7 +122,7 @@ ignore-policy implications.
 
 ## 5. Repository layout
 
-Recommended project-root coordination layout inside `.pi-env/coordination`:
+Recommended coordination-domain layout inside `.pi-env/coordination`:
 
 ```text
 .pi-env/coordination/
@@ -134,11 +136,14 @@ Recommended project-root coordination layout inside `.pi-env/coordination`:
     skills/
       agent-coordination/
         SKILL.md
-  issues/
-    open/
-    blocked/
-    done/
-    closed/
+  repos/
+    pi-env/
+      REPO.md
+      issues/
+        open/
+        blocked/
+        done/
+        closed/
   requirements/
   todos/
   decisions/
@@ -148,12 +153,31 @@ Recommended project-root coordination layout inside `.pi-env/coordination`:
     agent-b.md
 ```
 
+`repos/{repo_id}/REPO.md` is the registry manifest for an implementation repo.
+It records the canonical repo id, optional aliases/remotes, and whether the repo
+is active or retired. Older `repositories.yaml` registry data can be treated as
+compatibility input, but manifest records are authoritative. Implementation
+repos may commit a root attachment hint so helpers can find the shared domain:
+
+```yaml
+version: 1
+coordination_domain: my-product
+coordination_remote: git@example.com:org/my-product-coordination.git
+repo_id: backend-api
+```
+
+Repo-id lifecycle operations are explicit: add creates the manifest and issue
+status directories, rename moves the namespace and records aliases with
+warnings, and retire preserves history while blocking new issues by default.
+
 
 `AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `agent-coord-init`. After initialization, the copies in the coordination repository are authoritative for that project coordination domain and can be edited/versioned like any other coordination state.
 
 Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions`
 for codebase-specific Pi behavior. Keep issue, TODO, and cross-agent
-synchronization state in the coordination repository.
+synchronization state in the coordination repository. Requirements, decisions,
+and notes are common to the domain; issue workflow state is scoped to an
+implementation repo under `repos/{repo_id}/issues/{status}/`.
 
 ## 6. Item IDs and state
 
@@ -171,8 +195,10 @@ decision, and `NOTE` for note. Generic `REQ` requirement IDs are legacy-only
 unless an explicit supersession or migration decision says otherwise. `NNN` is
 a three-digit
 collision/order suffix for the exact UTC
-timestamp and starts at `001`. Project-root item keys are stored in top-level `PROJECT.md` as `item_key`. New
-pi-env project coordination creates root project-scoped items.
+timestamp and starts at `001`. Domain item keys are stored in top-level
+`PROJECT.md` as `item_key`; repo-scoped issue keys may come from
+`repos/{repo_id}/REPO.md`. New pi-env project coordination creates a repo
+namespace for the selected implementation project.
 
 Default key resolution for `agent-coord-new` should be:
 
@@ -241,17 +267,17 @@ messages:
       - [ ] README explains sandbox `pi-bwrap -- config`
 ```
 
-Keep issue work in developer-centric state directories and keep current
-`status` in the YAML file:
+Keep issue work in developer-centric state directories under the owning repo
+namespace and keep current `status` in the YAML file:
 
 ```text
-issues/open/
-issues/blocked/
-issues/done/
-issues/closed/
+repos/{repo_id}/issues/open/
+repos/{repo_id}/issues/blocked/
+repos/{repo_id}/issues/done/
+repos/{repo_id}/issues/closed/
 ```
 
-Other item types live under semantic type directories such as
+Other item types live under domain-shared semantic type directories such as
 `requirements/`, `todos/`, `decisions/`, and `notes/`. Functional, quality,
 constraint requirement items share root-level `requirements/` while preserving
 their item ID type codes. TODO items use `todos/`, the `TODO` ID type code,
@@ -264,18 +290,21 @@ believes implementation is complete, and `closed` means final acceptance after
 review and verification. New items start with `reviewed: false` and
 `verified: false`, and declare `testable: yes` or `testable: no` with a
 `testability_note` when direct item-matched testing is not required.
-Item-matched tests live in the project repository under `tests/items/` and
-match the item ID by filename stem. Issue tests live under `tests/items/issues/`; requirement tests live under
-`tests/items/requirements/`. Tests intentionally do not mirror issue status
-directories.
+Item-matched tests live in the owning implementation repository under
+`tests/items/` and match the item ID by filename stem. Issue tests live under
+`tests/items/issues/`; requirement tests live under `tests/items/requirements/`.
+Tests intentionally do not mirror issue status directories or repo namespaces.
 
 When marking an issue done, move it with `git mv`, set `status: done`, set
 `done:`, reset `reviewed: false` and `verified: false`, update `current:`,
 and append a `done` event/message. Done or link events should include
 structured implementation refs when possible: `repo: pi-env`, `branch: main`,
 and the full `commit` hash. When final-closing an issue after review and
-verification, move it to `closed/`, set `status: closed`, set `closed:`, and
-append a final `closed` event/message.
+verification, move it to `closed/` in the same repo namespace, set
+`status: closed`, set `closed:`, and append a final `closed` event/message.
+Cross-repo implementation work should be represented by one issue per affected
+repo and linked with stable item IDs in `related:` or messages rather than
+path-only links, so repo-id renames do not require reference rewrites.
 
 ## 7. Git synchronization protocol
 
@@ -299,7 +328,7 @@ cd "${PI_COORD_DIR:-.pi-env/coordination}"
 git pull --rebase
 # edit item: status: claimed, owner: agent-a, current: evt-0002/msg-0002
 # append a claimed event and message
-path=issues/open/<PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>.yaml
+path=repos/<repo_id>/issues/open/<PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>.yaml
 git add "$path"
 git commit -m "Claim <PROJECTKEY>-ISS-<YYYYMMDD-HHMMSS>-<NNN>"
 git push

@@ -3,12 +3,16 @@
 Use this skill when working in a project that contains a Git-backed agent
 coordination repository, when asked to find, claim, or update work, or before
 making changes that affect shared agent state. Pi-env coordination is
-project-scoped at `.pi-env/coordination` by default.
+attached at `.pi-env/coordination` by default. A coordination domain may span
+multiple implementation repositories, but each pi session works in one
+implementation repository.
 
 ## Coordination repository
 
 The coordination repository is the only synchronization source for agent issue,
-TODO, and coordination state. For fresh pi-env projects, find it at
+TODO, and coordination state in its domain. Issues are repo-scoped under
+`repos/{repo_id}/issues/{status}/`; requirements, decisions, and domain notes
+remain shared at the domain root. For fresh pi-env projects, find the clone at
 `.pi-env/coordination` unless `PI_COORD_DIR`, the user, or project coordination
 rules say otherwise.
 
@@ -17,8 +21,8 @@ rules say otherwise.
 1. `cd "${PI_COORD_DIR:-.pi-env/coordination}" && git pull --rebase` before
    reading or modifying coordination state, or use the `agent-coord-*` helpers
    with their default coordination directory resolution.
-2. Inspect open, claimed, blocked, and done YAML issue items relevant to the
-   current project. Also inspect related requirement or decision items when
+2. Inspect open, claimed, blocked, and done YAML issue items in the current
+   repo namespace. Also inspect related requirement or decision items when
    they affect acceptance criteria.
 3. Claim at most one issue item unless instructed otherwise.
 4. When an active role is in effect, preserve it for coordination helpers with
@@ -34,10 +38,33 @@ rules say otherwise.
 9. Move an item to `closed` only after it is `done`, `reviewed: true`, and
    `verified: true`.
 
+## Repo namespaces, item keys, and IDs
+
+Resolve the current repo id from `--repo-id`, `PI_COORD_REPO_ID`, the
+implementation root's `.pi-env-coordination.yaml`, or registry remote data.
+The attachment file is a hint only; `repos/{repo_id}/REPO.md` and compatible
+registry data are authoritative. Alias use should warn so callers update to the
+canonical repo id. Cross-repo work should be split into one issue per repo and
+linked by stable item IDs, not by paths that would change on repo rename.
+
+Minimal implementation attachment file:
+
+```yaml
+version: 1
+coordination_domain: my-product
+coordination_remote: git@example.com:org/my-product-coordination.git
+repo_id: backend-api
+```
+
+Use `agent-coord-repo add`, `rename`, and `retire` for repo-id lifecycle
+changes. Add creates the manifest and issue status directories, rename moves
+the namespace and records old ids as aliases, and retire preserves history
+while blocking new issue creation by default.
+
 ## Item keys and IDs
 
-Use stored `item_key` metadata when creating items. Project-root item keys
-live in top-level `PROJECT.md`. Do not invent or silently change keys.
+Use stored `item_key` metadata when creating items. Domain item keys live in top-level `PROJECT.md`; repo issue keys may come from
+`repos/{repo_id}/REPO.md`. Do not invent or silently change keys.
 
 New item IDs and filenames use:
 
@@ -85,9 +112,9 @@ Every item should declare `testable: yes` or `testable: no`. If `testable: no`,
 include a non-empty `testability_note` explaining why an item-matched test is
 not required.
 
-Item-matched tests are executable bash scripts in the project repo, not the
-coordination repo. Match the filename stem to the item ID and mirror the
-root item type, not issue status:
+Item-matched tests are executable bash scripts in the owning implementation
+repo, not the coordination repo. Match the filename stem to the item ID and
+mirror the root item type, not issue status or repo namespace:
 
 ```text
 tests/items/issues/<item-id>.sh

@@ -1061,12 +1061,14 @@ See `designs/role-manager.md` for the architecture.
 
 ## 11. Agent coordination helpers
 
-`pi-env` includes opt-in helpers for one Git-backed coordination repository per
-selected project. They are plain Git/text-file tooling and are separate from
+`pi-env` includes opt-in helpers for one Git-backed coordination domain per
+selected project. A domain can cover multiple implementation repositories, but
+each pi-env invocation mounts and works in one implementation repository at
+`/workspace`. They are plain Git/text-file tooling and are separate from
 `pi-start`. Install `#pi-env-coordination`, use the compatibility `#pi-runtime`
 bundle, or leave `includeCoordinationHelpers` enabled in `mkPiShell` when you
-want these commands. Projects use the project-local `.pi-env/coordination`
-clone for the one project mounted at `/workspace` per invocation.
+want these commands. Projects usually use the project-local
+`.pi-env/coordination` clone as their attachment to the shared domain.
 
 Guided setup with inferred, project-specific defaults:
 
@@ -1134,11 +1136,14 @@ and be accessible to Git. Provide SSH keys, tokens, or credential helpers
 through narrowly-scoped sandbox/project configuration as needed; pi-env does
 not import the host `~/.ssh` directory or all host Git credentials wholesale.
 
-It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, project
-`PROJECT.md` metadata, root `issues/`, `requirements/`, `todos/`,
-`decisions/`, and `notes/` directories, protocol docs, item-format docs, and
-`.pi/skills/agent-coordination/SKILL.md`. When `PI_COORD_DIR` is unset, fresh
-projects use `.pi-env/coordination`.
+It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, domain
+`PROJECT.md` metadata, a repo namespace at
+`repos/<repo_id>/issues/{open,blocked,done,closed}`, shared `requirements/`,
+`todos/`, `decisions/`, and `notes/` directories, protocol docs, item-format
+docs, and `.pi/skills/agent-coordination/SKILL.md`. The repo manifest at
+`repos/<repo_id>/REPO.md` is the authoritative registry record for that
+implementation repo. When `PI_COORD_DIR` is unset, fresh projects use
+`.pi-env/coordination`.
 
 Clone the same coordination domain elsewhere with:
 
@@ -1146,12 +1151,17 @@ Clone the same coordination domain elsewhere with:
 agent-coord-clone
 ```
 
-Create a type-coded timestamp-ID item in the project-root layout with:
+Create a type-coded timestamp-ID issue in the current repo namespace with:
 
 ```bash
-agent-coord-new --type issue --category bug "Document pi config behavior"
+agent-coord-new --repo-id pi-env --type issue --category bug \
+  "Document pi config behavior"
 agent-coord-push -m "Add PIENV documentation item"
 ```
+
+The resulting issue path is
+`repos/pi-env/issues/open/<ITEM-ID>.yaml`. Functional requirements, decisions,
+and notes remain common domain records at the coordination root.
 
 Issue items can use optional categories such as `bug`, `feature-request`,
 `task`, `question`, or `improvement`; use `--type issue
@@ -1159,8 +1169,11 @@ Issue items can use optional categories such as `bug`, `feature-request`,
 bug issues open` to filter, or `agent-coord-list --group-by-category issues`
 to sort grouped issue output.
 
-When top-level `PROJECT.md` exists, omit `--project`; `PI_COORD_PROJECT` can
-remain set for coordination-domain selection while root item paths are used.
+When top-level `PROJECT.md` exists, omit `--project` for domain-common items;
+`PI_COORD_PROJECT` can remain set for coordination-domain selection. For
+issues, pass `--repo-id` or set `PI_COORD_REPO_ID`; helpers may also resolve it
+from the implementation repo's `.pi-env-coordination.yaml` or registry remote
+metadata.
 
 Generated item IDs use a project item key prefix, a type code, a UTC timestamp,
 and a three-digit collision/order suffix that starts at `001`:
@@ -1220,10 +1233,11 @@ needed, `blocked` means developer work cannot proceed, `done` means the
 developer believes implementation is complete, and `closed` means final
 accepted after review and verification.
 
-Functional, quality, and constraint requirements use the root-level
-`requirements/` directory while preserving FRQ, QRQ, and CRQ item-ID type
-codes. TODO items use `todos/` and single top-level `body: |-` records without
-issue history. The `agent-coord-list requirements` command reports functional,
+Issue items live under `repos/<repo_id>/issues/<status>/`, and each issue
+belongs to exactly one implementation repo by that path. Functional, quality,
+and constraint requirements use the root-level `requirements/` directory while
+preserving FRQ, QRQ, and CRQ item-ID type codes. TODO items use `todos/` and
+single top-level `body: |-` records without issue history. The `agent-coord-list requirements` command reports functional,
 quality, and constraint requirement items; use `functional`, `quality`, or
 `constraint` for class-specific listings. Done issue listings append
 review and verification sub-status after the title. Imported requirement items
@@ -1233,12 +1247,16 @@ lint checks imported FRQ/QRQ/CRQ items for non-empty source references plus the
 standard `testable` metadata.
 
 Decision, note, and other non-issue item types live under their semantic type
-directories. Use `agent-coord-list notes` or `agent-coord-list todos` to list
-those root-level groups, optionally filtered by their YAML `status` values. The
+directories shared by the coordination domain. Use `agent-coord-list notes` or
+`agent-coord-list todos` to list those root-level groups, optionally filtered
+by their YAML `status` values. The
 accepted TODO type spellings are `todo` and `todos`; `tdo` is
 not a supported alias. Stored implementation refs are structured objects with
 `repo`,
-`branch`, and full `commit` fields. `agent-coord-done --implementation-ref
+`branch`, and full `commit` fields. For cross-repo implementation work, create
+one issue per affected repo and link them with stable item IDs in `related:` or
+messages rather than path-only references; repo renames preserve aliases and
+should not require reference rewrites. `agent-coord-done --implementation-ref
 pi-env:main@<full-hash>` accepts the compact CLI form and writes the structured
 YAML form. `agent-coord-close` finalizes only items that are done, reviewed, and
 verified unless forced.
