@@ -269,23 +269,25 @@ used by policy.
 
 ## Domain generated files
 
-Top-level `PROJECT.md` may declare generated, domain-wide files that are
-committed to implementation repositories. Use canonical active repo ids from
-`repos/{repo_id}/REPO.md`; paths are relative to the named implementation repo
-root:
+`repos/{repo_id}/REPO.md` may declare generated, domain-wide files that are
+committed by that implementation repository. Paths are relative to that
+implementation repo root:
 
 ```yaml
+---
+repo_id: backend-api
+status: active
 domain_generated_files:
-  - repo_id: backend-api
-    paths:
-      - REQUIREMENTS.md
-      - REQUIREMENTS_COVERAGE.md
+  - REQUIREMENTS.md
+  - REQUIREMENTS_COVERAGE.md
+---
 ```
 
-The listed repo owns regeneration commits for those paths. An empty or missing
-list means no owner has been declared yet. Generated files are secondary views;
-update coordination items first, then regenerate the files in the declared
-implementation repo.
+The manifest's repo owns regeneration commits for those paths. More than one
+active repo may list the same generated path when the domain intentionally
+keeps committed copies in multiple implementation repositories. Generated files
+are secondary views; update coordination items first, then regenerate the files
+listed for the current implementation repo.
 
 ## Source references
 

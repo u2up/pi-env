@@ -111,6 +111,7 @@ case "$cmd" in
       printf 'aliases: []\n'
       printf 'remotes:'
       if [ "${#remotes[@]}" -eq 0 ]; then printf ' []\n'; else printf '\n'; for remote in "${remotes[@]}"; do printf '  - %s\n' "$(coord_yaml_scalar "$remote")"; done; fi
+      printf 'domain_generated_files: []\n'
       printf -- '---\n\n# %s\n' "$repo_id"
     } >"$(repo_manifest "$repo_id")"
     printf 'repos/%s/REPO.md\n' "$repo_id"
@@ -184,6 +185,7 @@ case "$cmd" in
         printf 'aliases: []\n'
         printf 'remotes:'
         if [ "${#remotes[@]}" -eq 0 ]; then printf ' []\n'; else printf '\n'; for remote in "${remotes[@]}"; do printf '  - %s\n' "$(coord_yaml_scalar "$remote")"; done; fi
+        printf 'domain_generated_files: []\n'
         printf -- '---\n\n# %s\n' "$repo_id"
       } >"$(repo_manifest "$repo_id")"
       canonical="$repo_id"

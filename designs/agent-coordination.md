@@ -166,24 +166,27 @@ coordination_remote: git@example.com:org/my-product-coordination.git
 repo_id: backend-api
 ```
 
-Top-level `PROJECT.md` owns coordination-domain metadata. It should also
-declare any domain-wide generated files that are committed to implementation
-repositories, using canonical active repo ids from `repos/{repo_id}/REPO.md`
-and paths relative to the named implementation repo root:
+The manifest may also declare domain-wide generated files that are committed
+by that implementation repo. Paths are relative to the implementation repo
+root:
 
 ```yaml
+# repos/backend-api/REPO.md
+---
+repo_id: backend-api
+status: active
 domain_generated_files:
-  - repo_id: backend-api
-    paths:
-      - REQUIREMENTS.md
-      - REQUIREMENTS_COVERAGE.md
+  - REQUIREMENTS.md
+  - REQUIREMENTS_COVERAGE.md
+---
 ```
 
-The listed implementation repo is where agents regenerate and commit those
-paths; an empty or missing list means no owner has been declared yet.
-Requirement items, decisions, and notes remain the source coordination state;
-generated files are secondary views stored in the declared implementation repo
-for human review and downstream tooling.
+Each active repo whose manifest lists a generated path may regenerate and
+commit its own copy. Duplicate listings are allowed when a coordination domain
+intentionally keeps the same generated view in more than one implementation
+repo. Requirement items, decisions, and notes remain the source coordination
+state; generated files are secondary views stored in implementation repos for
+human review and downstream tooling.
 
 Repo-id lifecycle operations are explicit: add creates the manifest and issue
 status directories, rename moves the namespace and records aliases with

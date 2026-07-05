@@ -40,6 +40,7 @@ git -C "$coord_dir" add issues/open/ROOT-ISS-1.yaml
 git -C "$coord_dir" commit -q -m "Add root issue"
 agent-coord-repo --coord-dir "$coord_dir" migrate-root-issues root-repo >/dev/null
 test -f "$coord_dir/repos/root-repo/REPO.md"
+grep -q '^domain_generated_files: \[\]$' "$coord_dir/repos/root-repo/REPO.md"
 test ! -e "$coord_dir/REPOS.md"
 test -f "$coord_dir/repos/root-repo/issues/open/ROOT-ISS-1.yaml"
 test ! -e "$coord_dir/issues/open/ROOT-ISS-1.yaml"
@@ -99,6 +100,7 @@ rm -f "$coord_dir/issues/open/ROOT-GLOBAL-DUP.yaml"
 
 agent-coord-repo --coord-dir "$coord_dir" add alpha --remote https://example.invalid/alpha.git >/dev/null
 test -f "$coord_dir/repos/alpha/REPO.md"
+grep -q '^domain_generated_files: \[\]$' "$coord_dir/repos/alpha/REPO.md"
 for state in open blocked done closed; do
   test -d "$coord_dir/repos/alpha/issues/$state"
 done

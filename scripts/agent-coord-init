@@ -248,8 +248,9 @@ New item IDs use \`<KEY>-<TYPE>-<YYYYMMDD-HHMMSS>-<NNN>\`, with \`NNN\`
 starting at \`001\` for each timestamp. Testable items are linked to project
 repo scripts by matching item and test filename stems.
 
-Declare generated domain-wide output files that are committed to
-implementation repositories in \`PROJECT.md\` under \`domain_generated_files\`.
+Declare generated domain-wide output files that this implementation repository
+commits in its \`repos/<repo_id>/REPO.md\` manifest under
+\`domain_generated_files\`.
 EOF_README
 
 initial_item_key="$(coord_project_id_prefix "$initial_repo_id")"
@@ -263,9 +264,13 @@ created: $created
 updated: $created
 aliases: []
 remotes: []
+domain_generated_files: []
 ---
 
 # $initial_repo_id
+
+- Domain generated files: set \`domain_generated_files\` in this file when
+  this implementation repo commits generated domain outputs.
 EOF_REPO
 
 cat >PROJECT.md <<EOF_PROJECT
@@ -273,7 +278,6 @@ cat >PROJECT.md <<EOF_PROJECT
 project: $project_dir
 item_key: $project_item_key
 created: $created
-domain_generated_files: []
 ---
 
 # Project: $project_dir
@@ -281,8 +285,6 @@ domain_generated_files: []
 - Project item key: $project_item_key
 - Source name: $project_key
 - Bare remote: $remote
-- Domain generated files: set \`domain_generated_files\` in this file when
-  generated domain outputs are committed to an implementation repo.
 EOF_PROJECT
 
 cat >"agents/$agent_file.md" <<EOF_AGENT
