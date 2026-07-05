@@ -469,7 +469,10 @@ The generated `.pi-env/coordination/AGENTS.md` should instruct agents:
 
 Agents should use these state transitions:
 
-- create: add a new YAML item under `issues/open/` or the appropriate typed directory, with `reviewed: false`, `verified: false`, and an `opened` event/message;
+- create: add a new issue YAML item under
+  `repos/{repo_id}/issues/open/` or add a non-issue item under the
+  appropriate domain-shared typed directory, with `reviewed: false`,
+  `verified: false`, and an `opened` event/message;
 - claim: set `status: claimed`, set `owner: <agent-id>`, update `current:`, append a `claimed` event/message, commit, push;
 - block: move to `blocked/` when needed, set `status: blocked`, document blocker and owner expectations in a `blocked` event/message;
 - resume/unblock: move back to `open/` or keep claimed if the same agent continues, and append `reopened` or `updated` history;
