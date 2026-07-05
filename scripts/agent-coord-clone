@@ -25,7 +25,7 @@ Options:
   -h, --help       Show this help
 
 Remote precedence is explicit --remote or positional remote, then
-PI_COORD_REMOTE_URL, then .pi-coordination.yaml coordination_remote,
+PI_COORD_REMOTE_URL, then .pi-env-coordination.yaml coordination_remote,
 then:
   <root>/<project>-coordination.git
 USAGE
@@ -92,7 +92,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$remote" ]; then
-  if remote="$(coord_resolve_coordination_remote "" 2>/dev/null || true)" && [ -n "$remote" ]; then
+  if remote="$(coord_resolve_coordination_remote "" || true)" && [ -n "$remote" ]; then
     remote_set=1
   fi
 fi

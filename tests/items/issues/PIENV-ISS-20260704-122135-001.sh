@@ -28,7 +28,7 @@ git -C "$project" config user.name "Project Test"
 git -C "$project" config user.email "project-test@example.invalid"
 git -C "$project" commit --allow-empty -m "Project commit" >/dev/null
 git -C "$project" remote add origin git@example.com:org/remote-api.git
-cat >"$project/.pi-coordination.yaml" <<'YAML'
+cat >"$project/.pi-env-coordination.yaml" <<'YAML'
 version: 1
 coordination_domain: my-product
 coordination_remote: git@example.com:org/my-product-coordination.git
@@ -40,7 +40,7 @@ YAML
   # shellcheck source=/dev/null
   . "$lib"
 
-  [ "$(coord_impl_config_path)" = "$project/.pi-coordination.yaml" ]
+  [ "$(coord_impl_config_path)" = "$project/.pi-env-coordination.yaml" ]
   [ "$(coord_impl_config_value repo_id)" = "api-old" ]
   [ "$(coord_resolve_coordination_remote '')" = "git@example.com:org/my-product-coordination.git" ]
   [ "$(coord_resolve_coordination_remote 'ssh://explicit')" = "ssh://explicit" ]
@@ -66,13 +66,13 @@ YAML
     # shellcheck source=/dev/null
     . "$lib"
     [ "$(coord_project_root)" = "$project" ]
-    [ "$(coord_impl_config_path)" = "$project/.pi-coordination.yaml" ]
+    [ "$(coord_impl_config_path)" = "$project/.pi-env-coordination.yaml" ]
     [ "$(coord_impl_config_value repo_id)" = "api-old" ]
     [ "$(coord_resolve_repo_id '' "$coord_dir" 2>"$tmp/nested-alias.err")" = "backend-api" ]
     grep -q "api-old' is an alias" "$tmp/nested-alias.err"
   )
 
-  rm .pi-coordination.yaml
+  rm .pi-env-coordination.yaml
   [ "$(coord_resolve_repo_id '' "$coord_dir")" = "remote-api" ]
 
   command_coord_dir="$tmp/command-coordination"

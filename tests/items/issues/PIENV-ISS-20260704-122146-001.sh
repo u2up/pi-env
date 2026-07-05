@@ -84,7 +84,7 @@ make_repo "$coord_dir" alpha active
 make_repo "$coord_dir" beta active
 make_issue "$coord_dir/repos/alpha/issues/open/ALPHA-ISS-1.yaml" ALPHA-ISS-1 claimed yes
 make_issue "$coord_dir/repos/beta/issues/open/BETA-ISS-1.yaml" BETA-ISS-1 open yes
-cat >"$project_root/.pi-coordination.yaml" <<'EOF_CFG'
+cat >"$project_root/.pi-env-coordination.yaml" <<'EOF_CFG'
 version: 1
 repo_id: alpha
 EOF_CFG

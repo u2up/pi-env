@@ -119,7 +119,7 @@ and synchronization tracking. `.pi-env/` is operational state and should
 normally stay untracked.
 
 Implementation repositories may commit a small root-level attachment hint named
-`.pi-coordination.yaml` so helpers can find their shared coordination domain:
+`.pi-env-coordination.yaml` so helpers can find their shared coordination domain:
 
 ```yaml
 version: 1
@@ -131,19 +131,22 @@ repo_id: backend-api
 The file is read from the implementation repository root, not from inside the
 coordination checkout. Explicit command options and environment variables still
 win: repo id resolution is `--repo-id`, `PI_COORD_REPO_ID`,
-`.pi-coordination.yaml`, then Git remote-name inference; coordination remote
+`.pi-env-coordination.yaml`, then Git remote-name inference; coordination remote
 resolution is explicit `--remote`, `PI_COORD_REMOTE_URL`, then
-`.pi-coordination.yaml`. The coordination repository registry remains
-authoritative for canonical and active repo ids when `repositories.yaml` or the
+`.pi-env-coordination.yaml`. The legacy `.pi-coordination.yaml` filename is a
+deprecated fallback when the new file is absent. The coordination repository
+registry remains authoritative for canonical and active repo ids when
+`repositories.yaml` or the
 `repos/<repo_id>/REPO.md` registry is present.
 
 `agent-coord-lint` validates repo manifests and all repo-scoped issue structure
 under `repos/<repo_id>/issues/<status>`. Item-matched issue tests are expected
 only for the current implementation repo resolved from `--repo-id`,
-`PI_COORD_REPO_ID`, `.pi-coordination.yaml`, or Git remote registry data.
+`PI_COORD_REPO_ID`, `.pi-env-coordination.yaml`, or Git remote registry data.
 `--all-repos` keeps structural validation across every registered repo but does
 not require tests from unavailable implementation checkouts unless `--repo-id`
-selects that repo explicitly. Fresh `agent-coord-init` scaffolds the initial implementation namespace at
+selects that repo explicitly. Fresh `agent-coord-init` scaffolds the initial
+implementation namespace at
 `repos/<repo_id>/issues/{open,blocked,done,closed}` and writes the sole registry
 record at `repos/<repo_id>/REPO.md`; no root `REPOS.md` index is generated.
 Existing `REPOS.md` files from older coordination repositories are ignored by

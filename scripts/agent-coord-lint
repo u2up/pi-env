@@ -53,7 +53,7 @@ tests mirror the root item type directory:
 
 When repos/<repo_id>/issues are present, lint defaults item-matched issue test
 checks to the current implementation repo resolved from --repo-id,
-PI_COORD_REPO_ID, .pi-coordination.yaml, or Git remote registry data. --all-repos
+PI_COORD_REPO_ID, .pi-env-coordination.yaml, or Git remote registry data. --all-repos
 validates every repo structurally but skips repo-scoped issue test requirements
 for repos whose implementation checkout is not selected by --repo-id. Root
 issues/ paths are allowed during migration with a warning; set

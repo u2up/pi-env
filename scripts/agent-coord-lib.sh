@@ -51,30 +51,94 @@ coord_project_root() {
   esac
 }
 
+coord_impl_config_filename() {
+  printf '%s\n' ".pi-env-coordination.yaml"
+}
+
+coord_legacy_impl_config_filename() {
+  printf '%s\n' ".pi-coordination.yaml"
+}
+
 coord_impl_config_path() {
   local project_root
   project_root="${1:-}"
   if [ -z "$project_root" ]; then
     project_root="$(coord_project_root)"
   fi
-  printf '%s/.pi-coordination.yaml\n' "$(coord_abs "$project_root")"
+  printf '%s/%s\n' "$(coord_abs "$project_root")" "$(coord_impl_config_filename)"
+}
+
+coord_legacy_impl_config_path() {
+  local project_root
+  project_root="${1:-}"
+  if [ -z "$project_root" ]; then
+    project_root="$(coord_project_root)"
+  fi
+  printf '%s/%s\n' "$(coord_abs "$project_root")" "$(coord_legacy_impl_config_filename)"
+}
+
+coord_impl_config_existing_path() {
+  local project_root file legacy_file
+  project_root="${1:-}"
+  file="$(coord_impl_config_path "$project_root")"
+  if [ -f "$file" ]; then
+    printf '%s\n' "$file"
+    return 0
+  fi
+  legacy_file="$(coord_legacy_impl_config_path "$project_root")"
+  if [ -f "$legacy_file" ]; then
+    coord_deprecated "$(coord_legacy_impl_config_filename) is deprecated; rename it to $(coord_impl_config_filename)"
+    printf '%s\n' "$legacy_file"
+    return 0
+  fi
+  return 1
+}
+
+coord_impl_config_exists() {
+  local project_root
+  project_root="${1:-}"
+  [ -f "$(coord_impl_config_path "$project_root")" ] \
+    || [ -f "$(coord_legacy_impl_config_path "$project_root")" ]
+}
+
+coord_impl_config_source() {
+  local project_root file legacy_file
+  project_root="${1:-}"
+  file="$(coord_impl_config_path "$project_root")"
+  if [ -f "$file" ]; then
+    coord_impl_config_filename
+    return 0
+  fi
+  legacy_file="$(coord_legacy_impl_config_path "$project_root")"
+  if [ -f "$legacy_file" ]; then
+    coord_legacy_impl_config_filename
+    return 0
+  fi
+  return 1
+}
+
+coord_impl_config_read_value() {
+  local file key
+  file="$1"
+  key="$2"
+  awk -v key="$key" '
+    /^[[:space:]]*#/ { next }
+    index($0, key ":") == 1 {
+      sub("^[^:]+:[[:space:]]*", "")
+      print
+      exit
+    }
+  ' "$file"
 }
 
 coord_impl_config_value() {
   local key project_root file value
   key="$1"
   project_root="${2:-}"
-  file="$(coord_impl_config_path "$project_root")"
+  file="$(coord_impl_config_existing_path "$project_root" || true)"
   value=""
-  if [ -f "$file" ]; then
-    value="$(awk -v key="$key" '
-      /^[[:space:]]*#/ { next }
-      index($0, key ":") == 1 {
-        sub("^[^:]+:[[:space:]]*", "")
-        print
-        exit
-      }
-    ' "$file")"
+  if [ -n "$file" ]; then
+    value="$(coord_impl_config_read_value "$file" "$key")"
   fi
   coord_yaml_unquote "$value"
 }
@@ -294,7 +358,7 @@ coord_registry_canonical_repo_id() {
     coord_die "repo id '$repo_id' is retired in coordination registry"
   fi
   if [ "$(printf '%s' "$matches" | cut -d: -f2)" = "alias" ]; then
-    coord_note "repo id '$repo_id' is an alias; update .pi-coordination.yaml to '$(printf '%s' "$matches" | cut -d: -f1)'"
+    coord_note "repo id '$repo_id' is an alias; update $(coord_impl_config_filename) to '$(printf '%s' "$matches" | cut -d: -f1)'"
   fi
   printf '%s\n' "$(printf '%s' "$matches" | cut -d: -f1)"
 }
@@ -312,7 +376,8 @@ coord_resolve_repo_id() {
   else
     repo_id="$(coord_impl_config_value repo_id || true)"
     if [ -n "$repo_id" ]; then
-      source=".pi-coordination.yaml"
+      source="$(coord_impl_config_source || true)"
+      [ -n "$source" ] || source="$(coord_impl_config_filename)"
     else
       remote="$(git remote get-url origin 2>/dev/null || true)"
       if [ -n "$remote" ]; then
@@ -334,7 +399,7 @@ coord_resolve_repo_id() {
       if [ -z "$repo_id" ] && repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)" && [ -n "$repo_id" ]; then
         source="git remote origin"
       elif [ -z "$repo_id" ]; then
-        coord_die "missing repo id; pass --repo-id, set PI_COORD_REPO_ID, add repo_id to .pi-coordination.yaml, or configure git remote origin"
+        coord_die "missing repo id; pass --repo-id, set PI_COORD_REPO_ID, add repo_id to $(coord_impl_config_filename), or configure git remote origin"
       fi
     fi
   fi

@@ -23,7 +23,7 @@ Options:
   --project ID      Coordination project; default: PI_COORD_PROJECT or cwd name
   --project-key KEY Project item ID prefix; default: derived project
   --repo-id ID      Initial implementation repo id; default: PI_COORD_REPO_ID,
-                   .pi-coordination.yaml repo_id, git remote, or project
+                   .pi-env-coordination.yaml repo_id, git remote, or project
   --dir DIR         Working clone dir; default: PI_COORD_DIR or .pi-env/coordination
   --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
   --role ROLE       Coordination role; default: PI_COORD_ROLE
@@ -31,7 +31,7 @@ Options:
   -h, --help        Show this help
 
 Remote precedence is explicit --remote, then PI_COORD_REMOTE_URL,
-then .pi-coordination.yaml coordination_remote, then:
+then .pi-env-coordination.yaml coordination_remote, then:
   <root>/<project>-coordination.git
 USAGE
 }
@@ -106,7 +106,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$remote_url" ]; then
-  remote_url="$(coord_resolve_coordination_remote "" 2>/dev/null || true)"
+  remote_url="$(coord_resolve_coordination_remote "" || true)"
 fi
 
 if [ -z "$project_key" ]; then
@@ -154,7 +154,8 @@ if [ -n "$initial_repo_id" ]; then
 else
   initial_repo_id="$(coord_impl_config_value repo_id || true)"
   if [ -n "$initial_repo_id" ]; then
-    initial_repo_source=".pi-coordination.yaml"
+    initial_repo_source="$(coord_impl_config_source || true)"
+    [ -n "$initial_repo_source" ] || initial_repo_source="$(coord_impl_config_filename)"
   else
     initial_repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)"
     if [ -n "$initial_repo_id" ]; then
