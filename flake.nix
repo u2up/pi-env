@@ -236,7 +236,7 @@
           pi-bwrap = piBwrap;
           pi-core = piCore;
           pi-runtime = piRuntime;
-          pi-coordination = piCoordination;
+          pi-env-coordination = piCoordination;
           pi-role-manager = roleManagerPackage;
         } // agentCoordCommands;
 
@@ -282,7 +282,7 @@
             agent-coord-status --help >/dev/null
           '';
 
-          pi-coordination-smoke = smokeCheck "pi-env-coordination-smoke" [ piCoordination ] ''
+          pi-env-coordination-smoke = smokeCheck "pi-env-coordination-smoke" [ piCoordination ] ''
             command -v agent-coord-status >/dev/null
             command -v agent-coord-repo >/dev/null
             command -v agent-coord-lint >/dev/null

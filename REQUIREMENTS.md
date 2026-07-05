@@ -211,8 +211,9 @@ A project that already has a flake/devshell must be able to keep its existing sh
 - Related requirements: FLAKE-004, FLAKE-005
 
 Users must be able to use exposed packages and apps such as `default`,
-`pi-start`, `pi-bwrap`, `pi-core`, `pi-coordination`, and the compatibility
-`pi-runtime` bundle through commands like `nix run .#pi-bwrap -- ...`,
+`pi-start`, `pi-bwrap`, `pi-core`, `pi-env-coordination`, and the
+compatibility `pi-runtime` bundle through commands like
+`nix run .#pi-bwrap -- ...`,
 `nix build .#pi-core`, and `nix build .#pi-runtime`.
 
 #### UC-020 — Use the library API in other flakes
@@ -346,9 +347,9 @@ For each supported system the flake must expose packages:
 - `pi-start`
 - `pi-bwrap`
 - `pi-core` for core runtime commands and tools only
-- `pi-coordination` for the optional Git-backed coordination helpers
+- `pi-env-coordination` for the optional Git-backed coordination helpers
 - `pi-runtime` as a compatibility bundle containing `pi-core` plus
-  `pi-coordination`
+  `pi-env-coordination`
 - `pi-role-manager`
 - `bootstrap-coordination`
 - `agent-coord-init`
@@ -1409,8 +1410,8 @@ nix flake show
 Expected:
 
 - packages include `default`, `pi-env`, `pi-start`, `pi-bwrap`, `pi-core`,
-  `pi-coordination`, `pi-runtime`, `pi-role-manager`, and the coordination
-  helper command packages
+  `pi-env-coordination`, `pi-runtime`, `pi-role-manager`, and the
+  coordination helper command packages
 - apps include `pi-env`, `pi-start`, `pi-bwrap`, and `default`
 - checks include core-only and coordination-included package smoke tests
 - `devShells.default` exists
@@ -1424,7 +1425,7 @@ nix build .#pi-env
 nix build .#pi-bwrap
 nix build .#pi-start
 nix build .#pi-core
-nix build .#pi-coordination
+nix build .#pi-env-coordination
 nix build .#pi-runtime
 nix build .#pi-role-manager
 nix build .#agent-coord-init
@@ -1447,7 +1448,7 @@ nix build .#agent-coord-upgrade-rules
 nix build .#pi-serial-roles
 nix build .#checks.x86_64-linux.pi-core-smoke
 nix build .#checks.x86_64-linux.pi-runtime-compat-smoke
-nix build .#checks.x86_64-linux.pi-coordination-smoke
+nix build .#checks.x86_64-linux.pi-env-coordination-smoke
 ```
 
 Expected: all builds succeed.

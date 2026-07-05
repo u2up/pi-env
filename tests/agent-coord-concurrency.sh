@@ -24,6 +24,7 @@ agent-coord-init \
 
 item_path="$(agent-coord-new \
   --coord-dir .pi-env/coordination \
+  --repo-id pi-env \
   "Exercise concurrent claim handling" | tail -n 1)"
 item_id="$(grep '^id: ' ".pi-env/coordination/$item_path" | sed 's/^id: //')"
 agent-coord-push \

@@ -9,10 +9,6 @@ coord_note() {
   printf 'agent-coord: %s\n' "$*" >&2
 }
 
-coord_deprecated() {
-  coord_note "deprecated: $*"
-}
-
 coord_abs() {
   realpath -m "$1"
 }
@@ -55,10 +51,6 @@ coord_impl_config_filename() {
   printf '%s\n' ".pi-env-coordination.yaml"
 }
 
-coord_legacy_impl_config_filename() {
-  printf '%s\n' ".pi-coordination.yaml"
-}
-
 coord_impl_config_path() {
   local project_root
   project_root="${1:-}"
@@ -68,27 +60,12 @@ coord_impl_config_path() {
   printf '%s/%s\n' "$(coord_abs "$project_root")" "$(coord_impl_config_filename)"
 }
 
-coord_legacy_impl_config_path() {
-  local project_root
-  project_root="${1:-}"
-  if [ -z "$project_root" ]; then
-    project_root="$(coord_project_root)"
-  fi
-  printf '%s/%s\n' "$(coord_abs "$project_root")" "$(coord_legacy_impl_config_filename)"
-}
-
 coord_impl_config_existing_path() {
-  local project_root file legacy_file
+  local project_root file
   project_root="${1:-}"
   file="$(coord_impl_config_path "$project_root")"
   if [ -f "$file" ]; then
     printf '%s\n' "$file"
-    return 0
-  fi
-  legacy_file="$(coord_legacy_impl_config_path "$project_root")"
-  if [ -f "$legacy_file" ]; then
-    coord_deprecated "$(coord_legacy_impl_config_filename) is deprecated; rename it to $(coord_impl_config_filename)"
-    printf '%s\n' "$legacy_file"
     return 0
   fi
   return 1
@@ -97,21 +74,15 @@ coord_impl_config_existing_path() {
 coord_impl_config_exists() {
   local project_root
   project_root="${1:-}"
-  [ -f "$(coord_impl_config_path "$project_root")" ] \
-    || [ -f "$(coord_legacy_impl_config_path "$project_root")" ]
+  [ -f "$(coord_impl_config_path "$project_root")" ]
 }
 
 coord_impl_config_source() {
-  local project_root file legacy_file
+  local project_root file
   project_root="${1:-}"
   file="$(coord_impl_config_path "$project_root")"
   if [ -f "$file" ]; then
     coord_impl_config_filename
-    return 0
-  fi
-  legacy_file="$(coord_legacy_impl_config_path "$project_root")"
-  if [ -f "$legacy_file" ]; then
-    coord_legacy_impl_config_filename
     return 0
   fi
   return 1

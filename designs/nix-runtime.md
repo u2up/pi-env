@@ -33,7 +33,7 @@ The package boundary separates the core sandbox runtime from optional
 coordination helpers while preserving compatibility:
 
 - `pi-core` contains `pi-env`, `pi-start`, `pi-bwrap`, and the runtime tools.
-- `pi-coordination` contains the Git-backed coordination helper commands.
+- `pi-env-coordination` contains the Git-backed coordination helper commands.
 - `pi-runtime` remains the compatibility bundle containing both sets of
   commands for existing consumers.
 

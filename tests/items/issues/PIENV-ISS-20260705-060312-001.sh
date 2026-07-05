@@ -9,6 +9,9 @@ export PATH="$repo_root/scripts:$PATH"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+legacy_config_name=".pi""-coordination.yaml"
+legacy_config_help_pattern="\\.pi""-coordination\\.yaml"
+
 root_config="$repo_root/.pi-env-coordination.yaml"
 test -f "$root_config"
 grep -q '^version: 1$' "$root_config"
@@ -22,8 +25,8 @@ fi
 for command in agent-coord-init agent-coord-clone agent-coord-done agent-coord-lint; do
   help="$($command --help)"
   grep -q '\.pi-env-coordination\.yaml' <<<"$help"
-  if grep -q '\.pi-coordination\.yaml' <<<"$help"; then
-    printf '%s help should not advertise the legacy config filename\n' "$command" >&2
+  if grep -q "$legacy_config_help_pattern" <<<"$help"; then
+    printf '%s help should not advertise the old config filename\n' "$command" >&2
     exit 1
   fi
 done
@@ -54,11 +57,11 @@ coordination_domain: domain
 coordination_remote: ssh://new-coordination.example.invalid/domain.git
 repo_id: alpha
 YAML
-cat >"$project/.pi-coordination.yaml" <<'YAML'
+cat >"$project/$legacy_config_name" <<'YAML'
 version: 1
 coordination_domain: domain
-coordination_remote: ssh://legacy-coordination.example.invalid/domain.git
-repo_id: legacy-alpha
+coordination_remote: ssh://old-coordination.example.invalid/domain.git
+repo_id: old-alpha
 YAML
 
 (
@@ -75,18 +78,28 @@ YAML
   test ! -s "$tmp/new-repo.err"
 
   rm .pi-env-coordination.yaml
-  [ "$(coord_impl_config_value repo_id 2>"$tmp/legacy-value.err")" = "legacy-alpha" ]
-  grep -q 'deprecated: .pi-coordination.yaml is deprecated; rename it to .pi-env-coordination.yaml' \
-    "$tmp/legacy-value.err"
-  [ "$(coord_resolve_coordination_remote '' 2>"$tmp/legacy-remote.err")" = "ssh://legacy-coordination.example.invalid/domain.git" ]
-  grep -q 'deprecated: .pi-coordination.yaml is deprecated; rename it to .pi-env-coordination.yaml' \
-    "$tmp/legacy-remote.err"
-  [ "$(coord_resolve_repo_id '' "$coord_dir" 2>"$tmp/legacy-repo.err")" = "alpha" ]
-  grep -q 'deprecated: .pi-coordination.yaml is deprecated; rename it to .pi-env-coordination.yaml' \
-    "$tmp/legacy-repo.err"
-  grep -q "update .pi-env-coordination.yaml to 'alpha'" "$tmp/legacy-repo.err"
+  [ "$(coord_impl_config_value repo_id 2>"$tmp/old-value.err")" = "" ]
+  test ! -s "$tmp/old-value.err"
+  if coord_impl_config_source >"$tmp/old-source.out" 2>"$tmp/old-source.err"; then
+    printf 'old config filename unexpectedly selected as a source\n' >&2
+    exit 1
+  fi
+  test ! -s "$tmp/old-source.out"
+  test ! -s "$tmp/old-source.err"
+  if coord_impl_config_exists; then
+    printf 'old config filename unexpectedly counted as existing\n' >&2
+    exit 1
+  fi
+  if coord_resolve_coordination_remote '' >"$tmp/old-remote.out" 2>"$tmp/old-remote.err"; then
+    printf 'coordination remote unexpectedly resolved from old config filename\n' >&2
+    exit 1
+  fi
+  test ! -s "$tmp/old-remote.out"
+  test ! -s "$tmp/old-remote.err"
+  [ "$(coord_resolve_repo_id '' "$coord_dir" 2>"$tmp/old-repo.err")" = "remote-project" ]
+  test ! -s "$tmp/old-repo.err"
 
-  rm .pi-coordination.yaml
+  rm "$legacy_config_name"
   git remote remove origin
   if bash -c '. "$1"; coord_resolve_repo_id "" "$2"' bash "$lib" "$coord_dir" \
     >"$tmp/missing.out" 2>"$tmp/missing.err"; then

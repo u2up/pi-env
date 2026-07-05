@@ -133,9 +133,9 @@ coordination checkout. Explicit command options and environment variables still
 win: repo id resolution is `--repo-id`, `PI_COORD_REPO_ID`,
 `.pi-env-coordination.yaml`, then Git remote-name inference; coordination remote
 resolution is explicit `--remote`, `PI_COORD_REMOTE_URL`, then
-`.pi-env-coordination.yaml`. The legacy `.pi-coordination.yaml` filename is a
-deprecated fallback when the new file is absent. The coordination repository
-registry remains authoritative for canonical and active repo ids when
+`.pi-env-coordination.yaml`. No legacy implementation attachment filename is
+read as a fallback. The coordination repository registry remains authoritative
+for canonical and active repo ids when
 `repositories.yaml` or the
 `repos/<repo_id>/REPO.md` registry is present.
 
@@ -348,7 +348,7 @@ If you also use coordination helpers, either install them separately or keep the
 compatibility runtime bundle:
 
 ```bash
-nix profile install ~/src/pi-env#pi-coordination
+nix profile install ~/src/pi-env#pi-env-coordination
 # or, for the compatibility bundle used by older docs/automation:
 nix profile install ~/src/pi-env#pi-runtime
 ```
@@ -599,7 +599,7 @@ packages = existingPackages ++ [
 ```
 
 If your shell uses `nativeBuildInputs` or `buildInputs`, add the same package
-there instead. Use `pi-env.packages.${system}.pi-coordination` when you want
+there instead. Use `pi-env.packages.${system}.pi-env-coordination` when you want
 only the optional coordination helpers, or `pi-env.packages.${system}.pi-runtime`
 when older automation expects the compatibility bundle containing both the core
 runtime and coordination helpers.
@@ -1063,7 +1063,7 @@ See `designs/role-manager.md` for the architecture.
 
 `pi-env` includes opt-in helpers for one Git-backed coordination repository per
 selected project. They are plain Git/text-file tooling and are separate from
-`pi-start`. Install `#pi-coordination`, use the compatibility `#pi-runtime`
+`pi-start`. Install `#pi-env-coordination`, use the compatibility `#pi-runtime`
 bundle, or leave `includeCoordinationHelpers` enabled in `mkPiShell` when you
 want these commands. Projects use the project-local `.pi-env/coordination`
 clone for the one project mounted at `/workspace` per invocation.
