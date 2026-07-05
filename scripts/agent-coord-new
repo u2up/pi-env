@@ -19,10 +19,10 @@ Usage:
 
 Options:
   --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
-  --project KEY            Removed legacy option; root-layout items only
+  --project KEY            Removed legacy option; use --project-key for ID prefixes
   --project-key KEY        Project key portion of generated IDs
   --repo-id ID             Create the item under repos/{repo_id}
-  --workspace-item         Removed legacy option; root-layout items only
+  --workspace-item         Removed legacy option; items are domain- or repo-scoped
   --type TYPE              Item type; default: issue
   --category CATEGORY      Optional issue category: bug, feature-request, task, question, improvement, ...
   --status STATUS          Initial status; default: open for issues, active otherwise
@@ -35,9 +35,14 @@ Options:
   --id ID                  Explicit item ID; default: timestamp ID with type code
   -h, --help               Show this help
 
-Items are created in the project-root layout only: PROJECT.md plus root item
-folders such as issues/, requirements/, todos/, decisions/, and notes/. The
-item key is resolved from --project-key, stored project metadata,
+Issue items in a shared coordination domain are created under
+repos/{repo_id}/issues/open/ and require a resolvable active repo id. Pass
+--repo-id explicitly, set PI_COORD_REPO_ID, or run from a registered
+implementation repo. Domain-level items such as requirements, todos,
+decisions, and notes remain in root folders. Legacy root-layout domains
+without repos/ continue to create issues/open/.
+
+The item key is resolved from --project-key, repo or project metadata,
 PI_COORD_PROJECT_KEY, or a derived project name. It is uppercased and all
 non-alphanumeric characters are removed for item IDs.
 
@@ -73,7 +78,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --project)
-      coord_die "--project has been removed; create root-layout items and use --project-key for ID prefixes"
+      coord_die "--project has been removed; use --repo-id for repo-scoped issues or --project-key for ID prefixes"
       ;;
     --project-key)
       [ "$#" -ge 2 ] || coord_die "--project-key requires a value"
@@ -86,7 +91,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --workspace-item)
-      coord_die "--workspace-item has been removed; create root-layout items"
+      coord_die "--workspace-item has been removed; issue items are repo-scoped in shared coordination domains"
       ;;
     --type)
       [ "$#" -ge 2 ] || coord_die "--type requires a value"
@@ -237,7 +242,7 @@ elif [ -n "$repo_id_arg" ]; then
   [ -f "$metadata_file" ] || coord_die "repo manifest missing: $metadata_file"
   item_root="repos/$repo_id/$type_dir"
 elif ! coord_write_root_items_by_default; then
-  coord_die "no project-root layout found; initialize with agent-coord-init and create root item directories"
+  coord_die "no supported coordination layout found; initialize with agent-coord-init and create repo-scoped or root item directories"
 fi
 
 created="$(coord_timestamp_iso)"
