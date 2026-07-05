@@ -115,28 +115,6 @@ fi
 [ -n "$project_key" ] || coord_die "project must not be empty"
 [ -n "$agent_id" ] || coord_die "agent id must not be empty"
 
-initial_repo_source=""
-initial_repo_id="$repo_id_arg"
-if [ -n "$initial_repo_id" ]; then
-  initial_repo_source="--repo-id or PI_COORD_REPO_ID"
-else
-  initial_repo_id="$(coord_impl_config_value repo_id || true)"
-  if [ -n "$initial_repo_id" ]; then
-    initial_repo_source=".pi-coordination.yaml"
-  else
-    initial_repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)"
-    if [ -n "$initial_repo_id" ]; then
-      initial_repo_source="git remote origin"
-    else
-      initial_repo_id="$(coord_sanitize_path_part "$project_key")"
-      initial_repo_source="project"
-    fi
-  fi
-fi
-[ -n "$initial_repo_id" ] || coord_die "initial repo id must not be empty"
-coord_repo_id_is_valid "$initial_repo_id" \
-  || coord_die "invalid initial repo id '$initial_repo_id' from $initial_repo_source; use --repo-id with lowercase letters, digits, dots, underscores, and hyphens"
-
 remote_git_dir=""
 if [ -n "$remote_url" ]; then
   remote="$remote_url"
@@ -168,6 +146,28 @@ fi
 if [ "$bare_only" = "1" ]; then
   exit 0
 fi
+
+initial_repo_source=""
+initial_repo_id="$repo_id_arg"
+if [ -n "$initial_repo_id" ]; then
+  initial_repo_source="--repo-id or PI_COORD_REPO_ID"
+else
+  initial_repo_id="$(coord_impl_config_value repo_id || true)"
+  if [ -n "$initial_repo_id" ]; then
+    initial_repo_source=".pi-coordination.yaml"
+  else
+    initial_repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)"
+    if [ -n "$initial_repo_id" ]; then
+      initial_repo_source="git remote origin"
+    else
+      initial_repo_id="$(coord_sanitize_path_part "$project_key")"
+      initial_repo_source="project"
+    fi
+  fi
+fi
+[ -n "$initial_repo_id" ] || coord_die "initial repo id must not be empty"
+coord_repo_id_is_valid "$initial_repo_id" \
+  || coord_die "invalid initial repo id '$initial_repo_id' from $initial_repo_source; use --repo-id with lowercase letters, digits, dots, underscores, and hyphens"
 
 coord_ensure_operational_root_excluded "$coord_dir"
 

@@ -252,6 +252,20 @@ bootstrap-coordination \
 test -d "$tmp/bare-only-remotes/bare-project-coordination.git"
 test ! -e "$bare_only_project_dir/.pi-env/coordination"
 
+bare_only_mixed_case_project="$tmp/bare-only-mixed-case-project"
+mkdir -p "$bare_only_mixed_case_project"
+git -C "$bare_only_mixed_case_project" init -q
+git -C "$bare_only_mixed_case_project" remote add origin \
+  https://example.invalid/Org/MixedCase.git
+cd "$bare_only_mixed_case_project"
+agent-coord-init \
+  --project demo \
+  --root "$tmp/bare-only-mixed-case-remotes" \
+  --bare-only >/dev/null
+
+test -d "$tmp/bare-only-mixed-case-remotes/demo-coordination.git"
+test ! -e "$bare_only_mixed_case_project/.pi-env/coordination"
+
 cd "$workspace_dir"
 agent-coord-init \
   --root "$tmp/remotes" \
