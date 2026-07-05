@@ -65,6 +65,7 @@ test -d "$fresh_default_project/.pi-env/coordination/repos/fresh-default/issues/
 test -d "$fresh_default_project/.pi-env/coordination/repos/fresh-default/issues/closed"
 test -f "$fresh_default_project/.pi-env/coordination/repos/fresh-default/REPO.md"
 grep -q '^repo_id: fresh-default$' "$fresh_default_project/.pi-env/coordination/repos/fresh-default/REPO.md"
+test ! -e "$fresh_default_project/.pi-env/coordination/REPOS.md"
 test ! -e "$fresh_default_project/.pi-env/coordination/issues"
 grep -Fxq '/.pi-env/' "$fresh_default_project/.git/info/exclude"
 

@@ -40,10 +40,13 @@ git -C "$coord_dir" add issues/open/ROOT-ISS-1.yaml
 git -C "$coord_dir" commit -q -m "Add root issue"
 agent-coord-repo --coord-dir "$coord_dir" migrate-root-issues root-repo >/dev/null
 test -f "$coord_dir/repos/root-repo/REPO.md"
+test ! -e "$coord_dir/REPOS.md"
 test -f "$coord_dir/repos/root-repo/issues/open/ROOT-ISS-1.yaml"
 test ! -e "$coord_dir/issues/open/ROOT-ISS-1.yaml"
 git -C "$coord_dir" diff --cached --name-status | grep -q $'^R.*issues/open/ROOT-ISS-1.yaml.*repos/root-repo/issues/open/ROOT-ISS-1.yaml$'
 git -C "$coord_dir" commit -q -m "Migrate root issue"
+printf 'legacy registry index\n' >"$coord_dir/REPOS.md"
+cp "$coord_dir/REPOS.md" "$tmp/legacy-REPOS.md"
 
 cat >"$coord_dir/issues/open/ROOT-ISS-1.yaml" <<'EOF_DUP_ISSUE'
 schema: coordination-item/v1
@@ -141,6 +144,7 @@ grep -q 'ambiguous' "$tmp/amb-remote.err"
 
 agent-coord-repo --coord-dir "$coord_dir" add beta >/dev/null
 agent-coord-repo --coord-dir "$coord_dir" rename beta gamma >/dev/null
+test "$(cat "$coord_dir/REPOS.md")" = "$(cat "$tmp/legacy-REPOS.md")"
 test -d "$coord_dir/repos/gamma"
 test ! -e "$coord_dir/repos/beta"
 grep -q '^repo_id: gamma$' "$coord_dir/repos/gamma/REPO.md"

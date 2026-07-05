@@ -85,24 +85,6 @@ repo_set_status() {
   coord_set_frontmatter "$1" "status=$2" "updated=$(coord_timestamp_iso)"
 }
 
-repo_write_index() {
-  local tmp file repo_id status
-  tmp="$(mktemp)"
-  {
-    printf '# Coordination repositories\n\n'
-    printf '| Repo | Status | Aliases |\n'
-    printf '|------|--------|---------|\n'
-    while IFS= read -r file; do
-      repo_id="$(coord_repo_manifest_value "$file" repo_id || true)"
-      [ -n "$repo_id" ] || repo_id="$(basename "$(dirname "$file")")"
-      status="$(repo_status "$file")"
-      aliases="$(coord_repo_manifest_list_values "$file" aliases | paste -sd ', ' -)"
-      printf '| %s | %s | %s |\n' "$repo_id" "$status" "$aliases"
-    done < <(find repos -mindepth 2 -maxdepth 2 -name REPO.md -type f 2>/dev/null | sort)
-  } >"$tmp"
-  mv "$tmp" REPOS.md
-}
-
 case "$cmd" in
   add)
     [ "$#" -ge 1 ] || coord_die "add requires REPO_ID"
@@ -131,7 +113,6 @@ case "$cmd" in
       if [ "${#remotes[@]}" -eq 0 ]; then printf ' []\n'; else printf '\n'; for remote in "${remotes[@]}"; do printf '  - %s\n' "$(coord_yaml_scalar "$remote")"; done; fi
       printf -- '---\n\n# %s\n' "$repo_id"
     } >"$(repo_manifest "$repo_id")"
-    repo_write_index
     printf 'repos/%s/REPO.md\n' "$repo_id"
     ;;
   rename)
@@ -172,7 +153,6 @@ case "$cmd" in
       { print }
     ' "$manifest" >"$tmp"
     mv "$tmp" "$manifest"
-    repo_write_index
     printf 'repos/%s/REPO.md\n' "$new_id"
     ;;
   migrate-root-issues)
@@ -206,7 +186,6 @@ case "$cmd" in
         if [ "${#remotes[@]}" -eq 0 ]; then printf ' []\n'; else printf '\n'; for remote in "${remotes[@]}"; do printf '  - %s\n' "$(coord_yaml_scalar "$remote")"; done; fi
         printf -- '---\n\n# %s\n' "$repo_id"
       } >"$(repo_manifest "$repo_id")"
-      repo_write_index
       canonical="$repo_id"
     fi
     for state in open blocked done closed; do mkdir -p "repos/$canonical/issues/$state"; done
@@ -264,7 +243,6 @@ case "$cmd" in
       done
     fi
     repo_set_status "$manifest" retired
-    repo_write_index
     printf 'retired %s\n' "$canonical"
     ;;
   list)

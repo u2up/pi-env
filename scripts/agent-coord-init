@@ -248,14 +248,6 @@ starting at \`001\` for each timestamp. Testable items are linked to project
 repo scripts by matching item and test filename stems.
 EOF_README
 
-cat >REPOS.md <<EOF_REPOS
-# Coordination repositories
-
-| Repo | Status | Aliases |
-|------|--------|---------|
-| $initial_repo_id | active |  |
-EOF_REPOS
-
 initial_item_key="$(coord_project_id_prefix "$initial_repo_id")"
 cat >"repos/$initial_repo_id/REPO.md" <<EOF_REPO
 ---
