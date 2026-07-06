@@ -3,6 +3,7 @@ set -euo pipefail
 
 command_names=(
   pi-env
+  pi-env-shell
   pi-start
   pi-bwrap
   bootstrap-coordination
@@ -241,6 +242,9 @@ set -euo pipefail
 pi_env_bin_dir=$bin_dir_q
 pi_env_share_dir=$share_dir_q
 pi_env_script_target=$target_q
+if [ "\$(basename "\$0")" = "pi-env-shell" ]; then
+  export PI_ENV_SHELL_MODE=1
+fi
 export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-\$pi_env_share_dir/scripts/agent-coord-lib.sh}"
 export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-\$pi_env_share_dir/pi-skill-templates/agent-coordination}"
 export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-\$pi_env_share_dir/role-manager}"
@@ -371,7 +375,7 @@ chmod +x "$share_dir/scripts"/agent-coord-* \
 
 for name in "${command_names[@]}"; do
   case "$name" in
-    pi-env) install_wrapper "$name" pi-env-launcher ;;
+    pi-env|pi-env-shell) install_wrapper "$name" pi-env-launcher ;;
     pi-env-uninstall) ;;
     *) install_wrapper "$name" "$name" ;;
   esac

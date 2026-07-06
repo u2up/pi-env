@@ -8,10 +8,14 @@ pi-env - run Pi through the pi-env launcher
 Usage:
   pi-env [--runtime host|nix|auto] [--flake REF] [pi args...]
   pi-env [--runtime host|nix|auto] [--flake REF] --raw -- [pi args...]
+  pi-env-shell [--runtime host|nix|auto] [--flake REF] [shell args...]
   pi-env --help
+  pi-env-shell --help
 
-Default mode delegates to pi-start, preserving pi-env defaults.
-Raw mode delegates to pi-bwrap for fully custom Pi arguments.
+Default pi-env mode delegates to pi-start, preserving pi-env defaults.
+Raw pi-env mode delegates to pi-bwrap for fully custom Pi arguments.
+pi-env-shell selects the same runtime as pi-env, then asks pi-bwrap to enter
+sandbox shell mode instead of starting Pi.
 
 Runtime modes:
   host  Use host-installed tools inside the Bubblewrap sandbox. This is the
@@ -25,6 +29,11 @@ USAGE
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+command_name="$(basename "$0")"
+shell_mode=0
+if [ "$command_name" = "pi-env-shell" ] || [ "${PI_ENV_SHELL_MODE:-0}" = "1" ]; then
+  shell_mode=1
+fi
 checkout_root="$(cd "$script_dir/.." && pwd -P)"
 flake_ref="${PI_ENV_FLAKE:-$checkout_root}"
 runtime_mode=""
@@ -122,7 +131,9 @@ exec_host_runtime() {
   export PI_ENV_HOST_RUNTIME=1
   unset PI_ENV_RUNTIME_PATH
   export PI_ENV_PI_BWRAP="$host_pi_bwrap"
-  if [ "$raw" = "1" ]; then
+  if [ "$shell_mode" = "1" ]; then
+    exec "$host_pi_bwrap" --shell -- "${args[@]}"
+  elif [ "$raw" = "1" ]; then
     exec "$host_pi_bwrap" -- "${args[@]}"
   fi
   exec "$host_pi_start" "${args[@]}"
@@ -130,7 +141,9 @@ exec_host_runtime() {
 
 exec_nix_runtime() {
   if [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_BWRAP:-}" ]; then
-    if [ "$raw" = "1" ]; then
+    if [ "$shell_mode" = "1" ]; then
+      exec "$PI_ENV_PI_BWRAP" --shell -- "${args[@]}"
+    elif [ "$raw" = "1" ]; then
       exec "$PI_ENV_PI_BWRAP" -- "${args[@]}"
     fi
     exec "$PI_ENV_PI_START" "${args[@]}"
@@ -142,7 +155,11 @@ exec_nix_runtime() {
     exit 127
   fi
 
-  local nix_args=(develop "$flake_ref" -c pi-env)
+  local nix_command=pi-env
+  if [ "$shell_mode" = "1" ]; then
+    nix_command=pi-env-shell
+  fi
+  local nix_args=(develop "$flake_ref" -c "$nix_command")
   if [ "$raw" = "1" ]; then
     nix_args+=(--raw --)
   fi
@@ -154,7 +171,9 @@ exec_auto_runtime() {
   local pi_bwrap="${PI_ENV_PI_BWRAP:-pi-bwrap}"
   if { [ -n "${PI_ENV_PI_START:-}" ] || command -v "$pi_start" >/dev/null 2>&1; } && \
      { [ -n "${PI_ENV_PI_BWRAP:-}" ] || command -v "$pi_bwrap" >/dev/null 2>&1; }; then
-    if [ "$raw" = "1" ]; then
+    if [ "$shell_mode" = "1" ]; then
+      exec "$pi_bwrap" --shell -- "${args[@]}"
+    elif [ "$raw" = "1" ]; then
       exec "$pi_bwrap" -- "${args[@]}"
     fi
     exec "$pi_start" "${args[@]}"

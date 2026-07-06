@@ -301,6 +301,7 @@ Verify the commands are available:
 
 ```bash
 pi-env --help
+pi-env-shell --help
 pi-bwrap --help
 ```
 
@@ -357,8 +358,9 @@ prints a short reminder unless `PI_ENV_QUIET` is set.
 ### Optional profile installation
 
 For the smallest profile that can launch Pi in the sandbox, install the core
-runtime package. It puts `pi-env`, `pi-start`, `pi-bwrap`, and the runtime tools
-on `PATH` without the Git-backed coordination helper commands:
+runtime package. It puts `pi-env`, `pi-env-shell`, `pi-start`, `pi-bwrap`, and
+the runtime tools on `PATH` without the Git-backed coordination helper
+commands:
 
 ```bash
 nix profile install ~/src/pi-env#pi-core
@@ -421,6 +423,19 @@ Use `--runtime host` for direct startup with unpinned host tools. Use
 integration when you need the reproducible/pinned Nix runtime. `--runtime auto`
 keeps compatibility with environments that already provide pi-env commands and
 falls back to the Nix runtime when needed.
+
+Use `pi-env-shell` when you want an interactive shell inside the same selected
+runtime and Bubblewrap sandbox instead of starting the Pi agent:
+
+```bash
+~/src/pi-env/pi-env-shell --runtime host
+~/src/pi-env/pi-env-shell --runtime nix
+```
+
+`pi-env-shell` owns runtime selection just like `pi-env`; the lower-level
+sandbox payload switch remains `pi-bwrap --shell`. Normal `pi-env` invocations
+still start Pi through `pi-start`, and Pi arguments continue to pass through as
+shown above.
 
 Use `--raw --` when you want to pass arguments directly to Pi through
 `pi-bwrap` instead of using the `pi-start` defaults:
@@ -660,6 +675,23 @@ pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 pi-env --runtime nix --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
+### `pi-env-shell`
+
+Enter a shell inside the selected pi-env runtime and the same Bubblewrap
+sandbox used for Pi runs:
+
+```bash
+pi-env-shell
+pi-env-shell --runtime nix
+pi-env-shell -- -lc 'pwd && command -v git'
+```
+
+`pi-env-shell` accepts the same `--runtime host|nix|auto`, `--flake REF`, and
+`PI_ENV_RUNTIME` selection inputs as `pi-env`. It does not reinterpret normal
+Pi arguments; any remaining arguments are Bash arguments after runtime
+selection. Use `pi-env` for normal agent startup and `pi-env --raw -- ...` when
+you need custom Pi arguments.
+
 ### `pi-start`
 
 `pi-start` is the default startup wrapper. It chooses the default tool list from
@@ -683,7 +715,13 @@ when you want full control over the Pi arguments or when running Pi subcommands:
 ```bash
 pi-bwrap -- --help
 pi-bwrap -- config
+pi-bwrap --shell
 ```
+
+`pi-bwrap --shell [--] [bash args...]` keeps the same project mount, isolated
+home, runtime `PATH`, and environment policy, but execs Bash as the sandbox
+payload instead of `pi`. Prefer `pi-env-shell` unless you have already selected
+the runtime and intentionally want to call the sandbox layer directly.
 
 ### Running `pi config`
 

@@ -36,9 +36,14 @@ pi-bwrap - run pi-coding-agent inside a rootless bubblewrap sandbox
 Usage:
   pi-bwrap [pi args...]
   pi-bwrap -- [pi args...]
+  pi-bwrap --shell [--] [bash args...]
 
 Defaults when no pi args are given:
   pi --tools read,bash,edit,write,grep,find,ls --continue
+
+Shell mode enters the same sandbox but execs Bash instead of Pi. Use
+pi-env-shell for normal runtime selection; use pi-bwrap --shell only when the
+runtime is already selected.
 
 Security model:
   - mounts the detected project root read-write at /workspace
@@ -95,19 +100,28 @@ if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
   exit 0
 fi
 
+shell_mode=0
+if [ "${1:-}" = "--shell" ]; then
+  shell_mode=1
+  shift
+fi
+
 if [ "${1:-}" = "--" ]; then
   shift
 fi
 
-pi_host_path="$(command -v pi 2>/dev/null || true)"
-if [ -z "$pi_host_path" ]; then
-  echo "pi-bwrap: pi was not found on PATH before entering the sandbox." >&2
-  echo "Install pi globally, or enter a shell that provides it, then retry." >&2
-  exit 127
-fi
-if ! pi_host_path="$(realpath -e "$pi_host_path" 2>/dev/null)"; then
-  echo "pi-bwrap: resolved host pi path does not exist: $(command -v pi 2>/dev/null || true)" >&2
-  exit 127
+pi_host_path=""
+if [ "$shell_mode" = "0" ]; then
+  pi_host_path="$(command -v pi 2>/dev/null || true)"
+  if [ -z "$pi_host_path" ]; then
+    echo "pi-bwrap: pi was not found on PATH before entering the sandbox." >&2
+    echo "Install pi globally, or enter a shell that provides it, then retry." >&2
+    exit 127
+  fi
+  if ! pi_host_path="$(realpath -e "$pi_host_path" 2>/dev/null)"; then
+    echo "pi-bwrap: resolved host pi path does not exist: $(command -v pi 2>/dev/null || true)" >&2
+    exit 127
+  fi
 fi
 
 resolve_required_tool() {
@@ -190,7 +204,7 @@ if [ "$host_runtime" = "1" ]; then
     esac
   done
 
-  if [ -n "$canonical_host_home" ]; then
+  if [ "$shell_mode" = "0" ] && [ -n "$canonical_host_home" ]; then
     case "$pi_host_path" in
       "$canonical_host_home"|"$canonical_host_home"/*)
         echo "pi-bwrap: host runtime resolved pi under host HOME, which is not mounted by default: $pi_host_path" >&2
@@ -199,13 +213,13 @@ if [ "$host_runtime" = "1" ]; then
         ;;
     esac
   fi
-  if ! host_path_is_default_mounted "$pi_host_path" && ! host_path_is_under_host_extra_path "$pi_host_path"; then
+  if [ "$shell_mode" = "0" ] && ! host_path_is_default_mounted "$pi_host_path" && ! host_path_is_under_host_extra_path "$pi_host_path"; then
     echo "pi-bwrap: host runtime resolved pi outside default sandbox mounts: $pi_host_path" >&2
     echo "pi-bwrap: install pi under /usr/local/bin, /usr/bin, or /bin; add its directory with PI_BWRAP_HOST_EXTRA_PATH for a read-only bind; or use --runtime nix." >&2
     exit 127
   fi
 
-  if [ -f "$pi_host_path" ] && IFS= read -r pi_shebang <"$pi_host_path"; then
+  if [ "$shell_mode" = "0" ] && [ -f "$pi_host_path" ] && IFS= read -r pi_shebang <"$pi_host_path"; then
     case "$pi_shebang" in
       *'/usr/bin/env node'*)
         node_path="$(command -v node 2>/dev/null || true)"
@@ -839,6 +853,16 @@ bwrap_args=(
 
 if [ "${PI_BWRAP_NET:-1}" = "1" ]; then
   bwrap_args+=(--share-net)
+fi
+
+if [ "$shell_mode" = "1" ]; then
+  if [ "${#pi_args[@]}" -eq 0 ]; then
+    pi_args=(-l)
+  fi
+  exec "$pi_bwrap_bwrap" \
+    "${env_args[@]}" \
+    "${bwrap_args[@]}" \
+    -- "$sandbox_bash" "${pi_args[@]}"
 fi
 
 exec "$pi_bwrap_bwrap" \
