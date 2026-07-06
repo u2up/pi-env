@@ -23,7 +23,7 @@ Options:
                           relative to the project root
   --agent-id ID           Coordination agent identity; default: PI_COORD_AGENT_ID or USER
   --issue ID              Limit this run to one explicit coordination issue ID;
-                          repeat for an ordered issue batch
+                          repeat this option for an ordered issue batch
   --sleep SECONDS         Idle poll sleep interval; default: 30
   --max-jobs N            Stop after running N Pi jobs
   --max-idle-polls N      Stop after N idle polls with no eligible work
