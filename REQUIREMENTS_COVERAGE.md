@@ -4,8 +4,8 @@ This file is generated from active requirement items and `designs/*.md`.
 
 ## Summary
 
-- Requirements: 162
-- Covered by design: 162
+- Requirements: 164
+- Covered by design: 164
 - Not covered by design: 0
 
 ## Coverage by requirement
@@ -78,6 +78,8 @@ This file is generated from active requirement items and `designs/*.md`.
 | PATH-002 | PIENV-FRQ-20260612-210000-049 | designs/bubblewrap-sandbox.md |
 | CMD-020 | PIENV-FRQ-20260615-175837-001 | designs/serial-role-automation.md |
 | PATH-003 | PIENV-FRQ-20260612-210000-050 | designs/bubblewrap-sandbox.md |
+| CMD-021 | PIENV-FRQ-20260706-202632-001 | designs/launcher-layering.md |
+| CMD-022 | PIENV-FRQ-20260706-202634-001 | designs/launcher-layering.md |
 | PATH-004 | PIENV-FRQ-20260612-210000-051 | designs/bubblewrap-sandbox.md |
 | PATH-005 | PIENV-FRQ-20260612-210000-052 | designs/bubblewrap-sandbox.md |
 | PATH-006 | PIENV-FRQ-20260701-110514-001 | designs/host-runtime.md |

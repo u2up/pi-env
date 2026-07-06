@@ -943,6 +943,42 @@ The command must:
 
 The command must not require tmux for the serial mode.
 
+#### CMD-021 `pi-bwrap` shell mode
+
+`pi-bwrap` must provide a shell mode that constructs the same Bubblewrap
+sandbox, mounts, working directory, sanitized environment, runtime tool path,
+Pi state exposure, extension/session/resource binds, and coordination path
+rewrites as normal Pi coding-agent execution, but execs Bash instead of
+`pi` as the final process.
+
+Shell mode must be reachable through a wrapper-owned interface, such as
+`pi-bwrap --shell`, and may also be exposed as `pi-bwrap-shell`. In normal
+Pi mode, existing argument behavior must remain unchanged, including
+`pi-bwrap -- <args>` passing arguments to Pi.
+
+Shell mode must not inject Pi default arguments, must not treat shell-mode
+arguments as Pi arguments, and must exit with the shell process status.
+
+#### CMD-022 `pi-env-shell` runtime launcher
+
+`pi-env` must expose a user-facing `pi-env-shell` command that enters a
+Bash shell inside the same sandbox profile used by the Pi coding agent while
+preserving the existing `pi-env` runtime selection contract.
+
+`pi-env-shell` must accept the same runtime-selection inputs as `pi-env`,
+including `--runtime host|nix|auto`, `PI_ENV_RUNTIME`, and `--flake REF`.
+Host, Nix, and auto modes must resolve through the existing launcher layer
+and then delegate to `pi-bwrap` shell mode instead of duplicating sandbox
+policy.
+
+When the Nix runtime is requested and the Nix-provided commands are not
+already wired into the current process, `pi-env-shell` must enter
+`nix develop` for the selected flake and run the Nix-provided
+`pi-env-shell`, preserving the requested shell-mode arguments.
+
+Existing `pi-env`, `pi-start`, and `pi-bwrap` Pi-agent behavior must remain
+unchanged.
+
 ### 3.5 Project root and working directory requirements
 
 #### PATH-001 Project root detection

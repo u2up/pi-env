@@ -24,6 +24,8 @@ the layer that needs it.
 | CMD-008 | PIENV-FRQ-20260612-210000-039 |
 | CMD-018 | PIENV-FRQ-20260613-183404-001 |
 | CMD-019 | PIENV-FRQ-20260613-183411-001 |
+| CMD-021 | PIENV-FRQ-20260706-202632-001 |
+| CMD-022 | PIENV-FRQ-20260706-202634-001 |
 
 ## 1. Layer responsibilities
 
@@ -34,20 +36,28 @@ by `CMD-001` through `CMD-008`. The selected project root is the only primary
 project for the run and is later mounted at `/workspace`; pi-env does not manage
 a host-side collection of projects.
 
+`pi-env-shell` is the shell-oriented outer entrypoint. It should share the
+same runtime-selection and flake bootstrap logic as `pi-env`, then pass an
+explicit shell intent to the sandbox layer rather than constructing its own
+Bubblewrap command.
+
 `pi-start` is the agent-facing startup layer. It translates the prepared
 workspace into the final `pi` invocation, applies role or prompt options, and
 keeps startup ergonomics separate from sandbox construction.
 
 `pi-bwrap` is the sandbox construction layer. It builds the Bubblewrap command
 line and is the only layer that should assemble mount, environment, network,
-and home-state isolation flags.
+and home-state isolation flags. Shell mode belongs here as a final-payload
+switch: the sandbox setup remains identical, while the final process changes
+from `pi` to Bash.
 
 ## 2. Command flow
 
 The launchers pass structured intent downward rather than sharing hidden global
 state. `pi-env` resolves the single project root and runtime inputs, then calls
 `pi-start` for the default `UC-001` agent startup or `pi-bwrap` for the
-custom-argument `UC-002` path. `pi-start` may delegate to `pi-bwrap` when the
+custom-argument `UC-002` path. `pi-env-shell` resolves the same runtime inputs,
+then calls `pi-bwrap` shell mode. `pi-start` may delegate to `pi-bwrap` when the
 agent must run in the sandbox.
 
 This shape lets `CMD-018` and the launcher-facing part of `CMD-019` add role
