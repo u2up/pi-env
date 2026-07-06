@@ -22,6 +22,8 @@ Options:
   --coord-dir DIR         Coordination checkout; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
                           relative to the project root
   --agent-id ID           Coordination agent identity; default: PI_COORD_AGENT_ID or USER
+  --issue ID              Limit this run to one explicit coordination issue ID;
+                          repeat for an ordered issue batch
   --sleep SECONDS         Idle poll sleep interval; default: 30
   --max-jobs N            Stop after running N Pi jobs
   --max-idle-polls N      Stop after N idle polls with no eligible work
@@ -81,6 +83,7 @@ coord_helper_extra_path=""
 coord_helper_host_ro_path=""
 tools="${PI_BWRAP_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
 role_cycle_done_tool="role_cycle_done"
+requested_issue_ids=()
 
 require_value() {
   [ -n "${2:-}" ] || die "$1 requires a value"
@@ -91,6 +94,22 @@ is_nonnegative_int() {
     ''|*[!0-9]*) return 1 ;;
     *) return 0 ;;
   esac
+}
+
+add_requested_issue_id() {
+  local id existing
+  id="$1"
+  [ -n "$id" ] || die "--issue requires a non-empty ID"
+  for existing in "${requested_issue_ids[@]}"; do
+    if [ "$existing" = "$id" ]; then
+      die "duplicate --issue ID: $id"
+    fi
+  done
+  requested_issue_ids+=("$id")
+}
+
+explicit_issue_mode() {
+  [ "${#requested_issue_ids[@]}" -gt 0 ]
 }
 
 while [ "$#" -gt 0 ]; do
@@ -108,6 +127,11 @@ while [ "$#" -gt 0 ]; do
     --agent-id)
       require_value "$1" "${2:-}"
       agent_id="$2"
+      shift 2
+      ;;
+    --issue)
+      require_value "$1" "${2:-}"
+      add_requested_issue_id "$2"
       shift 2
       ;;
     --sleep|--poll-interval)
@@ -437,8 +461,102 @@ status_lc_for_file() {
   coord_item_value "$1" status | tr '[:upper:]' '[:lower:]'
 }
 
+requested_issue_file_in_coord() {
+  local requested_id file item_id matches match_count
+  requested_id="$1"
+  matches=""
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    item_id="$(item_id_for_file "$file")"
+    if [ "$item_id" = "$requested_id" ]; then
+      matches="${matches}${file}"$'\n'
+    fi
+  done < <(coord_item_find_files)
+
+  match_count="$(printf '%s' "$matches" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [ "$match_count" = "0" ]; then
+    die "requested issue not found: $requested_id"
+  fi
+  if [ "$match_count" != "1" ]; then
+    printf 'pi-serial-roles: requested issue ID is ambiguous: %s\n%s' \
+      "$requested_id" "$matches" >&2
+    exit 1
+  fi
+  printf '%s' "$matches" | sed '/^$/d' | head -n 1
+}
+
+validate_requested_issues_in_coord() {
+  local requested_id file raw_type file_type
+  explicit_issue_mode || return 0
+  for requested_id in "${requested_issue_ids[@]}"; do
+    file="$(requested_issue_file_in_coord "$requested_id")"
+    raw_type="$(coord_item_value "$file" type || true)"
+    file_type="$(coord_item_type_canonical "$raw_type")"
+    if [ "$file_type" != "issue" ]; then
+      die "requested item is not an issue: $requested_id ($file has type ${raw_type:-unknown})"
+    fi
+  done
+}
+
+validate_requested_issues() {
+  explicit_issue_mode || return 0
+  ( cd "$coord_dir" && validate_requested_issues_in_coord )
+}
+
+issue_eligible_for_role() {
+  local role file status owner
+  role="$1"
+  file="$2"
+  status="$(status_lc_for_file "$file")"
+  case "$role" in
+    tester)
+      [ "$status" = "done" ] || return 1
+      coord_item_flag_true "$file" reviewed || return 1
+      if coord_item_flag_true "$file" verified; then
+        return 1
+      fi
+      return 0
+      ;;
+    reviewer)
+      [ "$status" = "done" ] || return 1
+      if coord_item_flag_true "$file" reviewed; then
+        return 1
+      fi
+      return 0
+      ;;
+    developer)
+      [ "$status" = "open" ] || return 1
+      owner="$(coord_item_value "$file" owner || true)"
+      [ -z "$owner" ] || [ "$owner" = "$agent_id" ]
+      ;;
+    *)
+      die "unknown role: $role"
+      ;;
+  esac
+}
+
+select_next_requested_work_in_coord() {
+  local role requested_id file item_id
+  for role in tester reviewer developer; do
+    for requested_id in "${requested_issue_ids[@]}"; do
+      file="$(requested_issue_file_in_coord "$requested_id")"
+      if issue_eligible_for_role "$role" "$file"; then
+        item_id="$(item_id_for_file "$file")"
+        printf '%s\t%s\t%s\n' "$role" "$item_id" "$file"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
 select_next_work_in_coord() {
   local file raw_type file_type status item_id owner
+
+  if explicit_issue_mode; then
+    select_next_requested_work_in_coord
+    return $?
+  fi
 
   while IFS= read -r file; do
     [ -n "$file" ] || continue
@@ -869,6 +987,7 @@ while :; do
     continue
   fi
   pull_coordination
+  validate_requested_issues
 
   if selection="$(select_next_work)"; then
     IFS=$'\t' read -r role item _path <<<"$selection"
@@ -892,6 +1011,10 @@ while :; do
     idle_polls=$((idle_polls + 1))
     if [ "$dry_run" = "1" ]; then
       printf 'selected role=none item=none\n'
+      exit 0
+    fi
+    if explicit_issue_mode; then
+      note "requested issue batch has no eligible work; exiting"
       exit 0
     fi
     if [ -n "$max_idle_polls" ] && [ "$idle_polls" -ge "$max_idle_polls" ]; then

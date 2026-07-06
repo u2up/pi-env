@@ -71,6 +71,15 @@ Prefer draining downstream work before starting more development:
 This keeps completed developer work from piling up unreviewed or unverified.
 If no item exists for any role, the orchestrator sleeps and polls again.
 
+A caller may also provide an explicit batch with repeatable `--issue ID`
+options. In that mode the same tester, reviewer, then developer priority is
+applied only to the requested issue IDs. Within a single role tier, requested
+issues are considered in caller-provided order. The default behavior with no
+`--issue` options remains the full all-eligible queue. Explicit-batch mode
+validates unknown IDs, duplicate IDs, and IDs that resolve to non-issue items
+before running Pi, and exits successfully when the requested set has no
+currently eligible work instead of sleeping because unrelated issues remain.
+
 ## Work selection
 
 Initial selection can use existing helpers:

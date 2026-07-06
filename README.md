@@ -1369,7 +1369,23 @@ pi-serial-roles --dry-run
 pi-serial-roles --ui interactive --once
 pi-serial-roles --ui json --once
 pi-serial-roles --ui none --once
+pi-serial-roles --issue PIENV-ISS-20260705-172018-001 --once
 ```
+
+Use repeatable `--issue ID` options when you want a bounded batch for explicit
+coordination issue IDs instead of the default all-eligible queue:
+
+```bash
+pi-serial-roles --issue ISSUE-1 --issue ISSUE-2 --max-jobs 2
+```
+
+With one or more `--issue` options, serial mode never selects an unlisted
+issue. Tester, reviewer, then developer priority is preserved across the
+requested set, and issues in the same role tier are considered in the order the
+options were provided. Unknown IDs, duplicate IDs, and IDs that resolve to
+non-issue items fail before any Pi job is run. Once the requested issues have
+no eligible tester, reviewer, or developer work, the command exits successfully
+instead of sleeping for unrelated queue work.
 
 Each poll holds `.pi-env/locks/pi-serial-roles.lock` and creates
 `.pi-env/locks` as needed. It requires a clean project working tree. A dirty

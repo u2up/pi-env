@@ -932,7 +932,13 @@ The command must:
 - select reviewer work from done issues with `reviewed: false`;
 - select developer work from open issues and claim it before launching the
   developer job;
-- sleep and poll again when no eligible issue exists;
+- optionally limit selection to a caller-provided ordered batch of explicit
+  issue IDs while preserving tester, reviewer, then developer priority;
+- reject unknown explicit issue IDs, duplicate explicit issue IDs, and
+  explicit IDs that resolve to non-issue items before running a Pi job;
+- sleep and poll again when no eligible issue exists in default queue mode;
+- exit successfully when an explicit requested issue batch has no currently
+  eligible work;
 - allow a bounded or dry-run mode suitable for automated tests.
 
 The command must not require tmux for the serial mode.
