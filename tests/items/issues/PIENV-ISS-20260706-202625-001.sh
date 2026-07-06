@@ -8,6 +8,32 @@ cd "$repo_root"
 PI_ENV_SHELL_MODE=1 bash scripts/pi-env-launcher --help | grep -q 'pi-env-shell'
 bash scripts/pi-bwrap --help | grep -q 'pi-bwrap --shell'
 
+fake_root="$(mktemp -d)"
+trap 'rm -rf "$fake_root"' EXIT
+cat >"$fake_root/fake-bwrap" <<'FAKE_BWRAP'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  printf '%s\n' "$arg"
+done >"$PI_ENV_TEST_BWRAP_TRACE"
+FAKE_BWRAP
+chmod +x "$fake_root/fake-bwrap"
+PI_ENV_RUNTIME_PATH=/nix/store/fake/bin \
+PI_BWRAP_BWRAP="$fake_root/fake-bwrap" \
+PI_BWRAP_STATE_DIR="$fake_root/state" \
+PI_BWRAP_EPHEMERAL_HOME=1 \
+PI_BWRAP_IMPORT_COMMON=0 \
+PI_BWRAP_IMPORT_EXTENSIONS=0 \
+PI_BWRAP_IMPORT_GIT_CONFIG=0 \
+PI_BWRAP_IMPORT_AUTH=0 \
+PI_BWRAP_IMPORT_SESSIONS=0 \
+PI_ENV_TEST_BWRAP_TRACE="$fake_root/trace" \
+bash scripts/pi-bwrap --shell >/dev/null
+if grep -qx -- '--tools' "$fake_root/trace" || grep -qx -- '--continue' "$fake_root/trace"; then
+  echo "pi-bwrap --shell without bash args must not use default Pi args" >&2
+  exit 1
+fi
+tail -n 1 "$fake_root/trace" | grep -qx -- '-l'
+
 REPO_ROOT="$repo_root" node --input-type=module <<'NODE'
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

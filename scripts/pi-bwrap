@@ -499,7 +499,13 @@ if [ -n "$host_coord_dir" ]; then
   fi
 fi
 
-if [ "$#" -eq 0 ]; then
+if [ "$shell_mode" = "1" ]; then
+  if [ "$#" -eq 0 ]; then
+    pi_args=(-l)
+  else
+    pi_args=("$@")
+  fi
+elif [ "$#" -eq 0 ]; then
   pi_args=(--tools "$DEFAULT_PI_TOOLS" --continue)
 else
   pi_args=("$@")
@@ -856,9 +862,6 @@ if [ "${PI_BWRAP_NET:-1}" = "1" ]; then
 fi
 
 if [ "$shell_mode" = "1" ]; then
-  if [ "${#pi_args[@]}" -eq 0 ]; then
-    pi_args=(-l)
-  fi
   exec "$pi_bwrap_bwrap" \
     "${env_args[@]}" \
     "${bwrap_args[@]}" \
