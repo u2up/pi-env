@@ -554,30 +554,32 @@ rewrite_pi_package_path() {
   sandbox_path_for_host_resource "$package_path"
 }
 
-rewritten_pi_args=()
-i=0
-while [ "$i" -lt "${#pi_args[@]}" ]; do
-  arg="${pi_args[$i]}"
-  case "$arg" in
-    -e|--extension|--package)
-      rewritten_pi_args+=("$arg")
-      i=$((i + 1))
-      if [ "$i" -lt "${#pi_args[@]}" ]; then
-        rewrite_pi_package_path "${pi_args[$i]}"
-        rewritten_pi_args+=("$rewritten_package_path")
-      fi
-      ;;
-    --extension=*|--package=*)
-      rewrite_pi_package_path "${arg#*=}"
-      rewritten_pi_args+=("${arg%%=*}=$rewritten_package_path")
-      ;;
-    *)
-      rewritten_pi_args+=("$arg")
-      ;;
-  esac
-  i=$((i + 1))
-done
-pi_args=("${rewritten_pi_args[@]}")
+if [ "$shell_mode" = "0" ]; then
+  rewritten_pi_args=()
+  i=0
+  while [ "$i" -lt "${#pi_args[@]}" ]; do
+    arg="${pi_args[$i]}"
+    case "$arg" in
+      -e|--extension|--package)
+        rewritten_pi_args+=("$arg")
+        i=$((i + 1))
+        if [ "$i" -lt "${#pi_args[@]}" ]; then
+          rewrite_pi_package_path "${pi_args[$i]}"
+          rewritten_pi_args+=("$rewritten_package_path")
+        fi
+        ;;
+      --extension=*|--package=*)
+        rewrite_pi_package_path "${arg#*=}"
+        rewritten_pi_args+=("${arg%%=*}=$rewritten_package_path")
+        ;;
+      *)
+        rewritten_pi_args+=("$arg")
+        ;;
+    esac
+    i=$((i + 1))
+  done
+  pi_args=("${rewritten_pi_args[@]}")
+fi
 
 env_args=(--clearenv)
 
