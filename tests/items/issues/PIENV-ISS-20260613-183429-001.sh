@@ -6,7 +6,7 @@ cd "$repo_root"
 . tests/lib/test-helpers.sh
 
 test_file_exists pi-env
-test_grep "pi-env - enter pi-env" <("./pi-env" --help)
+test_grep "pi-env - run Pi through the pi-env launcher" <("./pi-env" --help)
 
 set +e
 missing_flake_output="$("$repo_root/pi-env" --flake 2>&1)"
@@ -47,7 +47,8 @@ chmod +x "$fakebin"/*
 capture="$tmpdir/capture"
 (
   cd "$tmpdir/project"
-  PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" "$repo_root/pi-env" "hello prompt"
+  PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_RUNTIME=auto \
+    "$repo_root/pi-env" "hello prompt"
 )
 test_grep '^pi-start$' "$capture"
 test_grep "^$tmpdir/project$" "$capture"
@@ -55,7 +56,8 @@ test_grep '^<hello prompt>$' "$capture"
 
 (
   cd "$tmpdir/project"
-  PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" "$repo_root/pi-env" --raw -- --model example/model "prompt"
+  PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_RUNTIME=auto \
+    "$repo_root/pi-env" --raw -- --model example/model "prompt"
 )
 test_grep '^pi-bwrap$' "$capture"
 test_grep '^<-->$' "$capture"
@@ -64,7 +66,8 @@ test_grep '^<example/model>$' "$capture"
 test_grep '^<prompt>$' "$capture"
 
 rm "$fakebin/pi-start" "$fakebin/pi-bwrap"
-PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_FLAKE=env-flake "$repo_root/pi-env" "env prompt"
+PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_RUNTIME=auto \
+  PI_ENV_FLAKE=env-flake "$repo_root/pi-env" "env prompt"
 test_grep '^nix$' "$capture"
 test_grep '^<develop>$' "$capture"
 test_grep '^<env-flake>$' "$capture"
@@ -72,7 +75,8 @@ test_grep '^<-c>$' "$capture"
 test_grep '^<pi-env>$' "$capture"
 test_grep '^<env prompt>$' "$capture"
 
-PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_FLAKE=env-flake "$repo_root/pi-env" --flake cli-flake "prompt"
+PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_RUNTIME=auto \
+  PI_ENV_FLAKE=env-flake "$repo_root/pi-env" --flake cli-flake "prompt"
 test_grep '^nix$' "$capture"
 test_grep '^<develop>$' "$capture"
 test_grep '^<cli-flake>$' "$capture"

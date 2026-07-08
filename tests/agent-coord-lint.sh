@@ -10,7 +10,8 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 export HOME="$tmp/home"
-unset PI_COORD_ROOT PI_COORD_WORKSPACE PI_COORD_DIR PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
+unset PI_COORD_ROOT PI_COORD_REMOTE PI_COORD_REMOTE_URL PI_COORD_WORKSPACE \
+  PI_COORD_DIR PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
 mkdir -p "$HOME" "$tmp/project"
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"

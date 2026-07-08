@@ -5,26 +5,13 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 cd "$repo_root"
 . tests/lib/test-helpers.sh
 
-flake=flake.nix
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
 script="$tmpdir/pi-bwrap"
-awk '
-  /pkgs\.writeShellScriptBin "pi-bwrap"/ { in_script = 1; next }
-  in_script && index($0, sprintf("        %c%c;", 39, 39)) == 1 { exit }
-  in_script {
-    sub(/^          /, "")
-    gsub(/\047\047\$\{/, "${")
-    gsub(/\$\{runtimePath\}/, "/tmp/pi-env-runtime/bin")
-    gsub(/\$\{defaultTools\}/, "read,bash,edit,write,grep,find,ls")
-    gsub(/\$\{pkgs\.[^}]*\}/, "/nix/store/pi-env-test")
-    gsub(/exec \/nix\/store\/pi-env-test\/bin\/bwrap/, "exec \"$PI_ENV_TEST_FAKE_BWRAP\"")
-    print
-  }
-' "$flake" >"$script"
+cp scripts/pi-bwrap "$script"
 chmod +x "$script"
-test_grep 'PI_COORD_REMOTE_URL' "$script"
+test_grep 'PI_COORD_REMOTE' "$script"
 test_grep '/agent-remotes' "$script"
 
 fakebin="$tmpdir/fakebin"
@@ -55,9 +42,11 @@ run_harness() {
   mkdir -p "$project"
   (
     cd "$project"
-    unset PI_COORD_ROOT PI_COORD_REMOTE_URL PI_COORD_DIR
+    unset PI_COORD_ROOT PI_COORD_REMOTE PI_COORD_REMOTE_URL PI_COORD_DIR
     env \
       PATH="$fakebin:$PATH" \
+      PI_ENV_RUNTIME_PATH="$tmpdir/runtime/bin" \
+      PI_BWRAP_BWRAP="$tmpdir/fake-bwrap" \
       PI_ENV_TEST_FAKE_BWRAP="$tmpdir/fake-bwrap" \
       PI_ENV_TEST_CAPTURE="$capture" \
       PI_BWRAP_PROJECT_ROOT="$project" \
@@ -113,6 +102,37 @@ test_grep '^PI_COORD_REMOTE_URL$' "$remote_capture"
 test_grep '^https://git.example.invalid/pi-env-coordination.git$' "$remote_capture"
 assert_no_grep '^/agent-remotes$' "$remote_capture"
 assert_no_grep '^/workspace/agent-remotes$' "$remote_capture"
+
+config_local_project="$tmpdir/config-local-project"
+mkdir -p "$config_local_project/.pi-env/agent-remotes"
+cat >"$config_local_project/.pi-env-coordination.yaml" <<'YAML'
+version: 1
+coordination_remote: .pi-env/agent-remotes/config-local-coordination.git
+YAML
+config_local_capture="$tmpdir/config-local-capture"
+run_harness "$config_local_project" "$config_local_capture"
+test_grep '^PI_COORD_REMOTE$' "$config_local_capture"
+test_grep '^/workspace/.pi-env/agent-remotes/config-local-coordination.git$' "$config_local_capture"
+
+env_remote_parent="$tmpdir/env-remotes"
+mkdir -p "$env_remote_parent"
+env_remote_capture="$tmpdir/env-remote-capture"
+run_harness "$tmpdir/env-remote-project" "$env_remote_capture" \
+  PI_COORD_REMOTE="$env_remote_parent/env-coordination.git"
+test_grep '^PI_COORD_REMOTE$' "$env_remote_capture"
+test_grep '^/agent-remotes/env-coordination.git$' "$env_remote_capture"
+test_grep "^$env_remote_parent$" "$env_remote_capture"
+
+config_external_project="$tmpdir/config-external-project"
+mkdir -p "$config_external_project" "$tmpdir/config-external-remotes"
+cat >"$config_external_project/.pi-env-coordination.yaml" <<YAML
+version: 1
+coordination_remote: $tmpdir/config-external-remotes/config-external.git
+YAML
+config_external_capture="$tmpdir/config-external-capture"
+run_harness "$config_external_project" "$config_external_capture"
+assert_no_grep '^/agent-remotes$' "$config_external_capture"
+assert_no_grep "^$tmpdir/config-external-remotes$" "$config_external_capture"
 
 home_capture="$tmpdir/home-safety-capture"
 run_harness "$tmpdir/home-safety-project" "$home_capture" \

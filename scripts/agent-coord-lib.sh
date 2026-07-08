@@ -114,6 +114,101 @@ coord_impl_config_value() {
   coord_yaml_unquote "$value"
 }
 
+coord_impl_config_set_value() {
+  local key value project_root file rendered tmp
+  key="$1"
+  value="$2"
+  project_root="${3:-}"
+  file="$(coord_impl_config_path "$project_root")"
+  rendered="$(coord_yaml_scalar "$value")"
+  mkdir -p "$(dirname "$file")"
+  if [ ! -f "$file" ]; then
+    {
+      printf 'version: 1\n'
+      printf '%s: %s\n' "$key" "$rendered"
+    } >"$file"
+    return
+  fi
+
+  tmp="$(mktemp "${TMPDIR:-/tmp}/agent-coord-config.XXXXXX")" \
+    || coord_die "failed to create temporary file"
+  awk -v key="$key" -v rendered="$rendered" '
+    BEGIN { written = 0 }
+    index($0, key ":") == 1 {
+      if (!written) {
+        print key ": " rendered
+        written = 1
+      }
+      next
+    }
+    { print }
+    END {
+      if (!written) print key ": " rendered
+    }
+  ' "$file" >"$tmp" || {
+    rm -f "$tmp"
+    coord_die "failed to update $(coord_impl_config_filename)"
+  }
+  mv "$tmp" "$file"
+}
+
+coord_remote_local_path() {
+  local remote
+  remote="$1"
+  case "$remote" in
+    "")
+      return 1
+      ;;
+    file://*)
+      printf '%s\n' "${remote#file://}"
+      return 0
+      ;;
+    *://*|*:*)
+      return 1
+      ;;
+    /*|./*|../*|*/*|.*)
+      printf '%s\n' "$remote"
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+coord_normalize_coordination_remote() {
+  local remote project_root local_path abs_path
+  remote="$1"
+  project_root="${2:-}"
+  if [ -z "$project_root" ]; then
+    project_root="$(coord_project_root)"
+  fi
+
+  if local_path="$(coord_remote_local_path "$remote" 2>/dev/null)"; then
+    case "$local_path" in
+      /*) abs_path="$(coord_abs "$local_path")" ;;
+      *) abs_path="$(coord_abs "$project_root/$local_path")" ;;
+    esac
+    case "$remote" in
+      file://*) printf 'file://%s\n' "$abs_path" ;;
+      *) printf '%s\n' "$abs_path" ;;
+    esac
+    return
+  fi
+
+  printf '%s\n' "$remote"
+}
+
+coord_env_coordination_remote() {
+  local remote
+  if [ -n "${PI_COORD_REMOTE:-}" ]; then
+    remote="$PI_COORD_REMOTE"
+  elif [ -n "${PI_COORD_REMOTE_URL:-}" ]; then
+    remote="$PI_COORD_REMOTE_URL"
+  else
+    return 1
+  fi
+  coord_normalize_coordination_remote "$remote"
+}
+
 coord_repo_name_from_url() {
   local url name
   url="$1"
@@ -384,12 +479,12 @@ coord_resolve_coordination_remote() {
   explicit="${1:-}"
   if [ -n "$explicit" ]; then
     printf '%s\n' "$explicit"
-  elif [ -n "${PI_COORD_REMOTE_URL:-}" ]; then
-    printf '%s\n' "$PI_COORD_REMOTE_URL"
+  elif remote="$(coord_env_coordination_remote 2>/dev/null)" && [ -n "$remote" ]; then
+    printf '%s\n' "$remote"
   else
     remote="$(coord_impl_config_value coordination_remote || true)"
     [ -n "$remote" ] || return 1
-    printf '%s\n' "$remote"
+    coord_normalize_coordination_remote "$remote"
   fi
 }
 

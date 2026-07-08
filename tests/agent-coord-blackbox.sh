@@ -15,7 +15,8 @@ mkdir -p "$HOME" "$workspace_dir"
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
-unset PI_COORD_ROOT PI_COORD_WORKSPACE PI_COORD_DIR PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
+unset PI_COORD_ROOT PI_COORD_REMOTE PI_COORD_REMOTE_URL PI_COORD_WORKSPACE PI_COORD_DIR \
+  PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
 
 project_git="$tmp/project-git"
 mkdir -p "$project_git"
@@ -126,9 +127,13 @@ grep -q '^project: other-project$' "$bootstrap_project_dir/.pi-env/coordination/
 grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
 grep -q '^domain_generated_files: \[\]$' "$bootstrap_project_dir/.pi-env/coordination/repos/other-project/REPO.md"
 grep -q "Clone dir:    $bootstrap_project_dir/.pi-env/coordination" "$bootstrap_plan"
+grep -q "export PI_COORD_REMOTE=$tmp/bootstrap-remotes/other-project-coordination.git" "$bootstrap_plan"
 grep -Fxq '/.pi-env/' "$bootstrap_project_dir/.git/info/exclude"
 grep -q 'export PI_COORD_PROJECT=other-project' "$bootstrap_plan"
 ! grep -q 'PI_COORD_WORKSPACE' "$bootstrap_plan"
+! grep -q 'PI_COORD_REMOTE_URL' "$bootstrap_plan"
+grep -q "^coordination_remote: $tmp/bootstrap-remotes/other-project-coordination.git$" \
+  "$bootstrap_project_dir/.pi-env-coordination.yaml"
 
 bootstrap_remote="$tmp/bootstrap-remotes/other-project-coordination.git"
 bootstrap_coord_dir="$bootstrap_project_dir/.pi-env/coordination"
@@ -180,7 +185,10 @@ grep -q "Root:         $fresh_print_project_dir/.pi-env/agent-remotes" \
   "$tmp/fresh-print-plan.txt"
 grep -q "Clone dir:    $fresh_print_project_dir/.pi-env/coordination" \
   "$tmp/fresh-print-plan.txt"
+grep -q 'export PI_COORD_REMOTE=.pi-env/agent-remotes/fresh-print-project-coordination.git' \
+  "$tmp/fresh-print-plan.txt"
 test ! -e "$fresh_print_project_dir/.pi-env"
+test ! -e "$fresh_print_project_dir/.pi-env-coordination.yaml"
 
 server_print_project_dir="$tmp/server-print-project"
 mkdir -p "$server_print_project_dir"
@@ -225,10 +233,18 @@ test "$(git -C "$tmp/server-coordination-existing" rev-parse HEAD)" = "$server_h
 
 env_remote="$tmp/env-clone-remote.git"
 git clone --bare "$server_remote" "$env_remote" >/dev/null 2>&1
-unset PI_COORD_ROOT
+unset PI_COORD_ROOT PI_COORD_REMOTE
 PI_COORD_REMOTE_URL="$env_remote" agent-coord-clone \
   --dir "$tmp/env-remote-clone" >/dev/null
 test -f "$tmp/env-remote-clone/AGENTS.md"
+PI_COORD_REMOTE="$env_remote" agent-coord-clone \
+  --dir "$tmp/new-env-remote-clone" >/dev/null
+test -f "$tmp/new-env-remote-clone/AGENTS.md"
+PI_COORD_REMOTE="$env_remote" \
+PI_COORD_REMOTE_URL="$tmp/must-not-win.git" \
+agent-coord-clone \
+  --dir "$tmp/new-env-precedence-clone" >/dev/null
+test -f "$tmp/new-env-precedence-clone/AGENTS.md"
 agent-coord-clone \
   --remote "$server_remote" \
   --dir "$tmp/arg-remote-clone" >/dev/null

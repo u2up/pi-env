@@ -403,7 +403,8 @@ Everything else can remain normal Git commands until real usage proves that more
 ## 9. Proposed environment variables
 
 ```bash
-PI_COORD_ROOT=/workspace/.pi-env/agent-remotes # where bare coordination remotes live
+PI_COORD_REMOTE=/workspace/.pi-env/agent-remotes/pi-env-coordination.git # exact Git remote URL/path
+PI_COORD_ROOT=/workspace/.pi-env/agent-remotes # legacy/default bare remote parent
 PI_COORD_PROJECT=pi-env                        # coordination project/domain name
 PI_COORD_DIR=/workspace/.pi-env/coordination   # clone directory for this project
 PI_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
@@ -413,20 +414,21 @@ PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
 
 `bootstrap-coordination` can print and apply inferred values for these
 variables when they are not already set, including when pointed at another
-project root with `--project-root`. If the coordination clone already
-exists but the planned local bare remote is missing or empty, it can restore
-that remote from committed clone history without changing item state. With
-these set, `agent-coord-clone` can infer:
+project root with `--project-root`, and record the selected remote as
+`.pi-env-coordination.yaml` `coordination_remote`. If the coordination clone
+already exists but the planned local bare remote is missing or empty, it can
+restore that remote from committed clone history without changing item state.
+With `PI_COORD_REMOTE` set, `agent-coord-clone` can infer:
 
 ```text
-$PI_COORD_ROOT/$PI_COORD_PROJECT-coordination.git -> $PI_COORD_DIR
+$PI_COORD_REMOTE -> $PI_COORD_DIR
 ```
 
-When `PI_COORD_ROOT` is unset, helpers should prefer the project-visible
-`.pi-env/agent-remotes` directory. Inside the pi-env sandbox, or when
-`/workspace` resolves to the current project root, that default should be
-`/workspace/.pi-env/agent-remotes` so the same bare remote is usable from
-inside and outside Bubblewrap for this project.
+When no exact remote is configured and `PI_COORD_ROOT` is unset, helpers
+should prefer the project-visible `.pi-env/agent-remotes` directory. Inside
+the pi-env sandbox, or when `/workspace` resolves to the current project
+root, that default should be `/workspace/.pi-env/agent-remotes` so the same
+bare remote is usable from inside and outside Bubblewrap for this project.
 
 ### 9.1 Optional role-aware identity
 

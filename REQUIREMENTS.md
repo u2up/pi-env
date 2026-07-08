@@ -643,9 +643,11 @@ The flake/devshell must provide these opt-in coordination commands:
 
 `bootstrap-coordination` must remain a thin wrapper around
 `agent-coord-init`: it prints the inferred `PI_COORD_*` settings and the
-corresponding initialization command, then initializes with those explicit
-values unless `--print-only`/`--dry-run` is used. When project values are
-unset, it must infer useful defaults from `PI_COORD_PROJECT`, the Git
+corresponding initialization command, records the selected remote as
+`.pi-env-coordination.yaml` `coordination_remote` on real bootstraps, then
+initializes with those explicit values unless `--print-only`/`--dry-run` is
+used. When project values are unset, it must infer useful defaults from
+`PI_COORD_PROJECT`, the Git
 origin repository name, the Git root basename, or the current directory
 basename, in that order. It must support `--project-root DIR` to infer and
 initialize relative to another project directory; when doing so, stale
@@ -685,11 +687,12 @@ coordination bootstraps must place the working clone at
 `<project-root>/.pi-env/coordination`, visible inside the sandbox as
 `/workspace/.pi-env/coordination` when the selected project is mounted there.
 
-When `--root` and `PI_COORD_ROOT` are omitted, coordination helpers must
-use a project-visible `.pi-env/agent-remotes` directory instead of the
-isolated sandbox `$HOME`. If `/workspace` resolves to the current project
-root, the default root must be `/workspace/.pi-env/agent-remotes`; otherwise
-it must be `<project-root>/.pi-env/agent-remotes`.
+When no explicit/configured coordination remote is selected and `--root` and
+`PI_COORD_ROOT` are omitted, coordination helpers must use a project-visible
+`.pi-env/agent-remotes` directory instead of the isolated sandbox `$HOME`. If
+`/workspace` resolves to the current project root, the default root must be
+`/workspace/.pi-env/agent-remotes`; otherwise it must be
+`<project-root>/.pi-env/agent-remotes`.
 
 #### CMD-011 `agent-coord-clone`
 
@@ -1320,17 +1323,28 @@ Inside the sandbox the launcher must set:
 
 #### ENV-006 Coordination context
 
-When set, the launcher must pass safe coordination context into the
-sandbox:
+When set or declared in `.pi-env-coordination.yaml`, the launcher must pass
+safe coordination context into the sandbox:
 
+- `PI_COORD_REMOTE`
 - `PI_COORD_ROOT`
 - `PI_COORD_PROJECT`
 - `PI_COORD_AGENT_ID`
 - `PI_COORD_PROJECT_KEY`
 - `PI_COORD_ROLE`
 
-If `PI_COORD_ROOT` points inside the selected project, the launcher must
-pass it into the sandbox as the corresponding `/workspace/...` path.
+If `PI_COORD_REMOTE` points inside the selected project, or is read as a
+project-local `coordination_remote`, the launcher must pass it into the
+sandbox as the corresponding `/workspace/...` path. If explicit
+`PI_COORD_REMOTE` points to an existing local path outside the selected
+project, the launcher must bind its parent directory read-write and pass the
+sandbox-visible remote path. External local paths read only from project
+configuration must not trigger host-path binds unless the user also opts in
+with explicit environment context such as `PI_COORD_REMOTE` or
+`PI_COORD_ROOT`.
+
+If legacy `PI_COORD_ROOT` points inside the selected project, the launcher
+must pass it into the sandbox as the corresponding `/workspace/...` path.
 Project-local `.pi-env/agent-remotes` is the default for local bare remotes.
 
 If a coordination clone is detected under the selected project at

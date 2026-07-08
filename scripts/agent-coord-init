@@ -19,7 +19,7 @@ Usage:
 
 Options:
   --root DIR        Bare remote parent; default: PI_COORD_ROOT or .pi-env/agent-remotes
-  --remote URL      Existing coordination remote URL; default: PI_COORD_REMOTE_URL
+  --remote REMOTE   Coordination Git remote URL or local bare path; default: PI_COORD_REMOTE
   --project ID      Coordination project; default: PI_COORD_PROJECT or cwd name
   --project-key KEY Project item ID prefix; default: derived project
   --repo-id ID      Initial implementation repo id; default: PI_COORD_REPO_ID,
@@ -30,14 +30,15 @@ Options:
   --bare-only       Only create the bare remote
   -h, --help        Show this help
 
-Remote precedence is explicit --remote, then PI_COORD_REMOTE_URL,
-then .pi-env-coordination.yaml coordination_remote, then:
+Remote precedence is explicit --remote, then PI_COORD_REMOTE,
+then PI_COORD_REMOTE_URL, then .pi-env-coordination.yaml coordination_remote,
+then:
   <root>/<project>-coordination.git
 USAGE
 }
 
 root="$(coord_default_root)"
-remote_url="${PI_COORD_REMOTE_URL:-}"
+remote_url="$(coord_env_coordination_remote 2>/dev/null || true)"
 coord_dir="$(coord_default_dir)"
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
@@ -118,11 +119,29 @@ fi
 remote_git_dir=""
 if [ -n "$remote_url" ]; then
   remote="$remote_url"
-  case "$remote" in
-    file://*) remote_git_dir="$(coord_abs "${remote#file://}")" ;;
-    /*|./*|../*) remote_git_dir="$(coord_abs "$remote")" ;;
-  esac
-  coord_note "using configured coordination remote: $remote"
+  if remote_local_path="$(coord_remote_local_path "$remote" 2>/dev/null)"; then
+    case "$remote_local_path" in
+      /*) remote_git_dir="$(coord_abs "$remote_local_path")" ;;
+      *) remote_git_dir="$(coord_abs "$(coord_project_root)/$remote_local_path")" ;;
+    esac
+    remote="$remote_git_dir"
+    coord_ensure_operational_root_excluded "$remote_git_dir"
+
+    if [ -e "$remote_git_dir" ] && [ ! -d "$remote_git_dir/objects" ]; then
+      coord_die "remote path exists but is not a bare Git repo: $remote_git_dir"
+    fi
+
+    if [ ! -d "$remote_git_dir" ]; then
+      mkdir -p "$(dirname "$remote_git_dir")"
+      git init --bare --initial-branch=main "$remote_git_dir" >/dev/null 2>&1 \
+        || git init --bare "$remote_git_dir" >/dev/null
+      coord_note "created bare remote: $remote_git_dir"
+    else
+      coord_note "bare remote already exists: $remote_git_dir"
+    fi
+  else
+    coord_note "using configured coordination remote: $remote"
+  fi
 else
   root="$(coord_abs "$root")"
   remote="$(coord_remote_for "$root" "$project_key")"
@@ -186,7 +205,7 @@ git clone "$remote" "$coord_dir" >/dev/null 2>&1 || {
 }
 
 coord_dir_abs="$(coord_abs "$coord_dir")"
-if [ -z "$remote_url" ] && [ -n "$remote_git_dir" ]; then
+if [ -n "$remote_git_dir" ]; then
   git -C "$coord_dir_abs" remote set-url origin "$(coord_local_remote_url_for_clone "$coord_dir_abs" "$remote_git_dir")"
 fi
 

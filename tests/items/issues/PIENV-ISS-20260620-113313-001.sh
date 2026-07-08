@@ -5,24 +5,11 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 cd "$repo_root"
 . tests/lib/test-helpers.sh
 
-flake=flake.nix
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
 script="$tmpdir/pi-bwrap"
-awk '
-  /pkgs\.writeShellScriptBin "pi-bwrap"/ { in_script = 1; next }
-  in_script && index($0, sprintf("        %c%c;", 39, 39)) == 1 { exit }
-  in_script {
-    sub(/^          /, "")
-    gsub(/\047\047\$\{/, "${")
-    gsub(/\$\{runtimePath\}/, "/tmp/pi-env-runtime/bin")
-    gsub(/\$\{defaultTools\}/, "read,bash,edit,write,grep,find,ls")
-    gsub(/\$\{pkgs\.[^}]*\}/, "/nix/store/pi-env-test")
-    gsub(/exec \/nix\/store\/pi-env-test\/bin\/bwrap/, "exec \"$PI_ENV_TEST_FAKE_BWRAP\"")
-    print
-  }
-' "$flake" >"$script"
+cp scripts/pi-bwrap "$script"
 chmod +x "$script"
 
 fixed_grep() {
@@ -98,12 +85,14 @@ run_harness() {
   mkdir -p "$project" "$cwd"
   (
     cd "$cwd"
-    unset PI_COORD_ROOT PI_COORD_REMOTE_URL PI_COORD_DIR \
+    unset PI_COORD_ROOT PI_COORD_REMOTE PI_COORD_REMOTE_URL PI_COORD_DIR \
       PI_BWRAP_COORDINATION_DIR PI_BWRAP_STATE_DIR
     env \
       HOME="$tmpdir/home" \
       XDG_STATE_HOME="$tmpdir/xdg-state" \
       PATH="$fakebin:$PATH" \
+      PI_ENV_RUNTIME_PATH="$tmpdir/runtime/bin" \
+      PI_BWRAP_BWRAP="$tmpdir/fake-bwrap" \
       PI_ENV_TEST_FAKE_BWRAP="$tmpdir/fake-bwrap" \
       PI_ENV_TEST_CAPTURE="$capture" \
       PI_BWRAP_PROJECT_ROOT="$project" \
@@ -118,7 +107,7 @@ run_harness() {
 
 fixed_grep 'Use $PWD/.pi-env/state only as explicit project-local opt-in' "$script"
 fixed_grep 'PI_BWRAP_STATE_DIR=$PWD/.pi-env/state' README.md
-fixed_grep 'PI_COORD_ROOT=.pi-env/agent-remotes' "$script"
+fixed_grep 'PI_COORD_REMOTE=remote' "$script"
 
 prefer_project="$tmpdir/prefer-project"
 mkdir -p "$prefer_project/.pi-env/coordination/.git"

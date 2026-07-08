@@ -17,8 +17,8 @@ mkdir -p "$HOME" "$tmp/project"
 git config --global user.name "List Notes TODO Test"
 git config --global user.email "list-notes-todos@example.invalid"
 
-unset PI_COORD_ROOT PI_COORD_WORKSPACE PI_COORD_DIR PI_COORD_AGENT_ID \
-  PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
+unset PI_COORD_ROOT PI_COORD_REMOTE PI_COORD_REMOTE_URL PI_COORD_WORKSPACE \
+  PI_COORD_DIR PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
 
 cd "$tmp/project"
 agent-coord-init \

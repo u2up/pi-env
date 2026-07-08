@@ -1,3 +1,4 @@
 version: 1
 coordination_domain: pi-env
+coordination_remote: .pi-env/agent-remotes/pi-env-coordination.git
 repo_id: pi-env

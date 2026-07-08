@@ -16,11 +16,8 @@ root_config="$repo_root/.pi-env-coordination.yaml"
 test -f "$root_config"
 grep -q '^version: 1$' "$root_config"
 grep -q '^coordination_domain: pi-env$' "$root_config"
+grep -q '^coordination_remote: .pi-env/agent-remotes/pi-env-coordination.git$' "$root_config"
 grep -q '^repo_id: pi-env$' "$root_config"
-if grep -q '\.pi-env/' "$root_config"; then
-  printf 'root implementation config must not point at local .pi-env paths\n' >&2
-  exit 1
-fi
 
 for command in agent-coord-init agent-coord-clone agent-coord-done agent-coord-lint; do
   help="$($command --help)"

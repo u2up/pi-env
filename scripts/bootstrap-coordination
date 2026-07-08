@@ -21,7 +21,7 @@ Usage:
 Options:
   --project-root DIR  Project directory to inspect; default: current directory
   --root DIR          Bare remote parent; default: PI_COORD_ROOT or .pi-env/agent-remotes
-  --remote URL        Existing coordination remote URL; default: PI_COORD_REMOTE_URL
+  --remote REMOTE     Coordination Git remote URL or local bare path; default: PI_COORD_REMOTE
   --project KEY       Coordination project; default: PI_COORD_PROJECT or inferred project name
   --project-key KEY   Project item ID prefix; default: PI_COORD_PROJECT_KEY or derived project
   --dir DIR           Working clone dir; default: PI_COORD_DIR or .pi-env/coordination
@@ -43,7 +43,8 @@ directory instead of inherited PI_COORD_DIR, PI_COORD_PROJECT, and
 PI_COORD_PROJECT_KEY values; pass explicit options to override them. If a
 coordination clone already exists but the planned local bare remote is missing
 or empty, the remote is restored from the clone's committed history. Remote precedence is
-explicit --remote, then PI_COORD_REMOTE_URL, then the local bare remote path.
+explicit --remote, then PI_COORD_REMOTE, then PI_COORD_REMOTE_URL, then
+.pi-env-coordination.yaml coordination_remote, then the local bare remote path.
 USAGE
 }
 
@@ -109,12 +110,7 @@ bootstrap_shell_quote() {
 
 bootstrap_print_plan() {
   local init_command
-  init_command="agent-coord-init"
-  if [ -n "$remote_url" ]; then
-    init_command="$init_command --remote $(bootstrap_shell_quote "$remote_url")"
-  else
-    init_command="$init_command --root $(bootstrap_shell_quote "$root_abs")"
-  fi
+  init_command="agent-coord-init --remote $(bootstrap_shell_quote "$remote")"
   init_command="$init_command --project $(bootstrap_shell_quote "$project") --project-key $(bootstrap_shell_quote "$project_item_key") --dir $(bootstrap_shell_quote "$coord_dir_abs") --agent-id $(bootstrap_shell_quote "$agent_id")"
   if [ "$bare_only" = "1" ]; then
     init_command="$init_command --bare-only"
@@ -131,8 +127,7 @@ Suggested coordination settings:
   Agent ID:     $agent_id
 
 Suggested environment for future runs:
-  export PI_COORD_ROOT=$(bootstrap_shell_quote "$root_abs")
-  export PI_COORD_REMOTE_URL=$(bootstrap_shell_quote "$remote_url")
+  export PI_COORD_REMOTE=$(bootstrap_shell_quote "$config_remote")
   export PI_COORD_PROJECT=$(bootstrap_shell_quote "$project")
   export PI_COORD_PROJECT_KEY=$(bootstrap_shell_quote "$project_item_key")
   export PI_COORD_DIR=$(bootstrap_shell_quote "$coord_dir_abs")
@@ -183,6 +178,37 @@ bootstrap_normalized_local_remote_path() {
       realpath -m "$base_dir/$local_path"
       ;;
   esac
+}
+
+bootstrap_config_remote_value() {
+  local project_root remote_value local_path remote_path rel
+  project_root="$1"
+  remote_value="$2"
+  if local_path="$(coord_remote_local_path "$remote_value" 2>/dev/null)"; then
+    case "$local_path" in
+      /*) remote_path="$(coord_abs "$local_path")" ;;
+      *) remote_path="$(coord_abs "$project_root/$local_path")" ;;
+    esac
+    case "$remote_path" in
+      "$project_root")
+        printf '.\n'
+        return
+        ;;
+      "$project_root"/*)
+        rel="$(realpath -m --relative-to="$project_root" "$remote_path" 2>/dev/null || true)"
+        if [ -n "$rel" ]; then
+          printf '%s\n' "$rel"
+          return
+        fi
+        ;;
+    esac
+  fi
+  printf '%s\n' "$remote_value"
+}
+
+bootstrap_write_coordination_config() {
+  coord_impl_config_set_value coordination_remote "$config_remote" "$inspect_dir"
+  coord_note "wrote coordination_remote to $(coord_impl_config_path "$inspect_dir")"
 }
 
 bootstrap_origin_points_to_remote() {
@@ -380,7 +406,7 @@ fi
 if [ -n "$remote_url_arg" ]; then
   remote_url="$remote_url_arg"
 else
-  remote_url="${PI_COORD_REMOTE_URL:-}"
+  remote_url="$(coord_resolve_coordination_remote "" 2>/dev/null || true)"
 fi
 
 if [ -n "$inferred_project" ]; then
@@ -433,6 +459,14 @@ if [ -n "$remote_url" ]; then
 else
   remote="$(coord_remote_for "$root_abs" "$project")"
 fi
+config_remote="$(bootstrap_config_remote_value "$inspect_dir" "$remote")"
+remote_local_path=""
+if remote_local_candidate="$(coord_remote_local_path "$remote" 2>/dev/null)"; then
+  case "$remote_local_candidate" in
+    /*) remote_local_path="$(coord_abs "$remote_local_candidate")" ;;
+    *) remote_local_path="$(coord_abs "$inspect_dir/$remote_local_candidate")" ;;
+  esac
+fi
 
 bootstrap_print_plan
 
@@ -451,9 +485,10 @@ if [ "$bare_only" != "1" ] \
   && [ -e "$coord_dir_abs" ] \
   && coord_is_coord_repo "$coord_dir_abs"; then
   coord_note "coordination clone already exists: $coord_dir_abs"
-  if [ -z "$remote_url" ]; then
-    bootstrap_ensure_remote_from_clone "$coord_dir_abs" "$remote"
+  if [ -n "$remote_local_path" ]; then
+    bootstrap_ensure_remote_from_clone "$coord_dir_abs" "$remote_local_path"
   fi
+  bootstrap_write_coordination_config
   if [ "$status_after" = "1" ]; then
     "$agent_coord_status" --coord-dir "$coord_dir_abs"
   fi
@@ -461,21 +496,18 @@ if [ "$bare_only" != "1" ] \
 fi
 
 init_args=(
+  --remote "$remote"
   --project "$project"
   --project-key "$project_item_key"
   --dir "$coord_dir_abs"
   --agent-id "$agent_id"
 )
-if [ -n "$remote_url" ]; then
-  init_args=(--remote "$remote_url" "${init_args[@]}")
-else
-  init_args=(--root "$root_abs" "${init_args[@]}")
-fi
 if [ "$bare_only" = "1" ]; then
   init_args+=(--bare-only)
 fi
 
 "$agent_coord_init" "${init_args[@]}"
+bootstrap_write_coordination_config
 
 if [ "$status_after" = "1" ] && [ "$bare_only" != "1" ]; then
   "$agent_coord_status" --coord-dir "$coord_dir_abs"

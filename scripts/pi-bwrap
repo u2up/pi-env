@@ -84,9 +84,11 @@ Environment knobs:
                                 Host runtime only: bind extra support paths read-only
   PI_BWRAP_NET=0                Disable network namespace sharing
   PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
-  PI_COORD_ROOT=.pi-env/agent-remotes Bare remotes root; project paths stay under /workspace,
+  PI_COORD_REMOTE=remote        Coordination Git remote URL or local bare path; project paths
+                                 stay under /workspace, external parents bind safely
+  PI_COORD_ROOT=.pi-env/agent-remotes Legacy bare remotes root; project paths stay under /workspace,
                                  external paths bind at /agent-remotes
-  PI_COORD_REMOTE_URL=url       Coordination Git remote URL passed through without local mounts
+  PI_COORD_REMOTE_URL=url       Legacy alias for PI_COORD_REMOTE
   PI_COORD_ROLE=architect       Active coordination role passed to helpers
   PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
@@ -268,6 +270,70 @@ case "$host_cwd" in
     ;;
 esac
 
+pi_bwrap_trim() {
+  printf '%s' "$1" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+pi_bwrap_yaml_unquote() {
+  local value first last
+  value="$(pi_bwrap_trim "$1")"
+  case "$value" in
+    ""|null|Null|NULL|~)
+      printf '\n'
+      return
+      ;;
+  esac
+  first="${value:0:1}"
+  last="${value: -1}"
+  if [ "$first" = "'" ] && [ "$last" = "'" ] && [ "${#value}" -ge 2 ]; then
+    value="${value:1:${#value}-2}"
+    value="$(printf '%s' "$value" | sed "s/''/'/g")"
+  elif [ "$first" = '"' ] && [ "$last" = '"' ] && [ "${#value}" -ge 2 ]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s\n' "$value"
+}
+
+pi_bwrap_coord_config_value() {
+  local key file value
+  key="$1"
+  file="$project_root/.pi-env-coordination.yaml"
+  [ -f "$file" ] || return 1
+  value="$(awk -v key="$key" '
+    /^[[:space:]]*#/ { next }
+    index($0, key ":") == 1 {
+      sub("^[^:]+:[[:space:]]*", "")
+      print
+      exit
+    }
+  ' "$file")"
+  value="$(pi_bwrap_yaml_unquote "$value")"
+  [ -n "$value" ] || return 1
+  printf '%s\n' "$value"
+}
+
+pi_bwrap_remote_local_path() {
+  local remote
+  remote="$1"
+  case "$remote" in
+    "")
+      return 1
+      ;;
+    file://*)
+      printf '%s\n' "${remote#file://}"
+      return 0
+      ;;
+    *://*|*:*)
+      return 1
+      ;;
+    /*|./*|../*|*/*|.*)
+      printf '%s\n' "$remote"
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 if [ "${PI_BWRAP_EPHEMERAL_HOME:-0}" = "1" ]; then
   state_base="$(mktemp -d "${TMPDIR:-/tmp}/pi-bwrap.XXXXXX")"
   cleanup_tmp="$state_base"
@@ -423,6 +489,7 @@ if [ "${PI_BWRAP_IMPORT_SESSIONS:-$import_sessions_default}" = "1" ] && [ -n "$h
 fi
 
 coord_root_bind_args=()
+host_coord_root=""
 sandbox_coord_root=""
 if [ -n "${PI_COORD_ROOT:-}" ]; then
   case "$PI_COORD_ROOT" in
@@ -451,6 +518,85 @@ if [ -n "${PI_COORD_ROOT:-}" ]; then
       fi
       ;;
   esac
+fi
+
+coord_remote_bind_args=()
+sandbox_coord_remote=""
+coord_remote=""
+coord_remote_source=""
+if [ -n "${PI_COORD_REMOTE:-}" ]; then
+  coord_remote="$PI_COORD_REMOTE"
+  coord_remote_source="env"
+elif [ -n "${PI_COORD_REMOTE_URL:-}" ]; then
+  coord_remote="$PI_COORD_REMOTE_URL"
+  coord_remote_source="env"
+else
+  coord_remote="$(pi_bwrap_coord_config_value coordination_remote 2>/dev/null || true)"
+  if [ -n "$coord_remote" ]; then
+    coord_remote_source="config"
+  fi
+fi
+
+if [ -n "$coord_remote" ]; then
+  if coord_remote_local_candidate="$(pi_bwrap_remote_local_path "$coord_remote" 2>/dev/null)"; then
+    coord_remote_file_scheme=0
+    case "$coord_remote" in
+      file://*) coord_remote_file_scheme=1 ;;
+    esac
+    case "$coord_remote_local_candidate" in
+      /*)
+        host_coord_remote="$(realpath -m "$coord_remote_local_candidate")"
+        ;;
+      *)
+        host_coord_remote="$(realpath -m "$project_root/$coord_remote_local_candidate")"
+        ;;
+    esac
+    case "$host_coord_remote" in
+      "$project_root")
+        sandbox_coord_remote="/workspace"
+        ;;
+      "$project_root"/*)
+        sandbox_coord_remote="/workspace${host_coord_remote#"$project_root"}"
+        ;;
+      *)
+        if [ -n "$host_coord_root" ] && [ -n "$sandbox_coord_root" ]; then
+          case "$host_coord_remote" in
+            "$host_coord_root")
+              sandbox_coord_remote="$sandbox_coord_root"
+              ;;
+            "$host_coord_root"/*)
+              sandbox_coord_remote="$sandbox_coord_root${host_coord_remote#"$host_coord_root"}"
+              ;;
+          esac
+        fi
+        if [ -z "$sandbox_coord_remote" ]; then
+          host_coord_remote_parent="$(dirname "$host_coord_remote")"
+          host_coord_remote_base="$(basename "$host_coord_remote")"
+          if [ "$coord_remote_source" = "config" ]; then
+            sandbox_coord_remote="$coord_remote"
+            echo "pi-bwrap: warning: external coordination_remote from project config is not mounted; export PI_COORD_REMOTE to opt in: $coord_remote" >&2
+          elif [ -d "$host_coord_remote_parent" ] && [ "$host_coord_remote_parent" != "/" ]; then
+            if [ ${#coord_root_bind_args[@]} -eq 0 ]; then
+              coord_remote_mount_point="/agent-remotes"
+            else
+              coord_remote_mount_point="/coordination-remote-parent"
+            fi
+            sandbox_coord_remote="$coord_remote_mount_point/$host_coord_remote_base"
+            coord_remote_bind_args=(--dir "$coord_remote_mount_point" --bind "$host_coord_remote_parent" "$coord_remote_mount_point")
+            echo "pi-bwrap: coordination remote parent available at $coord_remote_mount_point" >&2
+          else
+            sandbox_coord_remote="$coord_remote"
+            echo "pi-bwrap: warning: local PI_COORD_REMOTE outside project cannot be mounted: $coord_remote" >&2
+          fi
+        fi
+        ;;
+    esac
+    if [ "$coord_remote_file_scheme" = "1" ]; then
+      sandbox_coord_remote="file://$sandbox_coord_remote"
+    fi
+  else
+    sandbox_coord_remote="$coord_remote"
+  fi
 fi
 
 coord_bind_args=()
@@ -755,7 +901,13 @@ sandbox_path="$(append_path_entry /bin "$sandbox_path")"
 if [ -n "${PI_COORD_ROOT:-}" ]; then
   set_env PI_COORD_ROOT "$sandbox_coord_root"
 fi
-copy_env PI_COORD_REMOTE_URL
+if [ -n "$sandbox_coord_remote" ]; then
+  set_env PI_COORD_REMOTE "$sandbox_coord_remote"
+  set_env PI_COORD_REMOTE_URL "$sandbox_coord_remote"
+else
+  copy_env PI_COORD_REMOTE
+  copy_env PI_COORD_REMOTE_URL
+fi
 copy_env PI_COORD_PROJECT
 copy_env PI_COORD_AGENT_ID
 copy_env PI_COORD_PROJECT_KEY
@@ -833,6 +985,7 @@ bwrap_args=(
   "${runtime_shell_args[@]}"
   --bind "$project_root" /workspace
   "${coord_root_bind_args[@]}"
+  "${coord_remote_bind_args[@]}"
   "${role_manager_bind_args[@]}"
   --bind "$state_base/home" /home/pi
   --bind "$state_base/agent" /home/pi/.pi/agent
