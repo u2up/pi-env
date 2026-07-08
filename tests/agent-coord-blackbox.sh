@@ -137,7 +137,7 @@ grep -q "^coordination_remote: $tmp/bootstrap-remotes/other-project-coordination
 
 bootstrap_remote="$tmp/bootstrap-remotes/other-project-coordination.git"
 bootstrap_coord_dir="$bootstrap_project_dir/.pi-env/coordination"
-bootstrap_remote_rel="$(realpath -m --relative-to="$bootstrap_coord_dir" "$bootstrap_remote")"
+bootstrap_remote_rel="../agent-remotes/other-project-coordination.git"
 bootstrap_head="$(git -C "$bootstrap_coord_dir" rev-parse HEAD)"
 test "$(git -C "$bootstrap_coord_dir" remote get-url origin)" = "$bootstrap_remote_rel"
 git -C "$bootstrap_coord_dir" remote remove origin
@@ -316,7 +316,7 @@ grep -q '^project: pi-env$' .pi-env/coordination/PROJECT.md
 grep -q '^item_key: PIENV$' .pi-env/coordination/PROJECT.md
 git -C .pi-env/coordination config --get pull.rebase | grep -qx true
 git -C .pi-env/coordination config --get rebase.autoStash | grep -qx true
-test "$(git -C .pi-env/coordination remote get-url origin)" = "../../../remotes/pi-env-coordination.git"
+test "$(git -C .pi-env/coordination remote get-url origin)" = "../agent-remotes/pi-env-coordination.git"
 export PI_COORD_REPO_ID=pi-env
 
 cd "$tmp"

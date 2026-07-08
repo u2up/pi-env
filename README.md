@@ -1185,13 +1185,16 @@ bind mount rather than a separate remotes mount.
 
 If `PI_COORD_REMOTE` or `.pi-env-coordination.yaml` names a project-local
 remote path, `pi-bwrap` rewrites it to the matching `/workspace/...` path. If
-explicit `PI_COORD_REMOTE` names an existing local path outside the project,
-`pi-bwrap` bind-mounts the remote's parent directory read-write and rewrites
-`PI_COORD_REMOTE` inside the sandbox. External local paths read only from the
-project config are not mounted automatically; export `PI_COORD_REMOTE` or
-`PI_COORD_ROOT` to opt in. `PI_COORD_ROOT` remains as a legacy/default-root
-override: project-local roots map to `/workspace/...`, and existing external
-roots bind at `/agent-remotes`. Without explicit overrides or
+`.pi-env-coordination.yaml` names an external local bare Git repo (detected by
+its `objects/` directory), `pi-bwrap` bind-mounts that remote's parent at
+`/workspace/.pi-env/agent-remotes` and rewrites `PI_COORD_REMOTE` to the same
+project-local shape used by local clones. Outside the sandbox, Git access to
+such an external remote requires running inside `pi-env-shell` or providing a
+real or symlinked `.pi-env/agent-remotes` directory. Explicit external
+`PI_COORD_REMOTE` values still bind the remote's parent read-write and rewrite
+`PI_COORD_REMOTE` inside the sandbox. `PI_COORD_ROOT` remains as a
+legacy/default-root override: project-local roots map to `/workspace/...`, and
+existing external roots bind at `/agent-remotes`. Without explicit overrides or
 `coordination_remote`, the sandbox launcher only recognizes project-local
 `.pi-env/coordination`; root-level `coordination/` and `agent-remotes/`
 directories are not selected or mounted automatically.

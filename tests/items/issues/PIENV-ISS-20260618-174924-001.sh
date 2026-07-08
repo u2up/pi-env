@@ -124,15 +124,27 @@ test_grep '^/agent-remotes/env-coordination.git$' "$env_remote_capture"
 test_grep "^$env_remote_parent$" "$env_remote_capture"
 
 config_external_project="$tmpdir/config-external-project"
-mkdir -p "$config_external_project" "$tmpdir/config-external-remotes"
+mkdir -p "$config_external_project" "$tmpdir/config-external-remotes/config-external.git/objects"
 cat >"$config_external_project/.pi-env-coordination.yaml" <<YAML
 version: 1
 coordination_remote: $tmpdir/config-external-remotes/config-external.git
 YAML
 config_external_capture="$tmpdir/config-external-capture"
 run_harness "$config_external_project" "$config_external_capture"
-assert_no_grep '^/agent-remotes$' "$config_external_capture"
-assert_no_grep "^$tmpdir/config-external-remotes$" "$config_external_capture"
+test_grep '^/workspace/.pi-env/agent-remotes$' "$config_external_capture"
+test_grep "^$tmpdir/config-external-remotes$" "$config_external_capture"
+test_grep '^/workspace/.pi-env/agent-remotes/config-external.git$' "$config_external_capture"
+
+config_external_nonbare_project="$tmpdir/config-external-nonbare-project"
+mkdir -p "$config_external_nonbare_project" "$tmpdir/config-external-nonbare-remotes/config-external.git"
+cat >"$config_external_nonbare_project/.pi-env-coordination.yaml" <<YAML
+version: 1
+coordination_remote: $tmpdir/config-external-nonbare-remotes/config-external.git
+YAML
+config_external_nonbare_capture="$tmpdir/config-external-nonbare-capture"
+run_harness "$config_external_nonbare_project" "$config_external_nonbare_capture"
+assert_no_grep '^/workspace/.pi-env/agent-remotes$' "$config_external_nonbare_capture"
+assert_no_grep "^$tmpdir/config-external-nonbare-remotes$" "$config_external_nonbare_capture"
 
 home_capture="$tmpdir/home-safety-capture"
 run_harness "$tmpdir/home-safety-project" "$home_capture" \

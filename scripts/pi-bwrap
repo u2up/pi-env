@@ -573,8 +573,15 @@ if [ -n "$coord_remote" ]; then
           host_coord_remote_parent="$(dirname "$host_coord_remote")"
           host_coord_remote_base="$(basename "$host_coord_remote")"
           if [ "$coord_remote_source" = "config" ]; then
-            sandbox_coord_remote="$coord_remote"
-            echo "pi-bwrap: warning: external coordination_remote from project config is not mounted; export PI_COORD_REMOTE to opt in: $coord_remote" >&2
+            if [ -d "$host_coord_remote/objects" ] && [ -d "$host_coord_remote_parent" ] && [ "$host_coord_remote_parent" != "/" ]; then
+              coord_remote_mount_point="/workspace/.pi-env/agent-remotes"
+              sandbox_coord_remote="$coord_remote_mount_point/$host_coord_remote_base"
+              coord_remote_bind_args=(--dir /workspace/.pi-env --dir "$coord_remote_mount_point" --bind "$host_coord_remote_parent" "$coord_remote_mount_point")
+              echo "pi-bwrap: coordination remote parent from project config available at $coord_remote_mount_point" >&2
+            else
+              sandbox_coord_remote="$coord_remote"
+              echo "pi-bwrap: warning: external coordination_remote from project config is not an existing bare Git repo and will not be mounted: $coord_remote" >&2
+            fi
           elif [ -d "$host_coord_remote_parent" ] && [ "$host_coord_remote_parent" != "/" ]; then
             if [ ${#coord_root_bind_args[@]} -eq 0 ]; then
               coord_remote_mount_point="/agent-remotes"

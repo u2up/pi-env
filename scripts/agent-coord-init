@@ -320,7 +320,20 @@ find repos requirements todos decisions notes agents -type d -empty -exec sh -c 
 
 actor="$(coord_effective_actor "$agent_id" "$role")"
 if coord_commit_all_if_changed "Initialize coordination repository" "$actor"; then
-  git push -u origin main >/dev/null
+  push_remote="origin"
+  if [ -n "$remote_git_dir" ]; then
+    origin_url="$(git remote get-url origin 2>/dev/null || true)"
+    origin_path=""
+    case "$origin_url" in
+      /*) origin_path="$(coord_abs "$origin_url")" ;;
+      "") ;;
+      *) origin_path="$(coord_abs "$coord_dir_abs/$origin_url")" ;;
+    esac
+    if [ "$origin_path" != "$remote_git_dir" ]; then
+      push_remote="$remote_git_dir"
+    fi
+  fi
+  git push -u "$push_remote" main >/dev/null
   if [ -n "$remote_git_dir" ] && [ -d "$remote_git_dir/objects" ]; then
     git --git-dir="$remote_git_dir" symbolic-ref HEAD refs/heads/main
   fi
