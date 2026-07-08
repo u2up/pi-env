@@ -82,21 +82,24 @@ mapfile -t auto_trace <"$fake_root/auto.trace"
 cat >"$fake_root/bin/nix" <<'FAKE_NIX'
 #!/usr/bin/env bash
 : "${PI_ENV_TEST_NIX_TRACE:?}"
-printf '%s\n' "$@" >"$PI_ENV_TEST_NIX_TRACE"
+printf 'PI_ENV_RUNTIME=%s\n' "${PI_ENV_RUNTIME-}" >"$PI_ENV_TEST_NIX_TRACE"
+printf '%s\n' "$@" >>"$PI_ENV_TEST_NIX_TRACE"
 FAKE_NIX
 chmod +x "$fake_root/bin/nix"
 
 env -u PI_ENV_PI_START -u PI_ENV_PI_BWRAP \
 PATH="$fake_root/bin:$PATH" \
+PI_ENV_RUNTIME=host \
 PI_ENV_TEST_NIX_TRACE="$fake_root/nix-recurse.trace" \
 ./pi-env-shell --runtime nix --flake "$fake_root/flake-ref" -- -lc 'printf recurse'
 mapfile -t nix_recurse <"$fake_root/nix-recurse.trace"
-[ "${nix_recurse[0]}" = "develop" ]
-[ "${nix_recurse[1]}" = "$fake_root/flake-ref" ]
-[ "${nix_recurse[2]}" = "-c" ]
-[ "${nix_recurse[3]}" = "pi-env-shell" ]
-[ "${nix_recurse[4]}" = "-lc" ]
-[ "${nix_recurse[5]}" = "printf recurse" ]
+[ "${nix_recurse[0]}" = "PI_ENV_RUNTIME=nix" ]
+[ "${nix_recurse[1]}" = "develop" ]
+[ "${nix_recurse[2]}" = "$fake_root/flake-ref" ]
+[ "${nix_recurse[3]}" = "-c" ]
+[ "${nix_recurse[4]}" = "pi-env-shell" ]
+[ "${nix_recurse[5]}" = "-lc" ]
+[ "${nix_recurse[6]}" = "printf recurse" ]
 
 REPO_ROOT="$repo_root" node --input-type=module <<'NODE'
 import assert from "node:assert/strict";

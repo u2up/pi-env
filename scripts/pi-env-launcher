@@ -163,7 +163,7 @@ exec_nix_runtime() {
   if [ "$raw" = "1" ]; then
     nix_args+=(--raw --)
   fi
-  exec nix "${nix_args[@]}" "${args[@]}"
+  PI_ENV_RUNTIME="$runtime_mode" exec nix "${nix_args[@]}" "${args[@]}"
 }
 
 exec_auto_runtime() {
