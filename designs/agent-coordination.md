@@ -226,8 +226,8 @@ Default key resolution for `agent-coord-new` should be:
 
 1. explicit `--project-key`;
 2. stored `item_key` in root `PROJECT.md`;
-3. `PI_COORD_PROJECT_KEY` when no stored key exists;
-4. derive from `--project` / `PI_COORD_PROJECT` for project items;
+3. `PI_ENV_COORD_PROJECT_KEY` when no stored key exists;
+4. derive from `--project` / `PI_ENV_COORD_PROJECT` for project items;
 5. derive from the coordination directory name when no project name is set.
 
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
@@ -346,7 +346,7 @@ Agents should use a simple protocol:
 Example claim flow:
 
 ```bash
-cd "${PI_COORD_DIR:-.pi-env/coordination}"
+cd "${PI_ENV_COORD_DIR:-.pi-env/coordination}"
 git pull --rebase
 # edit item: status: claimed, owner: agent-a, current: evt-0002/msg-0002
 # append a claimed event and message
@@ -403,13 +403,13 @@ Everything else can remain normal Git commands until real usage proves that more
 ## 9. Proposed environment variables
 
 ```bash
-PI_COORD_REMOTE=/workspace/.pi-env/agent-remotes/pi-env-coordination.git # exact Git remote URL/path
-PI_COORD_ROOT=/workspace/.pi-env/agent-remotes # legacy/default bare remote parent
-PI_COORD_PROJECT=pi-env                        # coordination project/domain name
-PI_COORD_DIR=/workspace/.pi-env/coordination   # clone directory for this project
-PI_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
-PI_COORD_ROLE=architect                # optional active role for role-aware commits
-PI_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
+PI_ENV_COORD_REMOTE=/workspace/.pi-env/agent-remotes/pi-env-coordination.git # exact Git remote URL/path
+PI_ENV_COORD_ROOT=/workspace/.pi-env/agent-remotes # legacy/default bare remote parent
+PI_ENV_COORD_PROJECT=pi-env                        # coordination project/domain name
+PI_ENV_COORD_DIR=/workspace/.pi-env/coordination   # clone directory for this project
+PI_ENV_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
+PI_ENV_COORD_ROLE=architect                # optional active role for role-aware commits
+PI_ENV_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
 ```
 
 `bootstrap-coordination` can print and apply inferred values for these
@@ -418,13 +418,13 @@ project root with `--project-root`, and record the selected remote as
 `.pi-env-coordination.yaml` `coordination_remote`. If the coordination clone
 already exists but the planned local bare remote is missing or empty, it can
 restore that remote from committed clone history without changing item state.
-With `PI_COORD_REMOTE` set, `agent-coord-clone` can infer:
+With `PI_ENV_COORD_REMOTE` set, `agent-coord-clone` can infer:
 
 ```text
-$PI_COORD_REMOTE -> $PI_COORD_DIR
+$PI_ENV_COORD_REMOTE -> $PI_ENV_COORD_DIR
 ```
 
-When no exact remote is configured and `PI_COORD_ROOT` is unset, helpers
+When no exact remote is configured and `PI_ENV_COORD_ROOT` is unset, helpers
 should prefer the project-visible `.pi-env/agent-remotes` directory. Inside
 the pi-env sandbox, or when `/workspace` resolves to the current project
 root, that default should be `/workspace/.pi-env/agent-remotes` so the same
@@ -433,7 +433,7 @@ bare remote is usable from inside and outside Bubblewrap for this project.
 ### 9.1 Optional role-aware identity
 
 If a role-template extension is active, coordination helpers may use
-`PI_COORD_ROLE` or an explicit `--role ROLE` option to make coordination
+`PI_ENV_COORD_ROLE` or an explicit `--role ROLE` option to make coordination
 actions attributable to the role that performed them. Item events store the
 agent ID and role explicitly; helper Git commits can still use an effective
 actor such as `pi/architect` through per-command identity overrides such
@@ -522,11 +522,11 @@ Use this skill when working in a project that contains a Git-backed agent coordi
 
 The coordination repository is the only synchronization source for agent issue,
 TODO, and coordination state. Find it at `.pi-env/coordination` unless
-`PI_COORD_DIR`, the user, or environment says otherwise.
+`PI_ENV_COORD_DIR`, the user, or environment says otherwise.
 
 ## Required protocol
 
-1. `cd "${PI_COORD_DIR:-.pi-env/coordination}" && git pull --rebase` before reading or modifying coordination state.
+1. `cd "${PI_ENV_COORD_DIR:-.pi-env/coordination}" && git pull --rebase` before reading or modifying coordination state.
 2. Inspect open/claimed/blocked/done YAML items relevant to the current project.
 3. Claim at most one item unless instructed otherwise.
 4. Commit and push immediately after claiming or changing status.

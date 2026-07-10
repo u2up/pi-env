@@ -19,9 +19,9 @@ Usage:
 
 Options:
   --project-root DIR      Project checkout to operate on; default: Git root or $PWD
-  --coord-dir DIR         Coordination checkout; default: PI_COORD_DIR, .pi-env/coordination, or legacy ./coordination
+  --coord-dir DIR         Coordination checkout; default: PI_ENV_COORD_DIR, .pi-env/coordination, or legacy ./coordination
                           relative to the project root
-  --agent-id ID           Coordination agent identity; default: PI_COORD_AGENT_ID or USER
+  --agent-id ID           Coordination agent identity; default: PI_ENV_COORD_AGENT_ID or USER
   --issue ID              Limit this run to one explicit coordination issue ID;
                           repeat this option for an ordered issue batch
   --sleep SECONDS         Idle poll sleep interval; default: 30
@@ -246,8 +246,8 @@ resolve_coord_dir() {
   project_root="$1"
   if [ -n "$coord_dir_opt" ]; then
     candidate="$coord_dir_opt"
-  elif [ -n "${PI_COORD_DIR:-}" ]; then
-    candidate="$PI_COORD_DIR"
+  elif [ -n "${PI_ENV_COORD_DIR:-}" ]; then
+    candidate="$PI_ENV_COORD_DIR"
   elif [ -d "$project_root/.pi-env/coordination" ]; then
     candidate=".pi-env/coordination"
   elif [ -d "$project_root/coordination" ]; then
@@ -774,9 +774,9 @@ print_dry_run() {
         env \
         "PI_ACTIVE_ROLE=$role" \
         "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
-        "PI_COORD_ROLE=$role" \
-        "PI_COORD_AGENT_ID=$agent_id" \
-        "PI_COORD_DIR=$coord_dir" \
+        "PI_ENV_COORD_ROLE=$role" \
+        "PI_ENV_COORD_AGENT_ID=$agent_id" \
+        "PI_ENV_COORD_DIR=$coord_dir" \
         "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
         "PI_BWRAP_PROJECT_ROOT=$project_root" \
         "PI_BWRAP_PASS_ENV=$pass_env" \
@@ -793,9 +793,9 @@ print_dry_run() {
         env \
         "PI_ACTIVE_ROLE=$role" \
         "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
-        "PI_COORD_ROLE=$role" \
-        "PI_COORD_AGENT_ID=$agent_id" \
-        "PI_COORD_DIR=$coord_dir" \
+        "PI_ENV_COORD_ROLE=$role" \
+        "PI_ENV_COORD_AGENT_ID=$agent_id" \
+        "PI_ENV_COORD_DIR=$coord_dir" \
         "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
         "PI_BWRAP_PROJECT_ROOT=$project_root" \
         "PI_BWRAP_PASS_ENV=$pass_env" \
@@ -813,9 +813,9 @@ print_dry_run() {
         "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1" \
         "PI_ACTIVE_ROLE=$role" \
         "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
-        "PI_COORD_ROLE=$role" \
-        "PI_COORD_AGENT_ID=$agent_id" \
-        "PI_COORD_DIR=$coord_dir" \
+        "PI_ENV_COORD_ROLE=$role" \
+        "PI_ENV_COORD_AGENT_ID=$agent_id" \
+        "PI_ENV_COORD_DIR=$coord_dir" \
         "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
         "PI_BWRAP_PROJECT_ROOT=$project_root" \
         "PI_BWRAP_PASS_ENV=$pass_env" \
@@ -870,9 +870,9 @@ run_pi_job() {
         env \
           "PI_ACTIVE_ROLE=$role" \
           "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
-          "PI_COORD_ROLE=$role" \
-          "PI_COORD_AGENT_ID=$agent_id" \
-          "PI_COORD_DIR=$coord_dir" \
+          "PI_ENV_COORD_ROLE=$role" \
+          "PI_ENV_COORD_AGENT_ID=$agent_id" \
+          "PI_ENV_COORD_DIR=$coord_dir" \
           "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
           "PI_BWRAP_PROJECT_ROOT=$project_root" \
           "PI_BWRAP_PASS_ENV=$pass_env" \
@@ -888,9 +888,9 @@ run_pi_job() {
         env \
           "PI_ACTIVE_ROLE=$role" \
           "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
-          "PI_COORD_ROLE=$role" \
-          "PI_COORD_AGENT_ID=$agent_id" \
-          "PI_COORD_DIR=$coord_dir" \
+          "PI_ENV_COORD_ROLE=$role" \
+          "PI_ENV_COORD_AGENT_ID=$agent_id" \
+          "PI_ENV_COORD_DIR=$coord_dir" \
           "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
           "PI_BWRAP_PROJECT_ROOT=$project_root" \
           "PI_BWRAP_PASS_ENV=$pass_env" \
@@ -907,9 +907,9 @@ run_pi_job() {
           "PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1" \
           "PI_ACTIVE_ROLE=$role" \
           "PI_ROLE_MANAGER_ACTIVE_ROLE=$role" \
-          "PI_COORD_ROLE=$role" \
-          "PI_COORD_AGENT_ID=$agent_id" \
-          "PI_COORD_DIR=$coord_dir" \
+          "PI_ENV_COORD_ROLE=$role" \
+          "PI_ENV_COORD_AGENT_ID=$agent_id" \
+          "PI_ENV_COORD_DIR=$coord_dir" \
           "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
           "PI_BWRAP_PROJECT_ROOT=$project_root" \
           "PI_BWRAP_PASS_ENV=$pass_env" \

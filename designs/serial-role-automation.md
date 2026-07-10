@@ -152,8 +152,8 @@ variables requires explicit pass-through when used. A safe invocation shape is:
 ```bash
 PI_BWRAP_PASS_ENV=PI_ACTIVE_ROLE \
 PI_ACTIVE_ROLE="$role" \
-PI_COORD_ROLE="$role" \
-PI_COORD_AGENT_ID="$agent_id" \
+PI_ENV_COORD_ROLE="$role" \
+PI_ENV_COORD_AGENT_ID="$agent_id" \
 PI_BWRAP_COORDINATION_DIR="$coordination_dir" \
 pi-env --raw -- \
   -e "$PI_ENV_ROLE_MANAGER_PACKAGE" \
@@ -181,8 +181,8 @@ generated prompt as the initial message. `pi-serial-roles` additionally passes
 PI_BWRAP_PASS_ENV="PI_ACTIVE_ROLE PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE" \
 PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1 \
 PI_ACTIVE_ROLE="$role" \
-PI_COORD_ROLE="$role" \
-PI_COORD_AGENT_ID="$agent_id" \
+PI_ENV_COORD_ROLE="$role" \
+PI_ENV_COORD_AGENT_ID="$agent_id" \
 PI_BWRAP_COORDINATION_DIR="$coordination_dir" \
 pi-env --raw -- \
   -e "$PI_ENV_ROLE_MANAGER_PACKAGE" \

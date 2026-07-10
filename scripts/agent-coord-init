@@ -18,20 +18,20 @@ Usage:
   agent-coord-init [options]
 
 Options:
-  --root DIR        Bare remote parent; default: PI_COORD_ROOT or .pi-env/agent-remotes
-  --remote REMOTE   Coordination Git remote URL or local bare path; default: PI_COORD_REMOTE
-  --project ID      Coordination project; default: PI_COORD_PROJECT or cwd name
+  --root DIR        Bare remote parent; default: PI_ENV_COORD_ROOT or .pi-env/agent-remotes
+  --remote REMOTE   Coordination Git remote URL or local bare path; default: PI_ENV_COORD_REMOTE
+  --project ID      Coordination project; default: PI_ENV_COORD_PROJECT or cwd name
   --project-key KEY Project item ID prefix; default: derived project
-  --repo-id ID      Initial implementation repo id; default: PI_COORD_REPO_ID,
+  --repo-id ID      Initial implementation repo id; default: PI_ENV_COORD_REPO_ID,
                    .pi-env-coordination.yaml repo_id, git remote, or project
-  --dir DIR         Working clone dir; default: PI_COORD_DIR or .pi-env/coordination
-  --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
-  --role ROLE       Coordination role; default: PI_COORD_ROLE
+  --dir DIR         Working clone dir; default: PI_ENV_COORD_DIR or .pi-env/coordination
+  --agent-id ID     Agent identity; default: PI_ENV_COORD_AGENT_ID or USER
+  --role ROLE       Coordination role; default: PI_ENV_COORD_ROLE
   --bare-only       Only create the bare remote
   -h, --help        Show this help
 
-Remote precedence is explicit --remote, then PI_COORD_REMOTE,
-then PI_COORD_REMOTE_URL, then .pi-env-coordination.yaml coordination_remote,
+Remote precedence is explicit --remote, then PI_ENV_COORD_REMOTE,
+then PI_ENV_COORD_REMOTE_URL, then .pi-env-coordination.yaml coordination_remote,
 then:
   <root>/<project>-coordination.git
 USAGE
@@ -42,9 +42,9 @@ remote_url="$(coord_env_coordination_remote 2>/dev/null || true)"
 coord_dir="$(coord_default_dir)"
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
-project_key="${PI_COORD_PROJECT:-}"
-project_id_key="${PI_COORD_PROJECT_KEY:-}"
-repo_id_arg="${PI_COORD_REPO_ID:-}"
+project_key="${PI_ENV_COORD_PROJECT:-}"
+project_id_key="${PI_ENV_COORD_PROJECT_KEY:-}"
+repo_id_arg="${PI_ENV_COORD_REPO_ID:-}"
 bare_only=0
 
 while [ "$#" -gt 0 ]; do
@@ -169,7 +169,7 @@ fi
 initial_repo_source=""
 initial_repo_id="$repo_id_arg"
 if [ -n "$initial_repo_id" ]; then
-  initial_repo_source="--repo-id or PI_COORD_REPO_ID"
+  initial_repo_source="--repo-id or PI_ENV_COORD_REPO_ID"
 else
   initial_repo_id="$(coord_impl_config_value repo_id || true)"
   if [ -n "$initial_repo_id" ]; then

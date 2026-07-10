@@ -16,12 +16,12 @@ remain shared at the domain root. Domain-wide generated files that are committed
 to an implementation repo are declared in that repo's `repos/{repo_id}/REPO.md`
 under `domain_generated_files`; ask before regenerating them when no matching
 path is declared. For fresh pi-env projects, find the clone at
-`.pi-env/coordination` unless `PI_COORD_DIR`, the user, or project coordination
+`.pi-env/coordination` unless `PI_ENV_COORD_DIR`, the user, or project coordination
 rules say otherwise.
 
 ## Required protocol
 
-1. `cd "${PI_COORD_DIR:-.pi-env/coordination}" && git pull --rebase` before
+1. `cd "${PI_ENV_COORD_DIR:-.pi-env/coordination}" && git pull --rebase` before
    reading or modifying coordination state, or use the `agent-coord-*` helpers
    with their default coordination directory resolution.
 2. Inspect open, claimed, blocked, and done YAML issue items in the current
@@ -29,7 +29,7 @@ rules say otherwise.
    they affect acceptance criteria.
 3. Claim at most one issue item unless instructed otherwise.
 4. When an active role is in effect, preserve it for coordination helpers with
-   `--role ROLE` or `PI_COORD_ROLE=ROLE`; item events should store the actor ID
+   `--role ROLE` or `PI_ENV_COORD_ROLE=ROLE`; item events should store the actor ID
    and role explicitly.
 5. Commit and push immediately after claiming or changing status.
 6. Do project work in the project repository.
@@ -43,7 +43,7 @@ rules say otherwise.
 
 ## Repo namespaces, item keys, and IDs
 
-Resolve the current repo id from `--repo-id`, `PI_COORD_REPO_ID`, the
+Resolve the current repo id from `--repo-id`, `PI_ENV_COORD_REPO_ID`, the
 implementation root's `.pi-env-coordination.yaml`, or registry remote data.
 The attachment file is a hint only; `repos/{repo_id}/REPO.md` and compatible
 registry data are authoritative. Alias use should warn so callers update to the
@@ -129,7 +129,7 @@ Verification messages should record exact commands and results. When available,
 run this from the project root to check item metadata and test linkage:
 
 ```bash
-agent-coord-lint --coord-dir "${PI_COORD_DIR:-.pi-env/coordination}" --project-root .
+agent-coord-lint --coord-dir "${PI_ENV_COORD_DIR:-.pi-env/coordination}" --project-root .
 ```
 
 Use `--require-done-or-closed` for release gates that require all issue items

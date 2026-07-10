@@ -15,15 +15,15 @@ mkdir -p "$HOME" "$workspace_dir"
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
-unset PI_COORD_ROOT PI_COORD_REMOTE PI_COORD_REMOTE_URL PI_COORD_WORKSPACE PI_COORD_DIR \
-  PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
+unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE PI_ENV_COORD_REMOTE_URL PI_ENV_COORD_WORKSPACE PI_ENV_COORD_DIR \
+  PI_ENV_COORD_AGENT_ID PI_ENV_COORD_PROJECT PI_ENV_COORD_PROJECT_KEY PI_ENV_COORD_ROLE
 
 project_git="$tmp/project-git"
 mkdir -p "$project_git"
 git -C "$project_git" init -q
 git -C "$project_git" config user.name "Project User"
 git -C "$project_git" config user.email "project@example.invalid"
-PI_COORD_ROLE=architect git -C "$project_git" commit --allow-empty -m "Project commit" >/dev/null
+PI_ENV_COORD_ROLE=architect git -C "$project_git" commit --allow-empty -m "Project commit" >/dev/null
 test "$(git -C "$project_git" log -1 --format='%an <%ae>')" = "Project User <project@example.invalid>"
 
 mkdir -p "$tmp/default-root"
@@ -46,7 +46,7 @@ test ! -e "$HOME/agent-remotes/default-demo-coordination.git"
 grep -Fxq '/.pi-env/' "$tmp/default-root/.git/info/exclude"
 
 if [ -d /workspace ] && [ "$(realpath -m /workspace)" = "$(realpath -m "$repo_root")" ]; then
-  workspace_default_root="$(cd "$repo_root" && unset PI_COORD_ROOT && . "$PI_ENV_COORD_LIB" && coord_default_root)"
+  workspace_default_root="$(cd "$repo_root" && unset PI_ENV_COORD_ROOT && . "$PI_ENV_COORD_LIB" && coord_default_root)"
   test "$workspace_default_root" = "/workspace/.pi-env/agent-remotes"
 fi
 
@@ -90,21 +90,21 @@ fi
 grep -q -- '--workspace has been removed; use --project' \
   "$tmp/bootstrap-workspace.err"
 
-if PI_COORD_WORKSPACE=stale-workspace bootstrap-coordination \
+if PI_ENV_COORD_WORKSPACE=stale-workspace bootstrap-coordination \
   --project-root "$bootstrap_project_dir" \
   --root "$tmp/bootstrap-remotes" \
   --agent-id agent-b \
   --print-only >"$tmp/bootstrap-workspace-env.out" 2>"$tmp/bootstrap-workspace-env.err"; then
-  printf 'expected bootstrap-coordination PI_COORD_WORKSPACE to be rejected\n' >&2
+  printf 'expected bootstrap-coordination PI_ENV_COORD_WORKSPACE to be rejected\n' >&2
   exit 1
 fi
-grep -q -- 'PI_COORD_WORKSPACE has been removed; use PI_COORD_PROJECT' \
+grep -q -- 'PI_ENV_COORD_WORKSPACE has been removed; use PI_ENV_COORD_PROJECT' \
   "$tmp/bootstrap-workspace-env.err"
 
 bootstrap_plan="$tmp/bootstrap-plan.txt"
-PI_COORD_DIR="$tmp/stale-coordination" \
-PI_COORD_PROJECT=stale-project \
-PI_COORD_PROJECT_KEY=STALE \
+PI_ENV_COORD_DIR="$tmp/stale-coordination" \
+PI_ENV_COORD_PROJECT=stale-project \
+PI_ENV_COORD_PROJECT_KEY=STALE \
 bootstrap-coordination \
   --project-root "$bootstrap_project_dir" \
   --root "$tmp/bootstrap-remotes" \
@@ -127,11 +127,11 @@ grep -q '^project: other-project$' "$bootstrap_project_dir/.pi-env/coordination/
 grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
 grep -q '^domain_generated_files: \[\]$' "$bootstrap_project_dir/.pi-env/coordination/repos/other-project/REPO.md"
 grep -q "Clone dir:    $bootstrap_project_dir/.pi-env/coordination" "$bootstrap_plan"
-grep -q "export PI_COORD_REMOTE=$tmp/bootstrap-remotes/other-project-coordination.git" "$bootstrap_plan"
+grep -q "export PI_ENV_COORD_REMOTE=$tmp/bootstrap-remotes/other-project-coordination.git" "$bootstrap_plan"
 grep -Fxq '/.pi-env/' "$bootstrap_project_dir/.git/info/exclude"
-grep -q 'export PI_COORD_PROJECT=other-project' "$bootstrap_plan"
-! grep -q 'PI_COORD_WORKSPACE' "$bootstrap_plan"
-! grep -q 'PI_COORD_REMOTE_URL' "$bootstrap_plan"
+grep -q 'export PI_ENV_COORD_PROJECT=other-project' "$bootstrap_plan"
+! grep -q 'PI_ENV_COORD_WORKSPACE' "$bootstrap_plan"
+! grep -q 'PI_ENV_COORD_REMOTE_URL' "$bootstrap_plan"
 grep -q "^coordination_remote: $tmp/bootstrap-remotes/other-project-coordination.git$" \
   "$bootstrap_project_dir/.pi-env-coordination.yaml"
 
@@ -185,7 +185,7 @@ grep -q "Root:         $fresh_print_project_dir/.pi-env/agent-remotes" \
   "$tmp/fresh-print-plan.txt"
 grep -q "Clone dir:    $fresh_print_project_dir/.pi-env/coordination" \
   "$tmp/fresh-print-plan.txt"
-grep -q 'export PI_COORD_REMOTE=.pi-env/agent-remotes/fresh-print-project-coordination.git' \
+grep -q 'export PI_ENV_COORD_REMOTE=.pi-env/agent-remotes/fresh-print-project-coordination.git' \
   "$tmp/fresh-print-plan.txt"
 test ! -e "$fresh_print_project_dir/.pi-env"
 test ! -e "$fresh_print_project_dir/.pi-env-coordination.yaml"
@@ -205,7 +205,7 @@ grep -q "agent-coord-init --remote $server_print_remote" "$tmp/server-print-plan
 test ! -e "$tmp/server-print-remotes"
 test ! -e "$server_print_project_dir/.pi-env/coordination"
 
-PI_COORD_REMOTE_URL="$tmp/env-remote.git" bootstrap-coordination \
+PI_ENV_COORD_REMOTE_URL="$tmp/env-remote.git" bootstrap-coordination \
   --project-root "$server_print_project_dir" \
   --remote "$server_print_remote" \
   --print-only >"$tmp/server-precedence-plan.txt" 2>/dev/null
@@ -233,15 +233,15 @@ test "$(git -C "$tmp/server-coordination-existing" rev-parse HEAD)" = "$server_h
 
 env_remote="$tmp/env-clone-remote.git"
 git clone --bare "$server_remote" "$env_remote" >/dev/null 2>&1
-unset PI_COORD_ROOT PI_COORD_REMOTE
-PI_COORD_REMOTE_URL="$env_remote" agent-coord-clone \
+unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE
+PI_ENV_COORD_REMOTE_URL="$env_remote" agent-coord-clone \
   --dir "$tmp/env-remote-clone" >/dev/null
 test -f "$tmp/env-remote-clone/AGENTS.md"
-PI_COORD_REMOTE="$env_remote" agent-coord-clone \
+PI_ENV_COORD_REMOTE="$env_remote" agent-coord-clone \
   --dir "$tmp/new-env-remote-clone" >/dev/null
 test -f "$tmp/new-env-remote-clone/AGENTS.md"
-PI_COORD_REMOTE="$env_remote" \
-PI_COORD_REMOTE_URL="$tmp/must-not-win.git" \
+PI_ENV_COORD_REMOTE="$env_remote" \
+PI_ENV_COORD_REMOTE_URL="$tmp/must-not-win.git" \
 agent-coord-clone \
   --dir "$tmp/new-env-precedence-clone" >/dev/null
 test -f "$tmp/new-env-precedence-clone/AGENTS.md"
@@ -317,7 +317,7 @@ grep -q '^item_key: PIENV$' .pi-env/coordination/PROJECT.md
 git -C .pi-env/coordination config --get pull.rebase | grep -qx true
 git -C .pi-env/coordination config --get rebase.autoStash | grep -qx true
 test "$(git -C .pi-env/coordination remote get-url origin)" = "../agent-remotes/pi-env-coordination.git"
-export PI_COORD_REPO_ID=pi-env
+export PI_ENV_COORD_REPO_ID=pi-env
 
 cd "$tmp"
 agent-coord-clone \
@@ -774,7 +774,7 @@ grep -q '^      Review passed\.$' "$workspace_dir/.pi-env/coordination/$done_pat
 test "$(git -C "$workspace_dir/.pi-env/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "reviewer-a/reviewer <reviewer-a+reviewer@coordination.local>|reviewer-a/reviewer <reviewer-a+reviewer@coordination.local>"
 
-verify_path="$(PI_COORD_ROLE=tester agent-coord-verify \
+verify_path="$(PI_ENV_COORD_ROLE=tester agent-coord-verify \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id tester-a \
   --pass \
@@ -793,7 +793,7 @@ reviewed_verified_done_issue_list="$(agent-coord-list --coord-dir "$workspace_di
 printf '%s\n' "$reviewed_verified_done_issue_list" \
   | grep -Eq "^$item_id[[:space:]]+done[[:space:]]+Document pi config behavior \\(reviewed:true, verified:true\\)$"
 
-closed_path="$(PI_COORD_ROLE=tester agent-coord-close \
+closed_path="$(PI_ENV_COORD_ROLE=tester agent-coord-close \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id tester-a \
   --result "Closed after review and verification." \
@@ -874,7 +874,7 @@ agent-coord-review \
   --pass \
   --result "Review passed for verification failure test." \
   "$verify_fail_id" >/dev/null
-verification_failed_path="$(PI_COORD_ROLE=tester agent-coord-verify \
+verification_failed_path="$(PI_ENV_COORD_ROLE=tester agent-coord-verify \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id tester-a \
   --fail \

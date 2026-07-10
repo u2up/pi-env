@@ -18,7 +18,7 @@ Usage:
   agent-coord-lint [options]
 
 Options:
-  --coord-dir DIR            Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
+  --coord-dir DIR            Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
   --project-root DIR         Project repo containing tests/items; default: parent of coord dir
   --repo-id ID               Repo whose repo-scoped issue tests are available
   --all-repos                Validate all repo-scoped items structurally; do not require
@@ -53,11 +53,11 @@ tests mirror the root item type directory:
 
 When repos/<repo_id>/issues are present, lint defaults item-matched issue test
 checks to the current implementation repo resolved from --repo-id,
-PI_COORD_REPO_ID, .pi-env-coordination.yaml, or Git remote registry data. --all-repos
+PI_ENV_COORD_REPO_ID, .pi-env-coordination.yaml, or Git remote registry data. --all-repos
 validates every repo structurally but skips repo-scoped issue test requirements
 for repos whose implementation checkout is not selected by --repo-id. Root
 issues/ paths are allowed during migration with a warning; set
-PI_COORD_LINT_ROOT_ISSUES=fail to reject them.
+PI_ENV_COORD_LINT_ROOT_ISSUES=fail to reject them.
 USAGE
 }
 
@@ -447,7 +447,7 @@ while IFS= read -r file; do
     else
       case "$file" in
         issues/*)
-          if [ "${PI_COORD_LINT_ROOT_ISSUES:-warn}" = "fail" ]; then
+          if [ "${PI_ENV_COORD_LINT_ROOT_ISSUES:-warn}" = "fail" ]; then
             lint_fail "$file uses root issues/ during repo-scope migration"
           else
             lint_warn "$file uses root issues/ during repo-scope migration"

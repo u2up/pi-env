@@ -18,9 +18,9 @@ Usage:
   agent-coord-verify [options] ITEM
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
-  --agent-id ID     Agent identity; default: PI_COORD_AGENT_ID or USER
-  --role ROLE       Coordination role; default: PI_COORD_ROLE
+  --coord-dir DIR   Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
+  --agent-id ID     Agent identity; default: PI_ENV_COORD_AGENT_ID or USER
+  --role ROLE       Coordination role; default: PI_ENV_COORD_ROLE
   --pass            Mark verification passed; default
   --fail            Mark verification failed and reopen developer work
   --result TEXT     Verification message text

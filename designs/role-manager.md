@@ -198,7 +198,7 @@ When a role is active and coordination helper commands commit coordination
 state, those commits should be attributable to the role. The implemented
 behavior is:
 
-- coordination helpers accept `--role ROLE` and read `PI_COORD_ROLE`;
+- coordination helpers accept `--role ROLE` and read `PI_ENV_COORD_ROLE`;
 - coordination item events store actor ID and role explicitly, and helper
   commits may use an effective actor such as `pi/architect`;
 - coordination commits use a role-specific Git identity through per-command
@@ -211,7 +211,7 @@ behavior is:
   ```
 
 The role manager propagates the active role to coordination commands by setting
-`PI_COORD_ROLE` for Pi subprocesses to the role's `coordCommitter` value, or the
+`PI_ENV_COORD_ROLE` for Pi subprocesses to the role's `coordCommitter` value, or the
 role name when that field is omitted. Project repository commits continue to use
 the normal imported Git identity unless the user explicitly requests a role
 identity there too.

@@ -46,10 +46,10 @@ YAML
   [ "$(coord_resolve_coordination_remote 'ssh://explicit')" = "ssh://explicit" ]
 
   [ "$(coord_resolve_repo_id backend-api "$coord_dir")" = "backend-api" ]
-  PI_COORD_REPO_ID=backend-api
-  export PI_COORD_REPO_ID
+  PI_ENV_COORD_REPO_ID=backend-api
+  export PI_ENV_COORD_REPO_ID
   [ "$(coord_resolve_repo_id '' "$coord_dir")" = "backend-api" ]
-  unset PI_COORD_REPO_ID
+  unset PI_ENV_COORD_REPO_ID
 
   alias_output="$(coord_resolve_repo_id '' "$coord_dir" 2>"$tmp/alias.err")"
   [ "$alias_output" = "backend-api" ]

@@ -84,12 +84,12 @@ Environment knobs:
                                 Host runtime only: bind extra support paths read-only
   PI_BWRAP_NET=0                Disable network namespace sharing
   PI_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
-  PI_COORD_REMOTE=remote        Coordination Git remote URL or local bare path; project paths
+  PI_ENV_COORD_REMOTE=remote        Coordination Git remote URL or local bare path; project paths
                                  stay under /workspace, external parents bind safely
-  PI_COORD_ROOT=.pi-env/agent-remotes Legacy bare remotes root; project paths stay under /workspace,
+  PI_ENV_COORD_ROOT=.pi-env/agent-remotes Legacy bare remotes root; project paths stay under /workspace,
                                  external paths bind at /agent-remotes
-  PI_COORD_REMOTE_URL=url       Legacy alias for PI_COORD_REMOTE
-  PI_COORD_ROLE=architect       Active coordination role passed to helpers
+  PI_ENV_COORD_REMOTE_URL=url       Legacy alias for PI_ENV_COORD_REMOTE
+  PI_ENV_COORD_ROLE=architect       Active coordination role passed to helpers
   PI_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
 To pass pi's own -h/--help, use:
@@ -491,13 +491,13 @@ fi
 coord_root_bind_args=()
 host_coord_root=""
 sandbox_coord_root=""
-if [ -n "${PI_COORD_ROOT:-}" ]; then
-  case "$PI_COORD_ROOT" in
+if [ -n "${PI_ENV_COORD_ROOT:-}" ]; then
+  case "$PI_ENV_COORD_ROOT" in
     /*)
-      host_coord_root="$(realpath -m "$PI_COORD_ROOT")"
+      host_coord_root="$(realpath -m "$PI_ENV_COORD_ROOT")"
       ;;
     *)
-      host_coord_root="$(realpath -m "$project_root/$PI_COORD_ROOT")"
+      host_coord_root="$(realpath -m "$project_root/$PI_ENV_COORD_ROOT")"
       ;;
   esac
   case "$host_coord_root" in
@@ -513,8 +513,8 @@ if [ -n "${PI_COORD_ROOT:-}" ]; then
         coord_root_bind_args=(--dir /agent-remotes --bind "$host_coord_root" /agent-remotes)
         echo "pi-bwrap: coordination remotes available at /agent-remotes" >&2
       else
-        sandbox_coord_root="$PI_COORD_ROOT"
-        echo "pi-bwrap: warning: PI_COORD_ROOT outside project is not an existing directory and will not be mounted: $PI_COORD_ROOT" >&2
+        sandbox_coord_root="$PI_ENV_COORD_ROOT"
+        echo "pi-bwrap: warning: PI_ENV_COORD_ROOT outside project is not an existing directory and will not be mounted: $PI_ENV_COORD_ROOT" >&2
       fi
       ;;
   esac
@@ -524,11 +524,11 @@ coord_remote_bind_args=()
 sandbox_coord_remote=""
 coord_remote=""
 coord_remote_source=""
-if [ -n "${PI_COORD_REMOTE:-}" ]; then
-  coord_remote="$PI_COORD_REMOTE"
+if [ -n "${PI_ENV_COORD_REMOTE:-}" ]; then
+  coord_remote="$PI_ENV_COORD_REMOTE"
   coord_remote_source="env"
-elif [ -n "${PI_COORD_REMOTE_URL:-}" ]; then
-  coord_remote="$PI_COORD_REMOTE_URL"
+elif [ -n "${PI_ENV_COORD_REMOTE_URL:-}" ]; then
+  coord_remote="$PI_ENV_COORD_REMOTE_URL"
   coord_remote_source="env"
 else
   coord_remote="$(pi_bwrap_coord_config_value coordination_remote 2>/dev/null || true)"
@@ -593,7 +593,7 @@ if [ -n "$coord_remote" ]; then
             echo "pi-bwrap: coordination remote parent available at $coord_remote_mount_point" >&2
           else
             sandbox_coord_remote="$coord_remote"
-            echo "pi-bwrap: warning: local PI_COORD_REMOTE outside project cannot be mounted: $coord_remote" >&2
+            echo "pi-bwrap: warning: local PI_ENV_COORD_REMOTE outside project cannot be mounted: $coord_remote" >&2
           fi
         fi
         ;;
@@ -614,14 +614,14 @@ coord_dir_explicit=0
 if [ -n "${PI_BWRAP_COORDINATION_DIR:-}" ]; then
   host_coord_dir="$(realpath -m "$PI_BWRAP_COORDINATION_DIR")"
   coord_dir_explicit=1
-elif [ -n "${PI_COORD_DIR:-}" ]; then
+elif [ -n "${PI_ENV_COORD_DIR:-}" ]; then
   coord_dir_explicit=1
-  case "$PI_COORD_DIR" in
+  case "$PI_ENV_COORD_DIR" in
     /*)
-      host_coord_dir="$(realpath -m "$PI_COORD_DIR")"
+      host_coord_dir="$(realpath -m "$PI_ENV_COORD_DIR")"
       ;;
     *)
-      host_coord_dir="$(realpath -m "$project_root/$PI_COORD_DIR")"
+      host_coord_dir="$(realpath -m "$project_root/$PI_ENV_COORD_DIR")"
       ;;
   esac
 elif [ -d "$project_root/.pi-env/coordination" ]; then
@@ -905,24 +905,24 @@ sandbox_path="$(append_path_entry /usr/local/bin "$sandbox_path")"
 sandbox_path="$(append_path_entry /usr/bin "$sandbox_path")"
 sandbox_path="$(append_path_entry /bin "$sandbox_path")"
 
-if [ -n "${PI_COORD_ROOT:-}" ]; then
-  set_env PI_COORD_ROOT "$sandbox_coord_root"
+if [ -n "${PI_ENV_COORD_ROOT:-}" ]; then
+  set_env PI_ENV_COORD_ROOT "$sandbox_coord_root"
 fi
 if [ -n "$sandbox_coord_remote" ]; then
-  set_env PI_COORD_REMOTE "$sandbox_coord_remote"
-  set_env PI_COORD_REMOTE_URL "$sandbox_coord_remote"
+  set_env PI_ENV_COORD_REMOTE "$sandbox_coord_remote"
+  set_env PI_ENV_COORD_REMOTE_URL "$sandbox_coord_remote"
 else
-  copy_env PI_COORD_REMOTE
-  copy_env PI_COORD_REMOTE_URL
+  copy_env PI_ENV_COORD_REMOTE
+  copy_env PI_ENV_COORD_REMOTE_URL
 fi
-copy_env PI_COORD_PROJECT
-copy_env PI_COORD_AGENT_ID
-copy_env PI_COORD_PROJECT_KEY
-copy_env PI_COORD_ROLE
+copy_env PI_ENV_COORD_PROJECT
+copy_env PI_ENV_COORD_AGENT_ID
+copy_env PI_ENV_COORD_PROJECT_KEY
+copy_env PI_ENV_COORD_ROLE
 if [ -n "$sandbox_coord_dir" ]; then
-  set_env PI_COORD_DIR "$sandbox_coord_dir"
+  set_env PI_ENV_COORD_DIR "$sandbox_coord_dir"
 else
-  copy_env PI_COORD_DIR
+  copy_env PI_ENV_COORD_DIR
 fi
 
 sandbox_bash="$pi_bwrap_bash"

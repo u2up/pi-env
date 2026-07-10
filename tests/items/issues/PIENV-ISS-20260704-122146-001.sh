@@ -141,7 +141,7 @@ rm -rf "$coord_dir/repos/old"
 
 mkdir -p "$coord_dir/issues/open"
 make_issue "$coord_dir/issues/open/ROOT-ISS-1.yaml" ROOT-ISS-1 open no
-if PI_COORD_LINT_ROOT_ISSUES=fail \
+if PI_ENV_COORD_LINT_ROOT_ISSUES=fail \
   agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
     >"$tmp/root.out" 2>"$tmp/root.err"; then
   printf 'expected lint to fail for root issue migration policy\n' >&2

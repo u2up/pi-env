@@ -69,8 +69,8 @@ writeFileSync(
 const previousEnv = {
   PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR,
   PI_BWRAP_COMMON_AGENT_DIR: process.env.PI_BWRAP_COMMON_AGENT_DIR,
-  PI_COORD_DIR: process.env.PI_COORD_DIR,
-  PI_COORD_ROLE: process.env.PI_COORD_ROLE,
+  PI_ENV_COORD_DIR: process.env.PI_ENV_COORD_DIR,
+  PI_ENV_COORD_ROLE: process.env.PI_ENV_COORD_ROLE,
   PI_ACTIVE_ROLE: process.env.PI_ACTIVE_ROLE,
   PI_ROLE_MANAGER_ACTIVE_ROLE: process.env.PI_ROLE_MANAGER_ACTIVE_ROLE,
   PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE:
@@ -78,8 +78,8 @@ const previousEnv = {
 };
 process.env.PI_CODING_AGENT_DIR = join(tmp, "agent");
 delete process.env.PI_BWRAP_COMMON_AGENT_DIR;
-process.env.PI_COORD_DIR = join(tmp, "coordination");
-process.env.PI_COORD_ROLE = "ambient-role";
+process.env.PI_ENV_COORD_DIR = join(tmp, "coordination");
+process.env.PI_ENV_COORD_ROLE = "ambient-role";
 delete process.env.PI_ACTIVE_ROLE;
 delete process.env.PI_ROLE_MANAGER_ACTIVE_ROLE;
 delete process.env.PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE;
@@ -413,7 +413,7 @@ try {
       assert.equal(roleHarness.state.thinkingLevel, "high");
     }
     await roleHarness.commands.get("role-clear").handler("", roleHarness.ctx);
-    assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
+    assert.equal(process.env.PI_ENV_COORD_ROLE, "ambient-role");
   }
 
   const missingArchitectTool = createHarness([], {
@@ -436,7 +436,7 @@ try {
     "missing architect tools are reported by name",
   );
   await missingArchitectTool.commands.get("role-clear").handler("", missingArchitectTool.ctx);
-  assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
+  assert.equal(process.env.PI_ENV_COORD_ROLE, "ambient-role");
 
   const missingDeveloperTool = createHarness([], {
     builtinToolNames: ["read", "grep", "find", "ls", "edit", "bash"],
@@ -458,7 +458,7 @@ try {
     "missing developer tools are reported by name",
   );
   await missingDeveloperTool.commands.get("role-clear").handler("", missingDeveloperTool.ctx);
-  assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
+  assert.equal(process.env.PI_ENV_COORD_ROLE, "ambient-role");
 
   await harness.commands.get("role").handler("modeler", harness.ctx);
 
@@ -475,7 +475,7 @@ try {
   assert.equal(harness.state.currentModel.id, "target");
   assert.equal(harness.state.thinkingLevel, "high");
   assert.deepEqual(harness.state.activeTools, ["read", "bash"]);
-  assert.equal(process.env.PI_COORD_ROLE, "project-modeler");
+  assert.equal(process.env.PI_ENV_COORD_ROLE, "project-modeler");
   assert.equal(harness.statuses.at(-1).key, "role-manager");
   assert.match(harness.statuses.at(-1).text, /🧪 role:modeler/);
   assert.match(harness.titles.at(-1), /role:modeler/);
@@ -489,7 +489,7 @@ try {
   const prompt = await harness.buildSystemPrompt();
   assert.match(prompt, /Active Role: 🧪 modeler/);
   assert.match(prompt, /coordination role: project-modeler/);
-  assert.match(prompt, /PI_COORD_ROLE/);
+  assert.match(prompt, /PI_ENV_COORD_ROLE/);
   assert.match(prompt, /PROJECT modeler mission/);
 
   const restart = createHarness([...harness.entries]);
@@ -500,7 +500,7 @@ try {
   assert.equal(restart.state.currentModel.id, "target");
   assert.equal(restart.state.thinkingLevel, "high");
   assert.deepEqual(restart.state.activeTools, ["read", "bash"]);
-  assert.equal(process.env.PI_COORD_ROLE, "project-modeler");
+  assert.equal(process.env.PI_ENV_COORD_ROLE, "project-modeler");
   assert.match(restart.statuses.at(-1).text, /🧪 role:modeler/);
   assert.match(restart.titles.at(-1), /role:modeler/);
 
@@ -512,7 +512,7 @@ try {
     "bash",
     "role_cycle_done",
   ]);
-  assert.equal(process.env.PI_COORD_ROLE, "project-modeler");
+  assert.equal(process.env.PI_ENV_COORD_ROLE, "project-modeler");
   delete process.env.PI_ROLE_MANAGER_ACTIVE_ROLE;
 
   await harness.commands.get("role-clear").handler("", harness.ctx);
@@ -524,14 +524,14 @@ try {
   assert.equal(harness.statuses.at(-1).text, undefined);
   assert.equal(harness.widgets.at(-1).content, undefined);
   assert.doesNotMatch(harness.titles.at(-1), /role:/);
-  assert.equal(process.env.PI_COORD_ROLE, "ambient-role");
+  assert.equal(process.env.PI_ENV_COORD_ROLE, "ambient-role");
   assert.doesNotMatch(await harness.buildSystemPrompt(), /Active Role:/);
 
   harness.state.selection = "developer";
   await harness.commands.get("role").handler("", harness.ctx);
   assert.equal(harness.entries.at(-1).data.activeRoleName, "developer");
   assert.equal(harness.state.thinkingLevel, "medium");
-  assert.equal(process.env.PI_COORD_ROLE, "developer");
+  assert.equal(process.env.PI_ENV_COORD_ROLE, "developer");
 
   const cycle = createHarness([]);
   await cycle.emit("session_start", { type: "session_start", reason: "startup" });
@@ -547,7 +547,7 @@ try {
   assert.ok(cycleEntry.data.roleCycle.checklist.includes("PROJECT modeler workflow."));
   assert.equal(cycle.state.currentModel.id, "target");
   assert.equal(cycle.state.thinkingLevel, "high");
-  assert.equal(process.env.PI_COORD_ROLE, "project-modeler");
+  assert.equal(process.env.PI_ENV_COORD_ROLE, "project-modeler");
   assert.deepEqual(cycle.state.activeTools, ["read", "bash", "role_cycle_done"]);
   assert.equal(cycle.sentUserMessages.length, 1);
   assert.match(cycle.sentUserMessages[0].content, /Role cycle kickoff/);

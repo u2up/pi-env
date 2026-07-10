@@ -16,8 +16,8 @@ key is read from requirement_key metadata.
 USAGE
 }
 
-project="${PI_COORD_PROJECT:-pi-env}"
-coord_dir="${PI_COORD_DIR:-}"
+project="${PI_ENV_COORD_PROJECT:-pi-env}"
+coord_dir="${PI_ENV_COORD_DIR:-}"
 output=""
 
 while [ "$#" -gt 0 ]; do

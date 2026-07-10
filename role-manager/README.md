@@ -79,5 +79,5 @@ extension updates the footer status and terminal title. `/role-cycle` includes
 the role's one-cycle checklist in the kickoff prompt instead of keeping a
 persistent checklist above later prompts. `/role-clear` removes active role UI
 decorations. While a role is active, the
-extension also exports `PI_COORD_ROLE` to Pi subprocesses using the role's
+extension also exports `PI_ENV_COORD_ROLE` to Pi subprocesses using the role's
 `coordCommitter` value, or the role name when `coordCommitter` is omitted.

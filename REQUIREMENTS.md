@@ -642,17 +642,17 @@ The flake/devshell must provide these opt-in coordination commands:
 - `agent-coord-upgrade-rules`
 
 `bootstrap-coordination` must remain a thin wrapper around
-`agent-coord-init`: it prints the inferred `PI_COORD_*` settings and the
+`agent-coord-init`: it prints the inferred `PI_ENV_COORD_*` settings and the
 corresponding initialization command, records the selected remote as
 `.pi-env-coordination.yaml` `coordination_remote` on real bootstraps, then
 initializes with those explicit values unless `--print-only`/`--dry-run` is
 used. When project values are unset, it must infer useful defaults from
-`PI_COORD_PROJECT`, the Git
+`PI_ENV_COORD_PROJECT`, the Git
 origin repository name, the Git root basename, or the current directory
 basename, in that order. It must support `--project-root DIR` to infer and
 initialize relative to another project directory; when doing so, stale
-context values from `PI_COORD_DIR`, `PI_COORD_PROJECT`, and
-`PI_COORD_PROJECT_KEY` must not override the target directory's inferred
+context values from `PI_ENV_COORD_DIR`, `PI_ENV_COORD_PROJECT`, and
+`PI_ENV_COORD_PROJECT_KEY` must not override the target directory's inferred
 defaults unless explicit options are supplied. If the selected
 coordination clone already exists but the
 planned local bare remote is missing or does not contain the clone's
@@ -682,13 +682,13 @@ and `agents` directories; and an initial implementation namespace at
 `repos/<repo_id>/REPO.md` registry manifest. The clone must be configured
 with `pull.rebase=true` and `rebase.autoStash=true`.
 
-When `--dir` and `PI_COORD_DIR` are omitted, fresh project-local
+When `--dir` and `PI_ENV_COORD_DIR` are omitted, fresh project-local
 coordination bootstraps must place the working clone at
 `<project-root>/.pi-env/coordination`, visible inside the sandbox as
 `/workspace/.pi-env/coordination` when the selected project is mounted there.
 
 When no explicit/configured coordination remote is selected and `--root` and
-`PI_COORD_ROOT` are omitted, coordination helpers must use a project-visible
+`PI_ENV_COORD_ROOT` are omitted, coordination helpers must use a project-visible
 `.pi-env/agent-remotes` directory instead of the isolated sandbox `$HOME`. If
 `/workspace` resolves to the current project root, the default root must be
 `/workspace/.pi-env/agent-remotes`; otherwise it must be
@@ -699,8 +699,8 @@ When no explicit/configured coordination remote is selected and `--root` and
 `agent-coord-clone` must clone a coordination remote into the selected
 coordination clone directory and configure the clone with `pull.rebase=true`
 and `rebase.autoStash=true`. When no clone directory is selected with
-`--dir` or `PI_COORD_DIR`, the default target must be
-`<project-root>/.pi-env/coordination`. Explicit `--dir` or `PI_COORD_DIR`
+`--dir` or `PI_ENV_COORD_DIR`, the default target must be
+`<project-root>/.pi-env/coordination`. Explicit `--dir` or `PI_ENV_COORD_DIR`
 values may select another coordination clone path.
 
 #### CMD-012 `agent-coord-new`
@@ -726,8 +726,8 @@ The generated item ID prefix must resolve in this order:
 
 1. explicit `--project-key`;
 2. stored `item_key` metadata in root `PROJECT.md`;
-3. `PI_COORD_PROJECT_KEY` when no stored key exists;
-4. derived `--project` / `PI_COORD_PROJECT` for project items;
+3. `PI_ENV_COORD_PROJECT_KEY` when no stored key exists;
+4. derived `--project` / `PI_ENV_COORD_PROJECT` for project items;
 5. derived coordination clone directory name when no project name is set.
 
 Derived keys must be uppercased with delimiters, whitespace, pipes,
@@ -749,9 +749,9 @@ only. `--id` must override the whole item ID.
 Domain item keys must be stored in top-level `PROJECT.md` as `item_key`.
 Repo-scoped issue keys may come from `repos/<repo_id>/REPO.md`. When
 `--project` is omitted in a coordination-domain clone, domain-common item
-paths must be used even if `PI_COORD_PROJECT` is set for domain selection.
+paths must be used even if `PI_ENV_COORD_PROJECT` is set for domain selection.
 Issue items must be created under `repos/<repo_id>/issues/open`, resolving
-the repo id from `--repo-id`, `PI_COORD_REPO_ID`, `.pi-env-coordination.yaml`,
+the repo id from `--repo-id`, `PI_ENV_COORD_REPO_ID`, `.pi-env-coordination.yaml`,
 or registry remote metadata. Functional, quality, constraint, and legacy
 generic requirement items must be created under the root-level
 `requirements/` directory while preserving FRQ, QRQ, and CRQ item-ID type
@@ -773,7 +773,7 @@ file edits:
 - `agent-coord-pull` runs `git pull --rebase --autostash`;
 - `agent-coord-push` commits staged/all changes and pushes;
 - coordination commands that create item events or commits accept
-  `--role ROLE`, read `PI_COORD_ROLE`, store actor ID/role metadata in
+  `--role ROLE`, read `PI_ENV_COORD_ROLE`, store actor ID/role metadata in
   events, and use per-command Git identity overrides for coordination
   commits;
 - `agent-coord-claim` pulls, sets `status: claimed`, sets `owner:`, updates
@@ -1326,31 +1326,31 @@ Inside the sandbox the launcher must set:
 When set or declared in `.pi-env-coordination.yaml`, the launcher must pass
 safe coordination context into the sandbox:
 
-- `PI_COORD_REMOTE`
-- `PI_COORD_ROOT`
-- `PI_COORD_PROJECT`
-- `PI_COORD_AGENT_ID`
-- `PI_COORD_PROJECT_KEY`
-- `PI_COORD_ROLE`
+- `PI_ENV_COORD_REMOTE`
+- `PI_ENV_COORD_ROOT`
+- `PI_ENV_COORD_PROJECT`
+- `PI_ENV_COORD_AGENT_ID`
+- `PI_ENV_COORD_PROJECT_KEY`
+- `PI_ENV_COORD_ROLE`
 
-If `PI_COORD_REMOTE` points inside the selected project, or is read as a
+If `PI_ENV_COORD_REMOTE` points inside the selected project, or is read as a
 project-local `coordination_remote`, the launcher must pass it into the
 sandbox as the corresponding `/workspace/...` path. If explicit
-`PI_COORD_REMOTE` points to an existing local path outside the selected
+`PI_ENV_COORD_REMOTE` points to an existing local path outside the selected
 project, the launcher must bind its parent directory read-write and pass the
 sandbox-visible remote path. External local paths read only from project
 configuration must not trigger host-path binds unless the user also opts in
-with explicit environment context such as `PI_COORD_REMOTE` or
-`PI_COORD_ROOT`.
+with explicit environment context such as `PI_ENV_COORD_REMOTE` or
+`PI_ENV_COORD_ROOT`.
 
-If legacy `PI_COORD_ROOT` points inside the selected project, the launcher
+If legacy `PI_ENV_COORD_ROOT` points inside the selected project, the launcher
 must pass it into the sandbox as the corresponding `/workspace/...` path.
 Project-local `.pi-env/agent-remotes` is the default for local bare remotes.
 
 If a coordination clone is detected under the selected project at
 `.pi-env/coordination`, or selected with
-`PI_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set
-`PI_COORD_DIR` inside the sandbox to the sandbox-visible path.
+`PI_ENV_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set
+`PI_ENV_COORD_DIR` inside the sandbox to the sandbox-visible path.
 
 `PI_BWRAP_COORDINATION_DIR=/path/to/coordination` must explicitly bind an
 external coordination clone read-write at `/coordination`. The launcher may

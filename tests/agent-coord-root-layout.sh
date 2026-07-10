@@ -10,8 +10,8 @@ trap 'rm -rf "$tmp"' EXIT
 export HOME="$tmp/home"
 mkdir -p "$HOME"
 
-unset PI_COORD_ROOT PI_COORD_REMOTE PI_COORD_REMOTE_URL PI_COORD_WORKSPACE \
-  PI_COORD_DIR PI_COORD_AGENT_ID PI_COORD_PROJECT PI_COORD_PROJECT_KEY PI_COORD_ROLE
+unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE PI_ENV_COORD_REMOTE_URL PI_ENV_COORD_WORKSPACE \
+  PI_ENV_COORD_DIR PI_ENV_COORD_AGENT_ID PI_ENV_COORD_PROJECT PI_ENV_COORD_PROJECT_KEY PI_ENV_COORD_ROLE
 
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
@@ -56,10 +56,10 @@ grep -q "^$issue_id[[:space:]]\+open[[:space:]]\+Project-local root layout issue
 agent-coord-cat --coord-dir "$coord_dir" "$issue_id" | grep -q "^title: 'Project-local root layout issue'$"
 agent-coord-status --coord-dir "$coord_dir" | grep -q "$issue_id"
 
-env_issue_path="$(PI_COORD_PROJECT=env-project agent-coord-new \
+env_issue_path="$(PI_ENV_COORD_PROJECT=env-project agent-coord-new \
   --coord-dir "$coord_dir" \
   --testable no \
-  --testability-note "Project-local layout should ignore PI_COORD_PROJECT for paths." \
+  --testability-note "Project-local layout should ignore PI_ENV_COORD_PROJECT for paths." \
   "Project-local root layout env issue" | tail -n 1)"
 case "$env_issue_path" in
   issues/open/ROOTDEMO-ISS-*.yaml) ;;

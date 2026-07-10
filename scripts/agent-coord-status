@@ -18,7 +18,7 @@ Usage:
   agent-coord-status [options]
 
 Options:
-  --coord-dir DIR     Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
+  --coord-dir DIR     Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
   --repo-id REPO_ID   Show issue queue for one repository
   --all-repos         Show issues across all repositories and root issues
   -h, --help          Show this help

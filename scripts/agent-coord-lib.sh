@@ -16,8 +16,8 @@ coord_abs() {
 coord_project_root() {
   local root abs_root pwd_abs project_root
 
-  if [ -n "${PI_COORD_PROJECT_ROOT:-}" ]; then
-    coord_abs "$PI_COORD_PROJECT_ROOT"
+  if [ -n "${PI_ENV_COORD_PROJECT_ROOT:-}" ]; then
+    coord_abs "$PI_ENV_COORD_PROJECT_ROOT"
     return
   fi
 
@@ -199,10 +199,10 @@ coord_normalize_coordination_remote() {
 
 coord_env_coordination_remote() {
   local remote
-  if [ -n "${PI_COORD_REMOTE:-}" ]; then
-    remote="$PI_COORD_REMOTE"
-  elif [ -n "${PI_COORD_REMOTE_URL:-}" ]; then
-    remote="$PI_COORD_REMOTE_URL"
+  if [ -n "${PI_ENV_COORD_REMOTE:-}" ]; then
+    remote="$PI_ENV_COORD_REMOTE"
+  elif [ -n "${PI_ENV_COORD_REMOTE_URL:-}" ]; then
+    remote="$PI_ENV_COORD_REMOTE_URL"
   else
     return 1
   fi
@@ -436,9 +436,9 @@ coord_resolve_repo_id() {
   if [ -n "$explicit" ]; then
     repo_id="$explicit"
     source="--repo-id"
-  elif [ -n "${PI_COORD_REPO_ID:-}" ]; then
-    repo_id="$PI_COORD_REPO_ID"
-    source="PI_COORD_REPO_ID"
+  elif [ -n "${PI_ENV_COORD_REPO_ID:-}" ]; then
+    repo_id="$PI_ENV_COORD_REPO_ID"
+    source="PI_ENV_COORD_REPO_ID"
   else
     repo_id="$(coord_impl_config_value repo_id || true)"
     if [ -n "$repo_id" ]; then
@@ -465,7 +465,7 @@ coord_resolve_repo_id() {
       if [ -z "$repo_id" ] && repo_id="$(coord_infer_repo_id_from_remote 2>/dev/null || true)" && [ -n "$repo_id" ]; then
         source="git remote origin"
       elif [ -z "$repo_id" ]; then
-        coord_die "missing repo id; pass --repo-id, set PI_COORD_REPO_ID, add repo_id to $(coord_impl_config_filename), or configure git remote origin"
+        coord_die "missing repo id; pass --repo-id, set PI_ENV_COORD_REPO_ID, add repo_id to $(coord_impl_config_filename), or configure git remote origin"
       fi
     fi
   fi
@@ -495,8 +495,8 @@ coord_default_root_for_project() {
 }
 
 coord_default_root() {
-  if [ -n "${PI_COORD_ROOT:-}" ]; then
-    printf '%s\n' "$PI_COORD_ROOT"
+  if [ -n "${PI_ENV_COORD_ROOT:-}" ]; then
+    printf '%s\n' "$PI_ENV_COORD_ROOT"
     return
   fi
 
@@ -514,16 +514,16 @@ coord_default_dir_for_project() {
 }
 
 coord_default_dir() {
-  if [ -n "${PI_COORD_DIR:-}" ]; then
-    printf '%s\n' "$PI_COORD_DIR"
+  if [ -n "${PI_ENV_COORD_DIR:-}" ]; then
+    printf '%s\n' "$PI_ENV_COORD_DIR"
   else
     coord_default_dir_for_project
   fi
 }
 
 coord_default_agent() {
-  if [ -n "${PI_COORD_AGENT_ID:-}" ]; then
-    printf '%s\n' "$PI_COORD_AGENT_ID"
+  if [ -n "${PI_ENV_COORD_AGENT_ID:-}" ]; then
+    printf '%s\n' "$PI_ENV_COORD_AGENT_ID"
   elif [ -n "${USER:-}" ]; then
     printf '%s\n' "$USER"
   else
@@ -532,7 +532,7 @@ coord_default_agent() {
 }
 
 coord_default_role() {
-  printf '%s\n' "${PI_COORD_ROLE:-}"
+  printf '%s\n' "${PI_ENV_COORD_ROLE:-}"
 }
 
 coord_trim() {
@@ -885,8 +885,8 @@ coord_is_coord_repo() {
 coord_resolve_dir() {
   local candidate git_root project_root
   candidate="${1:-}"
-  if [ -z "$candidate" ] && [ -n "${PI_COORD_DIR:-}" ]; then
-    candidate="$PI_COORD_DIR"
+  if [ -z "$candidate" ] && [ -n "${PI_ENV_COORD_DIR:-}" ]; then
+    candidate="$PI_ENV_COORD_DIR"
   fi
   if [ -z "$candidate" ]; then
     git_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"

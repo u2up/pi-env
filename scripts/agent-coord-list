@@ -27,7 +27,7 @@ Arguments:
   STATUS        Optional status filter, for example open, closed, or accepted
 
 Options:
-  --coord-dir DIR          Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
+  --coord-dir DIR          Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
   --repo-id REPO_ID        List issue items for one repository
   --all-repos              List issue items across all repositories and root issues
   --show-repo              Add issue repository id as the first output column

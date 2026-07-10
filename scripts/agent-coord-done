@@ -18,11 +18,11 @@ Usage:
   agent-coord-done [options] ITEM
 
 Options:
-  --coord-dir DIR             Coordination clone; default: PI_COORD_DIR or .pi-env/coordination
-  --agent-id ID               Agent identity; default: PI_COORD_AGENT_ID or USER
-  --role ROLE                 Coordination role; default: PI_COORD_ROLE
+  --coord-dir DIR             Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
+  --agent-id ID               Agent identity; default: PI_ENV_COORD_AGENT_ID or USER
+  --role ROLE                 Coordination role; default: PI_ENV_COORD_ROLE
   --result TEXT               Result/message text; default: Done.
-  --repo-id ID                Implementation repository id; default: PI_COORD_REPO_ID,
+  --repo-id ID                Implementation repository id; default: PI_ENV_COORD_REPO_ID,
                                .pi-env-coordination.yaml, or git remote inference
   --implementation-ref REF    Implementation ref in repo:branch@full-commit form;
                                may be repeated
@@ -146,7 +146,7 @@ for i in "${!implementation_refs[@]}"; do
 done
 
 if [ ${#implementation_refs[@]} -eq 0 ] \
-  && { [ -n "$repo_id_opt${PI_COORD_REPO_ID:-}" ] \
+  && { [ -n "$repo_id_opt${PI_ENV_COORD_REPO_ID:-}" ] \
     || coord_impl_config_exists "$project_dir" \
     || git -C "$project_dir" remote get-url origin >/dev/null 2>&1; }; then
   resolved_repo_id="$(cd "$project_dir" && coord_resolve_repo_id "$repo_id_opt" "$coord_dir")"

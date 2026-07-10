@@ -130,10 +130,10 @@ repo_id: backend-api
 
 The file is read from the implementation repository root, not from inside the
 coordination checkout. Explicit command options and environment variables still
-win: repo id resolution is `--repo-id`, `PI_COORD_REPO_ID`,
+win: repo id resolution is `--repo-id`, `PI_ENV_COORD_REPO_ID`,
 `.pi-env-coordination.yaml`, then Git remote-name inference; coordination remote
-resolution is explicit `--remote`, `PI_COORD_REMOTE`, legacy
-`PI_COORD_REMOTE_URL`, then `.pi-env-coordination.yaml`. No legacy
+resolution is explicit `--remote`, `PI_ENV_COORD_REMOTE`, legacy
+`PI_ENV_COORD_REMOTE_URL`, then `.pi-env-coordination.yaml`. No legacy
 implementation attachment filename is
 read as a fallback. The coordination repository registry remains authoritative
 for canonical and active repo ids when `repositories.yaml` or the
@@ -163,7 +163,7 @@ keeps committed copies in several implementation repositories.
 `agent-coord-lint` validates repo manifests and all repo-scoped issue structure
 under `repos/<repo_id>/issues/<status>`. Item-matched issue tests are expected
 only for the current implementation repo resolved from `--repo-id`,
-`PI_COORD_REPO_ID`, `.pi-env-coordination.yaml`, or Git remote registry data.
+`PI_ENV_COORD_REPO_ID`, `.pi-env-coordination.yaml`, or Git remote registry data.
 `--all-repos` keeps structural validation across every registered repo but does
 not require tests from unavailable implementation checkouts unless `--repo-id`
 selects that repo explicitly. Fresh `agent-coord-init` scaffolds the initial
@@ -176,7 +176,7 @@ tracked root issue files with `agent-coord-repo migrate-root-issues <repo_id>`;
 the command creates or validates the target repo manifest, uses `git mv` for
 tracked files, and refuses target overwrites or duplicate issue ids. Root
 `issues/` paths are migration-compatible by default with warnings; set
-`PI_COORD_LINT_ROOT_ISSUES=fail` to reject them.
+`PI_ENV_COORD_LINT_ROOT_ISSUES=fail` to reject them.
 
 ### Simple coordination workflow
 
@@ -801,9 +801,9 @@ pi-env only chooses which root to expose for this run.
   directory into the sandbox by default (disabled for ephemeral homes), so
   `/resume` and `--continue` can access sessions for the directory/project
   without exposing all sessions;
-- passes `PI_COORD_REMOTE`, legacy `PI_COORD_REMOTE_URL`, `PI_COORD_ROOT`,
-  `PI_COORD_PROJECT`, `PI_COORD_AGENT_ID`, `PI_COORD_PROJECT_KEY`,
-  `PI_COORD_ROLE`, and coordination directory context, mapping project-local
+- passes `PI_ENV_COORD_REMOTE`, legacy `PI_ENV_COORD_REMOTE_URL`, `PI_ENV_COORD_ROOT`,
+  `PI_ENV_COORD_PROJECT`, `PI_ENV_COORD_AGENT_ID`, `PI_ENV_COORD_PROJECT_KEY`,
+  `PI_ENV_COORD_ROLE`, and coordination directory context, mapping project-local
   coordination paths to `/workspace/...`, binding external local coordination
   remote parents as needed, and explicitly mounting an external coordination
   clone with `PI_BWRAP_COORDINATION_DIR`;
@@ -864,12 +864,12 @@ PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy i
 PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
 PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
-PI_COORD_REMOTE=.pi-env/agent-remotes/pi-env-coordination.git # exact coordination remote URL/path
-PI_COORD_ROOT=.pi-env/agent-remotes      # legacy bare remotes root; project paths map to /workspace
-PI_COORD_REMOTE_URL=git@example:repo.git # legacy alias for PI_COORD_REMOTE
-PI_COORD_PROJECT=pi-env                 # coordination project/domain name
-PI_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
-PI_COORD_ROLE=architect                 # active coordination role for helper commits/events
+PI_ENV_COORD_REMOTE=.pi-env/agent-remotes/pi-env-coordination.git # exact coordination remote URL/path
+PI_ENV_COORD_ROOT=.pi-env/agent-remotes      # legacy bare remotes root; project paths map to /workspace
+PI_ENV_COORD_REMOTE_URL=git@example:repo.git # legacy alias for PI_ENV_COORD_REMOTE
+PI_ENV_COORD_PROJECT=pi-env                 # coordination project/domain name
+PI_ENV_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
+PI_ENV_COORD_ROLE=architect                 # active coordination role for helper commits/events
 PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
 PI_BWRAP_EXTRA_PATH=/nix/store/.../bin   # Nix runtime: validated /nix/store command dirs
 PI_BWRAP_HOST_EXTRA_PATH=/opt/tools/bin  # host runtime: validated read-only host command dirs
@@ -1080,7 +1080,7 @@ Roles are merged by `name`; later sources override earlier ones:
 1. bundled base package roles;
 2. global/common agent roles imported into `/home/pi/.pi/agent/roles`;
 3. common roles from `PI_BWRAP_COMMON_AGENT_DIR/roles` when directly visible;
-4. coordination-domain roles from `$PI_COORD_DIR/roles`;
+4. coordination-domain roles from `$PI_ENV_COORD_DIR/roles`;
 5. project roles from `.pi/roles`.
 
 See `role-manager/ROLE_FILE_SCHEMA.md` for the full schema. See
@@ -1110,7 +1110,7 @@ cycle without an extra follow-up turn. If that tool is unavailable, the prompt
 asks for a normal prose final report rather than JSON. `/role-new` requests
 that Pi preserve the existing UI screen while switching to the fresh session.
 
-When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
+When the role-manager extension has an active role, it sets `PI_ENV_COORD_ROLE` for
 Pi subprocesses to the role's `coordCommitter` value, or to the role name when
 `coordCommitter` is omitted. Coordination helper commands use that value only
 for coordination item event actors and per-command coordination Git identity;
@@ -1136,24 +1136,24 @@ Guided setup with inferred, project-specific defaults:
 bootstrap-coordination
 # inspect another project root from this devshell
 bootstrap-coordination --project-root /path/to/project --print-only
-# or only print the suggested PI_COORD_* environment and init command
+# or only print the suggested PI_ENV_COORD_* environment and init command
 bootstrap-coordination --print-only
 ```
 
 Manual minimal setup with a local bare remote:
 
 ```bash
-export PI_COORD_REMOTE=/workspace/.pi-env/agent-remotes/pi-env-coordination.git
-export PI_COORD_PROJECT=pi-env
-export PI_COORD_PROJECT_KEY=PIENV
-export PI_COORD_DIR=/workspace/.pi-env/coordination
-export PI_COORD_AGENT_ID=agent-a
+export PI_ENV_COORD_REMOTE=/workspace/.pi-env/agent-remotes/pi-env-coordination.git
+export PI_ENV_COORD_PROJECT=pi-env
+export PI_ENV_COORD_PROJECT_KEY=PIENV
+export PI_ENV_COORD_DIR=/workspace/.pi-env/coordination
+export PI_ENV_COORD_AGENT_ID=agent-a
 
 agent-coord-init
 ```
 
 To use a remote hosted by a Git server, pass it explicitly or set
-`PI_COORD_REMOTE`:
+`PI_ENV_COORD_REMOTE`:
 
 ```bash
 agent-coord-init --project pi-env --remote git@example.com:org/pi-env-coordination.git
@@ -1164,9 +1164,9 @@ bootstrap-coordination --remote git@example.com:org/pi-env-coordination.git --pr
 `bootstrap-coordination` is a thin wrapper around `agent-coord-init`: it prints
 the inferred root, clone dir, remote, agent ID, project, and project key, then
 initializes with those explicit values. Remote selection uses this precedence:
-explicit `--remote`, then `PI_COORD_REMOTE`, legacy `PI_COORD_REMOTE_URL`,
+explicit `--remote`, then `PI_ENV_COORD_REMOTE`, legacy `PI_ENV_COORD_REMOTE_URL`,
 then `.pi-env-coordination.yaml` `coordination_remote`, then the local bare
-remote under `PI_COORD_ROOT`. After a real bootstrap, it records the selected
+remote under `PI_ENV_COORD_ROOT`. After a real bootstrap, it records the selected
 remote in `.pi-env-coordination.yaml` as `coordination_remote`. If the local
 coordination clone already exists but the planned local bare remote is missing
 or empty, it recreates that remote from the clone's committed Git history and
@@ -1175,31 +1175,31 @@ repairs `origin` when it is absent or points to a missing local path.
 Without a configured exact remote, this creates a bare remote at:
 
 ```text
-$PI_COORD_ROOT/$PI_COORD_PROJECT-coordination.git
+$PI_ENV_COORD_ROOT/$PI_ENV_COORD_PROJECT-coordination.git
 ```
 
-If `PI_COORD_ROOT` is unset, helpers default to the project-local
+If `PI_ENV_COORD_ROOT` is unset, helpers default to the project-local
 `.pi-env/agent-remotes` directory. Inside the pi-env sandbox, that is normally
 `/workspace/.pi-env/agent-remotes`, available through the standard project
 bind mount rather than a separate remotes mount.
 
-If `PI_COORD_REMOTE` or `.pi-env-coordination.yaml` names a project-local
+If `PI_ENV_COORD_REMOTE` or `.pi-env-coordination.yaml` names a project-local
 remote path, `pi-bwrap` rewrites it to the matching `/workspace/...` path. If
 `.pi-env-coordination.yaml` names an external local bare Git repo (detected by
 its `objects/` directory), `pi-bwrap` bind-mounts that remote's parent at
-`/workspace/.pi-env/agent-remotes` and rewrites `PI_COORD_REMOTE` to the same
+`/workspace/.pi-env/agent-remotes` and rewrites `PI_ENV_COORD_REMOTE` to the same
 project-local shape used by local clones. Outside the sandbox, Git access to
 such an external remote requires running inside `pi-env-shell` or providing a
 real or symlinked `.pi-env/agent-remotes` directory. Explicit external
-`PI_COORD_REMOTE` values still bind the remote's parent read-write and rewrite
-`PI_COORD_REMOTE` inside the sandbox. `PI_COORD_ROOT` remains as a
+`PI_ENV_COORD_REMOTE` values still bind the remote's parent read-write and rewrite
+`PI_ENV_COORD_REMOTE` inside the sandbox. `PI_ENV_COORD_ROOT` remains as a
 legacy/default-root override: project-local roots map to `/workspace/...`, and
 existing external roots bind at `/agent-remotes`. Without explicit overrides or
 `coordination_remote`, the sandbox launcher only recognizes project-local
 `.pi-env/coordination`; root-level `coordination/` and `agent-remotes/`
 directories are not selected or mounted automatically.
 
-When `--remote`, `PI_COORD_REMOTE`, or legacy `PI_COORD_REMOTE_URL` points to a
+When `--remote`, `PI_ENV_COORD_REMOTE`, or legacy `PI_ENV_COORD_REMOTE_URL` points to a
 Git-server URL, helpers use that URL directly and no local remotes mount is
 required. A local path remote is created by `agent-coord-init` when missing;
 Git-server remotes must already exist and be accessible to Git. Provide SSH
@@ -1207,13 +1207,13 @@ keys, tokens, or credential helpers through narrowly-scoped sandbox/project
 configuration as needed; pi-env does not import the host `~/.ssh` directory or
 all host Git credentials wholesale.
 
-It then clones/scaffolds `$PI_COORD_DIR` with `AGENTS.md`, domain
+It then clones/scaffolds `$PI_ENV_COORD_DIR` with `AGENTS.md`, domain
 `PROJECT.md` metadata, a repo namespace at
 `repos/<repo_id>/issues/{open,blocked,done,closed}`, shared `requirements/`,
 `todos/`, `decisions/`, and `notes/` directories, protocol docs, item-format
 docs, and `.pi/skills/agent-coordination/SKILL.md`. The repo manifest at
 `repos/<repo_id>/REPO.md` is the authoritative registry record for that
-implementation repo. When `PI_COORD_DIR` is unset, fresh projects use
+implementation repo. When `PI_ENV_COORD_DIR` is unset, fresh projects use
 `.pi-env/coordination`.
 
 Each `repos/<repo_id>/REPO.md` manifest can also declare the domain-wide
@@ -1251,8 +1251,8 @@ bug issues open` to filter, or `agent-coord-list --group-by-category issues`
 to sort grouped issue output.
 
 When top-level `PROJECT.md` exists, omit `--project` for domain-common items;
-`PI_COORD_PROJECT` can remain set for coordination-domain selection. For
-issues, pass `--repo-id` or set `PI_COORD_REPO_ID`; helpers may also resolve it
+`PI_ENV_COORD_PROJECT` can remain set for coordination-domain selection. For
+issues, pass `--repo-id` or set `PI_ENV_COORD_REPO_ID`; helpers may also resolve it
 from the implementation repo's `.pi-env-coordination.yaml` or registry remote
 metadata.
 
@@ -1274,8 +1274,8 @@ Key resolution for `agent-coord-new` is:
 
 1. `--project-key KEY`;
 2. stored root project `item_key`;
-3. `PI_COORD_PROJECT_KEY` when no stored key exists;
-4. derived `--project` / `PI_COORD_PROJECT` for project items;
+3. `PI_ENV_COORD_PROJECT_KEY` when no stored key exists;
+4. derived `--project` / `PI_ENV_COORD_PROJECT` for project items;
 5. derived coordination clone directory name when no project name is set.
 
 Derived keys are uppercased and all delimiters, whitespace, pipes, slashes,
@@ -1343,7 +1343,7 @@ YAML form. `agent-coord-close` finalizes only items that are done, reviewed, and
 verified unless forced.
 
 Commands that create item events or coordination commits accept `--role ROLE`
-and read `PI_COORD_ROLE`. Item events store actor ID/role metadata explicitly;
+and read `PI_ENV_COORD_ROLE`. Item events store actor ID/role metadata explicitly;
 helper commits use per-command Git identity overrides such as `pi/architect
 <pi+architect@coordination.local>`. These overrides are scoped to the helper's
 coordination-repository `git commit`; normal project repository commits keep the
@@ -1361,17 +1361,17 @@ agent-coord-upgrade-rules
 The helpers do not make `pi-start` create, claim, mark done, review, verify,
 close, commit, or push coordination state automatically. If a coordination clone
 is under the mounted project, `pi-bwrap` only exposes it as normal project files
-and sets `PI_COORD_DIR` to the sandbox path. For a coordination clone outside
+and sets `PI_ENV_COORD_DIR` to the sandbox path. For a coordination clone outside
 the project, opt in explicitly:
 
 ```bash
 PI_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
 ```
 
-That clone is mounted read-write at `/coordination` and `PI_COORD_DIR` is set
+That clone is mounted read-write at `/coordination` and `PI_ENV_COORD_DIR` is set
 to `/coordination` inside the sandbox.
 
-When the role-manager extension has an active role, it sets `PI_COORD_ROLE` for
+When the role-manager extension has an active role, it sets `PI_ENV_COORD_ROLE` for
 Pi subprocesses to the role's `coordCommitter` value, or to the role name when
 `coordCommitter` is omitted. Bash-invoked `agent-coord-*` commands inherit the
 active role without changing project Git identity.
@@ -1389,7 +1389,7 @@ Serial mode prerequisites:
 
 - run from a clean Git project root, or pass `--project-root DIR`;
 - provide a writable coordination checkout. Projects default to
-  `.pi-env/coordination`; use `PI_COORD_DIR` or `--coord-dir DIR` for an
+  `.pi-env/coordination`; use `PI_ENV_COORD_DIR` or `--coord-dir DIR` for an
   explicit override path;
 - run from the pi-env devshell/profile so `pi-env`, `agent-coord-*` helpers,
   and `PI_ENV_ROLE_MANAGER_PACKAGE` are available, or pass explicit `--pi-env`
@@ -1398,8 +1398,8 @@ Serial mode prerequisites:
   `pi-env` runs, for example host Pi auth files or provider environment
   variables; and
 - allow the orchestrator to mount the selected coordination clone into each raw
-  sandbox job. It passes `PI_BWRAP_COORDINATION_DIR`, `PI_COORD_DIR`,
-  `PI_COORD_AGENT_ID`, and role context for the job, and exposes packaged
+  sandbox job. It passes `PI_BWRAP_COORDINATION_DIR`, `PI_ENV_COORD_DIR`,
+  `PI_ENV_COORD_AGENT_ID`, and role context for the job, and exposes packaged
   lifecycle helpers through `PI_BWRAP_EXTRA_PATH` when they live in the Nix
   store.
 

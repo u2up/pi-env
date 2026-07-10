@@ -33,8 +33,8 @@ capture="${SERIAL_FAKE_PI_CAPTURE:?}"
   printf 'env PI_ACTIVE_ROLE=%s\n' "${PI_ACTIVE_ROLE:-}"
   printf 'env PI_ROLE_MANAGER_ACTIVE_ROLE=%s\n' \
     "${PI_ROLE_MANAGER_ACTIVE_ROLE:-}"
-  printf 'env PI_COORD_ROLE=%s\n' "${PI_COORD_ROLE:-}"
-  printf 'env PI_COORD_AGENT_ID=%s\n' "${PI_COORD_AGENT_ID:-}"
+  printf 'env PI_ENV_COORD_ROLE=%s\n' "${PI_ENV_COORD_ROLE:-}"
+  printf 'env PI_ENV_COORD_AGENT_ID=%s\n' "${PI_ENV_COORD_AGENT_ID:-}"
   printf 'env PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=%s\n' \
     "${PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE:-}"
   printf 'env PI_BWRAP_PASS_ENV=%s\n' "${PI_BWRAP_PASS_ENV:-}"
@@ -45,9 +45,9 @@ capture="${SERIAL_FAKE_PI_CAPTURE:?}"
 } >>"$capture"
 
 if [ -n "${SERIAL_EXPECT_CLAIMED_ITEM:-}" ]; then
-  item_file="${PI_COORD_DIR:?}/issues/open/${SERIAL_EXPECT_CLAIMED_ITEM}.yaml"
+  item_file="${PI_ENV_COORD_DIR:?}/issues/open/${SERIAL_EXPECT_CLAIMED_ITEM}.yaml"
   grep -q '^status: claimed$' "$item_file"
-  grep -q "^owner: ${PI_COORD_AGENT_ID:?}$" "$item_file"
+  grep -q "^owner: ${PI_ENV_COORD_AGENT_ID:?}$" "$item_file"
 fi
 FAKE_PI_ENV
   chmod +x "$path"
@@ -320,7 +320,7 @@ SERIAL_EXPECT_CLAIMED_ITEM=SERIAL-DEVELOPER-CLAIM \
 test_file_exists "$dev_capture"
 test_grep '^env PI_ACTIVE_ROLE=developer$' "$dev_capture"
 test_grep '^env PI_ROLE_MANAGER_ACTIVE_ROLE=developer$' "$dev_capture"
-test_grep '^env PI_COORD_ROLE=developer$' "$dev_capture"
+test_grep '^env PI_ENV_COORD_ROLE=developer$' "$dev_capture"
 test_grep '^arg:--raw$' "$dev_capture"
 test_grep '^arg:--$' "$dev_capture"
 test_grep '^arg:--tools$' "$dev_capture"
@@ -404,7 +404,7 @@ SERIAL_EXPECT_CLAIMED_ITEM=SERIAL-DEVELOPER-TUI \
 test_file_exists "$interactive_capture"
 test_grep '^env PI_ACTIVE_ROLE=developer$' "$interactive_capture"
 test_grep '^env PI_ROLE_MANAGER_ACTIVE_ROLE=developer$' "$interactive_capture"
-test_grep '^env PI_COORD_ROLE=developer$' "$interactive_capture"
+test_grep '^env PI_ENV_COORD_ROLE=developer$' "$interactive_capture"
 test_grep '^arg:--raw$' "$interactive_capture"
 test_grep '^arg:--$' "$interactive_capture"
 test_grep '^arg:-e$' "$interactive_capture"
