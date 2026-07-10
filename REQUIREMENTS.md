@@ -339,6 +339,8 @@ The flake must expose `lib` attributes:
 - `defaultTools`
 - `mkRuntime`
 - `mkPiBwrap`
+- `mkPiEnv`
+- `mkPiEnvShell`
 - `mkPiShell`
 - `mkRoleManagerPackage`
 
