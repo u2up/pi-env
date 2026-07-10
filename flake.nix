@@ -44,11 +44,11 @@
         pkgs.writeShellScriptBin "pi-bwrap" ''
           set -euo pipefail
           export PI_ENV_RUNTIME_PATH="${runtimePath}"
-          export PI_BWRAP_COMPILED_DEFAULT_TOOLS="${defaultTools}"
-          export PI_BWRAP_BASH="${pkgs.bash}/bin/bash"
-          export PI_BWRAP_ENV="${pkgs.coreutils}/bin/env"
-          export PI_BWRAP_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-          export PI_BWRAP_BWRAP="${pkgs.bubblewrap}/bin/bwrap"
+          export PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS="${defaultTools}"
+          export PI_ENV_BWRAP_BASH="${pkgs.bash}/bin/bash"
+          export PI_ENV_BWRAP_ENV="${pkgs.coreutils}/bin/env"
+          export PI_ENV_BWRAP_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          export PI_ENV_BWRAP_BWRAP="${pkgs.bubblewrap}/bin/bwrap"
           exec ${pkgs.bash}/bin/bash ${./scripts/pi-bwrap} "$@"
         '';
 
@@ -59,9 +59,9 @@
         in
         pkgs.writeShellScriptBin "pi-start" ''
           set -euo pipefail
-          export PI_BWRAP_COMPILED_DEFAULT_TOOLS="${defaultTools}"
+          export PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS="${defaultTools}"
           export PI_ENV_ROLE_MANAGER_PACKAGE="''${PI_ENV_ROLE_MANAGER_PACKAGE:-${roleManagerPackage}}"
-          export PI_ENV_PI_BWRAP="${piBwrap}/bin/pi-bwrap"
+          export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-bwrap"
           exec ${pkgs.bash}/bin/bash ${./scripts/pi-start} "$@"
         '';
 
@@ -75,7 +75,7 @@
           set -euo pipefail
           export PATH="${runtimePath}:''${PATH:-}"
           export PI_ENV_PI_START="${piStart}/bin/pi-start"
-          export PI_ENV_PI_BWRAP="${piBwrap}/bin/pi-bwrap"
+          export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-bwrap"
           exec -a pi-env ${pkgs.bash}/bin/bash ${./scripts/pi-env-launcher} "$@"
         '';
 
@@ -90,7 +90,7 @@
           export PATH="${runtimePath}:''${PATH:-}"
           export PI_ENV_SHELL_MODE=1
           export PI_ENV_PI_START="${piStart}/bin/pi-start"
-          export PI_ENV_PI_BWRAP="${piBwrap}/bin/pi-bwrap"
+          export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-bwrap"
           exec -a pi-env-shell ${pkgs.bash}/bin/bash ${./scripts/pi-env-launcher} "$@"
         '';
 
@@ -182,10 +182,10 @@
             export PS1="(nix-dev) \u@\h:\w$ "
             export PI_ENV_ROLE_MANAGER_PACKAGE="${roleManagerPackage}"
             if [ -n "${extraPackagePath}" ]; then
-              if [ -n "''${PI_BWRAP_EXTRA_PATH:-}" ]; then
-                export PI_BWRAP_EXTRA_PATH="${extraPackagePath}:$PI_BWRAP_EXTRA_PATH"
+              if [ -n "''${PI_ENV_BWRAP_EXTRA_PATH:-}" ]; then
+                export PI_ENV_BWRAP_EXTRA_PATH="${extraPackagePath}:$PI_ENV_BWRAP_EXTRA_PATH"
               else
-                export PI_BWRAP_EXTRA_PATH="${extraPackagePath}"
+                export PI_ENV_BWRAP_EXTRA_PATH="${extraPackagePath}"
               fi
             fi
             if [ -z "''${PI_ENV_QUIET:-}" ]; then

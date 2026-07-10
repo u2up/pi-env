@@ -249,7 +249,7 @@ export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-\$pi_env_share_dir/scripts/agent-c
 export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-\$pi_env_share_dir/pi-skill-templates/agent-coordination}"
 export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-\$pi_env_share_dir/role-manager}"
 export PI_ENV_PI_START="\${PI_ENV_PI_START:-\$pi_env_bin_dir/pi-start}"
-export PI_ENV_PI_BWRAP="\${PI_ENV_PI_BWRAP:-\$pi_env_bin_dir/pi-bwrap}"
+export PI_ENV_PI_ENV_BWRAP="\${PI_ENV_PI_ENV_BWRAP:-\$pi_env_bin_dir/pi-bwrap}"
 exec /usr/bin/env bash "\$pi_env_share_dir/scripts/\$pi_env_script_target" "\$@"
 EOF
   chmod +x "$bin_dir/$name"

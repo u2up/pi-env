@@ -20,16 +20,16 @@ chmod +x "$fake_root/host-tools/bash" "$fake_root/host-tools/env"
 
 run_host_shell() {
   PI_ENV_RUNTIME_PATH=/nix/store/fake/bin \
-  PI_BWRAP_BWRAP="$fake_root/fake-bwrap" \
-  PI_BWRAP_BASH="$fake_root/host-tools/bash" \
-  PI_BWRAP_ENV="$fake_root/host-tools/env" \
-  PI_BWRAP_STATE_DIR="$fake_root/state" \
-  PI_BWRAP_EPHEMERAL_HOME=1 \
-  PI_BWRAP_IMPORT_COMMON=0 \
-  PI_BWRAP_IMPORT_EXTENSIONS=0 \
-  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-  PI_BWRAP_IMPORT_AUTH=0 \
-  PI_BWRAP_IMPORT_SESSIONS=0 \
+  PI_ENV_BWRAP_BWRAP="$fake_root/fake-bwrap" \
+  PI_ENV_BWRAP_BASH="$fake_root/host-tools/bash" \
+  PI_ENV_BWRAP_ENV="$fake_root/host-tools/env" \
+  PI_ENV_BWRAP_STATE_DIR="$fake_root/state" \
+  PI_ENV_BWRAP_EPHEMERAL_HOME=1 \
+  PI_ENV_BWRAP_IMPORT_COMMON=0 \
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_ENV_BWRAP_IMPORT_AUTH=0 \
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   PI_ENV_TEST_BWRAP_TRACE="$fake_root/host.trace" \
   ./pi-env-shell --runtime host -- -lc 'printf host-shell' >/dev/null
 }
@@ -42,12 +42,12 @@ fi
 tail -n 2 "$fake_root/host.trace" | grep -Fx -- '-lc' >/dev/null
 tail -n 1 "$fake_root/host.trace" | grep -Fx -- 'printf host-shell' >/dev/null
 
-cat >"$fake_root/fake-pi-bwrap" <<'FAKE_PI_BWRAP'
+cat >"$fake_root/fake-pi-bwrap" <<'FAKE_PI_ENV_BWRAP'
 #!/usr/bin/env bash
 : "${PI_ENV_TEST_LAUNCHER_TRACE:?}"
 printf 'pi-bwrap\n' >"$PI_ENV_TEST_LAUNCHER_TRACE"
 printf '%s\n' "$@" >>"$PI_ENV_TEST_LAUNCHER_TRACE"
-FAKE_PI_BWRAP
+FAKE_PI_ENV_BWRAP
 chmod +x "$fake_root/fake-pi-bwrap"
 
 cat >"$fake_root/fake-pi-start" <<'FAKE_PI_START'
@@ -58,7 +58,7 @@ FAKE_PI_START
 chmod +x "$fake_root/fake-pi-start"
 
 PI_ENV_PI_START="$fake_root/fake-pi-start" \
-PI_ENV_PI_BWRAP="$fake_root/fake-pi-bwrap" \
+PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-bwrap" \
 PI_ENV_TEST_LAUNCHER_TRACE="$fake_root/wired-nix.trace" \
 ./pi-env-shell --runtime nix -- -lc 'printf nix-shell'
 mapfile -t wired_nix <"$fake_root/wired-nix.trace"
@@ -70,7 +70,7 @@ mapfile -t wired_nix <"$fake_root/wired-nix.trace"
 
 PATH="$fake_root:$PATH" \
 PI_ENV_PI_START="$fake_root/fake-pi-start" \
-PI_ENV_PI_BWRAP="$fake_root/fake-pi-bwrap" \
+PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-bwrap" \
 PI_ENV_TEST_LAUNCHER_TRACE="$fake_root/auto.trace" \
 ./pi-env-shell --runtime auto -- -i
 mapfile -t auto_trace <"$fake_root/auto.trace"
@@ -87,7 +87,7 @@ printf '%s\n' "$@" >>"$PI_ENV_TEST_NIX_TRACE"
 FAKE_NIX
 chmod +x "$fake_root/bin/nix"
 
-env -u PI_ENV_PI_START -u PI_ENV_PI_BWRAP \
+env -u PI_ENV_PI_START -u PI_ENV_PI_ENV_BWRAP \
 PATH="$fake_root/bin:$PATH" \
 PI_ENV_RUNTIME=host \
 PI_ENV_TEST_NIX_TRACE="$fake_root/nix-recurse.trace" \

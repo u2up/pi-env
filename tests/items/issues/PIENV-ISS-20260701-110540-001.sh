@@ -42,15 +42,15 @@ chmod +x "$fakebin/bwrap"
 chmod +x "$tmpdir/host-bash" "$tmpdir/host-env"
 
 common_env=(
-  PI_BWRAP_BASH="$tmpdir/host-bash"
-  PI_BWRAP_ENV="$tmpdir/host-env"
-  PI_BWRAP_BWRAP="$fakebin/bwrap"
-  PI_BWRAP_PROJECT_ROOT="$repo_root"
-  PI_BWRAP_IMPORT_COMMON=0
-  PI_BWRAP_IMPORT_EXTENSIONS=0
-  PI_BWRAP_IMPORT_GIT_CONFIG=0
-  PI_BWRAP_IMPORT_AUTH=0
-  PI_BWRAP_IMPORT_SESSIONS=0
+  PI_ENV_BWRAP_BASH="$tmpdir/host-bash"
+  PI_ENV_BWRAP_ENV="$tmpdir/host-env"
+  PI_ENV_BWRAP_BWRAP="$fakebin/bwrap"
+  PI_ENV_BWRAP_PROJECT_ROOT="$repo_root"
+  PI_ENV_BWRAP_IMPORT_COMMON=0
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0
+  PI_ENV_BWRAP_IMPORT_AUTH=0
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0
 )
 
 home_pi_status=0
@@ -81,7 +81,7 @@ custom_capture="$tmpdir/custom-pi-args"
 env HOME="$host_home" \
   PATH="$custom_tools:$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$custom_capture" \
-  PI_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
+  PI_ENV_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
   "${common_env[@]}" \
   scripts/pi-bwrap -e "$external_role_manager" --help
 
@@ -98,7 +98,7 @@ checkout_capture="$tmpdir/checkout-role-manager-args"
 env HOME="$host_home" \
   PATH="$custom_tools:$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$checkout_capture" \
-  PI_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
+  PI_ENV_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
   "${common_env[@]}" \
   scripts/pi-bwrap -e "$repo_root/role-manager" --help
 
@@ -112,8 +112,8 @@ pi_start_capture="$tmpdir/pi-start-role-manager-args"
 env HOME="$host_home" \
   PATH="$custom_tools:$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$pi_start_capture" \
-  PI_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
-  PI_ENV_PI_BWRAP="$repo_root/scripts/pi-bwrap" \
+  PI_ENV_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
+  PI_ENV_PI_ENV_BWRAP="$repo_root/scripts/pi-bwrap" \
   "${common_env[@]}" \
   scripts/pi-start --help
 

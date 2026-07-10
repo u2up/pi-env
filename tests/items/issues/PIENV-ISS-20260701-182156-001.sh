@@ -86,18 +86,18 @@ FAKE_BWRAP
     PATH="$fakebin:$PATH" \
     PI_ENV_TEST_HELPER_SANDBOX_DIR="$helper_sandbox_dir" \
     PI_ENV_TEST_BWRAP_CAPTURE="$capture" \
-    PI_BWRAP_BWRAP="$fakebin/bwrap" \
-    PI_BWRAP_BASH="$fakebin/host-bash" \
-    PI_BWRAP_ENV="$fakebin/host-env" \
-    PI_BWRAP_HOST_EXTRA_PATH="$fakebin" \
-    PI_BWRAP_HOST_RO_PATHS="$helper_dir" \
-    PI_BWRAP_PROJECT_ROOT="$repo_root" \
-    PI_BWRAP_STATE_DIR="$tmp/fake-home-state" \
-    PI_BWRAP_IMPORT_COMMON=0 \
-    PI_BWRAP_IMPORT_EXTENSIONS=0 \
-    PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-    PI_BWRAP_IMPORT_AUTH=0 \
-    PI_BWRAP_IMPORT_SESSIONS=0 \
+    PI_ENV_BWRAP_BWRAP="$fakebin/bwrap" \
+    PI_ENV_BWRAP_BASH="$fakebin/host-bash" \
+    PI_ENV_BWRAP_ENV="$fakebin/host-env" \
+    PI_ENV_BWRAP_HOST_EXTRA_PATH="$fakebin" \
+    PI_ENV_BWRAP_HOST_RO_PATHS="$helper_dir" \
+    PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+    PI_ENV_BWRAP_STATE_DIR="$tmp/fake-home-state" \
+    PI_ENV_BWRAP_IMPORT_COMMON=0 \
+    PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+    PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+    PI_ENV_BWRAP_IMPORT_AUTH=0 \
+    PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
     "$prefix/bin/pi-bwrap" -- --help
   grep -Fx visible "$capture" >/dev/null \
     || { echo 'fake bwrap did not confirm helper visibility' >&2; exit 1; }
@@ -171,7 +171,7 @@ verify_install() {
     --coord-dir "$coord_dir" \
     --agent-id samo \
     --dry-run >"$dry_run_out"
-  grep -F "PI_BWRAP_HOST_RO_PATHS=" "$dry_run_out" >/dev/null \
+  grep -F "PI_ENV_BWRAP_HOST_RO_PATHS=" "$dry_run_out" >/dev/null \
     || { echo "dry-run did not pass host read-only bind paths" >&2; cat "$dry_run_out" >&2; exit 1; }
   grep -F "/share/pi-env/scripts" "$dry_run_out" >/dev/null \
     || { echo "dry-run did not bind installed helper scripts" >&2; cat "$dry_run_out" >&2; exit 1; }

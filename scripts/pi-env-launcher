@@ -105,7 +105,7 @@ args+=("$@")
 if [ "$runtime_selector_set" = "0" ]; then
   if [ "${PI_ENV_HOST_RUNTIME:-0}" = "1" ]; then
     runtime_mode="host"
-  elif [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_BWRAP:-}" ]; then
+  elif [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
     runtime_mode="auto"
   else
     runtime_mode="host"
@@ -130,7 +130,7 @@ exec_host_runtime() {
   local host_pi_bwrap="$script_dir/pi-bwrap"
   export PI_ENV_HOST_RUNTIME=1
   unset PI_ENV_RUNTIME_PATH
-  export PI_ENV_PI_BWRAP="$host_pi_bwrap"
+  export PI_ENV_PI_ENV_BWRAP="$host_pi_bwrap"
   if [ "$shell_mode" = "1" ]; then
     exec "$host_pi_bwrap" --shell -- "${args[@]}"
   elif [ "$raw" = "1" ]; then
@@ -140,11 +140,11 @@ exec_host_runtime() {
 }
 
 exec_nix_runtime() {
-  if [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_BWRAP:-}" ]; then
+  if [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
     if [ "$shell_mode" = "1" ]; then
-      exec "$PI_ENV_PI_BWRAP" --shell -- "${args[@]}"
+      exec "$PI_ENV_PI_ENV_BWRAP" --shell -- "${args[@]}"
     elif [ "$raw" = "1" ]; then
-      exec "$PI_ENV_PI_BWRAP" -- "${args[@]}"
+      exec "$PI_ENV_PI_ENV_BWRAP" -- "${args[@]}"
     fi
     exec "$PI_ENV_PI_START" "${args[@]}"
   fi
@@ -168,9 +168,9 @@ exec_nix_runtime() {
 
 exec_auto_runtime() {
   local pi_start="${PI_ENV_PI_START:-pi-start}"
-  local pi_bwrap="${PI_ENV_PI_BWRAP:-pi-bwrap}"
+  local pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-pi-bwrap}"
   if { [ -n "${PI_ENV_PI_START:-}" ] || command -v "$pi_start" >/dev/null 2>&1; } && \
-     { [ -n "${PI_ENV_PI_BWRAP:-}" ] || command -v "$pi_bwrap" >/dev/null 2>&1; }; then
+     { [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ] || command -v "$pi_bwrap" >/dev/null 2>&1; }; then
     if [ "$shell_mode" = "1" ]; then
       exec "$pi_bwrap" --shell -- "${args[@]}"
     elif [ "$raw" = "1" ]; then

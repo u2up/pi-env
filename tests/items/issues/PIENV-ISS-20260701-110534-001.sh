@@ -34,14 +34,14 @@ capture="$tmpdir/bwrap-args"
 PATH="$fakebin:$PATH" \
   PI_ENV_HOST_RUNTIME=1 \
   PI_ENV_TEST_BWRAP_ARGS="$capture" \
-  PI_BWRAP_BASH="$tmpdir/host-bash" \
-  PI_BWRAP_ENV="$tmpdir/host-env" \
-  PI_BWRAP_PROJECT_ROOT="$repo_root" \
-  PI_BWRAP_IMPORT_COMMON=0 \
-  PI_BWRAP_IMPORT_EXTENSIONS=0 \
-  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-  PI_BWRAP_IMPORT_AUTH=0 \
-  PI_BWRAP_IMPORT_SESSIONS=0 \
+  PI_ENV_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_ENV_BWRAP_ENV="$tmpdir/host-env" \
+  PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_ENV_BWRAP_IMPORT_COMMON=0 \
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_ENV_BWRAP_IMPORT_AUTH=0 \
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   ./pi-env --raw -- --help
 
 test_file_exists "$capture"
@@ -92,15 +92,15 @@ runtime_capture="$tmpdir/runtime-bwrap-args"
 PATH="$fakebin:$PATH" \
   PI_ENV_RUNTIME_PATH="$runtime_tool_path" \
   PI_ENV_TEST_BWRAP_ARGS="$runtime_capture" \
-  PI_BWRAP_BASH="$tmpdir/host-bash" \
-  PI_BWRAP_ENV="$tmpdir/host-env" \
-  PI_BWRAP_BWRAP="$fakebin/bwrap" \
-  PI_BWRAP_PROJECT_ROOT="$repo_root" \
-  PI_BWRAP_IMPORT_COMMON=0 \
-  PI_BWRAP_IMPORT_EXTENSIONS=0 \
-  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-  PI_BWRAP_IMPORT_AUTH=0 \
-  PI_BWRAP_IMPORT_SESSIONS=0 \
+  PI_ENV_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_ENV_BWRAP_ENV="$tmpdir/host-env" \
+  PI_ENV_BWRAP_BWRAP="$fakebin/bwrap" \
+  PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_ENV_BWRAP_IMPORT_COMMON=0 \
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_ENV_BWRAP_IMPORT_AUTH=0 \
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   scripts/pi-bwrap -- --help
 
 test_file_exists "$runtime_capture"

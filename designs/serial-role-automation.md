@@ -136,7 +136,7 @@ The orchestrator should render a role-specific prompt that names exactly one
 item and says not to select other work. The prompt should tell the role to use
 sandbox-visible coordination helpers for lifecycle transitions. Packaged runs
 can expose the helper directory with
-`PI_BWRAP_EXTRA_PATH`; source-checkout runs should name paths under the mounted
+`PI_ENV_BWRAP_EXTRA_PATH`; source-checkout runs should name paths under the mounted
 `/workspace` when the helpers live in the project checkout:
 
 - developer: `agent-coord-claim` before work, then `agent-coord-done` with
@@ -150,11 +150,11 @@ Because `pi-bwrap` clears the environment, role activation through environment
 variables requires explicit pass-through when used. A safe invocation shape is:
 
 ```bash
-PI_BWRAP_PASS_ENV=PI_ACTIVE_ROLE \
+PI_ENV_BWRAP_PASS_ENV=PI_ACTIVE_ROLE \
 PI_ACTIVE_ROLE="$role" \
 PI_ENV_COORD_ROLE="$role" \
 PI_ENV_COORD_AGENT_ID="$agent_id" \
-PI_BWRAP_COORDINATION_DIR="$coordination_dir" \
+PI_ENV_BWRAP_COORDINATION_DIR="$coordination_dir" \
 pi-env --raw -- \
   -e "$PI_ENV_ROLE_MANAGER_PACKAGE" \
   --tools read,bash,edit,write,grep,find,ls,role_cycle_done \
@@ -178,12 +178,12 @@ generated prompt as the initial message. `pi-serial-roles` additionally passes
 `PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1` through the sandbox:
 
 ```bash
-PI_BWRAP_PASS_ENV="PI_ACTIVE_ROLE PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE" \
+PI_ENV_BWRAP_PASS_ENV="PI_ACTIVE_ROLE PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE" \
 PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1 \
 PI_ACTIVE_ROLE="$role" \
 PI_ENV_COORD_ROLE="$role" \
 PI_ENV_COORD_AGENT_ID="$agent_id" \
-PI_BWRAP_COORDINATION_DIR="$coordination_dir" \
+PI_ENV_BWRAP_COORDINATION_DIR="$coordination_dir" \
 pi-env --raw -- \
   -e "$PI_ENV_ROLE_MANAGER_PACKAGE" \
   --tools read,bash,edit,write,grep,find,ls,role_cycle_done \

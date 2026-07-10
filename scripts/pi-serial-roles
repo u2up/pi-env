@@ -81,7 +81,7 @@ role_manager_opt=""
 coord_helper_pi_dir=""
 coord_helper_extra_path=""
 coord_helper_host_ro_path=""
-tools="${PI_BWRAP_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
+tools="${PI_ENV_BWRAP_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
 role_cycle_done_tool="role_cycle_done"
 requested_issue_ids=()
 
@@ -699,7 +699,7 @@ tools_with_role_cycle_done() {
 
 merged_pass_env() {
   local value
-  value="${PI_BWRAP_PASS_ENV:-}"
+  value="${PI_ENV_BWRAP_PASS_ENV:-}"
   value="${value:+$value }PI_ACTIVE_ROLE PI_ROLE_MANAGER_ACTIVE_ROLE"
   if [ "$ui_mode" = "interactive" ]; then
     value="$value PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE"
@@ -709,7 +709,7 @@ merged_pass_env() {
 
 merged_extra_path() {
   local value helper_dir
-  value="${PI_BWRAP_EXTRA_PATH:-}"
+  value="${PI_ENV_BWRAP_EXTRA_PATH:-}"
   helper_dir="${coord_helper_extra_path:-}"
   if [ -n "$helper_dir" ]; then
     case ":$value:" in
@@ -722,7 +722,7 @@ merged_extra_path() {
 
 merged_host_ro_paths() {
   local value helper_dir
-  value="${PI_BWRAP_HOST_RO_PATHS:-}"
+  value="${PI_ENV_BWRAP_HOST_RO_PATHS:-}"
   helper_dir="${coord_helper_host_ro_path:-}"
   if [ -n "$helper_dir" ]; then
     case ":$value:" in
@@ -777,11 +777,11 @@ print_dry_run() {
         "PI_ENV_COORD_ROLE=$role" \
         "PI_ENV_COORD_AGENT_ID=$agent_id" \
         "PI_ENV_COORD_DIR=$coord_dir" \
-        "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
-        "PI_BWRAP_PROJECT_ROOT=$project_root" \
-        "PI_BWRAP_PASS_ENV=$pass_env" \
-        "PI_BWRAP_EXTRA_PATH=$extra_path" \
-        "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
+        "PI_ENV_BWRAP_COORDINATION_DIR=$coord_dir" \
+        "PI_ENV_BWRAP_PROJECT_ROOT=$project_root" \
+        "PI_ENV_BWRAP_PASS_ENV=$pass_env" \
+        "PI_ENV_BWRAP_EXTRA_PATH=$extra_path" \
+        "PI_ENV_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
         "$pi_env_cmd" \
         --raw -- \
         -e "$role_manager_pi_arg" \
@@ -796,11 +796,11 @@ print_dry_run() {
         "PI_ENV_COORD_ROLE=$role" \
         "PI_ENV_COORD_AGENT_ID=$agent_id" \
         "PI_ENV_COORD_DIR=$coord_dir" \
-        "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
-        "PI_BWRAP_PROJECT_ROOT=$project_root" \
-        "PI_BWRAP_PASS_ENV=$pass_env" \
-        "PI_BWRAP_EXTRA_PATH=$extra_path" \
-        "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
+        "PI_ENV_BWRAP_COORDINATION_DIR=$coord_dir" \
+        "PI_ENV_BWRAP_PROJECT_ROOT=$project_root" \
+        "PI_ENV_BWRAP_PASS_ENV=$pass_env" \
+        "PI_ENV_BWRAP_EXTRA_PATH=$extra_path" \
+        "PI_ENV_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
         "$pi_env_cmd" \
         --raw -- \
         -e "$role_manager_pi_arg" \
@@ -816,11 +816,11 @@ print_dry_run() {
         "PI_ENV_COORD_ROLE=$role" \
         "PI_ENV_COORD_AGENT_ID=$agent_id" \
         "PI_ENV_COORD_DIR=$coord_dir" \
-        "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
-        "PI_BWRAP_PROJECT_ROOT=$project_root" \
-        "PI_BWRAP_PASS_ENV=$pass_env" \
-        "PI_BWRAP_EXTRA_PATH=$extra_path" \
-        "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
+        "PI_ENV_BWRAP_COORDINATION_DIR=$coord_dir" \
+        "PI_ENV_BWRAP_PROJECT_ROOT=$project_root" \
+        "PI_ENV_BWRAP_PASS_ENV=$pass_env" \
+        "PI_ENV_BWRAP_EXTRA_PATH=$extra_path" \
+        "PI_ENV_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
         "$pi_env_cmd" \
         --raw -- \
         -e "$role_manager_pi_arg" \
@@ -873,11 +873,11 @@ run_pi_job() {
           "PI_ENV_COORD_ROLE=$role" \
           "PI_ENV_COORD_AGENT_ID=$agent_id" \
           "PI_ENV_COORD_DIR=$coord_dir" \
-          "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
-          "PI_BWRAP_PROJECT_ROOT=$project_root" \
-          "PI_BWRAP_PASS_ENV=$pass_env" \
-          "PI_BWRAP_EXTRA_PATH=$extra_path" \
-          "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
+          "PI_ENV_BWRAP_COORDINATION_DIR=$coord_dir" \
+          "PI_ENV_BWRAP_PROJECT_ROOT=$project_root" \
+          "PI_ENV_BWRAP_PASS_ENV=$pass_env" \
+          "PI_ENV_BWRAP_EXTRA_PATH=$extra_path" \
+          "PI_ENV_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
           "$pi_env_cmd" \
           --raw -- \
           -e "$role_manager_pi_arg" \
@@ -891,11 +891,11 @@ run_pi_job() {
           "PI_ENV_COORD_ROLE=$role" \
           "PI_ENV_COORD_AGENT_ID=$agent_id" \
           "PI_ENV_COORD_DIR=$coord_dir" \
-          "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
-          "PI_BWRAP_PROJECT_ROOT=$project_root" \
-          "PI_BWRAP_PASS_ENV=$pass_env" \
-          "PI_BWRAP_EXTRA_PATH=$extra_path" \
-          "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
+          "PI_ENV_BWRAP_COORDINATION_DIR=$coord_dir" \
+          "PI_ENV_BWRAP_PROJECT_ROOT=$project_root" \
+          "PI_ENV_BWRAP_PASS_ENV=$pass_env" \
+          "PI_ENV_BWRAP_EXTRA_PATH=$extra_path" \
+          "PI_ENV_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
           "$pi_env_cmd" \
           --raw -- \
           -e "$role_manager_pi_arg" \
@@ -910,11 +910,11 @@ run_pi_job() {
           "PI_ENV_COORD_ROLE=$role" \
           "PI_ENV_COORD_AGENT_ID=$agent_id" \
           "PI_ENV_COORD_DIR=$coord_dir" \
-          "PI_BWRAP_COORDINATION_DIR=$coord_dir" \
-          "PI_BWRAP_PROJECT_ROOT=$project_root" \
-          "PI_BWRAP_PASS_ENV=$pass_env" \
-          "PI_BWRAP_EXTRA_PATH=$extra_path" \
-          "PI_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
+          "PI_ENV_BWRAP_COORDINATION_DIR=$coord_dir" \
+          "PI_ENV_BWRAP_PROJECT_ROOT=$project_root" \
+          "PI_ENV_BWRAP_PASS_ENV=$pass_env" \
+          "PI_ENV_BWRAP_EXTRA_PATH=$extra_path" \
+          "PI_ENV_BWRAP_HOST_RO_PATHS=$host_ro_paths" \
           "$pi_env_cmd" \
           --raw -- \
           -e "$role_manager_pi_arg" \

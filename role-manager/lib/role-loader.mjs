@@ -84,7 +84,7 @@ export function discoverRoleSources(options = {}) {
     optional: true,
   });
 
-  const commonAgentDir = options.commonAgentDir ?? env.PI_BWRAP_COMMON_AGENT_DIR;
+  const commonAgentDir = options.commonAgentDir ?? env.PI_ENV_BWRAP_COMMON_AGENT_DIR;
   if (commonAgentDir) {
     addSource(sources, seenRoleDirs, {
       kind: ROLE_SOURCE_KINDS.COMMON,

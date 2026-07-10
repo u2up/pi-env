@@ -46,16 +46,16 @@ run_harness() {
     env \
       PATH="$fakebin:$PATH" \
       PI_ENV_RUNTIME_PATH="$tmpdir/runtime/bin" \
-      PI_BWRAP_BWRAP="$tmpdir/fake-bwrap" \
+      PI_ENV_BWRAP_BWRAP="$tmpdir/fake-bwrap" \
       PI_ENV_TEST_FAKE_BWRAP="$tmpdir/fake-bwrap" \
       PI_ENV_TEST_CAPTURE="$capture" \
-      PI_BWRAP_PROJECT_ROOT="$project" \
-      PI_BWRAP_STATE_DIR="$tmpdir/state-$(basename "$capture")" \
-      PI_BWRAP_IMPORT_COMMON=0 \
-      PI_BWRAP_IMPORT_EXTENSIONS=0 \
-      PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-      PI_BWRAP_IMPORT_AUTH=0 \
-      PI_BWRAP_IMPORT_SESSIONS=0 \
+      PI_ENV_BWRAP_PROJECT_ROOT="$project" \
+      PI_ENV_BWRAP_STATE_DIR="$tmpdir/state-$(basename "$capture")" \
+      PI_ENV_BWRAP_IMPORT_COMMON=0 \
+      PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+      PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+      PI_ENV_BWRAP_IMPORT_AUTH=0 \
+      PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
       "$@" "$script" -- --version
   )
 }

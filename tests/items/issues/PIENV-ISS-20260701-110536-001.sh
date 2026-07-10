@@ -42,14 +42,14 @@ nix_capture="$tmpdir/default-host-nix-args"
 PATH="$fakebin:$original_path" \
   PI_ENV_TEST_BWRAP_ARGS="$host_capture" \
   PI_ENV_TEST_NIX_ARGS="$nix_capture" \
-  PI_BWRAP_BASH="$tmpdir/host-bash" \
-  PI_BWRAP_ENV="$tmpdir/host-env" \
-  PI_BWRAP_PROJECT_ROOT="$repo_root" \
-  PI_BWRAP_IMPORT_COMMON=0 \
-  PI_BWRAP_IMPORT_EXTENSIONS=0 \
-  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-  PI_BWRAP_IMPORT_AUTH=0 \
-  PI_BWRAP_IMPORT_SESSIONS=0 \
+  PI_ENV_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_ENV_BWRAP_ENV="$tmpdir/host-env" \
+  PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_ENV_BWRAP_IMPORT_COMMON=0 \
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_ENV_BWRAP_IMPORT_AUTH=0 \
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   ./pi-env --raw -- --help
 
 test_file_exists "$host_capture"
@@ -63,14 +63,14 @@ PATH="$fakebin:$original_path" \
   PI_ENV_RUNTIME_PATH="$tmpdir/stale-nix-runtime/bin" \
   PI_ENV_TEST_BWRAP_ARGS="$stale_default_host_capture" \
   PI_ENV_TEST_NIX_ARGS="$stale_default_nix_capture" \
-  PI_BWRAP_BASH="$tmpdir/host-bash" \
-  PI_BWRAP_ENV="$tmpdir/host-env" \
-  PI_BWRAP_PROJECT_ROOT="$repo_root" \
-  PI_BWRAP_IMPORT_COMMON=0 \
-  PI_BWRAP_IMPORT_EXTENSIONS=0 \
-  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-  PI_BWRAP_IMPORT_AUTH=0 \
-  PI_BWRAP_IMPORT_SESSIONS=0 \
+  PI_ENV_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_ENV_BWRAP_ENV="$tmpdir/host-env" \
+  PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_ENV_BWRAP_IMPORT_COMMON=0 \
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_ENV_BWRAP_IMPORT_AUTH=0 \
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   ./pi-env --raw -- --help
 
 test_file_exists "$stale_default_host_capture"
@@ -87,14 +87,14 @@ PATH="$fakebin:$original_path" \
   PI_ENV_RUNTIME=host \
   PI_ENV_RUNTIME_PATH="$PI_ENV_RUNTIME_PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$explicit_host_capture" \
-  PI_BWRAP_BASH="$tmpdir/host-bash" \
-  PI_BWRAP_ENV="$tmpdir/host-env" \
-  PI_BWRAP_PROJECT_ROOT="$repo_root" \
-  PI_BWRAP_IMPORT_COMMON=0 \
-  PI_BWRAP_IMPORT_EXTENSIONS=0 \
-  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-  PI_BWRAP_IMPORT_AUTH=0 \
-  PI_BWRAP_IMPORT_SESSIONS=0 \
+  PI_ENV_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_ENV_BWRAP_ENV="$tmpdir/host-env" \
+  PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_ENV_BWRAP_IMPORT_COMMON=0 \
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_ENV_BWRAP_IMPORT_AUTH=0 \
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   ./pi-env --raw -- --help
 
 test_file_exists "$explicit_host_capture"

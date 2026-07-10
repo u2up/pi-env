@@ -28,13 +28,13 @@ run_pi_bwrap() {
   shift
   PATH="$fake_root/bin:$PATH" \
   PI_ENV_RUNTIME_PATH=/nix/store/fake/bin \
-  PI_BWRAP_BWRAP="$fake_root/bin/fake-bwrap" \
-  PI_BWRAP_STATE_DIR="$fake_root/state" \
-  PI_BWRAP_IMPORT_COMMON=0 \
-  PI_BWRAP_IMPORT_EXTENSIONS=0 \
-  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-  PI_BWRAP_IMPORT_AUTH=0 \
-  PI_BWRAP_IMPORT_SESSIONS=0 \
+  PI_ENV_BWRAP_BWRAP="$fake_root/bin/fake-bwrap" \
+  PI_ENV_BWRAP_STATE_DIR="$fake_root/state" \
+  PI_ENV_BWRAP_IMPORT_COMMON=0 \
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_ENV_BWRAP_IMPORT_AUTH=0 \
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   PI_ENV_TEST_BWRAP_TRACE="$trace" \
   bash scripts/pi-bwrap "$@" >/dev/null
 }

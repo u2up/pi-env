@@ -117,7 +117,7 @@ Sensitive sandbox Pi state is not part of this default operational root. It
 continues to live outside the project by default under the XDG state location,
 because it may contain copied auth files, settings, sessions, imported common
 agent resources, and caches. Users can explicitly opt into project-local state
-with `PI_BWRAP_STATE_DIR=$PWD/.pi-env/state` when they accept the locality and
+with `PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state` when they accept the locality and
 ignore-policy implications.
 
 ## 5. Repository layout

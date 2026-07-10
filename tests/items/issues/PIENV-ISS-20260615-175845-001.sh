@@ -37,8 +37,8 @@ capture="${SERIAL_FAKE_PI_CAPTURE:?}"
   printf 'env PI_ENV_COORD_AGENT_ID=%s\n' "${PI_ENV_COORD_AGENT_ID:-}"
   printf 'env PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=%s\n' \
     "${PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE:-}"
-  printf 'env PI_BWRAP_PASS_ENV=%s\n' "${PI_BWRAP_PASS_ENV:-}"
-  printf 'env PI_BWRAP_EXTRA_PATH=%s\n' "${PI_BWRAP_EXTRA_PATH:-}"
+  printf 'env PI_ENV_BWRAP_PASS_ENV=%s\n' "${PI_ENV_BWRAP_PASS_ENV:-}"
+  printf 'env PI_ENV_BWRAP_EXTRA_PATH=%s\n' "${PI_ENV_BWRAP_EXTRA_PATH:-}"
   for arg in "$@"; do
     printf 'arg:%s\n' "$arg"
   done
@@ -235,9 +235,9 @@ test_grep 'would-run: env' "$priority_out"
 test_grep 'PI_ACTIVE_ROLE=tester' "$priority_out"
 test_grep 'PI_ROLE_MANAGER_ACTIVE_ROLE=tester' "$priority_out"
 test_grep 'PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1' "$priority_out"
-test_grep 'PI_BWRAP_PASS_ENV=.*PI_ACTIVE_ROLE.*PI_ROLE_MANAGER_ACTIVE_ROLE' \
+test_grep 'PI_ENV_BWRAP_PASS_ENV=.*PI_ACTIVE_ROLE.*PI_ROLE_MANAGER_ACTIVE_ROLE' \
   "$priority_out"
-test_grep 'PI_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
+test_grep 'PI_ENV_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
   "$priority_out"
 test_grep '--tools .*role_cycle_done' "$priority_out"
 test_grep 'watched auto-exit.*interactive.*session' "$priority_out"
@@ -272,7 +272,7 @@ test_grep '--tools .*role_cycle_done' "$interactive_out"
 test_grep 'Role.*cycle.*kickoff' "$interactive_out"
 test_grep 'watched auto-exit.*interactive.*session' "$interactive_out"
 test_grep 'PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1' "$interactive_out"
-test_grep 'PI_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
+test_grep 'PI_ENV_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
   "$interactive_out"
 assert_no_grep '--mode json' "$interactive_out"
 assert_no_grep ' -p ' "$interactive_out"
@@ -327,7 +327,7 @@ test_grep '^arg:--tools$' "$dev_capture"
 test_grep '^arg:read,bash,edit,write,grep,find,ls,role_cycle_done$' \
   "$dev_capture"
 test_grep '^env PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1$' "$dev_capture"
-test_grep '^env PI_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
+test_grep '^env PI_ENV_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
   "$dev_capture"
 assert_no_grep '^arg:--print$' "$dev_capture"
 assert_no_grep '^arg:--mode$' "$dev_capture"
@@ -420,7 +420,7 @@ test_grep 'watched auto-exit serial job starts a fresh Pi interactive session' \
   "$interactive_capture"
 test_grep '^env PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1$' \
   "$interactive_capture"
-test_grep '^env PI_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
+test_grep '^env PI_ENV_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
   "$interactive_capture"
 assert_clean_git "$SCENARIO_PROJECT" "project"
 assert_clean_git "$SCENARIO_COORD" "coordination"

@@ -137,7 +137,7 @@ run_serial "$default_out" "$tmp/default.lock"
 test_grep '^selected role=tester item=SERIAL-UI-TESTER$' "$default_out"
 test_grep '^selected ui=interactive$' "$default_out"
 test_grep 'PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1' "$default_out"
-test_grep 'PI_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
+test_grep 'PI_ENV_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
   "$default_out"
 test_grep 'watched auto-exit.*interactive.*session' "$default_out"
 assert_no_grep '--print' "$default_out"
@@ -148,7 +148,7 @@ interactive_out="$tmp/interactive.out"
 run_serial "$interactive_out" "$tmp/interactive.lock" --ui interactive
 test_grep '^selected ui=interactive$' "$interactive_out"
 test_grep 'PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1' "$interactive_out"
-test_grep 'PI_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
+test_grep 'PI_ENV_BWRAP_PASS_ENV=.*PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE' \
   "$interactive_out"
 assert_no_grep '--print' "$interactive_out"
 assert_no_grep '--mode json' "$interactive_out"

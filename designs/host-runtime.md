@@ -42,7 +42,7 @@ as `/usr/local/bin`, `/usr/bin`, and `/bin` when present. Additional host tool
 paths need explicit opt-in, canonicalization, existence checks, and read-only
 mounts.
 
-The Nix-mode extra path contract remains separate: `PI_BWRAP_EXTRA_PATH` stays
+The Nix-mode extra path contract remains separate: `PI_ENV_BWRAP_EXTRA_PATH` stays
 constrained to validated `/nix/store` paths unless a future change deliberately
 renames or splits the host-mode interface. This prevents host runtime support
 from weakening Nix-mode safety guarantees.

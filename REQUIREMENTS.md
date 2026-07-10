@@ -92,7 +92,7 @@ A user must be able to run Pi with access to the current project but without exp
 - Requirement kind: workflow
 - Related requirements: PATH-001, PATH-002, PATH-003, PATH-004, PATH-005
 
-A user must be able to control which project root is exposed in the sandbox. The default selection is the Git repository root when detected, falling back to the current working directory. Users must be able to disable Git-root detection with `PI_BWRAP_USE_GIT_ROOT=0` and provide an explicit project root with `PI_BWRAP_PROJECT_ROOT=/path/to/repo`.
+A user must be able to control which project root is exposed in the sandbox. The default selection is the Git repository root when detected, falling back to the current working directory. Users must be able to disable Git-root detection with `PI_ENV_BWRAP_USE_GIT_ROOT=0` and provide an explicit project root with `PI_ENV_BWRAP_PROJECT_ROOT=/path/to/repo`.
 
 #### UC-006 — Keep per-project sandbox state
 
@@ -105,8 +105,8 @@ project under `$XDG_STATE_HOME/pi-env/<project-hash>` or
 `$HOME/.local/state/pi-env/<project-hash>` because that state may contain
 copied model auth, sandbox Pi settings, sessions, imported common agent
 resources, and caches. Users must be able to override the state directory
-with `PI_BWRAP_STATE_DIR=/path/to/state`, including an explicit opt-in
-project-local value such as `PI_BWRAP_STATE_DIR=$PWD/.pi-env/state`.
+with `PI_ENV_BWRAP_STATE_DIR=/path/to/state`, including an explicit opt-in
+project-local value such as `PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state`.
 
 #### UC-007 — Run with an ephemeral sandbox home
 
@@ -114,7 +114,7 @@ project-local value such as `PI_BWRAP_STATE_DIR=$PWD/.pi-env/state`.
 - Requirement kind: workflow
 - Related requirements: FS-004, AGENT-011, AGENT-012
 
-A user must be able to request disposable sandbox state with `PI_BWRAP_EPHEMERAL_HOME=1`. Project session import must be disabled by default for ephemeral homes unless explicitly enabled.
+A user must be able to request disposable sandbox state with `PI_ENV_BWRAP_EPHEMERAL_HOME=1`. Project session import must be disabled by default for ephemeral homes unless explicitly enabled.
 
 #### UC-008 — Import Pi model authentication into the sandbox
 
@@ -122,7 +122,7 @@ A user must be able to request disposable sandbox state with `PI_BWRAP_EPHEMERAL
 - Requirement kind: workflow
 - Related requirements: AGENT-002, AGENT-007, AGENT-008, AGENT-009, FS-006
 
-By default, `pi-bwrap` must copy only selected Pi auth/model files from the host Pi agent directory into sandbox state: `auth.json` and `models.json`. Users must be able to disable this behavior with `PI_BWRAP_IMPORT_AUTH=0` and copy only missing files with `PI_BWRAP_AUTH_SYNC=missing`.
+By default, `pi-bwrap` must copy only selected Pi auth/model files from the host Pi agent directory into sandbox state: `auth.json` and `models.json`. Users must be able to disable this behavior with `PI_ENV_BWRAP_IMPORT_AUTH=0` and copy only missing files with `PI_ENV_BWRAP_AUTH_SYNC=missing`.
 
 #### UC-009 — Resume only the current project's Pi sessions
 
@@ -130,7 +130,7 @@ By default, `pi-bwrap` must copy only selected Pi auth/model files from the host
 - Requirement kind: workflow
 - Related requirements: AGENT-011, AGENT-012, AGENT-013, AGENT-014, AGENT-015
 
-For persistent homes, `pi-env` must bind-mount only the Pi session directory corresponding to the current working directory/project path. Users must be able to disable session import with `PI_BWRAP_IMPORT_SESSIONS=0` and enable it explicitly, including for ephemeral homes, with `PI_BWRAP_IMPORT_SESSIONS=1`.
+For persistent homes, `pi-env` must bind-mount only the Pi session directory corresponding to the current working directory/project path. Users must be able to disable session import with `PI_ENV_BWRAP_IMPORT_SESSIONS=0` and enable it explicitly, including for ephemeral homes, with `PI_ENV_BWRAP_IMPORT_SESSIONS=1`.
 
 #### UC-010 — Use common Pi rules, skills, prompts, and roles
 
@@ -138,7 +138,7 @@ For persistent homes, `pi-env` must bind-mount only the Pi session directory cor
 - Requirement kind: workflow
 - Related requirements: AGENT-002, AGENT-003, AGENT-004, AGENT-005, AGENT-006
 
-`pi-env` must support importing common user-owned Pi resources into the sandbox agent directory. Only `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, `prompts/`, and `roles/` may be imported as common resources. Users must be able to set `PI_BWRAP_COMMON_AGENT_DIR`, disable import with `PI_BWRAP_IMPORT_COMMON=0`, and use `PI_BWRAP_COMMON_SYNC=missing`.
+`pi-env` must support importing common user-owned Pi resources into the sandbox agent directory. Only `AGENTS.md`, `CLAUDE.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `skills/`, `prompts/`, and `roles/` may be imported as common resources. Users must be able to set `PI_ENV_BWRAP_COMMON_AGENT_DIR`, disable import with `PI_ENV_BWRAP_IMPORT_COMMON=0`, and use `PI_ENV_BWRAP_COMMON_SYNC=missing`.
 
 #### UC-011 — Combine common and project-specific Pi behavior
 
@@ -154,7 +154,7 @@ A user must be able to combine common personal/team rules, skills, prompts, and 
 - Requirement kind: workflow
 - Related requirements: AGENT-010, AGENT-010a, AGENT-010b, CMD-003, CMD-004, CMD-005
 
-Project-local extensions and project-installed packages under `.pi/` must be available through `/workspace`. Global Pi extensions and globally installed Pi packages from the host Pi agent directory must be exposed by default according to AGENT-010. Users must be able to disable global extension/package import with `PI_BWRAP_IMPORT_EXTENSIONS=0`.
+Project-local extensions and project-installed packages under `.pi/` must be available through `/workspace`. Global Pi extensions and globally installed Pi packages from the host Pi agent directory must be exposed by default according to AGENT-010. Users must be able to disable global extension/package import with `PI_ENV_BWRAP_IMPORT_EXTENSIONS=0`.
 
 #### UC-013 — Use host Git preferences without exposing credentials
 
@@ -170,7 +170,7 @@ Project-local extensions and project-installed packages under `.pi/` must be ava
 - Requirement kind: workflow
 - Related requirements: CMD-003, CMD-004, CMD-005
 
-A user must be able to override the default Pi tool allowlist with `PI_BWRAP_DEFAULT_TOOLS`, for least-privilege runs, tool experiments, or extension/custom tools registered with Pi.
+A user must be able to override the default Pi tool allowlist with `PI_ENV_BWRAP_DEFAULT_TOOLS`, for least-privilege runs, tool experiments, or extension/custom tools registered with Pi.
 
 #### UC-015 — Control network and environment exposure
 
@@ -178,7 +178,7 @@ A user must be able to override the default Pi tool allowlist with `PI_BWRAP_DEF
 - Requirement kind: workflow
 - Related requirements: ENV-001, ENV-002, ENV-003, ENV-004, ENV-005, NET-001, NET-002
 
-The sandbox must share host networking by default for model provider access, allow users to disable network sharing with `PI_BWRAP_NET=0`, and allow selected extra environment variables through `PI_BWRAP_PASS_ENV`.
+The sandbox must share host networking by default for model provider access, allow users to disable network sharing with `PI_ENV_BWRAP_NET=0`, and allow selected extra environment variables through `PI_ENV_BWRAP_PASS_ENV`.
 
 #### UC-016 — Use with a globally installed Pi CLI
 
@@ -597,7 +597,7 @@ When called without Pi arguments, `pi-bwrap` must run Pi with:
 pi --tools read,bash,edit,write,grep,find,ls --continue
 ```
 
-or with the same structure but replacing the tool list with `PI_BWRAP_DEFAULT_TOOLS` when set.
+or with the same structure but replacing the tool list with `PI_ENV_BWRAP_DEFAULT_TOOLS` when set.
 
 #### CMD-005 `pi-start` invocation
 
@@ -607,7 +607,7 @@ or with the same structure but replacing the tool list with `PI_BWRAP_DEFAULT_TO
 --tools "$tools" --continue "$@"
 ```
 
-where `$tools` is the default tool list or `PI_BWRAP_DEFAULT_TOOLS` when set.
+where `$tools` is the default tool list or `PI_ENV_BWRAP_DEFAULT_TOOLS` when set.
 
 #### CMD-006 Argument separator
 
@@ -986,13 +986,13 @@ unchanged.
 
 #### PATH-001 Project root detection
 
-Unless `PI_BWRAP_PROJECT_ROOT` is set, `pi-bwrap` must use `git rev-parse --show-toplevel` when `PI_BWRAP_USE_GIT_ROOT` is unset or `1`.
+Unless `PI_ENV_BWRAP_PROJECT_ROOT` is set, `pi-bwrap` must use `git rev-parse --show-toplevel` when `PI_ENV_BWRAP_USE_GIT_ROOT` is unset or `1`.
 
 If git-root detection fails or is disabled, it must use `$PWD`.
 
 #### PATH-002 Project root override
 
-`PI_BWRAP_PROJECT_ROOT=/path` must force the mounted project root.
+`PI_ENV_BWRAP_PROJECT_ROOT=/path` must force the mounted project root.
 
 #### PATH-003 Existing project root
 
@@ -1019,7 +1019,7 @@ absolute, canonicalized, exist on the host, and be mounted read-only into
 the sandbox. Paths under the host home directory should be rejected by
 default or require a separate, clearly documented explicit opt-in.
 
-Nix-mode `PI_BWRAP_EXTRA_PATH` semantics must remain constrained to
+Nix-mode `PI_ENV_BWRAP_EXTRA_PATH` semantics must remain constrained to
 validated `/nix/store` paths. Host-mode extra path semantics must be kept
 separate or guarded by explicit runtime-mode checks so Nix safety guarantees
 are not weakened accidentally.
@@ -1044,14 +1044,14 @@ or `$HOME/.local/state/pi-env/<project-hash>` when `XDG_STATE_HOME` is unset.
 
 #### FS-003 Explicit state directory
 
-`PI_BWRAP_STATE_DIR=/path` must override the persistent state directory.
+`PI_ENV_BWRAP_STATE_DIR=/path` must override the persistent state directory.
 Project-local sandbox state must remain opt-in because it may contain copied
 auth, sessions, settings, common agent resources, or caches; users may choose
 `.pi-env/state` explicitly when they accept that locality and ignore policy.
 
 #### FS-004 Ephemeral home
 
-`PI_BWRAP_EPHEMERAL_HOME=1` must use a temporary state directory and remove it when the launcher exits.
+`PI_ENV_BWRAP_EPHEMERAL_HOME=1` must use a temporary state directory and remove it when the launcher exits.
 
 #### FS-005 State layout
 
@@ -1113,13 +1113,13 @@ Inside the sandbox:
 
 The host Pi agent directory must be selected in this order:
 
-1. `PI_BWRAP_HOST_AGENT_DIR`
+1. `PI_ENV_BWRAP_HOST_AGENT_DIR`
 2. `PI_CODING_AGENT_DIR`
 3. `$HOME/.pi/agent`
 
 #### AGENT-003 Common agent resource directory
 
-The common resource directory must default to the selected host agent directory and be overridable with `PI_BWRAP_COMMON_AGENT_DIR`.
+The common resource directory must default to the selected host agent directory and be overridable with `PI_ENV_BWRAP_COMMON_AGENT_DIR`.
 
 #### AGENT-004 Common resources imported
 
@@ -1135,13 +1135,13 @@ When common import is enabled and the common directory exists, the launcher must
 
 #### AGENT-005 Common import disable
 
-`PI_BWRAP_IMPORT_COMMON=0` must disable common resource import.
+`PI_ENV_BWRAP_IMPORT_COMMON=0` must disable common resource import.
 
 #### AGENT-006 Common sync policy
 
-`PI_BWRAP_COMMON_SYNC=always` or unset must refresh common resources each run.
+`PI_ENV_BWRAP_COMMON_SYNC=always` or unset must refresh common resources each run.
 
-`PI_BWRAP_COMMON_SYNC=missing` must copy only resources that are absent in sandbox state.
+`PI_ENV_BWRAP_COMMON_SYNC=missing` must copy only resources that are absent in sandbox state.
 
 #### AGENT-007 Auth files imported
 
@@ -1152,13 +1152,13 @@ When auth import is enabled and the host agent directory exists, the launcher mu
 
 #### AGENT-008 Auth import disable
 
-`PI_BWRAP_IMPORT_AUTH=0` must prevent copying `auth.json` and `models.json`.
+`PI_ENV_BWRAP_IMPORT_AUTH=0` must prevent copying `auth.json` and `models.json`.
 
 #### AGENT-009 Auth sync policy
 
-`PI_BWRAP_AUTH_SYNC=always` or unset must refresh auth/model files each run.
+`PI_ENV_BWRAP_AUTH_SYNC=always` or unset must refresh auth/model files each run.
 
-`PI_BWRAP_AUTH_SYNC=missing` must copy only absent auth/model files.
+`PI_ENV_BWRAP_AUTH_SYNC=missing` must copy only absent auth/model files.
 
 #### AGENT-010 Global extensions and packages
 
@@ -1171,13 +1171,13 @@ Project-local `.pi/extensions`, `.pi/settings.json`, `.pi/npm`, and `.pi/git` ar
 
 #### AGENT-010a Extension import disable
 
-`PI_BWRAP_IMPORT_EXTENSIONS=0` must prevent copying `settings.json` and exposing host global `extensions/`, `npm/`, and `git/` directories.
+`PI_ENV_BWRAP_IMPORT_EXTENSIONS=0` must prevent copying `settings.json` and exposing host global `extensions/`, `npm/`, and `git/` directories.
 
 #### AGENT-010b Extension sync policy
 
-`PI_BWRAP_EXTENSIONS_SYNC=always` or unset must refresh the sandbox copy of `settings.json` each run.
+`PI_ENV_BWRAP_EXTENSIONS_SYNC=always` or unset must refresh the sandbox copy of `settings.json` each run.
 
-`PI_BWRAP_EXTENSIONS_SYNC=missing` must copy `settings.json` only when it is absent in sandbox state.
+`PI_ENV_BWRAP_EXTENSIONS_SYNC=missing` must copy `settings.json` only when it is absent in sandbox state.
 
 #### AGENT-011 Sessions default
 
@@ -1185,9 +1185,9 @@ Project sessions must be imported/bind-mounted by default for persistent homes, 
 
 #### AGENT-012 Sessions override
 
-`PI_BWRAP_IMPORT_SESSIONS=0` must disable session bind mounting.
+`PI_ENV_BWRAP_IMPORT_SESSIONS=0` must disable session bind mounting.
 
-`PI_BWRAP_IMPORT_SESSIONS=1` must enable session bind mounting, including with ephemeral homes.
+`PI_ENV_BWRAP_IMPORT_SESSIONS=1` must enable session bind mounting, including with ephemeral homes.
 
 #### AGENT-013 Session scope
 
@@ -1231,7 +1231,7 @@ tester job select additional work after the named item is complete.
 The job invocation must provide role context for developer, reviewer, and
 tester runs. If environment-based role activation is used through the
 Bubblewrap launcher, the command must pass the relevant role activation
-variable explicitly with `PI_BWRAP_PASS_ENV`, because the sandbox clears the
+variable explicitly with `PI_ENV_BWRAP_PASS_ENV`, because the sandbox clears the
 ambient host environment by default.
 
 Role prompts must instruct jobs to update coordination through the
@@ -1251,11 +1251,11 @@ Host Git configuration import must be enabled by default.
 
 #### GIT-002 Global git config source
 
-The global Git config source must default to `$HOME/.gitconfig` and be overridable with `PI_BWRAP_HOST_GITCONFIG`.
+The global Git config source must default to `$HOME/.gitconfig` and be overridable with `PI_ENV_BWRAP_HOST_GITCONFIG`.
 
 #### GIT-003 XDG git config source
 
-The XDG Git config source must default to `$XDG_CONFIG_HOME/git/config` when `XDG_CONFIG_HOME` is set, otherwise `$HOME/.config/git/config`, and be overridable with `PI_BWRAP_HOST_XDG_GIT_CONFIG`.
+The XDG Git config source must default to `$XDG_CONFIG_HOME/git/config` when `XDG_CONFIG_HOME` is set, otherwise `$HOME/.config/git/config`, and be overridable with `PI_ENV_BWRAP_HOST_XDG_GIT_CONFIG`.
 
 #### GIT-004 Git config targets
 
@@ -1266,13 +1266,13 @@ Copied Git config files must appear inside the sandbox as:
 
 #### GIT-005 Git config disable
 
-`PI_BWRAP_IMPORT_GIT_CONFIG=0` must prevent importing Git config.
+`PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0` must prevent importing Git config.
 
 #### GIT-006 Git config sync policy
 
-`PI_BWRAP_GIT_CONFIG_SYNC=always` or unset must refresh copied Git config each run.
+`PI_ENV_BWRAP_GIT_CONFIG_SYNC=always` or unset must refresh copied Git config each run.
 
-`PI_BWRAP_GIT_CONFIG_SYNC=missing` must preserve existing sandbox copies.
+`PI_ENV_BWRAP_GIT_CONFIG_SYNC=missing` must preserve existing sandbox copies.
 
 #### GIT-007 No credential import
 
@@ -1303,7 +1303,7 @@ The launcher may pass selected LLM provider variables, including API keys and ba
 
 #### ENV-004 Extra environment pass-through
 
-`PI_BWRAP_PASS_ENV` must accept extra environment variable names separated by spaces, commas, or colons and pass through only those names when set and non-empty.
+`PI_ENV_BWRAP_PASS_ENV` must accept extra environment variable names separated by spaces, commas, or colons and pass through only those names when set and non-empty.
 
 #### ENV-005 Sandbox identity/env
 
@@ -1349,10 +1349,10 @@ Project-local `.pi-env/agent-remotes` is the default for local bare remotes.
 
 If a coordination clone is detected under the selected project at
 `.pi-env/coordination`, or selected with
-`PI_ENV_COORD_DIR`/`PI_BWRAP_COORDINATION_DIR`, the launcher must set
+`PI_ENV_COORD_DIR`/`PI_ENV_BWRAP_COORDINATION_DIR`, the launcher must set
 `PI_ENV_COORD_DIR` inside the sandbox to the sandbox-visible path.
 
-`PI_BWRAP_COORDINATION_DIR=/path/to/coordination` must explicitly bind an
+`PI_ENV_BWRAP_COORDINATION_DIR=/path/to/coordination` must explicitly bind an
 external coordination clone read-write at `/coordination`. The launcher may
 print a reminder when a coordination repository is available, but it must
 not mutate coordination state.
@@ -1365,7 +1365,7 @@ The sandbox must share the host network by default so Pi can reach model provide
 
 #### NET-002 Disable network
 
-`PI_BWRAP_NET=0` must avoid adding Bubblewrap `--share-net`.
+`PI_ENV_BWRAP_NET=0` must avoid adding Bubblewrap `--share-net`.
 
 ## 4. Quality requirements
 
@@ -1582,7 +1582,7 @@ Expected fake Pi sees `--tools <default-tools> --continue --model test/model`.
 With fake `pi`, run:
 
 ```bash
-PI_BWRAP_DEFAULT_TOOLS=read,grep pi-start
+PI_ENV_BWRAP_DEFAULT_TOOLS=read,grep pi-start
 ```
 
 Expected fake Pi sees `--tools read,grep --continue`.
@@ -1601,7 +1601,7 @@ Expected:
 From a subdirectory in a git repo, run:
 
 ```bash
-PI_BWRAP_USE_GIT_ROOT=0 pi-bwrap -- <fake args>
+PI_ENV_BWRAP_USE_GIT_ROOT=0 pi-bwrap -- <fake args>
 ```
 
 Expected `/workspace` corresponds to the subdirectory, not the git root.
@@ -1611,14 +1611,14 @@ Expected `/workspace` corresponds to the subdirectory, not the git root.
 Run with:
 
 ```bash
-PI_BWRAP_PROJECT_ROOT=/tmp/other-project pi-bwrap
+PI_ENV_BWRAP_PROJECT_ROOT=/tmp/other-project pi-bwrap
 ```
 
 Expected `/workspace` contains `/tmp/other-project`.
 
 #### TEST-012 Missing project root
 
-Run with a nonexistent `PI_BWRAP_PROJECT_ROOT`.
+Run with a nonexistent `PI_ENV_BWRAP_PROJECT_ROOT`.
 
 Expected exit code `2`.
 
@@ -1630,13 +1630,13 @@ Expected a deterministic directory is created under `$XDG_STATE_HOME/pi-env/<16-
 
 #### TEST-014 Explicit state location
 
-Run with `PI_BWRAP_STATE_DIR=/tmp/pi-state`.
+Run with `PI_ENV_BWRAP_STATE_DIR=/tmp/pi-state`.
 
 Expected state is created under `/tmp/pi-state` and not under the default state parent.
 
 #### TEST-015 Ephemeral state cleanup
 
-Run with `PI_BWRAP_EPHEMERAL_HOME=1` and have fake Pi record `$HOME` and create a marker in it.
+Run with `PI_ENV_BWRAP_EPHEMERAL_HOME=1` and have fake Pi record `$HOME` and create a marker in it.
 
 Expected:
 
@@ -1648,7 +1648,7 @@ Expected:
 
 Create host common dir containing all supported common files plus unsupported files.
 
-Run with `PI_BWRAP_COMMON_AGENT_DIR=<dir>`.
+Run with `PI_ENV_BWRAP_COMMON_AGENT_DIR=<dir>`.
 
 Expected inside `/home/pi/.pi/agent`:
 
@@ -1657,13 +1657,13 @@ Expected inside `/home/pi/.pi/agent`:
 
 #### TEST-017 Common import disabled
 
-Run with `PI_BWRAP_IMPORT_COMMON=0`.
+Run with `PI_ENV_BWRAP_IMPORT_COMMON=0`.
 
 Expected no common resources are copied into sandbox state.
 
 #### TEST-018 Common sync missing
 
-Pre-create a sandbox common file, then run with `PI_BWRAP_COMMON_SYNC=missing` and a different host version.
+Pre-create a sandbox common file, then run with `PI_ENV_BWRAP_COMMON_SYNC=missing` and a different host version.
 
 Expected the existing sandbox file is not overwritten.
 
@@ -1675,7 +1675,7 @@ Expected only `auth.json` and `models.json` are copied to the sandbox agent stat
 
 #### TEST-020 Auth import disabled
 
-Run with `PI_BWRAP_IMPORT_AUTH=0`.
+Run with `PI_ENV_BWRAP_IMPORT_AUTH=0`.
 
 Expected no auth/model files are copied.
 
@@ -1687,7 +1687,7 @@ Expected inside sandbox only the mapped current-cwd session directory is visible
 
 #### TEST-022 Session import disabled
 
-Run with `PI_BWRAP_IMPORT_SESSIONS=0`.
+Run with `PI_ENV_BWRAP_IMPORT_SESSIONS=0`.
 
 Expected no host session directory is bind-mounted.
 
@@ -1703,13 +1703,13 @@ Expected inside sandbox:
 
 #### TEST-024 Git config import disabled
 
-Run with `PI_BWRAP_IMPORT_GIT_CONFIG=0`.
+Run with `PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0`.
 
 Expected git config files are absent unless already present from prior state.
 
 #### TEST-025 Git config sync missing
 
-Pre-create sandbox Git config, run with `PI_BWRAP_GIT_CONFIG_SYNC=missing` and different host config.
+Pre-create sandbox Git config, run with `PI_ENV_BWRAP_GIT_CONFIG_SYNC=missing` and different host config.
 
 Expected sandbox config is preserved.
 
@@ -1721,7 +1721,7 @@ Expected:
 
 - arbitrary unlisted variable is absent inside sandbox
 - selected provider variables are present when non-empty
-- `PI_BWRAP_PASS_ENV` variables are present when non-empty
+- `PI_ENV_BWRAP_PASS_ENV` variables are present when non-empty
 
 #### TEST-027 Network flag default and disable
 
@@ -1730,7 +1730,7 @@ Use a fake `bwrap` wrapper or inspect behavior in an environment where Bubblewra
 Expected:
 
 - default invocation includes `--share-net`
-- `PI_BWRAP_NET=0` invocation does not include `--share-net`
+- `PI_ENV_BWRAP_NET=0` invocation does not include `--share-net`
 
 #### TEST-028 Sensitive host filesystem isolation
 
@@ -1967,7 +1967,7 @@ Bubblewrap does not provide domain-level network allowlisting. Network behavior 
 - Requirement kind: limitation
 - Related workflows: UC-014, UC-022
 
-If `read` or `bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions may be readable by commands or tools inside the sandbox. Users should use least-privilege API keys, provider proxies, reduced tool allowlists, or `PI_BWRAP_NET=0` when appropriate.
+If `read` or `bash` tools are enabled, copied auth files, exposed global extensions/packages, and bound project sessions may be readable by commands or tools inside the sandbox. Users should use least-privilege API keys, provider proxies, reduced tool allowlists, or `PI_ENV_BWRAP_NET=0` when appropriate.
 
 #### CRQ-010 — Requirement source of truth precedence
 
@@ -1999,7 +1999,7 @@ then regenerating the document.
 `/usr/bin` read-only.
 
 Extra command directories admitted into the sandbox `PATH` must come from
-an explicit pi-env input such as `PI_BWRAP_EXTRA_PATH` or from
+an explicit pi-env input such as `PI_ENV_BWRAP_EXTRA_PATH` or from
 `mkPiShell`-derived `extraPackages`. Each admitted path must be
 canonicalized and constrained to `/nix/store` by default. Empty path
 components may be ignored, but unsafe path components such as `/home/*`,

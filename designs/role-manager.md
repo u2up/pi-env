@@ -115,7 +115,7 @@ Suggested merge order, with later entries overriding earlier entries by
 
 1. base package roles shipped with the role-manager package;
 2. common/global roles, for example `~/.pi/agent/roles`;
-3. common roles imported through `PI_BWRAP_COMMON_AGENT_DIR/roles`;
+3. common roles imported through `PI_ENV_BWRAP_COMMON_AGENT_DIR/roles`;
 4. optional workspace roles in a coordination repo, for example
    `coordination/roles`;
 5. project roles in `.pi/roles`.

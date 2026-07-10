@@ -248,7 +248,7 @@ pi --version
 Node/npm are needed on the host for this Pi installation or upgrade step and
 for host-runtime launches that use the npm-installed Pi launcher. In host
 runtime mode, `node` for an npm-installed Pi launcher must resolve under
-`/usr/local/bin`, `/usr/bin`, or `/bin`; `PI_BWRAP_HOST_EXTRA_PATH` does not
+`/usr/local/bin`, `/usr/bin`, or `/bin`; `PI_ENV_BWRAP_HOST_EXTRA_PATH` does not
 admit that launcher interpreter. The pi-env Nix shell provides Node and the
 other runtime tools when you select the Nix runtime.
 
@@ -588,7 +588,7 @@ pi-env keeps its default runtime intentionally small. Host runtime mode uses
 unpinned host tools from the conservative sandbox `PATH`; Nix runtime mode uses
 the pinned tools provided by this flake. Neither mode bundles every compiler or
 build system a target repository might need. Add host-runtime tools explicitly
-with `PI_BWRAP_HOST_EXTRA_PATH`, or declare reproducible project tools in the
+with `PI_ENV_BWRAP_HOST_EXTRA_PATH`, or declare reproducible project tools in the
 consuming project's Nix flake. Bubblewrap remains the isolation boundary in both
 modes.
 
@@ -607,7 +607,7 @@ devShells.default = pi-env.lib.mkPiShell {
 };
 ```
 
-`mkPiShell` turns the `extraPackages` `bin` outputs into `PI_BWRAP_EXTRA_PATH`.
+`mkPiShell` turns the `extraPackages` `bin` outputs into `PI_ENV_BWRAP_EXTRA_PATH`.
 In Nix runtime mode, `pi-bwrap` validates those entries before starting the
 sandbox, accepts only canonical `/nix/store` directories, and then appends them
 after the core pi-env runtime path. Since `/nix/store` is already mounted
@@ -615,11 +615,11 @@ read-only, no host `/bin`, host `/usr/bin`, project-writable directory, or scan
 of the whole store is needed. pi-env does not infer tools from a repository
 automatically.
 
-Advanced Nix-runtime users may set `PI_BWRAP_EXTRA_PATH` directly to a
+Advanced Nix-runtime users may set `PI_ENV_BWRAP_EXTRA_PATH` directly to a
 colon-separated list of command directories, but entries must be absolute
 existing directories that canonicalize under `/nix/store`; unsafe entries such
 as `/tmp/bin`, `$HOME/bin`, `./bin`, `/usr/bin`, or `/bin` are rejected before
-Pi starts. Host-runtime users should use `PI_BWRAP_HOST_EXTRA_PATH` instead;
+Pi starts. Host-runtime users should use `PI_ENV_BWRAP_HOST_EXTRA_PATH` instead;
 those entries are canonicalized, must exist, are mounted read-only, and are
 rejected under host `$HOME`.
 
@@ -696,7 +696,7 @@ you need custom Pi arguments.
 ### `pi-start`
 
 `pi-start` is the default startup wrapper. It chooses the default tool list from
-`PI_BWRAP_DEFAULT_TOOLS` when set, otherwise uses Pi's built-in tools:
+`PI_ENV_BWRAP_DEFAULT_TOOLS` when set, otherwise uses Pi's built-in tools:
 
 ```text
 read,bash,edit,write,grep,find,ls
@@ -747,7 +747,7 @@ by `pi-bwrap -- config` to persist instead of being refreshed from the host
 copy, use:
 
 ```bash
-PI_BWRAP_EXTENSIONS_SYNC=missing pi-bwrap -- config
+PI_ENV_BWRAP_EXTENSIONS_SYNC=missing pi-bwrap -- config
 ```
 
 To edit your **real host/global Pi config**, run `pi config` directly after
@@ -806,9 +806,9 @@ pi-env only chooses which root to expose for this run.
   `PI_ENV_COORD_ROLE`, and coordination directory context, mapping project-local
   coordination paths to `/workspace/...`, binding external local coordination
   remote parents as needed, and explicitly mounting an external coordination
-  clone with `PI_BWRAP_COORDINATION_DIR`;
+  clone with `PI_ENV_BWRAP_COORDINATION_DIR`;
 - accepts additional host-runtime command directories only through
-  `PI_BWRAP_HOST_EXTRA_PATH`; entries must be absolute, existing directories,
+  `PI_ENV_BWRAP_HOST_EXTRA_PATH`; entries must be absolute, existing directories,
   are canonicalized, are mounted read-only, and are rejected under host `$HOME`;
 - does **not** mount host `$HOME`, `~/.ssh`, cloud credential directories, or
   Docker sockets;
@@ -827,13 +827,13 @@ example `~/.local/bin`, `~/.nvm`, `~/.asdf`, or a per-user npm prefix), host
 runtime rejects them by default because host `$HOME` is not mounted. Prefer a
 system/global install under `/usr/local/bin`, `/usr/bin`, or `/bin`, move a
 custom `pi` launcher or other needed command directory outside `$HOME` and opt
-it in with `PI_BWRAP_HOST_EXTRA_PATH`, or use `--runtime nix` for pinned tools.
-Custom host tool directories admitted with `PI_BWRAP_HOST_EXTRA_PATH` are
+it in with `PI_ENV_BWRAP_HOST_EXTRA_PATH`, or use `--runtime nix` for pinned tools.
+Custom host tool directories admitted with `PI_ENV_BWRAP_HOST_EXTRA_PATH` are
 mounted read-only and only after validation.
 
 When an admitted host `pi` launcher uses `#!/usr/bin/env node`, `node` itself
 must resolve under `/usr/local/bin`, `/usr/bin`, or `/bin`; the launcher check
-does not admit `node` from `PI_BWRAP_HOST_EXTRA_PATH`. Use a system/global Node
+does not admit `node` from `PI_ENV_BWRAP_HOST_EXTRA_PATH`. Use a system/global Node
 install or `--runtime nix` when Node only exists in another custom directory.
 
 Important: with the `bash`/`read` tools enabled, auth copied into the sandbox
@@ -846,54 +846,54 @@ use least-privilege API keys or a provider proxy when possible.
 Common environment knobs:
 
 ```bash
-PI_BWRAP_PROJECT_ROOT=/path/to/repo     # default: git root, else $PWD
-PI_BWRAP_USE_GIT_ROOT=0                 # bind only $PWD
-PI_BWRAP_STATE_DIR=/path/to/state       # persistent sandbox home/config; .pi-env/state is opt-in
-PI_BWRAP_EPHEMERAL_HOME=1               # temporary home/config for this run
-PI_BWRAP_IMPORT_AUTH=0                  # do not import host ~/.pi/agent auth files
-PI_BWRAP_AUTH_SYNC=missing              # copy auth only if sandbox copy is absent; default is always
-PI_BWRAP_IMPORT_SESSIONS=0              # do not bind host sessions for the current working directory
-PI_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi/agent
-PI_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills/roles dir; default: host Pi agent dir
-PI_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, prompts, or roles
-PI_BWRAP_COMMON_SYNC=missing            # copy common files only if sandbox copy is absent; default is always
-PI_BWRAP_IMPORT_EXTENSIONS=0            # do not expose global Pi extensions/packages from host agent dir
-PI_BWRAP_EXTENSIONS_SYNC=missing        # copy settings.json only if sandbox copy is absent; default is always
-PI_BWRAP_IMPORT_GIT_CONFIG=0            # do not import host ~/.gitconfig and XDG git config
-PI_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy is absent; default is always
-PI_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
-PI_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
-PI_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
+PI_ENV_BWRAP_PROJECT_ROOT=/path/to/repo     # default: git root, else $PWD
+PI_ENV_BWRAP_USE_GIT_ROOT=0                 # bind only $PWD
+PI_ENV_BWRAP_STATE_DIR=/path/to/state       # persistent sandbox home/config; .pi-env/state is opt-in
+PI_ENV_BWRAP_EPHEMERAL_HOME=1               # temporary home/config for this run
+PI_ENV_BWRAP_IMPORT_AUTH=0                  # do not import host ~/.pi/agent auth files
+PI_ENV_BWRAP_AUTH_SYNC=missing              # copy auth only if sandbox copy is absent; default is always
+PI_ENV_BWRAP_IMPORT_SESSIONS=0              # do not bind host sessions for the current working directory
+PI_ENV_BWRAP_HOST_AGENT_DIR=/path/to/agent  # default: $PI_CODING_AGENT_DIR or ~/.pi/agent
+PI_ENV_BWRAP_COMMON_AGENT_DIR=/path/to/dir  # common rules/skills/roles dir; default: host Pi agent dir
+PI_ENV_BWRAP_IMPORT_COMMON=0                # do not import common AGENTS/SYSTEM files, skills, prompts, or roles
+PI_ENV_BWRAP_COMMON_SYNC=missing            # copy common files only if sandbox copy is absent; default is always
+PI_ENV_BWRAP_IMPORT_EXTENSIONS=0            # do not expose global Pi extensions/packages from host agent dir
+PI_ENV_BWRAP_EXTENSIONS_SYNC=missing        # copy settings.json only if sandbox copy is absent; default is always
+PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0            # do not import host ~/.gitconfig and XDG git config
+PI_ENV_BWRAP_GIT_CONFIG_SYNC=missing        # copy git config only if sandbox copy is absent; default is always
+PI_ENV_BWRAP_HOST_GITCONFIG=/path           # host global git config; default: ~/.gitconfig
+PI_ENV_BWRAP_HOST_XDG_GIT_CONFIG=/path      # host XDG git config; default: $XDG_CONFIG_HOME/git/config or ~/.config/git/config
+PI_ENV_BWRAP_COORDINATION_DIR=/path/to/coordination # bind external coordination clone at /coordination
 PI_ENV_COORD_REMOTE=.pi-env/agent-remotes/pi-env-coordination.git # exact coordination remote URL/path
 PI_ENV_COORD_ROOT=.pi-env/agent-remotes      # legacy bare remotes root; project paths map to /workspace
 PI_ENV_COORD_REMOTE_URL=git@example:repo.git # legacy alias for PI_ENV_COORD_REMOTE
 PI_ENV_COORD_PROJECT=pi-env                 # coordination project/domain name
 PI_ENV_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
 PI_ENV_COORD_ROLE=architect                 # active coordination role for helper commits/events
-PI_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
-PI_BWRAP_EXTRA_PATH=/nix/store/.../bin   # Nix runtime: validated /nix/store command dirs
-PI_BWRAP_HOST_EXTRA_PATH=/opt/tools/bin  # host runtime: validated read-only host command dirs
-PI_BWRAP_NET=0                          # disable network sharing
-PI_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
+PI_ENV_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
+PI_ENV_BWRAP_EXTRA_PATH=/nix/store/.../bin   # Nix runtime: validated /nix/store command dirs
+PI_ENV_BWRAP_HOST_EXTRA_PATH=/opt/tools/bin  # host runtime: validated read-only host command dirs
+PI_ENV_BWRAP_NET=0                          # disable network sharing
+PI_ENV_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 ```
 
 Common per-project overrides can be set before running `pi-start` / `pi-bwrap`,
 or exported in the project's shell hook:
 
 ```bash
-PI_BWRAP_PROJECT_ROOT=/path/to/repo pi-start  # mount this repo at /workspace
-PI_BWRAP_USE_GIT_ROOT=0 pi-start              # use $PWD instead of git root
-PI_BWRAP_EPHEMERAL_HOME=1 pi-start            # throw away sandbox home after the run
-PI_BWRAP_STATE_DIR=$PWD/.pi-env/state pi-start # opt in to project-local sandbox state
-PI_BWRAP_IMPORT_AUTH=0 pi-start               # do not copy host Pi auth into sandbox state
-PI_BWRAP_NET=0 pi-start                       # disable network access
+PI_ENV_BWRAP_PROJECT_ROOT=/path/to/repo pi-start  # mount this repo at /workspace
+PI_ENV_BWRAP_USE_GIT_ROOT=0 pi-start              # use $PWD instead of git root
+PI_ENV_BWRAP_EPHEMERAL_HOME=1 pi-start            # throw away sandbox home after the run
+PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state pi-start # opt in to project-local sandbox state
+PI_ENV_BWRAP_IMPORT_AUTH=0 pi-start               # do not copy host Pi auth into sandbox state
+PI_ENV_BWRAP_NET=0 pi-start                       # disable network access
 ```
 
 Inside the sandbox, the selected project root is mounted read-write at
 `/workspace`, while the sandbox home and Pi config live separately from the
 host home. The default state location intentionally stays outside `.pi-env/`
 because it can contain copied auth, settings, sessions, and caches; use
-`PI_BWRAP_STATE_DIR=$PWD/.pi-env/state` only when you explicitly want that
+`PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state` only when you explicitly want that
 project-local operational state.
 
 ## 8. Common vs project-specific Pi resources
@@ -923,15 +923,15 @@ roles/
 ```
 
 It does not import the whole host home, and auth/session handling remains
-controlled separately by `PI_BWRAP_IMPORT_AUTH` and
-`PI_BWRAP_IMPORT_SESSIONS`. Global extension/package exposure is controlled
-separately by `PI_BWRAP_IMPORT_EXTENSIONS`.
+controlled separately by `PI_ENV_BWRAP_IMPORT_AUTH` and
+`PI_ENV_BWRAP_IMPORT_SESSIONS`. Global extension/package exposure is controlled
+separately by `PI_ENV_BWRAP_IMPORT_EXTENSIONS`.
 
 To keep common rules, skills, prompts, or roles in a separate repo or directory,
-point `PI_BWRAP_COMMON_AGENT_DIR` at it:
+point `PI_ENV_BWRAP_COMMON_AGENT_DIR` at it:
 
 ```bash
-PI_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-start
+PI_ENV_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-start
 ```
 
 Expected layout:
@@ -951,7 +951,7 @@ my-pi-common/
 Disable common resource import entirely with:
 
 ```bash
-PI_BWRAP_IMPORT_COMMON=0 pi-start
+PI_ENV_BWRAP_IMPORT_COMMON=0 pi-start
 ```
 
 Project-specific rules, skills, roles, and extensions should live in the
@@ -1005,21 +1005,21 @@ while still avoiding a host `$HOME` mount.
 Disable this with:
 
 ```bash
-PI_BWRAP_IMPORT_GIT_CONFIG=0 pi-start
+PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 pi-start
 ```
 
 Use a different config source with:
 
 ```bash
-PI_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pi-start
-PI_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pi-start
+PI_ENV_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pi-start
+PI_ENV_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pi-start
 ```
 
 By default the sandbox copy is refreshed on each run. Preserve an existing
 sandbox copy with:
 
 ```bash
-PI_BWRAP_GIT_CONFIG_SYNC=missing pi-start
+PI_ENV_BWRAP_GIT_CONFIG_SYNC=missing pi-start
 ```
 
 Git credentials, SSH keys, signing keys, credential helpers' backing stores,
@@ -1079,7 +1079,7 @@ Roles are merged by `name`; later sources override earlier ones:
 
 1. bundled base package roles;
 2. global/common agent roles imported into `/home/pi/.pi/agent/roles`;
-3. common roles from `PI_BWRAP_COMMON_AGENT_DIR/roles` when directly visible;
+3. common roles from `PI_ENV_BWRAP_COMMON_AGENT_DIR/roles` when directly visible;
 4. coordination-domain roles from `$PI_ENV_COORD_DIR/roles`;
 5. project roles from `.pi/roles`.
 
@@ -1365,7 +1365,7 @@ and sets `PI_ENV_COORD_DIR` to the sandbox path. For a coordination clone outsid
 the project, opt in explicitly:
 
 ```bash
-PI_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
+PI_ENV_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
 ```
 
 That clone is mounted read-write at `/coordination` and `PI_ENV_COORD_DIR` is set
@@ -1398,9 +1398,9 @@ Serial mode prerequisites:
   `pi-env` runs, for example host Pi auth files or provider environment
   variables; and
 - allow the orchestrator to mount the selected coordination clone into each raw
-  sandbox job. It passes `PI_BWRAP_COORDINATION_DIR`, `PI_ENV_COORD_DIR`,
+  sandbox job. It passes `PI_ENV_BWRAP_COORDINATION_DIR`, `PI_ENV_COORD_DIR`,
   `PI_ENV_COORD_AGENT_ID`, and role context for the job, and exposes packaged
-  lifecycle helpers through `PI_BWRAP_EXTRA_PATH` when they live in the Nix
+  lifecycle helpers through `PI_ENV_BWRAP_EXTRA_PATH` when they live in the Nix
   store.
 
 Start the loop from the project root:
@@ -1585,15 +1585,15 @@ tests/items/requirements/PIENV-FRQ-20260607-204155-001.sh
 
 - Pi's built-in tool list is `read,bash,edit,write,grep,find,ls`.
   `pi-start` allowlists those by default. If you need extension/custom tools
-  too, include them in `PI_BWRAP_DEFAULT_TOOLS` or call `pi-bwrap` with your own
+  too, include them in `PI_ENV_BWRAP_DEFAULT_TOOLS` or call `pi-bwrap` with your own
   `--tools` list.
 - Global Pi extensions and globally installed Pi packages are exposed read-only
   from the host agent directory by default. Disable this with
-  `PI_BWRAP_IMPORT_EXTENSIONS=0`. Project-local extensions/packages under
+  `PI_ENV_BWRAP_IMPORT_EXTENSIONS=0`. Project-local extensions/packages under
   `.pi/` are available because the project is mounted at `/workspace`.
 - Use `git` through the `bash` tool unless you install/register a separate Git
   tool extension.
 - Bubblewrap limits filesystem/environment exposure. It does not provide
   domain-level network allowlists. For tighter network policy, disable network
-  with `PI_BWRAP_NET=0`, use an external firewall/proxy, or add Pi's sandbox
+  with `PI_ENV_BWRAP_NET=0`, use an external firewall/proxy, or add Pi's sandbox
   extension as an additional layer for `bash` commands.

@@ -68,7 +68,7 @@ writeFileSync(
 
 const previousEnv = {
   PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR,
-  PI_BWRAP_COMMON_AGENT_DIR: process.env.PI_BWRAP_COMMON_AGENT_DIR,
+  PI_ENV_BWRAP_COMMON_AGENT_DIR: process.env.PI_ENV_BWRAP_COMMON_AGENT_DIR,
   PI_ENV_COORD_DIR: process.env.PI_ENV_COORD_DIR,
   PI_ENV_COORD_ROLE: process.env.PI_ENV_COORD_ROLE,
   PI_ACTIVE_ROLE: process.env.PI_ACTIVE_ROLE,
@@ -77,7 +77,7 @@ const previousEnv = {
     process.env.PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE,
 };
 process.env.PI_CODING_AGENT_DIR = join(tmp, "agent");
-delete process.env.PI_BWRAP_COMMON_AGENT_DIR;
+delete process.env.PI_ENV_BWRAP_COMMON_AGENT_DIR;
 process.env.PI_ENV_COORD_DIR = join(tmp, "coordination");
 process.env.PI_ENV_COORD_ROLE = "ambient-role";
 delete process.env.PI_ACTIVE_ROLE;

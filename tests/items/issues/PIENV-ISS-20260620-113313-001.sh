@@ -86,27 +86,27 @@ run_harness() {
   (
     cd "$cwd"
     unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE PI_ENV_COORD_REMOTE_URL PI_ENV_COORD_DIR \
-      PI_BWRAP_COORDINATION_DIR PI_BWRAP_STATE_DIR
+      PI_ENV_BWRAP_COORDINATION_DIR PI_ENV_BWRAP_STATE_DIR
     env \
       HOME="$tmpdir/home" \
       XDG_STATE_HOME="$tmpdir/xdg-state" \
       PATH="$fakebin:$PATH" \
       PI_ENV_RUNTIME_PATH="$tmpdir/runtime/bin" \
-      PI_BWRAP_BWRAP="$tmpdir/fake-bwrap" \
+      PI_ENV_BWRAP_BWRAP="$tmpdir/fake-bwrap" \
       PI_ENV_TEST_FAKE_BWRAP="$tmpdir/fake-bwrap" \
       PI_ENV_TEST_CAPTURE="$capture" \
-      PI_BWRAP_PROJECT_ROOT="$project" \
-      PI_BWRAP_IMPORT_COMMON=0 \
-      PI_BWRAP_IMPORT_EXTENSIONS=0 \
-      PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-      PI_BWRAP_IMPORT_AUTH=0 \
-      PI_BWRAP_IMPORT_SESSIONS=0 \
+      PI_ENV_BWRAP_PROJECT_ROOT="$project" \
+      PI_ENV_BWRAP_IMPORT_COMMON=0 \
+      PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+      PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+      PI_ENV_BWRAP_IMPORT_AUTH=0 \
+      PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
       "$@" "$script" -- --version
   )
 }
 
 fixed_grep 'Use $PWD/.pi-env/state only as explicit project-local opt-in' "$script"
-fixed_grep 'PI_BWRAP_STATE_DIR=$PWD/.pi-env/state' README.md
+fixed_grep 'PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state' README.md
 fixed_grep 'PI_ENV_COORD_REMOTE=remote' "$script"
 
 prefer_project="$tmpdir/prefer-project"
@@ -122,7 +122,7 @@ mkdir -p "$local_project/.pi-env/agent-remotes" "$local_project/subdir"
 local_capture="$tmpdir/local-capture"
 run_harness "$local_project" "$local_capture" "$local_project/subdir" \
   PI_ENV_COORD_ROOT=.pi-env/agent-remotes \
-  PI_BWRAP_STATE_DIR="$tmpdir/local-state"
+  PI_ENV_BWRAP_STATE_DIR="$tmpdir/local-state"
 assert_bind "$local_capture" "$local_project" /workspace
 assert_setenv "$local_capture" PI_ENV_COORD_ROOT /workspace/.pi-env/agent-remotes
 assert_no_line "$local_project/.pi-env/agent-remotes" "$local_capture"
@@ -206,7 +206,7 @@ explicit_project="$tmpdir/explicit-state-project"
 explicit_capture="$tmpdir/explicit-state-capture"
 explicit_state="$explicit_project/.pi-env/state"
 run_harness "$explicit_project" "$explicit_capture" "$explicit_project" \
-  PI_BWRAP_STATE_DIR="$explicit_state"
+  PI_ENV_BWRAP_STATE_DIR="$explicit_state"
 test_dir_exists "$explicit_state/home/.pi/agent"
 test_dir_exists "$explicit_state/agent/sessions"
 assert_bind "$explicit_capture" "$explicit_state/home" /home/pi

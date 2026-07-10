@@ -53,21 +53,21 @@ chmod +x "$fakebin/nix"
 chmod +x "$tmpdir/host-bash" "$tmpdir/host-env"
 
 common_bwrap_env=(
-  PI_BWRAP_BASH="$tmpdir/host-bash"
-  PI_BWRAP_ENV="$tmpdir/host-env"
-  PI_BWRAP_BWRAP="$fakebin/bwrap"
-  PI_BWRAP_PROJECT_ROOT="$repo_root"
-  PI_BWRAP_STATE_DIR="$tmpdir/state"
-  PI_BWRAP_HOST_EXTRA_PATH="$fakebin"
-  PI_BWRAP_IMPORT_COMMON=0
-  PI_BWRAP_IMPORT_EXTENSIONS=0
-  PI_BWRAP_IMPORT_GIT_CONFIG=0
-  PI_BWRAP_IMPORT_AUTH=0
-  PI_BWRAP_IMPORT_SESSIONS=0
+  PI_ENV_BWRAP_BASH="$tmpdir/host-bash"
+  PI_ENV_BWRAP_ENV="$tmpdir/host-env"
+  PI_ENV_BWRAP_BWRAP="$fakebin/bwrap"
+  PI_ENV_BWRAP_PROJECT_ROOT="$repo_root"
+  PI_ENV_BWRAP_STATE_DIR="$tmpdir/state"
+  PI_ENV_BWRAP_HOST_EXTRA_PATH="$fakebin"
+  PI_ENV_BWRAP_IMPORT_COMMON=0
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0
+  PI_ENV_BWRAP_IMPORT_AUTH=0
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0
 )
 
 host_capture="$tmpdir/default-host-bwrap-args"
-env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_BWRAP \
+env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_ENV_BWRAP \
   HOME="$host_home" \
   PATH="$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$host_capture" \
@@ -115,7 +115,7 @@ for forbidden in \
 done
 
 home_pi_status=0
-env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_BWRAP \
+env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_ENV_BWRAP \
   HOME="$host_home" \
   PATH="$host_home/bin:$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$tmpdir/home-pi-bwrap-args" \
@@ -128,26 +128,26 @@ if [ -e "$tmpdir/home-pi-bwrap-args" ]; then
 fi
 
 missing_dep_status=0
-env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_BWRAP \
+env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_ENV_BWRAP \
   HOME="$host_home" \
   PATH="$fakebin:$PATH" \
-  PI_BWRAP_BWRAP="$tmpdir/missing-bwrap" \
-  PI_BWRAP_BASH="$tmpdir/host-bash" \
-  PI_BWRAP_ENV="$tmpdir/host-env" \
-  PI_BWRAP_PROJECT_ROOT="$repo_root" \
-  PI_BWRAP_STATE_DIR="$tmpdir/missing-dep-state" \
-  PI_BWRAP_HOST_EXTRA_PATH="$fakebin" \
-  PI_BWRAP_IMPORT_COMMON=0 \
-  PI_BWRAP_IMPORT_EXTENSIONS=0 \
-  PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-  PI_BWRAP_IMPORT_AUTH=0 \
-  PI_BWRAP_IMPORT_SESSIONS=0 \
+  PI_ENV_BWRAP_BWRAP="$tmpdir/missing-bwrap" \
+  PI_ENV_BWRAP_BASH="$tmpdir/host-bash" \
+  PI_ENV_BWRAP_ENV="$tmpdir/host-env" \
+  PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+  PI_ENV_BWRAP_STATE_DIR="$tmpdir/missing-dep-state" \
+  PI_ENV_BWRAP_HOST_EXTRA_PATH="$fakebin" \
+  PI_ENV_BWRAP_IMPORT_COMMON=0 \
+  PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+  PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+  PI_ENV_BWRAP_IMPORT_AUTH=0 \
+  PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   ./pi-env --raw -- --help >"$tmpdir/missing-dep-output" 2>&1 || missing_dep_status=$?
 test_eq 127 "$missing_dep_status" 'missing host bwrap dependency exits 127'
 test_grep 'required host tool path does not exist: bwrap' "$tmpdir/missing-dep-output"
 
 nix_capture="$tmpdir/explicit-nix-args"
-env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_BWRAP \
+env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_ENV_BWRAP \
   HOME="$host_home" \
   PATH="$fakebin:$PATH" \
   PI_ENV_TEST_NIX_ARGS="$nix_capture" \
@@ -166,7 +166,7 @@ if [ "$(cat "$expected_nix")" != "$(cat "$nix_capture")" ]; then
 fi
 
 nix_missing_status=0
-env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_BWRAP \
+env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_ENV_BWRAP \
   HOME="$host_home" \
   PATH="$nixless_bin" \
   ./pi-env --runtime nix --raw -- --help >"$tmpdir/missing-nix-output" 2>&1 || nix_missing_status=$?

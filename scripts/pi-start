@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tools="${PI_BWRAP_COMPILED_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
-if [ -n "${PI_BWRAP_DEFAULT_TOOLS:-}" ]; then
-  tools="$PI_BWRAP_DEFAULT_TOOLS"
+tools="${PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
+if [ -n "${PI_ENV_BWRAP_DEFAULT_TOOLS:-}" ]; then
+  tools="$PI_ENV_BWRAP_DEFAULT_TOOLS"
 fi
 
 role_manager_args=()
@@ -21,5 +21,5 @@ if [ "${PI_ENV_ROLE_MANAGER_AUTO:-1}" != "0" ]; then
   fi
 fi
 
-pi_bwrap="${PI_ENV_PI_BWRAP:-pi-bwrap}"
+pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-pi-bwrap}"
 exec "$pi_bwrap" --tools "$tools" --continue "${role_manager_args[@]}" "$@"

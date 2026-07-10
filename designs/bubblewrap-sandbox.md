@@ -70,7 +70,7 @@ extension caches have clear ownership. Persistent sandbox Pi state remains
 outside the project by default under the XDG state location because it can
 contain copied auth files, Pi settings, sessions, imported common resources,
 and caches. A user may explicitly opt into project-local sandbox state with
-`PI_BWRAP_STATE_DIR=$PWD/.pi-env/state`; pi-env should not choose that path by
+`PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state`; pi-env should not choose that path by
 default. Read-only and read-write mounts are chosen by purpose: project work
 needs writes, runtime inputs often do not.
 

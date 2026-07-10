@@ -8,15 +8,15 @@ cd "$repo_root"
 flake=flake.nix
 
 # mkPiShell derives extra package bin directories with Nix path construction and
-# preserves a caller-provided PI_BWRAP_EXTRA_PATH after project-declared tools.
+# preserves a caller-provided PI_ENV_BWRAP_EXTRA_PATH after project-declared tools.
 test_grep 'extraPackagePath = pkgs.lib.makeBinPath extraPackages;' "$flake"
-test_grep 'export PI_BWRAP_EXTRA_PATH="${extraPackagePath}:$PI_BWRAP_EXTRA_PATH"' "$flake"
+test_grep 'export PI_ENV_BWRAP_EXTRA_PATH="${extraPackagePath}:$PI_ENV_BWRAP_EXTRA_PATH"' "$flake"
 
 # pi-bwrap validates the explicit extra path input before bwrap starts.
-test_grep 'PI_BWRAP_EXTRA_PATH' "$flake"
-test_grep 'unsafe PI_BWRAP_EXTRA_PATH entry is not absolute' "$flake"
-test_grep 'unsafe PI_BWRAP_EXTRA_PATH entry is not an existing directory' "$flake"
-test_grep 'unsafe PI_BWRAP_EXTRA_PATH entry outside /nix/store' "$flake"
+test_grep 'PI_ENV_BWRAP_EXTRA_PATH' "$flake"
+test_grep 'unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not absolute' "$flake"
+test_grep 'unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not an existing directory' "$flake"
+test_grep 'unsafe PI_ENV_BWRAP_EXTRA_PATH entry outside /nix/store' "$flake"
 test_grep 'canonical_extra_path="$(realpath "$extra_path_entry")"' "$flake"
 test_grep '/nix/store/\*' "$flake"
 
@@ -32,7 +32,7 @@ test_grep '--setenv PATH "$sandbox_path"' "$flake"
 test_grep 'Project-specific build and test tools' README.md
 test_grep 'gnumake' README.md
 test_grep 'canonical `/nix/store` directories' README.md
-test_grep 'PI_BWRAP_EXTRA_PATH=/nix/store/.../bin' README.md
+test_grep 'PI_ENV_BWRAP_EXTRA_PATH=/nix/store/.../bin' README.md
 test_grep 'does not infer tools from a repository automatically' README.md
 
 # The sandbox still relies on a read-only Nix store rather than binding host
@@ -65,7 +65,7 @@ awk '
   }
 ' "$flake" >"$script"
 chmod +x "$script"
-test_grep 'PI_BWRAP_EXTRA_PATH' "$script"
+test_grep 'PI_ENV_BWRAP_EXTRA_PATH' "$script"
 test_grep 'exec "$PI_ENV_TEST_FAKE_BWRAP"' "$script"
 
 extra_bin=""
@@ -125,13 +125,13 @@ capture="$tmpdir/capture"
     PI_ENV_TEST_FAKE_BWRAP="$tmpdir/fake-bwrap" \
     PI_ENV_TEST_CAPTURE="$capture" \
     PI_ENV_TEST_COMMAND="$extra_cmd_name" \
-    PI_BWRAP_PROJECT_ROOT="$repo_root" \
-    PI_BWRAP_IMPORT_COMMON=0 \
-    PI_BWRAP_IMPORT_EXTENSIONS=0 \
-    PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-    PI_BWRAP_IMPORT_AUTH=0 \
-    PI_BWRAP_IMPORT_SESSIONS=0 \
-    PI_BWRAP_EXTRA_PATH=":$extra_bin:" \
+    PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+    PI_ENV_BWRAP_IMPORT_COMMON=0 \
+    PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+    PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+    PI_ENV_BWRAP_IMPORT_AUTH=0 \
+    PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
+    PI_ENV_BWRAP_EXTRA_PATH=":$extra_bin:" \
     "$script" -- --version
 )
 
@@ -150,7 +150,7 @@ case "$sandbox_path" in
 esac
 case "$sandbox_path" in
   *::*)
-    test_fail "empty PI_BWRAP_EXTRA_PATH entries leaked into sandbox PATH: $sandbox_path"
+    test_fail "empty PI_ENV_BWRAP_EXTRA_PATH entries leaked into sandbox PATH: $sandbox_path"
     ;;
 esac
 
@@ -162,22 +162,22 @@ unsafe_output="$(
     PI_ENV_TEST_FAKE_BWRAP="$tmpdir/fake-bwrap" \
     PI_ENV_TEST_CAPTURE="$tmpdir/unsafe-capture" \
     PI_ENV_TEST_COMMAND="$extra_cmd_name" \
-    PI_BWRAP_PROJECT_ROOT="$repo_root" \
-    PI_BWRAP_IMPORT_COMMON=0 \
-    PI_BWRAP_IMPORT_EXTENSIONS=0 \
-    PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-    PI_BWRAP_IMPORT_AUTH=0 \
-    PI_BWRAP_IMPORT_SESSIONS=0 \
-    PI_BWRAP_EXTRA_PATH="$unsafe_dir" \
+    PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+    PI_ENV_BWRAP_IMPORT_COMMON=0 \
+    PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+    PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+    PI_ENV_BWRAP_IMPORT_AUTH=0 \
+    PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
+    PI_ENV_BWRAP_EXTRA_PATH="$unsafe_dir" \
     "$script" -- --version 2>&1
 )"
 unsafe_status=$?
 set -e
 test_eq 2 "$unsafe_status" 'unsafe non-Nix-store extra PATH exits before bwrap'
 printf '%s\n' "$unsafe_output" >"$tmpdir/unsafe-output"
-test_grep 'unsafe PI_BWRAP_EXTRA_PATH entry outside /nix/store' "$tmpdir/unsafe-output"
+test_grep 'unsafe PI_ENV_BWRAP_EXTRA_PATH entry outside /nix/store' "$tmpdir/unsafe-output"
 if [ -e "$tmpdir/unsafe-capture" ]; then
-  test_fail 'unsafe PI_BWRAP_EXTRA_PATH reached bwrap'
+  test_fail 'unsafe PI_ENV_BWRAP_EXTRA_PATH reached bwrap'
 fi
 
 set +e
@@ -186,22 +186,22 @@ relative_output="$(
     PI_ENV_TEST_FAKE_BWRAP="$tmpdir/fake-bwrap" \
     PI_ENV_TEST_CAPTURE="$tmpdir/relative-capture" \
     PI_ENV_TEST_COMMAND="$extra_cmd_name" \
-    PI_BWRAP_PROJECT_ROOT="$repo_root" \
-    PI_BWRAP_IMPORT_COMMON=0 \
-    PI_BWRAP_IMPORT_EXTENSIONS=0 \
-    PI_BWRAP_IMPORT_GIT_CONFIG=0 \
-    PI_BWRAP_IMPORT_AUTH=0 \
-    PI_BWRAP_IMPORT_SESSIONS=0 \
-    PI_BWRAP_EXTRA_PATH=./bin \
+    PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
+    PI_ENV_BWRAP_IMPORT_COMMON=0 \
+    PI_ENV_BWRAP_IMPORT_EXTENSIONS=0 \
+    PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
+    PI_ENV_BWRAP_IMPORT_AUTH=0 \
+    PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
+    PI_ENV_BWRAP_EXTRA_PATH=./bin \
     "$script" -- --version 2>&1
 )"
 relative_status=$?
 set -e
 test_eq 2 "$relative_status" 'relative extra PATH exits before bwrap'
 printf '%s\n' "$relative_output" >"$tmpdir/relative-output"
-test_grep 'unsafe PI_BWRAP_EXTRA_PATH entry is not absolute' "$tmpdir/relative-output"
+test_grep 'unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not absolute' "$tmpdir/relative-output"
 if [ -e "$tmpdir/relative-capture" ]; then
-  test_fail 'relative PI_BWRAP_EXTRA_PATH reached bwrap'
+  test_fail 'relative PI_ENV_BWRAP_EXTRA_PATH reached bwrap'
 fi
 
 echo "safe extra Nix tool PATH propagation tests passed"
