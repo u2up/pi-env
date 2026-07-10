@@ -50,14 +50,6 @@ printf '%s\n' "$@" >>"$PI_ENV_TEST_LAUNCHER_TRACE"
 FAKE_PI_ENV_BWRAP
 chmod +x "$fake_root/fake-pi-bwrap"
 
-cat >"$fake_root/fake-pi-start" <<'FAKE_PI_START'
-#!/usr/bin/env bash
-echo "pi-start should not run in pi-env-shell mode" >&2
-exit 99
-FAKE_PI_START
-chmod +x "$fake_root/fake-pi-start"
-
-PI_ENV_PI_START="$fake_root/fake-pi-start" \
 PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-bwrap" \
 PI_ENV_TEST_LAUNCHER_TRACE="$fake_root/wired-nix.trace" \
 ./pi-env-shell --runtime nix -- -lc 'printf nix-shell'
@@ -69,7 +61,6 @@ mapfile -t wired_nix <"$fake_root/wired-nix.trace"
 [ "${wired_nix[4]}" = "printf nix-shell" ]
 
 PATH="$fake_root:$PATH" \
-PI_ENV_PI_START="$fake_root/fake-pi-start" \
 PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-bwrap" \
 PI_ENV_TEST_LAUNCHER_TRACE="$fake_root/auto.trace" \
 ./pi-env-shell --runtime auto -- -i

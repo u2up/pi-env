@@ -12,7 +12,8 @@ Usage:
   pi-env --help
   pi-env-shell --help
 
-Default pi-env mode delegates to pi-start, preserving pi-env defaults.
+Default pi-env mode starts Pi through pi-bwrap with the standard tools,
+--continue, and role-manager auto-loading policy.
 Raw pi-env mode delegates to pi-bwrap for fully custom Pi arguments.
 pi-env-shell selects the same runtime as pi-env, then asks pi-bwrap to enter
 sandbox shell mode instead of starting Pi.
@@ -105,7 +106,7 @@ args+=("$@")
 if [ "$runtime_selector_set" = "0" ]; then
   if [ "${PI_ENV_HOST_RUNTIME:-0}" = "1" ]; then
     runtime_mode="host"
-  elif [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
+  elif [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
     runtime_mode="auto"
   else
     runtime_mode="host"
@@ -125,8 +126,38 @@ case "$runtime_mode" in
     ;;
 esac
 
+default_startup_args() {
+  local tools="${PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
+  if [ -n "${PI_ENV_BWRAP_DEFAULT_TOOLS:-}" ]; then
+    tools="$PI_ENV_BWRAP_DEFAULT_TOOLS"
+  fi
+
+  local role_manager_package="${PI_ENV_ROLE_MANAGER_PACKAGE:-}"
+  if [ "${PI_ENV_ROLE_MANAGER_AUTO:-1}" != "0" ]; then
+    if [ -z "$role_manager_package" ]; then
+      local checkout_role_manager="$checkout_root/role-manager"
+      if [ -e "$checkout_role_manager" ]; then
+        role_manager_package="$checkout_role_manager"
+      fi
+    fi
+    if [ -n "$role_manager_package" ] && [ -e "$role_manager_package" ]; then
+      printf '%s\0' --tools "$tools" --continue -e "$role_manager_package"
+      return 0
+    fi
+  fi
+  printf '%s\0' --tools "$tools" --continue
+}
+
+exec_pi_bwrap_default() {
+  local pi_bwrap="$1"
+  local default_args=()
+  while IFS= read -r -d '' arg; do
+    default_args+=("$arg")
+  done < <(default_startup_args)
+  exec "$pi_bwrap" "${default_args[@]}" "${args[@]}"
+}
+
 exec_host_runtime() {
-  local host_pi_start="$script_dir/pi-start"
   local host_pi_bwrap="$script_dir/pi-bwrap"
   export PI_ENV_HOST_RUNTIME=1
   unset PI_ENV_RUNTIME_PATH
@@ -136,17 +167,17 @@ exec_host_runtime() {
   elif [ "$raw" = "1" ]; then
     exec "$host_pi_bwrap" -- "${args[@]}"
   fi
-  exec "$host_pi_start" "${args[@]}"
+  exec_pi_bwrap_default "$host_pi_bwrap"
 }
 
 exec_nix_runtime() {
-  if [ -n "${PI_ENV_PI_START:-}" ] && [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
+  if [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
     if [ "$shell_mode" = "1" ]; then
       exec "$PI_ENV_PI_ENV_BWRAP" --shell -- "${args[@]}"
     elif [ "$raw" = "1" ]; then
       exec "$PI_ENV_PI_ENV_BWRAP" -- "${args[@]}"
     fi
-    exec "$PI_ENV_PI_START" "${args[@]}"
+    exec_pi_bwrap_default "$PI_ENV_PI_ENV_BWRAP"
   fi
 
   if ! command -v nix >/dev/null 2>&1; then
@@ -167,16 +198,14 @@ exec_nix_runtime() {
 }
 
 exec_auto_runtime() {
-  local pi_start="${PI_ENV_PI_START:-pi-start}"
   local pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-pi-bwrap}"
-  if { [ -n "${PI_ENV_PI_START:-}" ] || command -v "$pi_start" >/dev/null 2>&1; } && \
-     { [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ] || command -v "$pi_bwrap" >/dev/null 2>&1; }; then
+  if [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ] || command -v "$pi_bwrap" >/dev/null 2>&1; then
     if [ "$shell_mode" = "1" ]; then
       exec "$pi_bwrap" --shell -- "${args[@]}"
     elif [ "$raw" = "1" ]; then
       exec "$pi_bwrap" -- "${args[@]}"
     fi
-    exec "$pi_start" "${args[@]}"
+    exec_pi_bwrap_default "$pi_bwrap"
   fi
   exec_nix_runtime
 }

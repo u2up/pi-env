@@ -108,16 +108,17 @@ if grep -F -- '/pi-env-resources/role-manager-1' "$checkout_capture" >/dev/null 
   test_fail 'checkout role-manager should not require an extra resource bind'
 fi
 
-pi_start_capture="$tmpdir/pi-start-role-manager-args"
+pi_env_capture="$tmpdir/pi-env-role-manager-args"
 env HOME="$host_home" \
   PATH="$custom_tools:$fakebin:$PATH" \
-  PI_ENV_TEST_BWRAP_ARGS="$pi_start_capture" \
+  PI_ENV_RUNTIME=auto \
+  PI_ENV_TEST_BWRAP_ARGS="$pi_env_capture" \
   PI_ENV_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
   PI_ENV_PI_ENV_BWRAP="$repo_root/scripts/pi-bwrap" \
   "${common_env[@]}" \
-  scripts/pi-start --help
+  ./pi-env 'prompt'
 
-test_file_exists "$pi_start_capture"
-test_grep '/workspace/role-manager' "$pi_start_capture"
+test_file_exists "$pi_env_capture"
+test_grep '/workspace/role-manager' "$pi_env_capture"
 
 echo 'host pi and role-manager resource policy fake-bwrap test passed'

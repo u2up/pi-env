@@ -142,7 +142,7 @@ YAML
 verify_install() {
   local prefix="$1"
   assert_executable "$prefix/bin/pi-env"
-  assert_executable "$prefix/bin/pi-start"
+  [ ! -e "$prefix/bin/pi-start" ] || { echo "pi-start should not be installed" >&2; exit 1; }
   assert_executable "$prefix/bin/pi-bwrap"
   assert_executable "$prefix/bin/bootstrap-coordination"
   assert_executable "$prefix/bin/agent-coord-status"

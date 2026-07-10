@@ -49,7 +49,7 @@ assert.match(readme, /pi-env\.packages\.\$\{system\}\.pi-core/);
 assert.match(readme, /pi-env\.packages\.\$\{system\}\.pi-env-coordination/);
 assert.match(readme, /`pi-runtime` continues to include the core runtime plus coordination helpers/);
 
-assert.match(design, /`pi-core` contains `pi-env`, `pi-env-shell`, `pi-start`, `pi-bwrap`, and the runtime tools/);
+assert.match(design, /`pi-core` contains `pi-env`, `pi-env-shell`, `pi-bwrap`, and the runtime tools/);
 assert.match(design, /`pi-env-coordination` contains the Git-backed coordination helper commands/);
 assert.match(design, /`pi-runtime` remains the compatibility bundle/);
 assert.match(design, /Projects that only need the sandbox\/runtime set it to `false`/);

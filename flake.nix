@@ -52,36 +52,23 @@
           exec ${pkgs.bash}/bin/bash ${./scripts/pi-bwrap} "$@"
         '';
 
-      mkPiStart = pkgs:
+      mkPiEnv = pkgs:
         let
           piBwrap = mkPiBwrap pkgs;
           roleManagerPackage = mkRoleManagerPackage pkgs;
-        in
-        pkgs.writeShellScriptBin "pi-start" ''
-          set -euo pipefail
-          export PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS="${defaultTools}"
-          export PI_ENV_ROLE_MANAGER_PACKAGE="''${PI_ENV_ROLE_MANAGER_PACKAGE:-${roleManagerPackage}}"
-          export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-bwrap"
-          exec ${pkgs.bash}/bin/bash ${./scripts/pi-start} "$@"
-        '';
-
-      mkPiEnv = pkgs:
-        let
-          piStart = mkPiStart pkgs;
-          piBwrap = mkPiBwrap pkgs;
           runtimePath = pkgs.lib.makeBinPath (mkRuntime pkgs);
         in
         pkgs.writeShellScriptBin "pi-env" ''
           set -euo pipefail
           export PATH="${runtimePath}:''${PATH:-}"
-          export PI_ENV_PI_START="${piStart}/bin/pi-start"
+          export PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS="${defaultTools}"
+          export PI_ENV_ROLE_MANAGER_PACKAGE="''${PI_ENV_ROLE_MANAGER_PACKAGE:-${roleManagerPackage}}"
           export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-bwrap"
           exec -a pi-env ${pkgs.bash}/bin/bash ${./scripts/pi-env-launcher} "$@"
         '';
 
       mkPiEnvShell = pkgs:
         let
-          piStart = mkPiStart pkgs;
           piBwrap = mkPiBwrap pkgs;
           runtimePath = pkgs.lib.makeBinPath (mkRuntime pkgs);
         in
@@ -89,7 +76,6 @@
           set -euo pipefail
           export PATH="${runtimePath}:''${PATH:-}"
           export PI_ENV_SHELL_MODE=1
-          export PI_ENV_PI_START="${piStart}/bin/pi-start"
           export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-bwrap"
           exec -a pi-env-shell ${pkgs.bash}/bin/bash ${./scripts/pi-env-launcher} "$@"
         '';
@@ -162,7 +148,6 @@
         }:
         let
           piBwrap = mkPiBwrap pkgs;
-          piStart = mkPiStart pkgs;
           piEnv = mkPiEnv pkgs;
           piEnvShell = mkPiEnvShell pkgs;
           agentCoordCommands = builtins.attrValues (mkAgentCoordCommands pkgs);
@@ -173,7 +158,6 @@
         pkgs.mkShell {
           packages = (mkRuntime pkgs) ++ (mkDevShellTools pkgs) ++ [
             piBwrap
-            piStart
             piEnv
             piEnvShell
           ] ++ coordinationPackages ++ extraPackages;
@@ -202,7 +186,6 @@
           mkRuntime
           mkDevShellTools
           mkPiBwrap
-          mkPiStart
           mkPiEnv
           mkPiEnvShell
           agentCoordCommandNames
@@ -217,7 +200,6 @@
       let
         pkgs = import nixpkgs { inherit system; };
         piBwrap = mkPiBwrap pkgs;
-        piStart = mkPiStart pkgs;
         piEnv = mkPiEnv pkgs;
         piEnvShell = mkPiEnvShell pkgs;
         agentCoordCommands = mkAgentCoordCommands pkgs;
@@ -225,7 +207,6 @@
         roleManagerPackage = mkRoleManagerPackage pkgs;
         coreRuntimePaths = (mkRuntime pkgs) ++ [
           piBwrap
-          piStart
           piEnv
           piEnvShell
         ];
@@ -253,7 +234,6 @@
           default = piEnv;
           pi-env = piEnv;
           pi-env-shell = piEnvShell;
-          pi-start = piStart;
           pi-bwrap = piBwrap;
           pi-core = piCore;
           pi-runtime = piRuntime;
@@ -274,10 +254,6 @@
             type = "app";
             program = "${piEnvShell}/bin/pi-env-shell";
           };
-          pi-start = {
-            type = "app";
-            program = "${piStart}/bin/pi-start";
-          };
           pi-bwrap = {
             type = "app";
             program = "${piBwrap}/bin/pi-bwrap";
@@ -288,7 +264,10 @@
           pi-core-smoke = smokeCheck "pi-env-core-smoke" [ piCore ] ''
             command -v pi-env >/dev/null
             command -v pi-env-shell >/dev/null
-            command -v pi-start >/dev/null
+            if command -v pi-start >/dev/null 2>&1; then
+              echo "pi-start leaked into pi-core" >&2
+              exit 1
+            fi
             command -v pi-bwrap >/dev/null
             pi-env --help >/dev/null
             pi-env-shell --help >/dev/null
@@ -302,7 +281,10 @@
           pi-runtime-compat-smoke = smokeCheck "pi-env-runtime-compat-smoke" [ piRuntime ] ''
             command -v pi-env >/dev/null
             command -v pi-env-shell >/dev/null
-            command -v pi-start >/dev/null
+            if command -v pi-start >/dev/null 2>&1; then
+              echo "pi-start leaked into pi-runtime" >&2
+              exit 1
+            fi
             command -v pi-bwrap >/dev/null
             command -v agent-coord-status >/dev/null
             command -v bootstrap-coordination >/dev/null

@@ -4,7 +4,6 @@ set -euo pipefail
 command_names=(
   pi-env
   pi-env-shell
-  pi-start
   pi-bwrap
   bootstrap-coordination
   agent-coord-init
@@ -248,7 +247,6 @@ fi
 export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-\$pi_env_share_dir/scripts/agent-coord-lib.sh}"
 export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-\$pi_env_share_dir/pi-skill-templates/agent-coordination}"
 export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-\$pi_env_share_dir/role-manager}"
-export PI_ENV_PI_START="\${PI_ENV_PI_START:-\$pi_env_bin_dir/pi-start}"
 export PI_ENV_PI_ENV_BWRAP="\${PI_ENV_PI_ENV_BWRAP:-\$pi_env_bin_dir/pi-bwrap}"
 exec /usr/bin/env bash "\$pi_env_share_dir/scripts/\$pi_env_script_target" "\$@"
 EOF
@@ -370,7 +368,6 @@ chmod +x "$share_dir/scripts"/agent-coord-* \
   "$share_dir/scripts/pi-bwrap" \
   "$share_dir/scripts/pi-env-launcher" \
   "$share_dir/scripts/pi-serial-roles" \
-  "$share_dir/scripts/pi-start" \
   "$share_dir/scripts/install-non-nix"
 
 for name in "${command_names[@]}"; do
