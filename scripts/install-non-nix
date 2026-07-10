@@ -28,6 +28,10 @@ command_names=(
   pi-env-uninstall
 )
 
+removed_command_names=(
+  pi-start
+)
+
 usage() {
   cat <<'USAGE'
 install-non-nix - install pi-env for host-runtime use without Nix
@@ -203,6 +207,13 @@ remove_empty_parents() {
   done
 }
 
+remove_obsolete_commands() {
+  local name
+  for name in "${removed_command_names[@]}"; do
+    rm -f "$bin_dir/$name"
+  done
+}
+
 run_uninstall() {
   if [ ! -f "$manifest" ]; then
     echo "install-non-nix: manifest not found: $manifest" >&2
@@ -359,6 +370,7 @@ else
   exit 1
 fi
 mkdir -p "$bin_dir" "$share_dir"
+remove_obsolete_commands
 rm -rf "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates"
 cp -R "$source_root/scripts" "$share_dir/scripts"
 cp -R "$source_root/role-manager" "$share_dir/role-manager"

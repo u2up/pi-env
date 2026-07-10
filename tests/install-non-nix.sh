@@ -15,10 +15,16 @@ assert_file() {
 
 # Local payload installs must work without remote bootstrap options or network.
 local_prefix="$workdir/local-prefix"
+mkdir -p "$local_prefix/bin"
+printf 'stale legacy wrapper\n' > "$local_prefix/bin/pi-start"
 "$repo_root/scripts/install-non-nix" --prefix "$local_prefix"
 assert_file "$local_prefix/bin/pi-env"
 assert_file "$local_prefix/bin/agent-coord-repo"
 assert_file "$local_prefix/share/pi-env/install-manifest"
+[ ! -e "$local_prefix/bin/pi-start" ] || {
+  echo "stale pi-start wrapper survived reinstall" >&2
+  exit 1
+}
 [ ! -f "$local_prefix/share/pi-env/install-origin" ] || {
   echo "local install unexpectedly wrote remote origin metadata" >&2
   exit 1
