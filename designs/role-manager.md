@@ -45,8 +45,8 @@ interactive UI.
 
 ## Non-goals
 
-- Do not make `pi-start` automatically claim, mark done, review, verify,
-  close, commit, push, or otherwise mutate coordination state.
+- Do not make default `pi-env` startup automatically claim, mark done, review,
+  verify, close, commit, push, or otherwise mutate coordination state.
 - Do not make every role always visible in the model context.
 - Do not change the project repository Git committer identity just because a
   role is active.
@@ -192,7 +192,7 @@ role is active.
 ## Coordination identity
 
 Coordination state remains plain Git and Markdown. Role support should not make
-`pi-start` mutate coordination automatically.
+default `pi-env` startup mutate coordination automatically.
 
 When a role is active and coordination helper commands commit coordination
 state, those commits should be attributable to the role. The implemented
@@ -240,8 +240,8 @@ runtime support needed to use it across projects:
 - keep project-local `.pi/roles` available through the `/workspace` mount;
 - document required extra tools if a role-manager extension registers custom
   tools such as `role_cycle_done`;
-- keep `pi-start`'s default behavior unchanged unless the user enables the role
-  package or extension.
+- keep default `pi-env` startup behavior predictable unless the user enables the
+  role package or extension.
 
 ## Implementation roadmap
 

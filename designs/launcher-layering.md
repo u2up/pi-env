@@ -41,9 +41,11 @@ same runtime-selection and flake bootstrap logic as `pi-env`, then pass an
 explicit shell intent to the sandbox layer rather than constructing its own
 Bubblewrap command.
 
-`pi-start` is the agent-facing startup layer. It translates the prepared
-workspace into the final `pi` invocation, applies role or prompt options, and
-keeps startup ergonomics separate from sandbox construction.
+Default `pi-env` startup is the agent-facing startup layer. After runtime
+selection, `pi-env` translates the prepared workspace into the final `pi`
+invocation policy: default tool allowlist, `--continue`, role-manager package
+loading, and caller-supplied Pi arguments. This keeps startup ergonomics in the
+user-facing command while still keeping sandbox construction separate.
 
 `pi-bwrap` is the sandbox construction layer. It builds the Bubblewrap command
 line and is the only layer that should assemble mount, environment, network,
@@ -54,11 +56,11 @@ from `pi` to Bash.
 ## 2. Command flow
 
 The launchers pass structured intent downward rather than sharing hidden global
-state. `pi-env` resolves the single project root and runtime inputs, then calls
-`pi-start` for the default `UC-001` agent startup or `pi-bwrap` for the
-custom-argument `UC-002` path. `pi-env-shell` resolves the same runtime inputs,
-then calls `pi-bwrap` shell mode. `pi-start` may delegate to `pi-bwrap` when the
-agent must run in the sandbox.
+state. `pi-env` resolves the single project root and runtime inputs, applies the
+default `UC-001` agent startup policy itself, then calls `pi-bwrap`. For the
+custom-argument `UC-002` path, `pi-env --raw` calls `pi-bwrap` directly.
+`pi-env-shell` resolves the same runtime inputs, then calls `pi-bwrap` shell
+mode.
 
 This shape lets `CMD-018` and the launcher-facing part of `CMD-019` add role
 manager integration without changing the sandbox contract. Role selection is
@@ -74,6 +76,9 @@ missing runtime tools. Error messages should identify the layer that rejected
 the request so users know whether to adjust launch flags, Pi startup options,
 or sandbox settings.
 
-The layering also preserves backwards compatibility: user-visible command names
-remain stable while implementation detail can move between scripts as long as
-ownership boundaries above are maintained.
+The layering intentionally removes `pi-start` as a user-visible command because
+this project has no known external users and the command adds unnecessary
+surface area. Compatibility is preserved for the remaining commands by keeping
+`pi-env`, `pi-env-shell`, and `pi-bwrap` semantics stable while implementation
+detail moves between scripts as long as ownership boundaries above are
+maintained.

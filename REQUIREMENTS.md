@@ -8,7 +8,7 @@ Each rendered requirement has a stable public key such as `UC-001`, `CMD-004`, o
 
 `pi-env` provides a reusable Nix development shell and Bubblewrap launcher for `pi-coding-agent`. Each run operates on one selected project root, and that root is mounted read-write at `/workspace` inside the sandbox. `/workspace` is the sandbox path name, not a host-side multi-project workspace manager.
 
-Coordination support must be implemented as an opt-in layer. It must not make `pi-start` create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.
+Coordination support must be implemented as an opt-in layer. It must not make default `pi-env` startup create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically. Any coordination helper that changes shared state must be explicit, inspectable, and backed by normal Git commits.
 
 The project must keep two responsibilities separate:
 
@@ -39,22 +39,22 @@ Workflow-level requirements describe user goals that the detailed requirements m
 
 - Type: Functional requirement
 - Requirement kind: workflow
-- Related requirements: FLAKE-006, CMD-002, CMD-003, CMD-005, PATH-001, PATH-004, PATH-005, AGENT-011
+- Related requirements: FLAKE-006, CMD-003, CMD-005, CMD-018, PATH-001, PATH-004, PATH-005, AGENT-011
 
 A user must be able to enter the `pi-env` development shell and run Pi for the current repository:
 
 ```bash
 nix develop
-pi-start
+pi-env
 ```
 
-`pi-start` must start Pi through Bubblewrap with the default built-in tool allowlist:
+Default `pi-env` startup must start Pi through Bubblewrap with the default built-in tool allowlist:
 
 ```text
 read,bash,edit,write,grep,find,ls
 ```
 
-`pi-start` must run Pi with `--continue` so existing scoped sessions for the current project can be resumed.
+Default `pi-env` startup must run Pi with `--continue` so existing scoped sessions for the current project can be resumed.
 
 #### UC-002 — Run Pi with custom arguments
 
@@ -194,15 +194,15 @@ If Pi is installed globally via npm, `pi-bwrap` must be able to run it by mounti
 - Requirement kind: workflow
 - Related requirements: FLAKE-001, FLAKE-002, FLAKE-003, FLAKE-006
 
-A project without an existing flake must be able to add `pi-env` as an input and use `mkPiShell`, then run `nix develop` and `pi-start`.
+A project without an existing flake must be able to add `pi-env` as an input and use `mkPiShell`, then run `nix develop` and `pi-env`.
 
 #### UC-018 — Add Pi wrappers to an existing project devshell
 
 - Type: Functional requirement
 - Requirement kind: workflow
-- Related requirements: FLAKE-004, CMD-001, CMD-002
+- Related requirements: FLAKE-004, CMD-001, CMD-018
 
-A project that already has a flake/devshell must be able to keep its existing shell and add the `pi-start` and `pi-bwrap` wrapper packages.
+A project that already has a flake/devshell must be able to keep its existing shell and add the `pi-env`, `pi-env-shell`, and `pi-bwrap` wrapper packages.
 
 #### UC-019 — Use `pi-env` as a flake package or app
 
@@ -211,10 +211,11 @@ A project that already has a flake/devshell must be able to keep its existing sh
 - Related requirements: FLAKE-004, FLAKE-005
 
 Users must be able to use exposed packages and apps such as `default`,
-`pi-start`, `pi-bwrap`, `pi-core`, `pi-env-coordination`, and the
-compatibility `pi-runtime` bundle through commands like
-`nix run .#pi-bwrap -- ...`,
-`nix build .#pi-core`, and `nix build .#pi-runtime`.
+`pi-env`, `pi-env-shell`, `pi-bwrap`, `pi-core`,
+`pi-env-coordination`, and the compatibility `pi-runtime` bundle through
+commands like `nix run .#pi-env -- ...`,
+`nix run .#pi-bwrap -- ...`, `nix build .#pi-core`, and
+`nix build .#pi-runtime`.
 
 #### UC-020 — Use the library API in other flakes
 
@@ -252,7 +253,7 @@ project coordination repository. Fresh project-local operational artifacts
 for this workflow, including the coordination working clone and local bare
 remotes, must live under `.pi-env/` by default. Agents synchronize only by
 normal Git pull/commit/push operations. This use case remains opt-in, and
-default `pi-start` behavior must not mutate coordination state automatically.
+default `pi-env` startup behavior must not mutate coordination state automatically.
 A coordination domain can cover multiple implementation repositories, but
 each pi-env invocation remains attached to one selected implementation repo.
 The coordination clone contains root `PROJECT.md`, shared `requirements/`,
@@ -352,7 +353,7 @@ For each supported system the flake must expose packages:
 
 - `default` equal to `pi-env`
 - `pi-env`
-- `pi-start`
+- `pi-env-shell`
 - `pi-bwrap`
 - `pi-core` for core runtime commands and tools only
 - `pi-env-coordination` for the optional Git-backed coordination helpers
@@ -383,8 +384,9 @@ For each supported system the flake must expose packages:
 
 For each supported system the flake must expose apps:
 
-- `default` running `pi-start`
-- `pi-start`
+- `default` running `pi-env`
+- `pi-env`
+- `pi-env-shell`
 - `pi-bwrap`
 
 #### FLAKE-006 Devshell
@@ -505,7 +507,7 @@ manifest/uninstall command.
 Installed support files must include the coordination helper library,
 coordination templates, and role-manager package data needed by:
 
-- `pi-env`, `pi-start`, and `pi-bwrap`;
+- `pi-env`, `pi-env-shell`, and `pi-bwrap`;
 - `bootstrap-coordination`;
 - `agent-coord-*` helper commands;
 - `pi-serial-roles`.
@@ -579,9 +581,13 @@ Acceptance criteria:
 
 The package `pi-bwrap` must install an executable named `pi-bwrap`.
 
-#### CMD-002 `pi-start` existence
+#### CMD-002 `pi-start` removal
 
-The package `pi-start` must install an executable named `pi-start`.
+The project must not expose `pi-start` as a package, app, installed
+executable, devshell command, or direct-checkout wrapper. Default Pi startup
+must be available through `pi-env`; shell startup must be available through
+`pi-env-shell`; low-level sandbox/custom Pi invocation must remain available
+through `pi-bwrap`.
 
 #### CMD-003 Default tool allowlist clarification
 
@@ -599,15 +605,17 @@ pi --tools read,bash,edit,write,grep,find,ls --continue
 
 or with the same structure but replacing the tool list with `PI_ENV_BWRAP_DEFAULT_TOOLS` when set.
 
-#### CMD-005 `pi-start` invocation
+#### CMD-005 Default `pi-env` invocation
 
-`pi-start` must run `pi-bwrap` with:
+Default `pi-env` startup must run `pi-bwrap` with:
 
 ```bash
 --tools "$tools" --continue "$@"
 ```
 
-where `$tools` is the default tool list or `PI_ENV_BWRAP_DEFAULT_TOOLS` when set.
+where `$tools` is the default tool list or `PI_ENV_BWRAP_DEFAULT_TOOLS`
+when set. This behavior must be implemented without a separate `pi-start`
+command.
 
 #### CMD-006 Argument separator
 
@@ -858,12 +866,11 @@ forced to match bundled role policy.
 
 #### CMD-018 pi-env top-level launcher
 
-`pi-env` must provide a simple top-level entrypoint for starting Pi from
-any target project while reusing the existing `pi-start` and `pi-bwrap`
-behavior.
+`pi-env` must provide the top-level entrypoint for starting Pi from any
+target project while reusing `pi-bwrap` for sandbox construction.
 
 Default invocation from a target project must be equivalent in behavior
-to entering the selected `pi-env` Nix devshell and running `pi-start`:
+to entering the selected `pi-env` Nix devshell and running `pi-env`:
 
 ```bash
 cd /path/to/project
@@ -876,8 +883,8 @@ at `/workspace`.
 
 The launcher must support these direct-use controls:
 
-- `pi-env [args...]` delegates to `pi-start [args...]` after entering
-  the selected devshell.
+- `pi-env [args...]` applies the default startup policy itself after
+  entering the selected devshell, then delegates to `pi-bwrap`.
 - `pi-env --raw -- [pi args...]` delegates to `pi-bwrap -- [pi args...]`
   for fully custom Pi argument forwarding.
 - `pi-env --flake REF ...` or `PI_ENV_FLAKE=REF pi-env ...` selects the
@@ -889,9 +896,10 @@ after `nix develop` without a separate checkout script.
 
 #### CMD-019 Default role-manager startup integration
 
-`pi-start` must load the pi-env role-manager package by default when the
-package is available, without requiring users to remember an explicit
-`-e "$PI_ENV_ROLE_MANAGER_PACKAGE"` argument for normal startup.
+Default `pi-env` startup must load the pi-env role-manager package by
+default when the package is available, without requiring users to remember
+an explicit `-e "$PI_ENV_ROLE_MANAGER_PACKAGE"` argument for normal
+startup.
 
 The default integration must:
 
@@ -900,7 +908,7 @@ The default integration must:
 - preserve the existing default tool allowlist behavior, `--continue`,
   and caller-supplied Pi arguments;
 - use `PI_ENV_ROLE_MANAGER_PACKAGE` when set, otherwise use the Nix-built
-  role-manager package path known to `pi-start`;
+  role-manager package path known to `pi-env`;
 - skip role-manager loading gracefully when no package path is available
   or the path does not exist;
 - allow opt-out with `PI_ENV_ROLE_MANAGER_AUTO=0`;
@@ -979,8 +987,9 @@ already wired into the current process, `pi-env-shell` must enter
 `nix develop` for the selected flake and run the Nix-provided
 `pi-env-shell`, preserving the requested shell-mode arguments.
 
-Existing `pi-env`, `pi-start`, and `pi-bwrap` Pi-agent behavior must remain
-unchanged.
+Existing `pi-env` and `pi-bwrap` Pi-agent behavior must remain unchanged,
+except that `pi-start` is intentionally removed and its default startup
+behavior moves into `pi-env`.
 
 ### 3.5 Project root and working directory requirements
 
@@ -1380,7 +1389,7 @@ Design proposals that are not yet mandatory runtime behavior must be documented 
 `README.md` must document:
 
 - project purpose
-- `pi-start` and `pi-bwrap` commands
+- `pi-env`, `pi-env-shell`, and `pi-bwrap` commands
 - default tool list
 - Bubblewrap safety defaults
 - environment knobs
@@ -1438,8 +1447,8 @@ nix develop
 pi-env
 ```
 
-The getting-started text must also mention that `pi-start`/`pi-env`
-default startup loads the role-manager package when available, while
+The getting-started text must also mention that default `pi-env` startup
+loads the role-manager package when available, while
 `PI_ENV_ROLE_MANAGER_AUTO=0` disables that behavior.
 
 #### DOC-004 Host default and Nix opt-in documentation
@@ -1476,10 +1485,10 @@ nix flake show
 
 Expected:
 
-- packages include `default`, `pi-env`, `pi-start`, `pi-bwrap`, `pi-core`,
-  `pi-env-coordination`, `pi-runtime`, `pi-role-manager`, and the
-  coordination helper command packages
-- apps include `pi-env`, `pi-start`, `pi-bwrap`, and `default`
+- packages include `default`, `pi-env`, `pi-env-shell`, `pi-bwrap`,
+  `pi-core`, `pi-env-coordination`, `pi-runtime`, `pi-role-manager`, and
+  the coordination helper command packages
+- apps include `pi-env`, `pi-env-shell`, `pi-bwrap`, and `default`
 - checks include core-only and coordination-included package smoke tests
 - `devShells.default` exists
 
@@ -1489,8 +1498,8 @@ Commands:
 
 ```bash
 nix build .#pi-env
+nix build .#pi-env-shell
 nix build .#pi-bwrap
-nix build .#pi-start
 nix build .#pi-core
 nix build .#pi-env-coordination
 nix build .#pi-runtime
@@ -1567,12 +1576,12 @@ Expected fake Pi sees exactly:
 --model test/model hello
 ```
 
-#### TEST-007 `pi-start` preserves extra args
+#### TEST-007 `pi-env` preserves extra args
 
 With fake `pi`, run:
 
 ```bash
-pi-start --model test/model
+pi-env --model test/model
 ```
 
 Expected fake Pi sees `--tools <default-tools> --continue --model test/model`.
@@ -1582,7 +1591,7 @@ Expected fake Pi sees `--tools <default-tools> --continue --model test/model`.
 With fake `pi`, run:
 
 ```bash
-PI_ENV_BWRAP_DEFAULT_TOOLS=read,grep pi-start
+PI_ENV_BWRAP_DEFAULT_TOOLS=read,grep pi-env
 ```
 
 Expected fake Pi sees `--tools read,grep --continue`.
@@ -1841,24 +1850,28 @@ Coverage must verify that:
 
 #### CRQ-011 pi-env launcher layering constraint
 
-The `pi-env` launcher must remain a thin bootstrapper and must not become
-a second implementation of Pi startup policy or sandbox policy.
+The `pi-env` launcher must remain a thin runtime/bootstrapper and must not
+duplicate sandbox policy. It may own default Pi startup policy so the separate
+`pi-start` command can be removed.
 
 Required layering:
 
 ```text
-pi-env   = direct/project-integrated UX entrypoint and Nix bootstrap
-pi-start = default Pi invocation policy
-pi-bwrap = sandbox boundary and custom Pi argument passthrough
+pi-env       = direct/project-integrated UX entrypoint, Nix bootstrap,
+               and default Pi invocation policy
+pi-env-shell = shell-oriented UX entrypoint using the same runtime selection
+pi-bwrap     = sandbox boundary and custom Pi argument passthrough
 ```
 
 Consequences:
 
-- `pi-env` must delegate default runs to `pi-start`.
+- `pi-env` must implement default startup policy by adding the default tool
+  allowlist, `--continue`, role-manager default loading, and caller-provided
+  Pi arguments before delegating to `pi-bwrap`.
 - `pi-env --raw` must delegate custom runs to `pi-bwrap`.
-- Tool allowlists, role-manager default loading, `--continue`, project
-  root mapping, sandbox mounts, auth/session import, and environment
-  policy must remain owned by `pi-start`/`pi-bwrap`.
+- `pi-env-shell` must delegate shell runs to `pi-bwrap --shell`.
+- Project root mapping, sandbox mounts, auth/session import, and environment
+  policy must remain owned by `pi-bwrap`.
 - `pi-env` must not create, claim, mark done, review, verify, close,
   commit, push, or otherwise mutate coordination state automatically.
 - `pi-env` must preserve the caller's working directory instead of
@@ -1913,13 +1926,16 @@ Git-backed coordination support, when enabled, must keep one bare coordination r
 
 Coordination repositories must be plain Git repositories containing Markdown and small metadata blocks. Helper commands must remain thin wrappers around Git and file scaffolding/editing.
 
-#### CRQ-003 — `pi-start` must not mutate coordination state
+#### CRQ-003 — Default startup must not mutate coordination state
 
 - Type: Constraint requirement
 - Requirement kind: safety boundary
 - Related workflows: UC-023
 
-`pi-start` may only provide safe context, reminders, or mounts for coordination repositories. It must not create, claim, mark done, review, verify, close, commit, push, or otherwise mutate coordination state automatically.
+Default `pi-env` startup and `pi-bwrap` may only provide safe context,
+reminders, or mounts for coordination repositories. They must not create,
+claim, mark done, review, verify, close, commit, push, or otherwise mutate
+coordination state automatically.
 
 #### CRQ-004 — No hidden synchronization mechanism
 

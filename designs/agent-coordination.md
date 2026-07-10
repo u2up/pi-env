@@ -447,7 +447,7 @@ git -c user.name=pi/architect \
 
 Role-aware identity should apply to the coordination repository only. It should
 not change project repository Git identity unless the user explicitly opts in.
-`pi-start` must still avoid automatic claims, closes, commits, or pushes.
+Default `pi-env` startup must still avoid automatic claims, closes, commits, or pushes.
 
 ## 10. Coordination rules installed by `agent-coord-init`
 
@@ -560,7 +560,7 @@ agent-coord-upgrade-rules
 
 ## 11. Optional Pi integration
 
-`pi-start` should not mutate coordination state automatically.
+Default `pi-env` startup should not mutate coordination state automatically.
 
 Possible safe integrations:
 
@@ -569,7 +569,7 @@ Possible safe integrations:
 - provide an optional prompt/context snippet explaining the Git sync protocol;
 - allow users to mount/select the coordination repository explicitly when it is outside the project root.
 
-Any automatic claim, mark-done, review, verify, close, commit, or push behavior should be opt-in and implemented outside the default `pi-start` path.
+Any automatic claim, mark-done, review, verify, close, commit, or push behavior should be opt-in and implemented outside the default `pi-env` startup path.
 
 ## 12. Non-goals
 

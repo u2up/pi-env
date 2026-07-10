@@ -32,7 +32,7 @@ programs; apps provide convenient `nix run` entrypoints.
 The package boundary separates the core sandbox runtime from optional
 coordination helpers while preserving compatibility:
 
-- `pi-core` contains `pi-env`, `pi-env-shell`, `pi-start`, `pi-bwrap`, and the runtime tools.
+- `pi-core` contains `pi-env`, `pi-env-shell`, `pi-bwrap`, and the runtime tools.
 - `pi-env-coordination` contains the Git-backed coordination helper commands.
 - `pi-runtime` remains the compatibility bundle containing both sets of
   commands for existing consumers.

@@ -28,13 +28,13 @@ Try it locally from this repository with:
 pi -e ./role-manager
 ```
 
-Inside the `pi-env` devshell, `pi-start` loads the Nix-packaged role manager by
+Inside the `pi-env` devshell, `pi-env` loads the Nix-packaged role manager by
 default when the package path exists. The package remains inactive until a role
 is selected, restored from session state, or requested through supported
 environment variables. Opt out for one run with:
 
 ```bash
-PI_ENV_ROLE_MANAGER_AUTO=0 pi-start
+PI_ENV_ROLE_MANAGER_AUTO=0 pi-env
 ```
 
 You can still install that package path into project-local Pi settings. If you
@@ -43,7 +43,7 @@ extension flag, keep using the opt-out variable:
 
 ```bash
 pi-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
-PI_ENV_ROLE_MANAGER_AUTO=0 pi-start
+PI_ENV_ROLE_MANAGER_AUTO=0 pi-env
 ```
 
 Role merge order is base package roles, global agent roles, common agent

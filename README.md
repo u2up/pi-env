@@ -359,8 +359,8 @@ prints a short reminder unless `PI_ENV_QUIET` is set.
 ### Optional profile installation
 
 For the smallest profile that can launch Pi in the sandbox, install the core
-runtime package. It puts `pi-env`, `pi-env-shell`, `pi-start`, `pi-bwrap`, and
-the runtime tools on `PATH` without the Git-backed coordination helper
+runtime package. It puts `pi-env`, `pi-env-shell`, `pi-bwrap`, and the
+runtime tools on `PATH` without the Git-backed coordination helper
 commands:
 
 ```bash
@@ -435,11 +435,11 @@ runtime and Bubblewrap sandbox instead of starting the Pi agent:
 
 `pi-env-shell` owns runtime selection just like `pi-env`; the lower-level
 sandbox payload switch remains `pi-bwrap --shell`. Normal `pi-env` invocations
-still start Pi through `pi-start`, and Pi arguments continue to pass through as
+apply the default startup policy and Pi arguments continue to pass through as
 shown above.
 
 Use `--raw --` when you want to pass arguments directly to Pi through
-`pi-bwrap` instead of using the `pi-start` defaults:
+`pi-bwrap` instead of using the default `pi-env` startup policy:
 
 ```bash
 pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
@@ -657,8 +657,8 @@ pi-env
 ```
 
 Direct checkout `pi-env` defaults to host runtime mode. In all runtime modes,
-`pi-env` delegates to `pi-start`, which runs the sandbox with the default tool
-allowlist, `--continue`, and the default role-manager package when available:
+default `pi-env` startup runs the sandbox with the default tool allowlist,
+`--continue`, and the default role-manager package when available:
 
 ```bash
 pi-bwrap --tools read,bash,edit,write,grep,find,ls --continue -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
@@ -693,20 +693,20 @@ Pi arguments; any remaining arguments are Bash arguments after runtime
 selection. Use `pi-env` for normal agent startup and `pi-env --raw -- ...` when
 you need custom Pi arguments.
 
-### `pi-start`
+### Default `pi-env` startup
 
-`pi-start` is the default startup wrapper. It chooses the default tool list from
+`pi-env` is the default startup wrapper. It chooses the default tool list from
 `PI_ENV_BWRAP_DEFAULT_TOOLS` when set, otherwise uses Pi's built-in tools:
 
 ```text
 read,bash,edit,write,grep,find,ls
 ```
 
-By default, `pi-start` loads the packaged role-manager extension when the
-package path exists. The role manager is inactive until you select a role,
-restore one from session state, or request one through supported environment
-variables. Set `PI_ENV_ROLE_MANAGER_AUTO=0` to omit the automatic per-run
-extension argument, especially if you prefer an installed-package workflow.
+By default, `pi-env` loads the packaged role-manager extension when the package
+path exists. The role manager is inactive until you select a role, restore one
+from session state, or request one through supported environment variables. Set
+`PI_ENV_ROLE_MANAGER_AUTO=0` to omit the automatic per-run extension argument,
+especially if you prefer an installed-package workflow.
 
 ### `pi-bwrap`
 
@@ -870,23 +870,23 @@ PI_ENV_COORD_REMOTE_URL=git@example:repo.git # legacy alias for PI_ENV_COORD_REM
 PI_ENV_COORD_PROJECT=pi-env                 # coordination project/domain name
 PI_ENV_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
 PI_ENV_COORD_ROLE=architect                 # active coordination role for helper commits/events
-PI_ENV_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-start/pi-bwrap default tools
+PI_ENV_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-env/pi-bwrap default tools
 PI_ENV_BWRAP_EXTRA_PATH=/nix/store/.../bin   # Nix runtime: validated /nix/store command dirs
 PI_ENV_BWRAP_HOST_EXTRA_PATH=/opt/tools/bin  # host runtime: validated read-only host command dirs
 PI_ENV_BWRAP_NET=0                          # disable network sharing
 PI_ENV_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 ```
 
-Common per-project overrides can be set before running `pi-start` / `pi-bwrap`,
+Common per-project overrides can be set before running `pi-env` / `pi-bwrap`,
 or exported in the project's shell hook:
 
 ```bash
-PI_ENV_BWRAP_PROJECT_ROOT=/path/to/repo pi-start  # mount this repo at /workspace
-PI_ENV_BWRAP_USE_GIT_ROOT=0 pi-start              # use $PWD instead of git root
-PI_ENV_BWRAP_EPHEMERAL_HOME=1 pi-start            # throw away sandbox home after the run
-PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state pi-start # opt in to project-local sandbox state
-PI_ENV_BWRAP_IMPORT_AUTH=0 pi-start               # do not copy host Pi auth into sandbox state
-PI_ENV_BWRAP_NET=0 pi-start                       # disable network access
+PI_ENV_BWRAP_PROJECT_ROOT=/path/to/repo pi-env  # mount this repo at /workspace
+PI_ENV_BWRAP_USE_GIT_ROOT=0 pi-env              # use $PWD instead of git root
+PI_ENV_BWRAP_EPHEMERAL_HOME=1 pi-env            # throw away sandbox home after the run
+PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state pi-env # opt in to project-local sandbox state
+PI_ENV_BWRAP_IMPORT_AUTH=0 pi-env               # do not copy host Pi auth into sandbox state
+PI_ENV_BWRAP_NET=0 pi-env                       # disable network access
 ```
 
 Inside the sandbox, the selected project root is mounted read-write at
@@ -931,7 +931,7 @@ To keep common rules, skills, prompts, or roles in a separate repo or directory,
 point `PI_ENV_BWRAP_COMMON_AGENT_DIR` at it:
 
 ```bash
-PI_ENV_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-start
+PI_ENV_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-env
 ```
 
 Expected layout:
@@ -951,7 +951,7 @@ my-pi-common/
 Disable common resource import entirely with:
 
 ```bash
-PI_ENV_BWRAP_IMPORT_COMMON=0 pi-start
+PI_ENV_BWRAP_IMPORT_COMMON=0 pi-env
 ```
 
 Project-specific rules, skills, roles, and extensions should live in the
@@ -1005,21 +1005,21 @@ while still avoiding a host `$HOME` mount.
 Disable this with:
 
 ```bash
-PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 pi-start
+PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 pi-env
 ```
 
 Use a different config source with:
 
 ```bash
-PI_ENV_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pi-start
-PI_ENV_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pi-start
+PI_ENV_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pi-env
+PI_ENV_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pi-env
 ```
 
 By default the sandbox copy is refreshed on each run. Preserve an existing
 sandbox copy with:
 
 ```bash
-PI_ENV_BWRAP_GIT_CONFIG_SYNC=missing pi-start
+PI_ENV_BWRAP_GIT_CONFIG_SYNC=missing pi-env
 ```
 
 Git credentials, SSH keys, signing keys, credential helpers' backing stores,
@@ -1029,7 +1029,7 @@ and other files referenced from Git config are not imported automatically.
 
 `pi-env` ships a Pi role-manager package for agent roles such as architect,
 developer, builder, tester, and reviewer. The package contains a Pi extension
-plus Markdown role definitions under `role-manager/`. `pi-start` loads it by
+plus Markdown role definitions under `role-manager/`. `pi-env` loads it by
 default with Pi's per-run extension/package flag when the package path exists;
 this does not modify global or project `settings.json`.
 
@@ -1037,7 +1037,7 @@ Inside `nix develop`, the shell exports `PI_ENV_ROLE_MANAGER_PACKAGE` to the
 Nix-built role-manager package path. To opt out of default loading for one run:
 
 ```bash
-PI_ENV_ROLE_MANAGER_AUTO=0 pi-start
+PI_ENV_ROLE_MANAGER_AUTO=0 pi-env
 ```
 
 You can still install it into project-local Pi settings if you want Pi to load
@@ -1046,7 +1046,7 @@ if you want to avoid loading the same package through both mechanisms:
 
 ```bash
 pi-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
-PI_ENV_ROLE_MANAGER_AUTO=0 pi-start
+PI_ENV_ROLE_MANAGER_AUTO=0 pi-env
 ```
 
 The role-manager package can also be built directly:
@@ -1102,7 +1102,7 @@ The extension registers these slash commands:
 When a role is active, only that role's instructions are injected into the
 system prompt for each turn. Role frontmatter may request a thinking level,
 model/provider, and tool allowlist. Unknown requested tools are warned and
-ignored. The default `pi-start` allowlist includes every built-in tool used by
+ignored. The default `pi-env` allowlist includes every built-in tool used by
 the bundled roles. `/role-cycle` includes the role's one-cycle checklist in the
 kickoff prompt, enables the package's `role_cycle_done` tool for that cycle,
 and instructs the model to call it as the final action so Pi can terminate the
@@ -1125,7 +1125,7 @@ See `designs/role-manager.md` for the architecture.
 selected project. A domain can cover multiple implementation repositories, but
 each pi-env invocation mounts and works in one implementation repository at
 `/workspace`. They are plain Git/text-file tooling and are separate from
-`pi-start`. Install `#pi-env-coordination`, use the compatibility `#pi-runtime`
+`pi-env`. Install `#pi-env-coordination`, use the compatibility `#pi-runtime`
 bundle, or leave `includeCoordinationHelpers` enabled in `mkPiShell` when you
 want these commands. Projects usually use the project-local
 `.pi-env/coordination` clone as their attachment to the shared domain.
@@ -1358,14 +1358,14 @@ agent-coord-upgrade-rules --preview
 agent-coord-upgrade-rules
 ```
 
-The helpers do not make `pi-start` create, claim, mark done, review, verify,
+The helpers do not make `pi-env` create, claim, mark done, review, verify,
 close, commit, or push coordination state automatically. If a coordination clone
 is under the mounted project, `pi-bwrap` only exposes it as normal project files
 and sets `PI_ENV_COORD_DIR` to the sandbox path. For a coordination clone outside
 the project, opt in explicitly:
 
 ```bash
-PI_ENV_BWRAP_COORDINATION_DIR=/path/to/coordination pi-start
+PI_ENV_BWRAP_COORDINATION_DIR=/path/to/coordination pi-env
 ```
 
 That clone is mounted read-write at `/coordination` and `PI_ENV_COORD_DIR` is set
@@ -1508,7 +1508,7 @@ See `designs/agent-coordination.md` for the full design.
 expect a `pi` executable to already exist on the host `PATH`, then `pi-bwrap`
 bind-mounts the host/global Pi installation read-only into the sandbox.
 
-When a new Pi version is available, upgrade Pi on the host, outside `pi-start` /
+When a new Pi version is available, upgrade Pi on the host, outside `pi-env` /
 `pi-bwrap`:
 
 ```bash
@@ -1520,7 +1520,7 @@ Then continue using `pi-env` normally:
 
 ```bash
 nix develop
-pi-start
+pi-env
 ```
 
 Do not run Pi self-updates from inside the Bubblewrap sandbox: `/usr/local/bin`
@@ -1584,7 +1584,7 @@ tests/items/requirements/PIENV-FRQ-20260607-204155-001.sh
 ## 14. Notes
 
 - Pi's built-in tool list is `read,bash,edit,write,grep,find,ls`.
-  `pi-start` allowlists those by default. If you need extension/custom tools
+  `pi-env` allowlists those by default. If you need extension/custom tools
   too, include them in `PI_ENV_BWRAP_DEFAULT_TOOLS` or call `pi-bwrap` with your own
   `--tools` list.
 - Global Pi extensions and globally installed Pi packages are exposed read-only
