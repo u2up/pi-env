@@ -9,13 +9,13 @@ cd "$repo_root"
 # README section titles. The onboarding flow has been reorganized over time, but
 # it must still document both direct and project-integrated workflows.
 test_grep 'Direct use' README.md
-test_grep '/pi-env "Inspect this repo"' README.md
-test_grep 'pi-env --raw -- --model' README.md
+test_grep '/pienv "Inspect this repo"' README.md
+test_grep 'pienv raw -- --model' README.md
 test_grep 'Flake integration' README.md
 test_grep 'pin pi-env' README.md
 test_grep 'project-specific Nix dependencies' README.md
 test_grep '^nix develop$' README.md
-test_grep '^pi-env$' README.md
+test_grep '^pienv$' README.md
 test_grep 'Use direct mode' README.md
 test_grep 'Use project-integrated mode' README.md
 test_grep 'mounted at `/workspace`' README.md

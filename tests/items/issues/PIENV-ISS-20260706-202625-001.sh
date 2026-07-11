@@ -45,9 +45,9 @@ const flake = readFileSync(join(root, "flake.nix"), "utf8");
 const coverage = readFileSync(join(root, "REQUIREMENTS_COVERAGE.md"), "utf8");
 const requirements = readFileSync(join(root, "REQUIREMENTS.md"), "utf8");
 
-assert.match(readme, /`pi-env-shell` owns runtime selection/);
+assert.match(readme, /`pienv shell` owns runtime selection/);
 assert.match(readme, /`pi-bwrap --shell \[--\] \[bash args\.\.\.\]`/);
-assert.match(readme, /pi-env-shell --help/);
+assert.match(readme, /pienv shell --runtime nix/);
 assert.match(flake, /pi-env-shell = piEnvShell;/);
 assert.match(flake, /pi-env-shell --help >\/dev\/null/);
 assert.match(requirements, /#### CMD-021 `pi-bwrap` shell mode/);

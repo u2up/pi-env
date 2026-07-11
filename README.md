@@ -67,7 +67,7 @@ git clone https://github.com/spog/evm.git
 cd evm
 
 git clone https://github.com/u2up/pi-env.git ~/src/pi-env
-~/src/pi-env/pi-env \
+~/src/pi-env/pienv \
   "Summarize this repository and suggest safe first checks."
 ```
 
@@ -76,8 +76,8 @@ runs inside the Bubblewrap sandbox, but runtime tools are unpinned host tools.
 You can make the selection explicit or opt in to the reproducible Nix runtime:
 
 ```bash
-~/src/pi-env/pi-env --runtime host "Inspect this repo with host tools."
-~/src/pi-env/pi-env --runtime nix "Inspect this repo with pinned Nix tools."
+~/src/pi-env/pienv --runtime host "Inspect this repo with host tools."
+~/src/pi-env/pienv --runtime nix "Inspect this repo with pinned Nix tools."
 ```
 
 You can also use the Nix flake app directly when you want the pinned runtime
@@ -106,12 +106,12 @@ nix develop github:u2up/pi-env
 Then bootstrap a local coordination repository for the checkout and run Pi:
 
 ```bash
-bootstrap-coordination \
+pienv coord bootstrap \
   --project-root "$PWD" \
   --project evm \
   --project-key EVM
-agent-coord-status
-pi-env "Inspect this repository and review its state."
+pienv coord status
+pienv "Inspect this repository and review its state."
 ```
 
 This creates local coordination state under `.pi-env/` for agent issue, TODO,
@@ -301,9 +301,9 @@ nix --extra-experimental-features 'nix-command flakes' develop
 Verify the commands are available:
 
 ```bash
-pi-env --help
-pi-env-shell --help
-pi-bwrap --help
+pienv help
+pienv completion bash
+pienv sandbox --help
 ```
 
 ### Non-Nix host-runtime installation
@@ -314,7 +314,7 @@ release/archive checkout:
 ```bash
 ./scripts/install-non-nix --prefix "$HOME/.local" --check-deps
 export PATH="$HOME/.local/bin:$PATH"
-pi-env --runtime host --help
+pienv --runtime host --help
 ```
 
 The installer does not invoke Nix and does not install a pinned runtime
@@ -359,8 +359,8 @@ prints a short reminder unless `PI_ENV_QUIET` is set.
 ### Optional profile installation
 
 For the smallest profile that can launch Pi in the sandbox, install the core
-runtime package. It puts `pi-env`, `pi-env-shell`, `pi-bwrap`, and the
-runtime tools on `PATH` without the Git-backed coordination helper
+runtime package. It puts `pienv`, `pi-env`, `pi-env-shell`, `pi-bwrap`, and
+the runtime tools on `PATH` without the Git-backed coordination helper
 commands:
 
 ```bash
@@ -392,9 +392,9 @@ From the target project directory, run this checkout's launcher:
 
 ```bash
 cd /path/to/project
-~/src/pi-env/pi-env
-~/src/pi-env/pi-env "Inspect this repo"
-~/src/pi-env/pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+~/src/pi-env/pienv
+~/src/pi-env/pienv "Inspect this repo"
+~/src/pi-env/pienv raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
 If you installed `#pi-core` or `#pi-runtime` into a profile, you can run the
@@ -402,8 +402,8 @@ shorter command:
 
 ```bash
 cd /path/to/project
-pi-env
-pi-env "Inspect this repo"
+pienv
+pienv "Inspect this repo"
 ```
 
 The checkout launcher defaults to host runtime mode. It preserves the current
@@ -414,9 +414,9 @@ launcher code and runtime policy.
 Select a runtime explicitly with `--runtime` or `PI_ENV_RUNTIME`:
 
 ```bash
-~/src/pi-env/pi-env --runtime host "Inspect this repo"
-~/src/pi-env/pi-env --runtime nix "Inspect this repo with pinned tools"
-PI_ENV_RUNTIME=nix ~/src/pi-env/pi-env
+~/src/pi-env/pienv --runtime host "Inspect this repo"
+~/src/pi-env/pienv --runtime nix "Inspect this repo with pinned tools"
+PI_ENV_RUNTIME=nix ~/src/pi-env/pienv
 ```
 
 Use `--runtime host` for direct startup with unpinned host tools. Use
@@ -425,31 +425,31 @@ integration when you need the reproducible/pinned Nix runtime. `--runtime auto`
 keeps compatibility with environments that already provide pi-env commands and
 falls back to the Nix runtime when needed.
 
-Use `pi-env-shell` when you want an interactive shell inside the same selected
+Use `pienv shell` when you want an interactive shell inside the same selected
 runtime and Bubblewrap sandbox instead of starting the Pi agent:
 
 ```bash
-~/src/pi-env/pi-env-shell --runtime host
-~/src/pi-env/pi-env-shell --runtime nix
+~/src/pi-env/pienv shell --runtime host
+~/src/pi-env/pienv shell --runtime nix
 ```
 
-`pi-env-shell` owns runtime selection just like `pi-env`; the lower-level
-sandbox payload switch remains `pi-bwrap --shell`. Normal `pi-env` invocations
-apply the default startup policy and Pi arguments continue to pass through as
-shown above.
+`pienv shell` owns runtime selection just like `pienv`; the lower-level
+sandbox payload switch remains `pienv sandbox shell`. Normal `pienv`
+invocations apply the default startup policy and Pi arguments continue to pass
+through as shown above.
 
-Use `--raw --` when you want to pass arguments directly to Pi through
-`pi-bwrap` instead of using the default `pi-env` startup policy:
+Use `pienv raw --` when you want to pass arguments directly to Pi through the
+sandbox layer instead of using the default startup policy:
 
 ```bash
-pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+pienv raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
 Select another pi-env flake reference with either form:
 
 ```bash
-PI_ENV_FLAKE=github:u2up/pi-env ~/src/pi-env/pi-env
-~/src/pi-env/pi-env --flake github:u2up/pi-env
+PI_ENV_FLAKE=github:u2up/pi-env ~/src/pi-env/pienv
+~/src/pi-env/pienv --flake github:u2up/pi-env
 ```
 
 ## 4. Use pi-env through a project flake
@@ -466,9 +466,9 @@ After integration, the usual workflow is:
 ```bash
 cd /path/to/project
 nix develop
-pi-env
-pi-env "Inspect this repo"
-pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+pienv
+pienv "Inspect this repo"
+pienv raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
 Both direct and flake-integrated modes keep the selected project root as the
@@ -648,7 +648,105 @@ nix flake update pi-env
 
 ## 5. Command reference
 
-### `pi-env`
+`pienv` is the canonical user-facing command namespace. The older commands
+remain available as behavior sources and compatibility entrypoints; this phase
+does not deprecate, warn on, hide, or remove `pi-env`, `pi-env-shell`,
+`pi-bwrap`, `agent-coord-*`, `bootstrap-coordination`, or `pi-serial-roles`.
+Operational state paths such as `.pi-env/` and environment variables such as
+`PI_ENV_RUNTIME` and `PI_ENV_COORD_DIR` keep their existing names.
+
+### `pienv`
+
+Start Pi with pi-env defaults:
+
+```bash
+pienv
+pienv "Inspect this repo"
+pienv run "Inspect this repo"
+```
+
+Top-level `pienv` subcommand names are reserved before Pi arguments. Use `--`
+when the first Pi argument should be passed through literally instead of being
+parsed as a `pienv` command:
+
+```bash
+pienv -- shell
+pienv -- coord status
+```
+
+Use `pienv raw -- ...` to pass custom arguments directly through the sandbox
+layer, `pienv shell` for an interactive runtime/sandbox shell, and
+`pienv sandbox` only when you intentionally want the lower-level Bubblewrap
+launcher:
+
+```bash
+pienv raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
+pienv shell --runtime nix
+pienv sandbox -- --help
+pienv sandbox shell -- -l
+```
+
+Select the runtime with `--runtime host|nix|auto` or
+`PI_ENV_RUNTIME=host|nix|auto`; the command-line option wins. Host runtime is
+unpinned and uses admitted host tools. Nix runtime is reproducible and pinned
+by the selected pi-env flake, entering `nix develop` when needed.
+
+#### `pienv` command mapping
+
+| Canonical command | Behavior source |
+| --- | --- |
+| `pienv [pi args...]` | `pi-env [pi args...]` |
+| `pienv run [pi args...]` | `pi-env [pi args...]` |
+| `pienv raw -- [pi args...]` | `pi-env --raw -- [pi args...]` |
+| `pienv shell [shell args...]` | `pi-env-shell [shell args...]` |
+| `pienv sandbox [pi args...]` | `pi-bwrap [pi args...]` |
+| `pienv sandbox shell [shell args...]` | `pi-bwrap --shell -- [shell args...]` |
+| `pienv coord bootstrap [options]` | `bootstrap-coordination [options]` |
+| `pienv coord init [options]` | `agent-coord-init [options]` |
+| `pienv coord clone [options] [remote]` | `agent-coord-clone [options] [remote]` |
+| `pienv coord status [options]` | `agent-coord-status [options]` |
+| `pienv coord list [options] TYPE [STATUS]` | `agent-coord-list [options] TYPE [STATUS]` |
+| `pienv coord show [options] ITEM` | `agent-coord-cat [options] ITEM` |
+| `pienv coord new [options] "title"` | `agent-coord-new [options] "title"` |
+| `pienv coord claim [options] ITEM` | `agent-coord-claim [options] ITEM` |
+| `pienv coord done [options] ITEM` | `agent-coord-done [options] ITEM` |
+| `pienv coord review [options] ITEM` | `agent-coord-review [options] ITEM` |
+| `pienv coord verify [options] ITEM` | `agent-coord-verify [options] ITEM` |
+| `pienv coord close [options] ITEM` | `agent-coord-close [options] ITEM` |
+| `pienv coord pull [options] [git args...]` | `agent-coord-pull [options] [git args...]` |
+| `pienv coord push [options] [git args...]` | `agent-coord-push [options] [git args...]` |
+| `pienv coord lint [options]` | `agent-coord-lint [options]` |
+| `pienv coord repo ...` | `agent-coord-repo ...` |
+| `pienv coord rules upgrade [options]` | `agent-coord-upgrade-rules [options]` |
+| `pienv coord requirements generate [...]` | `agent-coord-generate-requirements [...]` |
+| `pienv coord requirements coverage [...]` | `agent-coord-generate-requirements-coverage [...]` |
+| `pienv roles serial [options]` | `pi-serial-roles [options]` |
+| `pienv install [options]` | `install-non-nix [options]` |
+| `pienv uninstall [options]` | `pi-env-uninstall [options]` |
+
+#### Help and completion
+
+Use `pienv help` for namespace help, group help for command discovery, and leaf
+help to delegate to the underlying command's `--help` output:
+
+```bash
+pienv help
+pienv help coord
+pienv help coord status
+pienv coord status --help
+```
+
+Print and source portable Bash completion with:
+
+```bash
+pienv completion bash
+source <(pienv completion bash)
+```
+
+Completion covers top-level commands, nested `coord`, `roles`, `sandbox`, and
+`completion` subcommands, and known options for representative leaf commands.
+
+### Existing `pi-env` entrypoint
 
 Start Pi with pi-env defaults:
 
