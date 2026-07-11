@@ -22,6 +22,9 @@ assert.doesNotMatch(readme, new RegExp(legacyConfigFile.replace(/\./g, "\\.")));
 assert.doesNotMatch(design, new RegExp(legacyCoordinationPackage));
 
 assert.match(flake, /includeCoordinationHelpers \? true/);
+assert.match(flake, /mkPienv = pkgs: \{ includeCoordinationHelpers \? true \}:/);
+assert.match(flake, /pienv = mkPienv pkgs \{ inherit includeCoordinationHelpers; \};/);
+assert.match(flake, /piCorePienv = mkPienv pkgs \{ includeCoordinationHelpers = false; \};/);
 assert.match(
   flake,
   /coordinationPackages = if includeCoordinationHelpers then agentCoordCommands else \[ \];/,
@@ -39,6 +42,9 @@ assert.match(flake, /pi-core-smoke/);
 assert.match(flake, /pi-runtime-compat-smoke/);
 assert.match(flake, /pi-env-coordination-smoke/);
 assert.match(flake, /agent coordination helpers leaked into pi-core/);
+assert.match(flake, /pienv coord leaked into pi-core/);
+assert.match(flake, /pienv install --help/);
+assert.match(flake, /pienv uninstall --help/);
 
 assert.match(readme, /nix profile install ~\/src\/pi-env#pi-core/);
 assert.match(readme, /nix profile install ~\/src\/pi-env#pi-env-coordination/);

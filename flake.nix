@@ -80,13 +80,15 @@
           exec -a pi-env-shell ${pkgs.bash}/bin/bash ${./scripts/pi-env-launcher} "$@"
         '';
 
-      mkPienv = pkgs:
+      mkPienv = pkgs: { includeCoordinationHelpers ? true }:
         let
+          coordinationCommands = if includeCoordinationHelpers then builtins.attrValues (mkAgentCoordCommands pkgs) else [ ];
+          installCommands = builtins.attrValues (mkInstallNonNixCommands pkgs);
           runtimePath = pkgs.lib.makeBinPath ((mkRuntime pkgs) ++ [
             (mkPiEnv pkgs)
             (mkPiEnvShell pkgs)
             (mkPiBwrap pkgs)
-          ] ++ builtins.attrValues (mkAgentCoordCommands pkgs));
+          ] ++ installCommands ++ coordinationCommands);
         in
         pkgs.writeShellScriptBin "pienv" ''
           set -euo pipefail
@@ -121,12 +123,33 @@
         pkgs.runCommand "pi-env-agent-coordination-support" { } ''
           mkdir -p "$out/share/pi-env"
           cp -R ${./pi-skill-templates} "$out/share/pi-env/pi-skill-templates"
+          cp -R ${./role-manager} "$out/share/pi-env/role-manager"
           cp -R ${./scripts} "$out/share/pi-env/scripts"
           chmod +x "$out/share/pi-env/scripts"/agent-coord-* \
             "$out/share/pi-env/scripts/bootstrap-coordination" \
             "$out/share/pi-env/scripts/pi-serial-roles" \
-            "$out/share/pi-env/scripts/pienv"
+            "$out/share/pi-env/scripts/pienv" \
+            "$out/share/pi-env/scripts/install-non-nix"
         '';
+
+      mkInstallNonNixCommands = pkgs:
+        let
+          runtimePath = pkgs.lib.makeBinPath (mkRuntime pkgs);
+          support = mkAgentCoordSupport pkgs;
+          installNonNix = pkgs.writeShellScriptBin "install-non-nix" ''
+            set -euo pipefail
+            export PATH="${runtimePath}:''${PATH:-}"
+            exec ${pkgs.bash}/bin/bash "${support}/share/pi-env/scripts/install-non-nix" "$@"
+          '';
+          piEnvUninstall = pkgs.writeShellScriptBin "pi-env-uninstall" ''
+            set -euo pipefail
+            export PATH="${runtimePath}:''${PATH:-}"
+            exec ${pkgs.bash}/bin/bash "${support}/share/pi-env/scripts/install-non-nix" --uninstall "$@"
+          '';
+        in
+        {
+          inherit installNonNix piEnvUninstall;
+        };
 
       mkAgentCoordCommand = pkgs: name:
         let
@@ -165,7 +188,7 @@
           piBwrap = mkPiBwrap pkgs;
           piEnv = mkPiEnv pkgs;
           piEnvShell = mkPiEnvShell pkgs;
-          pienv = mkPienv pkgs;
+          pienv = mkPienv pkgs { inherit includeCoordinationHelpers; };
           agentCoordCommands = builtins.attrValues (mkAgentCoordCommands pkgs);
           coordinationPackages = if includeCoordinationHelpers then agentCoordCommands else [ ];
           roleManagerPackage = mkRoleManagerPackage pkgs;
@@ -206,6 +229,7 @@
           mkPiEnv
           mkPiEnvShell
           mkPienv
+          mkInstallNonNixCommands
           agentCoordCommandNames
           mkAgentCoordSupport
           mkAgentCoordCommand
@@ -220,15 +244,16 @@
         piBwrap = mkPiBwrap pkgs;
         piEnv = mkPiEnv pkgs;
         piEnvShell = mkPiEnvShell pkgs;
-        pienv = mkPienv pkgs;
+        pienv = mkPienv pkgs { };
         agentCoordCommands = mkAgentCoordCommands pkgs;
         agentCoordCommandPackages = builtins.attrValues agentCoordCommands;
         roleManagerPackage = mkRoleManagerPackage pkgs;
+        piCorePienv = mkPienv pkgs { includeCoordinationHelpers = false; };
         coreRuntimePaths = (mkRuntime pkgs) ++ [
           piBwrap
           piEnv
           piEnvShell
-          pienv
+          piCorePienv
         ];
         piCore = pkgs.buildEnv {
           name = "pi-env-core";
@@ -298,6 +323,12 @@
             pi-env --help >/dev/null
             pienv help >/dev/null
             pienv completion bash >/dev/null
+            pienv install --help >/dev/null
+            pienv uninstall --help >/dev/null
+            if pienv coord status --help >/dev/null 2>&1; then
+              echo "pienv coord leaked into pi-core" >&2
+              exit 1
+            fi
             pi-env-shell --help >/dev/null
             pi-bwrap --help >/dev/null
             if command -v agent-coord-status >/dev/null 2>&1; then
@@ -321,6 +352,8 @@
             pienv help >/dev/null
             pienv coord status --help >/dev/null
             pienv completion bash >/dev/null
+            pienv install --help >/dev/null
+            pienv uninstall --help >/dev/null
             pi-env-shell --help >/dev/null
             agent-coord-status --help >/dev/null
           '';

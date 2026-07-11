@@ -68,6 +68,8 @@ run_case $'cmd=agent-coord-generate-requirements-coverage' coord requirements co
 run_case $'cmd=pi-serial-roles\narg=--role\narg=developer' roles serial --role developer
 run_case $'cmd=install-non-nix\narg=--prefix\narg=/tmp/pienv' install --prefix /tmp/pienv
 run_case $'cmd=pi-env-uninstall\narg=--prefix\narg=/tmp/pienv' uninstall --prefix /tmp/pienv
+rm "$tmp_dir/bin/pi-env-uninstall"
+run_case $'cmd=install-non-nix\narg=--uninstall\narg=--prefix\narg=/tmp/pienv' uninstall --prefix /tmp/pienv
 
 completion_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" completion bash)"
 case "$completion_output" in
