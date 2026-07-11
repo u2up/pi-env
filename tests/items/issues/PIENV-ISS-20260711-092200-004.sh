@@ -44,12 +44,27 @@ test_grep '^pienv coord new --repo-id pi-env --type issue --category bug' README
 test_grep '^pienv coord push -m "Add PIENV documentation item"$' README.md
 test_grep '^pienv coord status$' README.md
 test_grep '^pienv coord rules upgrade --preview$' README.md
+test_grep '^PI_ENV_ROLE_MANAGER_AUTO=0 pienv$' README.md
+test_grep '^pienv sandbox install -l "\$PI_ENV_ROLE_MANAGER_PACKAGE"$' README.md
+test_grep '^pienv sandbox install -l "\$(readlink -f result)"$' README.md
+test_grep '^pienv roles serial --sleep 30$' README.md
+test_grep '^pienv roles serial --once$' README.md
+test_grep '^pienv roles serial --issue ISSUE-1 --issue ISSUE-2 --max-jobs 2$' README.md
 
 if grep -q '^PI_ENV_BWRAP_[^#]* pi-env\($\|[[:space:]]#\)' README.md; then
   test_fail 'per-project override examples should prefer pienv'
 fi
 if grep -q '^\(bootstrap-coordination\|agent-coord-init\|agent-coord-clone\|agent-coord-new\|agent-coord-push\|agent-coord-list\|agent-coord-upgrade-rules\)' README.md; then
   test_fail 'coordination setup examples should prefer pienv coord commands'
+fi
+if grep -q '^PI_ENV_ROLE_MANAGER_AUTO=0 pi-env\($\|[[:space:]]\)' README.md; then
+  test_fail 'role-manager opt-out examples should prefer pienv'
+fi
+if grep -q '^pi-bwrap install ' README.md; then
+  test_fail 'role-manager install examples should prefer pienv sandbox'
+fi
+if grep -q '^pi-serial-roles\($\|[[:space:]]\)' README.md; then
+  test_fail 'serial role examples should prefer pienv roles serial'
 fi
 
 echo 'PIENV-ISS-20260711-092200-004 pienv documentation tests passed'

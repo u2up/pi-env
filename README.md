@@ -1135,7 +1135,7 @@ Inside `nix develop`, the shell exports `PI_ENV_ROLE_MANAGER_PACKAGE` to the
 Nix-built role-manager package path. To opt out of default loading for one run:
 
 ```bash
-PI_ENV_ROLE_MANAGER_AUTO=0 pi-env
+PI_ENV_ROLE_MANAGER_AUTO=0 pienv
 ```
 
 You can still install it into project-local Pi settings if you want Pi to load
@@ -1143,15 +1143,15 @@ it normally without the per-run flag. In that workflow, use the opt-out variable
 if you want to avoid loading the same package through both mechanisms:
 
 ```bash
-pi-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
-PI_ENV_ROLE_MANAGER_AUTO=0 pi-env
+pienv sandbox install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
+PI_ENV_ROLE_MANAGER_AUTO=0 pienv
 ```
 
 The role-manager package can also be built directly:
 
 ```bash
 nix build /path/to/pi-env#pi-role-manager
-pi-bwrap install -l "$(readlink -f result)"
+pienv sandbox install -l "$(readlink -f result)"
 ```
 
 ### Role files and precedence
@@ -1477,8 +1477,9 @@ active role without changing project Git identity.
 
 ### Serial role automation
 
-`pi-serial-roles` is the first, deliberately serial automation mode for
-coordination-backed role work. Use it when you want one long-lived shell to
+`pienv roles serial` is the canonical command for the first, deliberately
+serial automation mode for coordination-backed role work. Use it when you want
+one long-lived shell to
 process developer, reviewer, and tester issue jobs over one project clone and
 one coordination clone, without concurrent source edits or competing Git
 operations in that clone. It is useful for initial small automation and prompt
@@ -1506,27 +1507,27 @@ Start the loop from the project root:
 
 ```bash
 cd /path/to/project
-pi-serial-roles --sleep 30
+pienv roles serial --sleep 30
 ```
 
 Stop it with `Ctrl-C`, or use bounded modes when you want it to exit on its own:
 
 ```bash
-pi-serial-roles --once
-pi-serial-roles --max-jobs 3
-pi-serial-roles --max-idle-polls 1 --sleep 5
-pi-serial-roles --dry-run
-pi-serial-roles --ui interactive --once
-pi-serial-roles --ui json --once
-pi-serial-roles --ui none --once
-pi-serial-roles --issue PIENV-ISS-20260705-172018-001 --once
+pienv roles serial --once
+pienv roles serial --max-jobs 3
+pienv roles serial --max-idle-polls 1 --sleep 5
+pienv roles serial --dry-run
+pienv roles serial --ui interactive --once
+pienv roles serial --ui json --once
+pienv roles serial --ui none --once
+pienv roles serial --issue PIENV-ISS-20260705-172018-001 --once
 ```
 
 Use repeatable `--issue ID` options when you want a bounded batch for explicit
 coordination issue IDs instead of the default all-eligible queue:
 
 ```bash
-pi-serial-roles --issue ISSUE-1 --issue ISSUE-2 --max-jobs 2
+pienv roles serial --issue ISSUE-1 --issue ISSUE-2 --max-jobs 2
 ```
 
 With one or more `--issue` options, serial mode never selects an unlisted
@@ -1575,7 +1576,7 @@ prints the generated role report, and exits without a TUI or JSON event stream.
 The previous hold-open `interactive` behavior has intentionally been removed
 and is not available under another `--ui` value or compatibility alias. If you
 need to inspect a completed session, use normal logs/output or run Pi directly
-instead of keeping `pi-serial-roles` blocked after each item. Coordination state
+instead of keeping `pienv roles serial` blocked after each item. Coordination state
 and Git history are the memory shared between jobs; a fresh conversation avoids
 stale context from a previous issue influencing item selection, review,
 verification, or lifecycle helper use.
@@ -1615,11 +1616,11 @@ npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
 pi --version
 ```
 
-Then continue using `pi-env` normally:
+Then continue using `pienv` normally:
 
 ```bash
 nix develop
-pi-env
+pienv
 ```
 
 Do not run Pi self-updates from inside the Bubblewrap sandbox: `/usr/local/bin`
