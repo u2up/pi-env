@@ -4,8 +4,8 @@ This file is generated from active requirement items and `designs/*.md`.
 
 ## Summary
 
-- Requirements: 164
-- Covered by design: 164
+- Requirements: 168
+- Covered by design: 168
 - Not covered by design: 0
 
 ## Coverage by requirement
@@ -31,6 +31,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | UC-013 | PIENV-FRQ-20260612-210000-013 | designs/git-config-import.md |
 | CRQ-014 | PIENV-CRQ-20260701-110520-001 | designs/host-runtime.md |
 | UC-014 | PIENV-FRQ-20260612-210000-014 | designs/launcher-layering.md |
+| CRQ-015 | PIENV-CRQ-20260711-092100-001 | designs/pienv-command-namespace.md |
 | UC-015 | PIENV-FRQ-20260612-210000-015 | designs/bubblewrap-sandbox.md |
 | UC-016 | PIENV-FRQ-20260612-210000-016 | designs/launcher-layering.md |
 | UC-017 | PIENV-FRQ-20260612-210000-017 | designs/nix-runtime.md |
@@ -80,6 +81,9 @@ This file is generated from active requirement items and `designs/*.md`.
 | PATH-003 | PIENV-FRQ-20260612-210000-050 | designs/bubblewrap-sandbox.md |
 | CMD-021 | PIENV-FRQ-20260706-202632-001 | designs/launcher-layering.md |
 | CMD-022 | PIENV-FRQ-20260706-202634-001 | designs/launcher-layering.md |
+| CMD-023 | PIENV-FRQ-20260711-092100-001 | designs/pienv-command-namespace.md |
+| CMD-024 | PIENV-FRQ-20260711-092100-002 | designs/pienv-command-namespace.md |
+| CMD-025 | PIENV-FRQ-20260711-092100-003 | designs/pienv-command-namespace.md |
 | PATH-004 | PIENV-FRQ-20260612-210000-051 | designs/bubblewrap-sandbox.md |
 | PATH-005 | PIENV-FRQ-20260612-210000-052 | designs/bubblewrap-sandbox.md |
 | PATH-006 | PIENV-FRQ-20260701-110514-001 | designs/host-runtime.md |

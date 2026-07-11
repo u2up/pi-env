@@ -992,6 +992,104 @@ Existing `pi-env` and `pi-bwrap` Pi-agent behavior must remain unchanged,
 except that `pi-start` is intentionally removed and its default startup
 behavior moves into `pi-env`.
 
+#### CMD-023 `pienv` command namespace
+
+pi-env must provide a canonical `pienv` command namespace that covers the
+current user-facing command surface without changing existing `.pi-env/`
+operational state paths or `PI_ENV_*` environment variables.
+
+`pienv` without a subcommand must behave like the current default `pi-env`
+launcher, and `pienv run` must be an explicit alias for the same behavior.
+The namespace must expose these leaf commands:
+
+- `pienv raw -- [pi args...]` for current `pi-env --raw -- [pi args...]`;
+- `pienv shell [shell args...]` for current `pi-env-shell`;
+- `pienv sandbox [pi args...]` for current `pi-bwrap`;
+- `pienv sandbox shell [shell args...]` for current `pi-bwrap --shell`;
+- `pienv coord bootstrap` for current `bootstrap-coordination`;
+- `pienv coord init`, `clone`, `status`, `list`, `show`, `new`, `claim`,
+  `done`, `review`, `verify`, `close`, `pull`, `push`, `lint`, and `repo`
+  for the corresponding current `agent-coord-*` helpers, with
+  `show` mapping to `agent-coord-cat`;
+- `pienv coord rules upgrade` for current `agent-coord-upgrade-rules`;
+- `pienv coord requirements generate` for current
+  `agent-coord-generate-requirements`;
+- `pienv coord requirements coverage` for current
+  `agent-coord-generate-requirements-coverage`;
+- `pienv roles serial` for current `pi-serial-roles`;
+- `pienv install` and `pienv uninstall` for supported non-Nix install and
+  uninstall flows;
+- `pienv completion bash` for portable Bash completion setup.
+
+The command namespace must be available from direct checkout use,
+host-runtime non-Nix installation, Nix devshells, and flake app/package
+outputs.
+
+#### CMD-024 `pienv` behavioral parity
+
+Each `pienv` replacement command must preserve the parameter handling and
+behavior of the current command it replaces after the new subcommand path is
+consumed. Parity includes accepted options, positional arguments, argument
+ordering, exit status, stdout/stderr behavior, working-directory behavior,
+environment-variable handling, support-file resolution, and help behavior.
+
+The initial implementation should be a thin dispatcher rather than a rewrite
+of launcher, sandbox, coordination, role-automation, or installer behavior.
+Leaf commands should `exec` the existing implementation command with
+unchanged remaining arguments. For example:
+
+```bash
+pienv coord status --repo-id pi-env
+# equivalent to: agent-coord-status --repo-id pi-env
+
+pienv shell --runtime nix
+# equivalent to: pi-env-shell --runtime nix
+
+pienv sandbox shell -- -l
+# equivalent to: pi-bwrap --shell -- -l
+```
+
+Because top-level `pienv` subcommand names are reserved, users must be able
+to use `pienv -- ...` when they need to pass a first Pi argument that looks
+like a `pienv` subcommand.
+
+Parity must be verified in both host and Nix runtime contexts, including
+direct checkout, non-Nix installed host runtime, Nix devshell, and flake app
+or package execution where those contexts are supported by the current
+command.
+
+#### CMD-025 `pienv` help and Bash completion
+
+The `pienv` namespace must provide discoverable command help and Bash
+completion for the nested command hierarchy.
+
+Help must support, at minimum:
+
+```bash
+pienv help
+pienv help coord
+pienv help coord status
+pienv coord status --help
+```
+
+Leaf help may delegate to the mapped existing command's `--help` output.
+Group help should list available subcommands and the existing command that
+each subcommand maps to.
+
+Bash completion must be available as an installed completion file where the
+packaging environment supports Bash completion and as a portable command:
+
+```bash
+pienv completion bash
+source <(pienv completion bash)
+```
+
+Completion must suggest top-level commands, nested `sandbox`, `coord`,
+`coord rules`, `coord requirements`, `roles`, and `completion` subcommands,
+and known options for leaf commands. Path-valued options should keep path
+completion. The completion implementation should not require Nix-only tools;
+it must work in host-runtime installations as well as Nix-provided shells.
+
 ### 3.5 Project root and working directory requirements
 
 #### PATH-001 Project root detection
@@ -1912,6 +2010,22 @@ Host runtime support must not weaken the default no-host-home and no-secret
 mount guarantees. Any opt-in that admits host paths under `$HOME`, custom
 language-manager installations, or other sensitive locations must be
 explicit and documented as a broader trust decision.
+
+#### CRQ-015 Stable internal pi-env state and environment names
+
+Introducing the `pienv` user-facing command namespace must not rename or
+migrate existing `.pi-env/` operational state paths, coordination attachment
+files, support-file layout under `share/pi-env`, or `PI_ENV_*` environment
+variables.
+
+New command names are a UX layer over the current runtime, sandbox,
+coordination, and installation model. Any later proposal to rename internal
+state paths, environment variables, package metadata, or repository naming
+must be handled as a separate compatibility and migration decision.
+
+Documentation for the new command namespace must continue to describe
+`.pi-env/` and `PI_ENV_*` names accurately where they are the actual storage
+paths or configuration interfaces.
 
 #### CRQ-001 — One coordination domain is one bare Git repository
 
