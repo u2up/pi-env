@@ -43,6 +43,15 @@ assert.match(flake, /pi-runtime-compat-smoke/);
 assert.match(flake, /pi-env-coordination-smoke/);
 assert.match(flake, /agent coordination helpers leaked into pi-core/);
 assert.match(flake, /pienv coord leaked into pi-core/);
+assert.match(flake, /pienv help run/);
+assert.match(flake, /pienv help raw/);
+assert.match(flake, /pienv help shell/);
+assert.match(flake, /pienv help sandbox/);
+assert.match(flake, /pienv sandbox --help/);
+assert.match(flake, /pienv help coord status/);
+assert.match(flake, /pienv coord requirements coverage --help/);
+assert.match(flake, /pienv help coord requirements generate/);
+assert.match(flake, /pienv roles serial --help/);
 assert.match(flake, /pienv install --help/);
 assert.match(flake, /pienv uninstall --help/);
 

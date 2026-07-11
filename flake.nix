@@ -327,6 +327,11 @@
             command -v pi-bwrap >/dev/null
             pi-env --help >/dev/null
             pienv help >/dev/null
+            pienv help run >/dev/null
+            pienv help raw >/dev/null
+            pienv help shell >/dev/null
+            pienv help sandbox >/dev/null
+            pienv sandbox --help >/dev/null
             pienv completion bash >/dev/null
             pienv install --help >/dev/null
             pienv uninstall --help >/dev/null
@@ -355,7 +360,16 @@
             command -v bootstrap-coordination >/dev/null
             pi-env --help >/dev/null
             pienv help >/dev/null
+            pienv help run >/dev/null
+            pienv help raw >/dev/null
+            pienv help shell >/dev/null
+            pienv help sandbox >/dev/null
+            pienv sandbox --help >/dev/null
             pienv coord status --help >/dev/null
+            pienv help coord status >/dev/null
+            pienv coord requirements coverage --help >/dev/null
+            pienv help coord requirements generate >/dev/null
+            pienv roles serial --help >/dev/null
             pienv completion bash >/dev/null
             pienv install --help >/dev/null
             pienv uninstall --help >/dev/null
