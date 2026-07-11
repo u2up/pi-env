@@ -201,8 +201,6 @@ coord_env_coordination_remote() {
   local remote
   if [ -n "${PI_ENV_COORD_REMOTE:-}" ]; then
     remote="$PI_ENV_COORD_REMOTE"
-  elif [ -n "${PI_ENV_COORD_REMOTE_URL:-}" ]; then
-    remote="$PI_ENV_COORD_REMOTE_URL"
   else
     return 1
   fi
@@ -495,11 +493,6 @@ coord_default_root_for_project() {
 }
 
 coord_default_root() {
-  if [ -n "${PI_ENV_COORD_ROOT:-}" ]; then
-    printf '%s\n' "$PI_ENV_COORD_ROOT"
-    return
-  fi
-
   coord_default_root_for_project
 }
 

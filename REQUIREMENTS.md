@@ -696,9 +696,9 @@ coordination bootstraps must place the working clone at
 `<project-root>/.pi-env/coordination`, visible inside the sandbox as
 `/workspace/.pi-env/coordination` when the selected project is mounted there.
 
-When no explicit/configured coordination remote is selected and `--root` and
-`PI_ENV_COORD_ROOT` are omitted, coordination helpers must use a project-visible
-`.pi-env/agent-remotes` directory instead of the isolated sandbox `$HOME`. If
+When no explicit/configured coordination remote is selected and `--root` is
+omitted, coordination helpers must use a project-visible `.pi-env/agent-remotes`
+directory instead of the isolated sandbox `$HOME`. If
 `/workspace` resolves to the current project root, the default root must be
 `/workspace/.pi-env/agent-remotes`; otherwise it must be
 `<project-root>/.pi-env/agent-remotes`.
@@ -1435,7 +1435,6 @@ When set or declared in `.pi-env-coordination.yaml`, the launcher must pass
 safe coordination context into the sandbox:
 
 - `PI_ENV_COORD_REMOTE`
-- `PI_ENV_COORD_ROOT`
 - `PI_ENV_COORD_PROJECT`
 - `PI_ENV_COORD_AGENT_ID`
 - `PI_ENV_COORD_PROJECT_KEY`
@@ -1448,12 +1447,8 @@ sandbox as the corresponding `/workspace/...` path. If explicit
 project, the launcher must bind its parent directory read-write and pass the
 sandbox-visible remote path. External local paths read only from project
 configuration must not trigger host-path binds unless the user also opts in
-with explicit environment context such as `PI_ENV_COORD_REMOTE` or
-`PI_ENV_COORD_ROOT`.
-
-If legacy `PI_ENV_COORD_ROOT` points inside the selected project, the launcher
-must pass it into the sandbox as the corresponding `/workspace/...` path.
-Project-local `.pi-env/agent-remotes` is the default for local bare remotes.
+with explicit environment context such as `PI_ENV_COORD_REMOTE`. Project-local
+`.pi-env/agent-remotes` is the default for local bare remotes.
 
 If a coordination clone is detected under the selected project at
 `.pi-env/coordination`, or selected with

@@ -86,9 +86,6 @@ Environment knobs:
   PI_ENV_BWRAP_COORDINATION_DIR=/path Bind external coordination clone at /coordination
   PI_ENV_COORD_REMOTE=remote        Coordination Git remote URL or local bare path; project paths
                                  stay under /workspace, external parents bind safely
-  PI_ENV_COORD_ROOT=.pi-env/agent-remotes Legacy bare remotes root; project paths stay under /workspace,
-                                 external paths bind at /agent-remotes
-  PI_ENV_COORD_REMOTE_URL=url       Legacy alias for PI_ENV_COORD_REMOTE
   PI_ENV_COORD_ROLE=architect       Active coordination role passed to helpers
   PI_ENV_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
@@ -488,47 +485,12 @@ if [ "${PI_ENV_BWRAP_IMPORT_SESSIONS:-$import_sessions_default}" = "1" ] && [ -n
   fi
 fi
 
-coord_root_bind_args=()
-host_coord_root=""
-sandbox_coord_root=""
-if [ -n "${PI_ENV_COORD_ROOT:-}" ]; then
-  case "$PI_ENV_COORD_ROOT" in
-    /*)
-      host_coord_root="$(realpath -m "$PI_ENV_COORD_ROOT")"
-      ;;
-    *)
-      host_coord_root="$(realpath -m "$project_root/$PI_ENV_COORD_ROOT")"
-      ;;
-  esac
-  case "$host_coord_root" in
-    "$project_root")
-      sandbox_coord_root="/workspace"
-      ;;
-    "$project_root"/*)
-      sandbox_coord_root="/workspace${host_coord_root#"$project_root"}"
-      ;;
-    *)
-      if [ -d "$host_coord_root" ]; then
-        sandbox_coord_root="/agent-remotes"
-        coord_root_bind_args=(--dir /agent-remotes --bind "$host_coord_root" /agent-remotes)
-        echo "pi-bwrap: coordination remotes available at /agent-remotes" >&2
-      else
-        sandbox_coord_root="$PI_ENV_COORD_ROOT"
-        echo "pi-bwrap: warning: PI_ENV_COORD_ROOT outside project is not an existing directory and will not be mounted: $PI_ENV_COORD_ROOT" >&2
-      fi
-      ;;
-  esac
-fi
-
 coord_remote_bind_args=()
 sandbox_coord_remote=""
 coord_remote=""
 coord_remote_source=""
 if [ -n "${PI_ENV_COORD_REMOTE:-}" ]; then
   coord_remote="$PI_ENV_COORD_REMOTE"
-  coord_remote_source="env"
-elif [ -n "${PI_ENV_COORD_REMOTE_URL:-}" ]; then
-  coord_remote="$PI_ENV_COORD_REMOTE_URL"
   coord_remote_source="env"
 else
   coord_remote="$(pi_bwrap_coord_config_value coordination_remote 2>/dev/null || true)"
@@ -559,16 +521,6 @@ if [ -n "$coord_remote" ]; then
         sandbox_coord_remote="/workspace${host_coord_remote#"$project_root"}"
         ;;
       *)
-        if [ -n "$host_coord_root" ] && [ -n "$sandbox_coord_root" ]; then
-          case "$host_coord_remote" in
-            "$host_coord_root")
-              sandbox_coord_remote="$sandbox_coord_root"
-              ;;
-            "$host_coord_root"/*)
-              sandbox_coord_remote="$sandbox_coord_root${host_coord_remote#"$host_coord_root"}"
-              ;;
-          esac
-        fi
         if [ -z "$sandbox_coord_remote" ]; then
           host_coord_remote_parent="$(dirname "$host_coord_remote")"
           host_coord_remote_base="$(basename "$host_coord_remote")"
@@ -583,11 +535,7 @@ if [ -n "$coord_remote" ]; then
               echo "pi-bwrap: warning: external coordination_remote from project config is not an existing bare Git repo and will not be mounted: $coord_remote" >&2
             fi
           elif [ -d "$host_coord_remote_parent" ] && [ "$host_coord_remote_parent" != "/" ]; then
-            if [ ${#coord_root_bind_args[@]} -eq 0 ]; then
-              coord_remote_mount_point="/agent-remotes"
-            else
-              coord_remote_mount_point="/coordination-remote-parent"
-            fi
+            coord_remote_mount_point="/agent-remotes"
             sandbox_coord_remote="$coord_remote_mount_point/$host_coord_remote_base"
             coord_remote_bind_args=(--dir "$coord_remote_mount_point" --bind "$host_coord_remote_parent" "$coord_remote_mount_point")
             echo "pi-bwrap: coordination remote parent available at $coord_remote_mount_point" >&2
@@ -905,15 +853,10 @@ sandbox_path="$(append_path_entry /usr/local/bin "$sandbox_path")"
 sandbox_path="$(append_path_entry /usr/bin "$sandbox_path")"
 sandbox_path="$(append_path_entry /bin "$sandbox_path")"
 
-if [ -n "${PI_ENV_COORD_ROOT:-}" ]; then
-  set_env PI_ENV_COORD_ROOT "$sandbox_coord_root"
-fi
 if [ -n "$sandbox_coord_remote" ]; then
   set_env PI_ENV_COORD_REMOTE "$sandbox_coord_remote"
-  set_env PI_ENV_COORD_REMOTE_URL "$sandbox_coord_remote"
 else
   copy_env PI_ENV_COORD_REMOTE
-  copy_env PI_ENV_COORD_REMOTE_URL
 fi
 copy_env PI_ENV_COORD_PROJECT
 copy_env PI_ENV_COORD_AGENT_ID
@@ -991,7 +934,6 @@ bwrap_args=(
   --ro-bind-try /usr/local/lib/node_modules/@earendil-works/pi-coding-agent /usr/local/lib/node_modules/@earendil-works/pi-coding-agent
   "${runtime_shell_args[@]}"
   --bind "$project_root" /workspace
-  "${coord_root_bind_args[@]}"
   "${coord_remote_bind_args[@]}"
   "${role_manager_bind_args[@]}"
   --bind "$state_base/home" /home/pi

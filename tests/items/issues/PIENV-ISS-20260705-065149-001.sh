@@ -9,6 +9,8 @@ trap 'rm -rf "$tmp"' EXIT
 
 legacy_public_name="pi""-coordination"
 legacy_config_name=".pi""-coordination.yaml"
+legacy_remote_url_env="PI_ENV_COORD_REMOTE""_URL"
+legacy_root_env="PI_ENV_COORD""_ROOT"
 
 if git grep -n -- "$legacy_public_name" >"$tmp/legacy-public.out"; then
   cat "$tmp/legacy-public.out" >&2
@@ -19,6 +21,18 @@ fi
 if git grep -n -- "$legacy_config_name" >"$tmp/legacy-config.out"; then
   cat "$tmp/legacy-config.out" >&2
   printf 'old implementation config filename remains in tracked files\n' >&2
+  exit 1
+fi
+
+if git grep -n -- "$legacy_remote_url_env" >"$tmp/legacy-remote-url.out"; then
+  cat "$tmp/legacy-remote-url.out" >&2
+  printf 'legacy coordination remote URL alias remains in tracked files\n' >&2
+  exit 1
+fi
+
+if git grep -n -- "$legacy_root_env" >"$tmp/legacy-root-env.out"; then
+  cat "$tmp/legacy-root-env.out" >&2
+  printf 'legacy coordination root environment variable remains in tracked files\n' >&2
   exit 1
 fi
 

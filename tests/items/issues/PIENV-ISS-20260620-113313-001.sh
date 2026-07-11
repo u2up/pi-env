@@ -85,7 +85,7 @@ run_harness() {
   mkdir -p "$project" "$cwd"
   (
     cd "$cwd"
-    unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE PI_ENV_COORD_REMOTE_URL PI_ENV_COORD_DIR \
+    unset PI_ENV_COORD_REMOTE PI_ENV_COORD_DIR \
       PI_ENV_BWRAP_COORDINATION_DIR PI_ENV_BWRAP_STATE_DIR
     env \
       HOME="$tmpdir/home" \
@@ -121,36 +121,24 @@ local_project="$tmpdir/local-project"
 mkdir -p "$local_project/.pi-env/agent-remotes" "$local_project/subdir"
 local_capture="$tmpdir/local-capture"
 run_harness "$local_project" "$local_capture" "$local_project/subdir" \
-  PI_ENV_COORD_ROOT=.pi-env/agent-remotes \
   PI_ENV_BWRAP_STATE_DIR="$tmpdir/local-state"
 assert_bind "$local_capture" "$local_project" /workspace
-assert_setenv "$local_capture" PI_ENV_COORD_ROOT /workspace/.pi-env/agent-remotes
 assert_no_line "$local_project/.pi-env/agent-remotes" "$local_capture"
 assert_no_line /agent-remotes "$local_capture"
 
-external_project="$tmpdir/external-project"
-external_root="$tmpdir/external-remotes"
-mkdir -p "$external_root"
-external_capture="$tmpdir/external-capture"
-run_harness "$external_project" "$external_capture" "$external_project" \
-  PI_ENV_COORD_ROOT="$external_root"
-assert_bind "$external_capture" "$external_root" /agent-remotes
-assert_setenv "$external_capture" PI_ENV_COORD_ROOT /agent-remotes
-
-legacy_project="$tmpdir/legacy-project"
-mkdir -p "$legacy_project/agent-remotes" "$legacy_project/coordination/.git"
-touch "$legacy_project/coordination/AGENTS.md"
-legacy_capture="$tmpdir/legacy-capture"
-run_harness "$legacy_project" "$legacy_capture" "$legacy_project"
-assert_no_line PI_ENV_COORD_DIR "$legacy_capture"
-assert_no_line PI_ENV_COORD_ROOT "$legacy_capture"
-assert_no_line /workspace/coordination "$legacy_capture"
-assert_no_line /workspace/agent-remotes "$legacy_capture"
-assert_no_line "$legacy_project/agent-remotes" "$legacy_capture"
+root_layout_project="$tmpdir/root-layout-project"
+mkdir -p "$root_layout_project/agent-remotes" "$root_layout_project/coordination/.git"
+touch "$root_layout_project/coordination/AGENTS.md"
+root_layout_capture="$tmpdir/root-layout-capture"
+run_harness "$root_layout_project" "$root_layout_capture" "$root_layout_project"
+assert_no_line PI_ENV_COORD_DIR "$root_layout_capture"
+assert_no_line /workspace/coordination "$root_layout_capture"
+assert_no_line /workspace/agent-remotes "$root_layout_capture"
+assert_no_line "$root_layout_project/agent-remotes" "$root_layout_capture"
 
 explicit_project_coord_capture="$tmpdir/explicit-project-coord-capture"
-mkdir -p "$legacy_project/.pi-env/coordination/.git"
-run_harness "$legacy_project" "$explicit_project_coord_capture" "$legacy_project" \
+mkdir -p "$root_layout_project/.pi-env/coordination/.git"
+run_harness "$root_layout_project" "$explicit_project_coord_capture" "$root_layout_project" \
   PI_ENV_COORD_DIR=.pi-env/coordination
 assert_setenv "$explicit_project_coord_capture" PI_ENV_COORD_DIR /workspace/.pi-env/coordination
 

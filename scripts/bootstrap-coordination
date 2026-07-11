@@ -20,7 +20,7 @@ Usage:
 
 Options:
   --project-root DIR  Project directory to inspect; default: current directory
-  --root DIR          Bare remote parent; default: PI_ENV_COORD_ROOT or .pi-env/agent-remotes
+  --root DIR          Bare remote parent; default: .pi-env/agent-remotes
   --remote REMOTE     Coordination Git remote URL or local bare path; default: PI_ENV_COORD_REMOTE
   --project KEY       Coordination project; default: PI_ENV_COORD_PROJECT or inferred project name
   --project-key KEY   Project item ID prefix; default: PI_ENV_COORD_PROJECT_KEY or derived project
@@ -43,8 +43,8 @@ directory instead of inherited PI_ENV_COORD_DIR, PI_ENV_COORD_PROJECT, and
 PI_ENV_COORD_PROJECT_KEY values; pass explicit options to override them. If a
 coordination clone already exists but the planned local bare remote is missing
 or empty, the remote is restored from the clone's committed history. Remote precedence is
-explicit --remote, then PI_ENV_COORD_REMOTE, then PI_ENV_COORD_REMOTE_URL, then
-.pi-env-coordination.yaml coordination_remote, then the local bare remote path.
+explicit --remote, then PI_ENV_COORD_REMOTE, then .pi-env-coordination.yaml
+coordination_remote, then the local bare remote path.
 USAGE
 }
 

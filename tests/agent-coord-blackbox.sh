@@ -15,7 +15,7 @@ mkdir -p "$HOME" "$workspace_dir"
 git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
-unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE PI_ENV_COORD_REMOTE_URL PI_ENV_COORD_WORKSPACE PI_ENV_COORD_DIR \
+unset PI_ENV_COORD_REMOTE PI_ENV_COORD_WORKSPACE PI_ENV_COORD_DIR \
   PI_ENV_COORD_AGENT_ID PI_ENV_COORD_PROJECT PI_ENV_COORD_PROJECT_KEY PI_ENV_COORD_ROLE
 
 project_git="$tmp/project-git"
@@ -46,7 +46,7 @@ test ! -e "$HOME/agent-remotes/default-demo-coordination.git"
 grep -Fxq '/.pi-env/' "$tmp/default-root/.git/info/exclude"
 
 if [ -d /workspace ] && [ "$(realpath -m /workspace)" = "$(realpath -m "$repo_root")" ]; then
-  workspace_default_root="$(cd "$repo_root" && unset PI_ENV_COORD_ROOT && . "$PI_ENV_COORD_LIB" && coord_default_root)"
+  workspace_default_root="$(cd "$repo_root" && . "$PI_ENV_COORD_LIB" && coord_default_root)"
   test "$workspace_default_root" = "/workspace/.pi-env/agent-remotes"
 fi
 
@@ -131,7 +131,6 @@ grep -q "export PI_ENV_COORD_REMOTE=$tmp/bootstrap-remotes/other-project-coordin
 grep -Fxq '/.pi-env/' "$bootstrap_project_dir/.git/info/exclude"
 grep -q 'export PI_ENV_COORD_PROJECT=other-project' "$bootstrap_plan"
 ! grep -q 'PI_ENV_COORD_WORKSPACE' "$bootstrap_plan"
-! grep -q 'PI_ENV_COORD_REMOTE_URL' "$bootstrap_plan"
 grep -q "^coordination_remote: $tmp/bootstrap-remotes/other-project-coordination.git$" \
   "$bootstrap_project_dir/.pi-env-coordination.yaml"
 
@@ -205,13 +204,6 @@ grep -q "agent-coord-init --remote $server_print_remote" "$tmp/server-print-plan
 test ! -e "$tmp/server-print-remotes"
 test ! -e "$server_print_project_dir/.pi-env/coordination"
 
-PI_ENV_COORD_REMOTE_URL="$tmp/env-remote.git" bootstrap-coordination \
-  --project-root "$server_print_project_dir" \
-  --remote "$server_print_remote" \
-  --print-only >"$tmp/server-precedence-plan.txt" 2>/dev/null
-grep -q "Remote:       $server_print_remote" "$tmp/server-precedence-plan.txt"
-! grep -q "Remote:       $tmp/env-remote.git" "$tmp/server-precedence-plan.txt"
-
 server_remote="$tmp/server-remote.git"
 git init --bare --initial-branch=main "$server_remote" >/dev/null 2>&1 \
   || git init --bare "$server_remote" >/dev/null
@@ -233,18 +225,10 @@ test "$(git -C "$tmp/server-coordination-existing" rev-parse HEAD)" = "$server_h
 
 env_remote="$tmp/env-clone-remote.git"
 git clone --bare "$server_remote" "$env_remote" >/dev/null 2>&1
-unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE
-PI_ENV_COORD_REMOTE_URL="$env_remote" agent-coord-clone \
+unset PI_ENV_COORD_REMOTE
+PI_ENV_COORD_REMOTE="$env_remote" agent-coord-clone \
   --dir "$tmp/env-remote-clone" >/dev/null
 test -f "$tmp/env-remote-clone/AGENTS.md"
-PI_ENV_COORD_REMOTE="$env_remote" agent-coord-clone \
-  --dir "$tmp/new-env-remote-clone" >/dev/null
-test -f "$tmp/new-env-remote-clone/AGENTS.md"
-PI_ENV_COORD_REMOTE="$env_remote" \
-PI_ENV_COORD_REMOTE_URL="$tmp/must-not-win.git" \
-agent-coord-clone \
-  --dir "$tmp/new-env-precedence-clone" >/dev/null
-test -f "$tmp/new-env-precedence-clone/AGENTS.md"
 agent-coord-clone \
   --remote "$server_remote" \
   --dir "$tmp/arg-remote-clone" >/dev/null

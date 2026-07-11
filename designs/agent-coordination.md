@@ -404,7 +404,6 @@ Everything else can remain normal Git commands until real usage proves that more
 
 ```bash
 PI_ENV_COORD_REMOTE=/workspace/.pi-env/agent-remotes/pi-env-coordination.git # exact Git remote URL/path
-PI_ENV_COORD_ROOT=/workspace/.pi-env/agent-remotes # legacy/default bare remote parent
 PI_ENV_COORD_PROJECT=pi-env                        # coordination project/domain name
 PI_ENV_COORD_DIR=/workspace/.pi-env/coordination   # clone directory for this project
 PI_ENV_COORD_AGENT_ID=agent-a              # agent identity for item ownership/events
@@ -424,11 +423,11 @@ With `PI_ENV_COORD_REMOTE` set, `agent-coord-clone` can infer:
 $PI_ENV_COORD_REMOTE -> $PI_ENV_COORD_DIR
 ```
 
-When no exact remote is configured and `PI_ENV_COORD_ROOT` is unset, helpers
-should prefer the project-visible `.pi-env/agent-remotes` directory. Inside
-the pi-env sandbox, or when `/workspace` resolves to the current project
-root, that default should be `/workspace/.pi-env/agent-remotes` so the same
-bare remote is usable from inside and outside Bubblewrap for this project.
+When no exact remote is configured and `--root` is omitted, helpers should
+prefer the project-visible `.pi-env/agent-remotes` directory. Inside the pi-env
+sandbox, or when `/workspace` resolves to the current project root, that default
+should be `/workspace/.pi-env/agent-remotes` so the same bare remote is usable
+from inside and outside Bubblewrap for this project.
 
 ### 9.1 Optional role-aware identity
 

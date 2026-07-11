@@ -42,7 +42,7 @@ run_harness() {
   mkdir -p "$project"
   (
     cd "$project"
-    unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE PI_ENV_COORD_REMOTE_URL PI_ENV_COORD_DIR
+    unset PI_ENV_COORD_REMOTE PI_ENV_COORD_DIR
     env \
       PATH="$fakebin:$PATH" \
       PI_ENV_RUNTIME_PATH="$tmpdir/runtime/bin" \
@@ -69,36 +69,11 @@ assert_no_grep() {
   fi
 }
 
-project_local="$tmpdir/project-local"
-mkdir -p "$project_local/.pi-env/agent-remotes"
-local_capture="$tmpdir/local-capture"
-run_harness "$project_local" "$local_capture" \
-  PI_ENV_COORD_ROOT=.pi-env/agent-remotes
-
-test_grep '^--bind$' "$local_capture"
-test_grep "^$project_local$" "$local_capture"
-test_grep '^/workspace$' "$local_capture"
-test_grep '^PI_ENV_COORD_ROOT$' "$local_capture"
-test_grep '^/workspace/.pi-env/agent-remotes$' "$local_capture"
-assert_no_grep '^/agent-remotes$' "$local_capture"
-
-external_root="$tmpdir/external-remotes"
-mkdir -p "$external_root"
-external_capture="$tmpdir/external-capture"
-run_harness "$tmpdir/external-project" "$external_capture" \
-  PI_ENV_COORD_ROOT="$external_root"
-
-test_grep '^--dir$' "$external_capture"
-test_grep '^/agent-remotes$' "$external_capture"
-test_grep "^$external_root$" "$external_capture"
-test_grep '^PI_ENV_COORD_ROOT$' "$external_capture"
-test_grep '^/agent-remotes$' "$external_capture"
-
 remote_capture="$tmpdir/remote-capture"
 run_harness "$tmpdir/url-project" "$remote_capture" \
-  PI_ENV_COORD_REMOTE_URL='https://git.example.invalid/pi-env-coordination.git'
+  PI_ENV_COORD_REMOTE='https://git.example.invalid/pi-env-coordination.git'
 
-test_grep '^PI_ENV_COORD_REMOTE_URL$' "$remote_capture"
+test_grep '^PI_ENV_COORD_REMOTE$' "$remote_capture"
 test_grep '^https://git.example.invalid/pi-env-coordination.git$' "$remote_capture"
 assert_no_grep '^/agent-remotes$' "$remote_capture"
 assert_no_grep '^/workspace/agent-remotes$' "$remote_capture"
@@ -148,7 +123,7 @@ assert_no_grep "^$tmpdir/config-external-nonbare-remotes$" "$config_external_non
 
 home_capture="$tmpdir/home-safety-capture"
 run_harness "$tmpdir/home-safety-project" "$home_capture" \
-  PI_ENV_COORD_REMOTE_URL='ssh://git.example.invalid/pi-env.git'
+  PI_ENV_COORD_REMOTE='ssh://git.example.invalid/pi-env.git'
 assert_no_grep "^$HOME/.ssh$" "$home_capture"
 assert_no_grep '/\.ssh$' "$home_capture"
 assert_no_grep 'bind.*\.ssh' "$script"
@@ -178,11 +153,10 @@ modern_remotes_capture="$tmpdir/modern-remotes-capture"
 run_harness "$modern_remotes_project" "$modern_remotes_capture"
 assert_no_grep '^/workspace/agent-remotes$' "$modern_remotes_capture"
 
-legacy_remotes_project="$tmpdir/legacy-remotes-project"
-mkdir -p "$legacy_remotes_project/agent-remotes"
-legacy_remotes_capture="$tmpdir/legacy-remotes-capture"
-run_harness "$legacy_remotes_project" "$legacy_remotes_capture"
-assert_no_grep '^/workspace/agent-remotes$' "$legacy_remotes_capture"
-assert_no_grep '^PI_ENV_COORD_ROOT$' "$legacy_remotes_capture"
+root_remotes_project="$tmpdir/root-remotes-project"
+mkdir -p "$root_remotes_project/agent-remotes"
+root_remotes_capture="$tmpdir/root-remotes-capture"
+run_harness "$root_remotes_project" "$root_remotes_capture"
+assert_no_grep '^/workspace/agent-remotes$' "$root_remotes_capture"
 
 echo "simple coordination remote mount tests passed"

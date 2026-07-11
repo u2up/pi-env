@@ -9,7 +9,7 @@ export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
-unset PI_ENV_COORD_ROOT PI_ENV_COORD_REMOTE PI_ENV_COORD_REMOTE_URL PI_ENV_COORD_WORKSPACE \
+unset PI_ENV_COORD_REMOTE PI_ENV_COORD_WORKSPACE \
   PI_ENV_COORD_DIR PI_ENV_COORD_AGENT_ID PI_ENV_COORD_PROJECT PI_ENV_COORD_PROJECT_KEY PI_ENV_COORD_ROLE
 
 tmp="$(mktemp -d)"

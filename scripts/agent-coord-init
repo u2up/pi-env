@@ -18,7 +18,7 @@ Usage:
   agent-coord-init [options]
 
 Options:
-  --root DIR        Bare remote parent; default: PI_ENV_COORD_ROOT or .pi-env/agent-remotes
+  --root DIR        Bare remote parent; default: .pi-env/agent-remotes
   --remote REMOTE   Coordination Git remote URL or local bare path; default: PI_ENV_COORD_REMOTE
   --project ID      Coordination project; default: PI_ENV_COORD_PROJECT or cwd name
   --project-key KEY Project item ID prefix; default: derived project
@@ -31,8 +31,7 @@ Options:
   -h, --help        Show this help
 
 Remote precedence is explicit --remote, then PI_ENV_COORD_REMOTE,
-then PI_ENV_COORD_REMOTE_URL, then .pi-env-coordination.yaml coordination_remote,
-then:
+then .pi-env-coordination.yaml coordination_remote, then:
   <root>/<project>-coordination.git
 USAGE
 }
