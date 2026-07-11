@@ -67,13 +67,13 @@ git config rebase.autoStash true
 When the project provides the pi-env helper, run:
 
 ```bash
-agent-coord-lint --coord-dir coordination --project-root .
+pi-env-coord-lint --coord-dir coordination --project-root .
 ```
 
 For release or handoff gates that require no active issue work, run:
 
 ```bash
-agent-coord-lint --coord-dir coordination --project-root . \
+pi-env-coord-lint --coord-dir coordination --project-root . \
   --require-done-or-closed
 ```
 

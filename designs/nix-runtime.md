@@ -30,12 +30,12 @@ users and tests can invoke the same artifacts. Packages provide installable
 programs; apps provide convenient `nix run` entrypoints.
 
 The package boundary separates the core sandbox runtime from optional
-coordination helpers while preserving compatibility:
+coordination helpers while using the current `pi-env-*` command names:
 
-- `pi-core` contains `pi-env`, `pi-env-shell`, `pi-bwrap`, and the runtime tools.
+- `pi-core` contains `pi-env`, `pi-env-shell`, `pi-env-bwrap`, and the runtime tools.
 - `pi-env-coordination` contains the Git-backed coordination helper commands.
-- `pi-runtime` remains the compatibility bundle containing both sets of
-  commands for existing consumers.
+- `pi-runtime` remains the bundle containing both sets of renamed commands for
+  consumers that want the full runtime in one package.
 
 Development shells include all tools needed for local validation: shell
 utilities, Bubblewrap, Node where required by scripts, and test dependencies.
@@ -49,10 +49,10 @@ common runtime dependencies and shell initialization while letting callers add
 project-specific inputs. The function is the preferred extension point instead
 of duplicating package lists across flakes.
 
-`mkPiShell` keeps `includeCoordinationHelpers = true` by default so existing
-shell consumers retain `bootstrap-coordination` and `agent-coord*` commands.
-Projects that only need the sandbox/runtime set it to `false` for a core-only
-shell.
+`mkPiShell` keeps `includeCoordinationHelpers = true` by default so project
+shell consumers receive `pi-env-bootstrap-coordination` and `pi-env-coord-*`
+commands. Projects that only need the sandbox/runtime set it to `false` for a
+core-only shell.
 
 The reusable shell must remain deterministic. Host-specific state such as auth
 files, Git preferences, and Pi resources is imported at launcher runtime rather
@@ -74,7 +74,7 @@ project-specific tools reproducible and explicit.
 
 The exported path is an interface between the Nix layer and the sandbox layer,
 not a host-path inheritance mechanism. Nix computes package paths;
-`pi-bwrap` decides whether they are safe to admit.
+`pi-env-bwrap` decides whether they are safe to admit.
 
 ## 4. Compatibility
 

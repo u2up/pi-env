@@ -86,28 +86,28 @@ Initial selection can use existing helpers:
 
 ```bash
 next_developer_item() {
-  scripts/agent-coord-list issues open | head -n1 | cut -f1
+  scripts/pi-env-coord-list issues open | head -n1 | cut -f1
 }
 
 next_reviewer_item() {
-  scripts/agent-coord-list issues done |
+  scripts/pi-env-coord-list issues done |
     awk -F'\t' '$3 ~ /reviewed:false/ { print $1; exit }'
 }
 
 next_tester_item() {
-  scripts/agent-coord-list issues done |
+  scripts/pi-env-coord-list issues done |
     awk -F'\t' '$3 ~ /reviewed:true/ && $3 ~ /verified:false/ { print $1; exit }'
 }
 ```
 
 A later implementation may replace this duplicated shell parsing with an
-`agent-coord-next` helper, but that is not required for the serial MVP.
+`pi-env-coord-next` helper, but that is not required for the serial MVP.
 
 ## Repository safety checks
 
 Before every Pi job the orchestrator should:
 
-- hold the default local lock at `.pi-env/locks/pi-serial-roles.lock`,
+- hold the default local lock at `.pi-env/locks/pi-env-serial-roles.lock`,
   creating `.pi-env/locks` when needed, so two serial workers cannot
   accidentally run in the same clone;
 - ensure the project working tree is clean unless the previous role job left a
@@ -122,7 +122,7 @@ Before every Pi job the orchestrator should:
 - stop rather than auto-reset, auto-stash, or discard project changes.
 
 Developer jobs must commit implementation changes before marking an item done
-and must pass a structured implementation ref to `agent-coord-done` when
+and must pass a structured implementation ref to `pi-env-coord-done` when
 possible. Reviewer and tester jobs should review or verify committed project
 state, not uncommitted leftovers.
 
@@ -139,14 +139,14 @@ can expose the helper directory with
 `PI_ENV_BWRAP_EXTRA_PATH`; source-checkout runs should name paths under the mounted
 `/workspace` when the helpers live in the project checkout:
 
-- developer: `agent-coord-claim` before work, then `agent-coord-done` with
+- developer: `pi-env-coord-claim` before work, then `pi-env-coord-done` with
   implementation refs after project commits;
-- reviewer: `agent-coord-review --pass` or `agent-coord-review --fail`;
-- tester: `agent-coord-verify --pass` or `agent-coord-verify --fail`;
+- reviewer: `pi-env-coord-review --pass` or `pi-env-coord-review --fail`;
+- tester: `pi-env-coord-verify --pass` or `pi-env-coord-verify --fail`;
 - optional final close may be configurable and should only run after both
   review and verification have passed.
 
-Because `pi-bwrap` clears the environment, role activation through environment
+Because `pi-env-bwrap` clears the environment, role activation through environment
 variables requires explicit pass-through when used. A safe invocation shape is:
 
 ```bash
@@ -174,7 +174,7 @@ from the `role_cycle_done` `tool_execution_end` event.
 For default watched auto-exit work, the same environment, role manager
 extension, coordination mount, and tool allowlist are used, but the Pi command
 omits both `--mode json` and `--print` and launches the normal TUI with the
-generated prompt as the initial message. `pi-serial-roles` additionally passes
+generated prompt as the initial message. `pi-env-serial-roles` additionally passes
 `PI_ROLE_MANAGER_AUTO_SHUTDOWN_ON_DONE=1` through the sandbox:
 
 ```bash

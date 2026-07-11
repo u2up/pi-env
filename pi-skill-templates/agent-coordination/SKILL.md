@@ -22,7 +22,7 @@ rules say otherwise.
 ## Required protocol
 
 1. `cd "${PI_ENV_COORD_DIR:-.pi-env/coordination}" && git pull --rebase` before
-   reading or modifying coordination state, or use the `agent-coord-*` helpers
+   reading or modifying coordination state, or use the `pi-env-coord-*` helpers
    with their default coordination directory resolution.
 2. Inspect open, claimed, blocked, and done YAML issue items in the current
    repo namespace. Also inspect related requirement or decision items when
@@ -59,7 +59,7 @@ coordination_remote: git@example.com:org/my-product-coordination.git
 repo_id: backend-api
 ```
 
-Use `agent-coord-repo add`, `rename`, and `retire` for repo-id lifecycle
+Use `pi-env-coord-repo add`, `rename`, and `retire` for repo-id lifecycle
 changes. Add creates the manifest and issue status directories, rename moves
 the namespace and records old ids as aliases, and retire preserves history
 while blocking new issue creation by default.
@@ -82,8 +82,8 @@ suffix starts at
 `001` for each UTC timestamp. Historical items may keep legacy IDs; do not
 rename, renumber, rewrite, or move them unless explicitly directed.
 
-`agent-coord-list notes` and `agent-coord-list todos` report note and TODO
-items by their YAML `status` values. `agent-coord-list requirements` reports
+`pi-env-coord-list notes` and `pi-env-coord-list todos` report note and TODO
+items by their YAML `status` values. `pi-env-coord-list requirements` reports
 functional, quality, and constraint requirement items. Use `functional`,
 `quality`, or `constraint` for class-specific listings.
 
@@ -129,7 +129,7 @@ Verification messages should record exact commands and results. When available,
 run this from the project root to check item metadata and test linkage:
 
 ```bash
-agent-coord-lint --coord-dir "${PI_ENV_COORD_DIR:-.pi-env/coordination}" --project-root .
+pi-env-coord-lint --coord-dir "${PI_ENV_COORD_DIR:-.pi-env/coordination}" --project-root .
 ```
 
 Use `--require-done-or-closed` for release gates that require all issue items

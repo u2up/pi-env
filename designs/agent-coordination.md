@@ -193,7 +193,7 @@ status directories, rename moves the namespace and records aliases with
 warnings, and retire preserves history while blocking new issues by default.
 
 
-`AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `agent-coord-init`. After initialization, the copies in the coordination repository are authoritative for that project coordination domain and can be edited/versioned like any other coordination state.
+`AGENTS.md` and `.pi/skills/agent-coordination/SKILL.md` are generated from `pi-env` templates by `pi-env-coord-init`. After initialization, the copies in the coordination repository are authoritative for that project coordination domain and can be edited/versioned like any other coordination state.
 
 Use project-local `AGENTS.md`, `.pi/skills`, `.pi/prompts`, and `.pi/extensions`
 for codebase-specific Pi behavior. Keep issue, TODO, and cross-agent
@@ -222,7 +222,7 @@ timestamp and starts at `001`. Domain item keys are stored in top-level
 `repos/{repo_id}/REPO.md`. New pi-env project coordination creates a repo
 namespace for the selected implementation project.
 
-Default key resolution for `agent-coord-new` should be:
+Default key resolution for `pi-env-coord-new` should be:
 
 1. explicit `--project-key`;
 2. stored `item_key` in root `PROJECT.md`;
@@ -286,7 +286,7 @@ messages:
       ## Acceptance criteria
 
       - [ ] README explains host `pi config`
-      - [ ] README explains sandbox `pi-bwrap -- config`
+      - [ ] README explains sandbox `pi-env-bwrap -- config`
 ```
 
 Keep issue work in developer-centric state directories under the owning repo
@@ -370,32 +370,32 @@ git config rebase.autoStash true
 `pi-env` could expose a small helper CLI or a set of shell commands:
 
 ```text
-bootstrap-coordination
-                      infer defaults and initialize via agent-coord-init
-agent-coord-init      create a local bare coordination remote
-agent-coord-clone     clone a coordination remote for the current project
-agent-coord-status    show sync status and current open/claimed items
-agent-coord-list      list issues, todos, notes, decisions, or requirement
+pi-env-bootstrap-coordination
+                      infer defaults and initialize via pi-env-coord-init
+pi-env-coord-init      create a local bare coordination remote
+pi-env-coord-clone     clone a coordination remote for the current project
+pi-env-coord-status    show sync status and current open/claimed items
+pi-env-coord-list      list issues, todos, notes, decisions, or requirement
                       classes by status
-agent-coord-pull      run git pull --rebase in the coordination clone
-agent-coord-push      commit/push coordination changes
-agent-coord-new       create a new templated item
-agent-coord-lint      lint item IDs, status, and item-matched tests
-agent-coord-claim     claim an item
-agent-coord-done      mark developer work done and move it to done/
-agent-coord-review    mark review pass/fail and reopen on failure
-agent-coord-verify    mark verification pass/fail and reopen on failure
-agent-coord-close     final-close a reviewed and verified done item
-agent-coord-upgrade-rules
+pi-env-coord-pull      run git pull --rebase in the coordination clone
+pi-env-coord-push      commit/push coordination changes
+pi-env-coord-new       create a new templated item
+pi-env-coord-lint      lint item IDs, status, and item-matched tests
+pi-env-coord-claim     claim an item
+pi-env-coord-done      mark developer work done and move it to done/
+pi-env-coord-review    mark review pass/fail and reopen on failure
+pi-env-coord-verify    mark verification pass/fail and reopen on failure
+pi-env-coord-close     final-close a reviewed and verified done item
+pi-env-coord-upgrade-rules
                       preview/apply rule template updates
 ```
 
 A minimal first implementation could include only:
 
 ```text
-agent-coord-init
-agent-coord-clone
-agent-coord-new
+pi-env-coord-init
+pi-env-coord-clone
+pi-env-coord-new
 ```
 
 Everything else can remain normal Git commands until real usage proves that more automation is needed.
@@ -411,13 +411,13 @@ PI_ENV_COORD_ROLE=architect                # optional active role for role-aware
 PI_ENV_COORD_PROJECT_KEY=PIENV             # optional generated item ID prefix
 ```
 
-`bootstrap-coordination` can print and apply inferred values for these
+`pi-env-bootstrap-coordination` can print and apply inferred values for these
 variables when they are not already set, including when pointed at another
 project root with `--project-root`, and record the selected remote as
 `.pi-env-coordination.yaml` `coordination_remote`. If the coordination clone
 already exists but the planned local bare remote is missing or empty, it can
 restore that remote from committed clone history without changing item state.
-With `PI_ENV_COORD_REMOTE` set, `agent-coord-clone` can infer:
+With `PI_ENV_COORD_REMOTE` set, `pi-env-coord-clone` can infer:
 
 ```text
 $PI_ENV_COORD_REMOTE -> $PI_ENV_COORD_DIR
@@ -448,7 +448,7 @@ Role-aware identity should apply to the coordination repository only. It should
 not change project repository Git identity unless the user explicitly opts in.
 Default `pi-env` startup must still avoid automatic claims, closes, commits, or pushes.
 
-## 10. Coordination rules installed by `agent-coord-init`
+## 10. Coordination rules installed by `pi-env-coord-init`
 
 Because `pi-env` is a Pi-related project, the default agent rules should be provided as Pi skill templates and scaffolded instructions. The `pi-env` source tree should keep these defaults under a clear template directory such as:
 
@@ -461,7 +461,7 @@ pi-skill-templates/
     ITEM_FORMAT.md
 ```
 
-`agent-coord-init` should install those templates into a newly initialized coordination repository as at least:
+`pi-env-coord-init` should install those templates into a newly initialized coordination repository as at least:
 
 ```text
 .pi-env/coordination/AGENTS.md
@@ -510,7 +510,7 @@ Do not encode important state only in a commit message. The file content must re
 
 ### 10.3 Required Pi skill template
 
-`pi-env` should ship the canonical skill source as `pi-skill-templates/agent-coordination/SKILL.md`. `agent-coord-init` should copy it to `.pi-env/coordination/.pi/skills/agent-coordination/SKILL.md`. A generated skill should look like this in spirit:
+`pi-env` should ship the canonical skill source as `pi-skill-templates/agent-coordination/SKILL.md`. `pi-env-coord-init` should copy it to `.pi-env/coordination/.pi/skills/agent-coordination/SKILL.md`. A generated skill should look like this in spirit:
 
 ```markdown
 # Agent Coordination
@@ -553,8 +553,8 @@ The skill should complement, not replace, `.pi-env/coordination/AGENTS.md`. If t
 `pi-env` may update its built-in templates over time. Existing coordination repositories should not be silently overwritten. If template upgrade support is added, it should be explicit, diffable, and commit-based, for example:
 
 ```bash
-agent-coord-upgrade-rules --preview
-agent-coord-upgrade-rules
+pi-env-coord-upgrade-rules --preview
+pi-env-coord-upgrade-rules
 ```
 
 ## 11. Optional Pi integration
@@ -564,7 +564,7 @@ Default `pi-env` startup should not mutate coordination state automatically.
 Possible safe integrations:
 
 - print a reminder when `.pi-env/coordination` exists;
-- provide generated/scaffolded coordination `AGENTS.md`, docs, and Pi skill templates through `agent-coord-init`;
+- provide generated/scaffolded coordination `AGENTS.md`, docs, and Pi skill templates through `pi-env-coord-init`;
 - provide an optional prompt/context snippet explaining the Git sync protocol;
 - allow users to mount/select the coordination repository explicitly when it is outside the project root.
 

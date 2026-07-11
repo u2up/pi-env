@@ -37,7 +37,7 @@ custom type. The timestamp is UTC. `NNN` is a three-digit collision/order
 suffix for that exact timestamp and starts at `001`. It is not a global
 sequence number.
 
-When `agent-coord-new` needs to derive a project key, it uppercases the source
+When `pi-env-coord-new` needs to derive a project key, it uppercases the source
 name and removes delimiters, whitespace, slashes, backslashes, pipes, and other
 non-alphanumeric characters. Domain-common items derive from the coordination domain or project metadata.
 Repo-scoped issue items derive from the owning repo's `repos/{repo_id}/REPO.md`
@@ -97,7 +97,7 @@ messages:
       ## Acceptance criteria
 
       - [ ] README explains host `pi config`.
-      - [ ] README explains sandbox `pi-bwrap -- config`.
+      - [ ] README explains sandbox `pi-env-bwrap -- config`.
 ```
 
 Requirement items are specification records rather than workflow history

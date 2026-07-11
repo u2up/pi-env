@@ -159,19 +159,19 @@ only in implementation repos whose `REPO.md` lists them. More than one active
 repo may list the same domain-wide generated path when the domain intentionally
 keeps committed copies in several implementation repositories.
 
-`agent-coord-lint` validates repo manifests and all repo-scoped issue structure
+`pi-env-coord-lint` validates repo manifests and all repo-scoped issue structure
 under `repos/<repo_id>/issues/<status>`. Item-matched issue tests are expected
 only for the current implementation repo resolved from `--repo-id`,
 `PI_ENV_COORD_REPO_ID`, `.pi-env-coordination.yaml`, or Git remote registry data.
 `--all-repos` keeps structural validation across every registered repo but does
 not require tests from unavailable implementation checkouts unless `--repo-id`
-selects that repo explicitly. Fresh `agent-coord-init` scaffolds the initial
+selects that repo explicitly. Fresh `pi-env-coord-init` scaffolds the initial
 implementation namespace at
 `repos/<repo_id>/issues/{open,blocked,done,closed}` and writes the sole registry
 record at `repos/<repo_id>/REPO.md`; no root `REPOS.md` index is generated.
 Existing `REPOS.md` files from older coordination repositories are ignored by
 tooling and may be deleted manually. Existing root-layout domains can move
-tracked root issue files with `agent-coord-repo migrate-root-issues <repo_id>`;
+tracked root issue files with `pi-env-coord-repo migrate-root-issues <repo_id>`;
 the command creates or validates the target repo manifest, uses `git mv` for
 tracked files, and refuses target overwrites or duplicate issue ids. Root
 `issues/` paths are migration-compatible by default with warnings; set
@@ -311,7 +311,7 @@ For a conventional host-runtime install, use the non-Nix installer from a
 release/archive checkout:
 
 ```bash
-./scripts/install-non-nix --prefix "$HOME/.local" --check-deps
+./scripts/pi-env-install-non-nix --prefix "$HOME/.local" --check-deps
 export PATH="$HOME/.local/bin:$PATH"
 pienv --runtime host --help
 ```
@@ -334,7 +334,7 @@ For latest/development testing, the installer can bootstrap itself from a
 GitHub branch archive when no local payload is present:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/u2up/pi-env/main/scripts/install-non-nix \
+curl -fsSL https://raw.githubusercontent.com/u2up/pi-env/main/scripts/pi-env-install-non-nix \
   | bash -s -- --ref main --prefix "$HOME/.local" --check-deps
 ```
 
@@ -358,7 +358,7 @@ prints a short reminder unless `PI_ENV_QUIET` is set.
 ### Optional profile installation
 
 For the smallest profile that can launch Pi in the sandbox, install the core
-runtime package. It puts `pienv`, `pi-env`, `pi-env-shell`, `pi-bwrap`, and
+runtime package. It puts `pienv`, `pi-env`, `pi-env-shell`, `pi-env-bwrap`, and
 the runtime tools on `PATH` without the Git-backed coordination helper
 commands:
 
@@ -502,7 +502,7 @@ reference that your team can access.
         devShells.default = pi-env.lib.mkPiShell {
           inherit pkgs;
 
-          # Smallest project shell: omit agent-coord* helper commands unless
+          # Smallest project shell: omit pi-env-coord-* helper commands unless
           # this project uses Git-backed coordination.
           includeCoordinationHelpers = false;
 
@@ -528,7 +528,7 @@ pienv
 ```
 
 `mkPiShell` defaults `includeCoordinationHelpers` to `true` so existing
-consumers keep `bootstrap-coordination` and `agent-coord*` commands on `PATH`.
+consumers keep `pi-env-bootstrap-coordination` and `pi-env-coord-*` commands on `PATH`.
 Set it to `false` for core-only project shells.
 
 ### Existing project flake
@@ -568,7 +568,7 @@ devShells.default = pi-env.lib.mkPiShell {
   inherit pkgs;
 
   # Keep this false for a core-only runtime shell. Omit the option or set it
-  # to true if the project uses bootstrap-coordination or agent-coord* helpers.
+  # to true if the project uses pi-env-bootstrap-coordination or pi-env-coord-* helpers.
   includeCoordinationHelpers = false;
 
   extraPackages = with pkgs; [
@@ -607,7 +607,7 @@ devShells.default = pi-env.lib.mkPiShell {
 ```
 
 `mkPiShell` turns the `extraPackages` `bin` outputs into `PI_ENV_BWRAP_EXTRA_PATH`.
-In Nix runtime mode, `pi-bwrap` validates those entries before starting the
+In Nix runtime mode, `pi-env-bwrap` validates those entries before starting the
 sandbox, accepts only canonical `/nix/store` directories, and then appends them
 after the core pi-env runtime path. Since `/nix/store` is already mounted
 read-only, no host `/bin`, host `/usr/bin`, project-writable directory, or scan
@@ -647,12 +647,13 @@ nix flake update pi-env
 
 ## 5. Command reference
 
-`pienv` is the canonical user-facing command namespace. The older commands
-remain available as behavior sources and compatibility entrypoints; this phase
-does not deprecate, warn on, hide, or remove `pi-env`, `pi-env-shell`,
-`pi-bwrap`, `agent-coord-*`, `bootstrap-coordination`, or `pi-serial-roles`.
-Operational state paths such as `.pi-env/` and environment variables such as
-`PI_ENV_RUNTIME` and `PI_ENV_COORD_DIR` keep their existing names.
+`pienv` is the canonical user-facing command namespace. Lower-level/debug
+entrypoints use `pi-env-*` names: `pi-env`, `pi-env-shell`, `pi-env-bwrap`,
+`pi-env-bootstrap-coordination`, `pi-env-coord-*`, `pi-env-serial-roles`,
+`pi-env-install-non-nix`, and `pi-env-uninstall`. The old non-prefixed names
+are intentionally not compatibility entrypoints. Operational state paths such
+as `.pi-env/` and environment variables such as `PI_ENV_RUNTIME` and
+`PI_ENV_COORD_DIR` keep their existing names.
 
 ### `pienv`
 
@@ -698,29 +699,29 @@ by the selected pi-env flake, entering `nix develop` when needed.
 | `pienv run [pi args...]` | `pi-env [pi args...]` |
 | `pienv raw -- [pi args...]` | `pi-env --raw -- [pi args...]` |
 | `pienv shell [shell args...]` | `pi-env-shell [shell args...]` |
-| `pienv sandbox [pi args...]` | `pi-bwrap [pi args...]` |
-| `pienv sandbox shell [shell args...]` | `pi-bwrap --shell -- [shell args...]` |
-| `pienv coord bootstrap [options]` | `bootstrap-coordination [options]` |
-| `pienv coord init [options]` | `agent-coord-init [options]` |
-| `pienv coord clone [options] [remote]` | `agent-coord-clone [options] [remote]` |
-| `pienv coord status [options]` | `agent-coord-status [options]` |
-| `pienv coord list [options] TYPE [STATUS]` | `agent-coord-list [options] TYPE [STATUS]` |
-| `pienv coord show [options] ITEM` | `agent-coord-cat [options] ITEM` |
-| `pienv coord new [options] "title"` | `agent-coord-new [options] "title"` |
-| `pienv coord claim [options] ITEM` | `agent-coord-claim [options] ITEM` |
-| `pienv coord done [options] ITEM` | `agent-coord-done [options] ITEM` |
-| `pienv coord review [options] ITEM` | `agent-coord-review [options] ITEM` |
-| `pienv coord verify [options] ITEM` | `agent-coord-verify [options] ITEM` |
-| `pienv coord close [options] ITEM` | `agent-coord-close [options] ITEM` |
-| `pienv coord pull [options] [git args...]` | `agent-coord-pull [options] [git args...]` |
-| `pienv coord push [options] [git args...]` | `agent-coord-push [options] [git args...]` |
-| `pienv coord lint [options]` | `agent-coord-lint [options]` |
-| `pienv coord repo ...` | `agent-coord-repo ...` |
-| `pienv coord rules upgrade [options]` | `agent-coord-upgrade-rules [options]` |
-| `pienv coord requirements generate [...]` | `agent-coord-generate-requirements [...]` |
-| `pienv coord requirements coverage [...]` | `agent-coord-generate-requirements-coverage [...]` |
-| `pienv roles serial [options]` | `pi-serial-roles [options]` |
-| `pienv install [options]` | `install-non-nix [options]` |
+| `pienv sandbox [pi args...]` | `pi-env-bwrap [pi args...]` |
+| `pienv sandbox shell [shell args...]` | `pi-env-bwrap --shell -- [shell args...]` |
+| `pienv coord bootstrap [options]` | `pi-env-bootstrap-coordination [options]` |
+| `pienv coord init [options]` | `pi-env-coord-init [options]` |
+| `pienv coord clone [options] [remote]` | `pi-env-coord-clone [options] [remote]` |
+| `pienv coord status [options]` | `pi-env-coord-status [options]` |
+| `pienv coord list [options] TYPE [STATUS]` | `pi-env-coord-list [options] TYPE [STATUS]` |
+| `pienv coord show [options] ITEM` | `pi-env-coord-cat [options] ITEM` |
+| `pienv coord new [options] "title"` | `pi-env-coord-new [options] "title"` |
+| `pienv coord claim [options] ITEM` | `pi-env-coord-claim [options] ITEM` |
+| `pienv coord done [options] ITEM` | `pi-env-coord-done [options] ITEM` |
+| `pienv coord review [options] ITEM` | `pi-env-coord-review [options] ITEM` |
+| `pienv coord verify [options] ITEM` | `pi-env-coord-verify [options] ITEM` |
+| `pienv coord close [options] ITEM` | `pi-env-coord-close [options] ITEM` |
+| `pienv coord pull [options] [git args...]` | `pi-env-coord-pull [options] [git args...]` |
+| `pienv coord push [options] [git args...]` | `pi-env-coord-push [options] [git args...]` |
+| `pienv coord lint [options]` | `pi-env-coord-lint [options]` |
+| `pienv coord repo ...` | `pi-env-coord-repo ...` |
+| `pienv coord rules upgrade [options]` | `pi-env-coord-upgrade-rules [options]` |
+| `pienv coord requirements generate [...]` | `pi-env-coord-generate-requirements [...]` |
+| `pienv coord requirements coverage [...]` | `pi-env-coord-generate-requirements-coverage [...]` |
+| `pienv roles serial [options]` | `pi-env-serial-roles [options]` |
+| `pienv install [options]` | `pi-env-install-non-nix [options]` |
 | `pienv uninstall [options]` | `pi-env-uninstall [options]` |
 
 #### Help and completion
@@ -758,7 +759,7 @@ default `pi-env` startup runs the sandbox with the default tool allowlist,
 `--continue`, and the default role-manager package when available:
 
 ```bash
-pi-bwrap --tools read,bash,edit,write,grep,find,ls --continue -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
+pi-env-bwrap --tools read,bash,edit,write,grep,find,ls --continue -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
 ```
 
 Select the runtime with `--runtime host|nix|auto` or
@@ -805,18 +806,18 @@ from session state, or request one through supported environment variables. Set
 `PI_ENV_ROLE_MANAGER_AUTO=0` to omit the automatic per-run extension argument,
 especially if you prefer an installed-package workflow.
 
-### `pi-bwrap`
+### `pi-env-bwrap`
 
-`pi-bwrap` runs `pi-coding-agent` inside the Bubblewrap sandbox. Use it directly
+`pi-env-bwrap` runs `pi-coding-agent` inside the Bubblewrap sandbox. Use it directly
 when you want full control over the Pi arguments or when running Pi subcommands:
 
 ```bash
-pi-bwrap -- --help
-pi-bwrap -- config
-pi-bwrap --shell
+pi-env-bwrap -- --help
+pi-env-bwrap -- config
+pi-env-bwrap --shell
 ```
 
-`pi-bwrap --shell [--] [bash args...]` keeps the same project mount, isolated
+`pi-env-bwrap --shell [--] [bash args...]` keeps the same project mount, isolated
 home, runtime `PATH`, and environment policy, but execs Bash as the sandbox
 payload instead of `pi`. Prefer `pi-env-shell` unless you have already selected
 the runtime and intentionally want to call the sandbox layer directly.
@@ -829,9 +830,9 @@ templates, and themes.
 To edit the **sandboxed pi-env config**, run it through Bubblewrap:
 
 ```bash
-pi-bwrap -- config
+pi-env-bwrap -- config
 # or
-pi-bwrap config
+pi-env-bwrap config
 ```
 
 Inside the sandbox, Pi uses `/home/pi/.pi/agent/settings.json`, backed by
@@ -840,11 +841,11 @@ repo's `.pi/settings.json` under `/workspace`.
 
 By default, pi-env copies the host `settings.json` into sandbox state on each
 run when global extensions/packages are imported. If you want sandbox edits made
-by `pi-bwrap -- config` to persist instead of being refreshed from the host
+by `pi-env-bwrap -- config` to persist instead of being refreshed from the host
 copy, use:
 
 ```bash
-PI_ENV_BWRAP_EXTENSIONS_SYNC=missing pi-bwrap -- config
+PI_ENV_BWRAP_EXTENSIONS_SYNC=missing pi-env-bwrap -- config
 ```
 
 To edit your **real host/global Pi config**, run `pi config` directly after
@@ -867,7 +868,7 @@ fixed in-sandbox path `/workspace`. Complex layouts such as monorepos,
 submodules, worktrees, or integration checkouts remain project-owned policy;
 pi-env only chooses which root to expose for this run.
 
-`pi-bwrap`:
+`pi-env-bwrap`:
 
 - mounts the detected project root read-write at `/workspace`;
 - mounts `/nix/store` read-only so declared devshell tools can be exposed
@@ -965,7 +966,7 @@ PI_ENV_COORD_REMOTE=.pi-env/agent-remotes/pi-env-coordination.git # exact coordi
 PI_ENV_COORD_PROJECT=pi-env                 # coordination project/domain name
 PI_ENV_COORD_PROJECT_KEY=PIENV              # optional generated item ID prefix
 PI_ENV_COORD_ROLE=architect                 # active coordination role for helper commits/events
-PI_ENV_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-env/pi-bwrap default tools
+PI_ENV_BWRAP_DEFAULT_TOOLS="read,bash,..."  # override pi-env/pi-env-bwrap default tools
 PI_ENV_BWRAP_EXTRA_PATH=/nix/store/.../bin   # Nix runtime: validated /nix/store command dirs
 PI_ENV_BWRAP_HOST_EXTRA_PATH=/opt/tools/bin  # host runtime: validated read-only host command dirs
 PI_ENV_BWRAP_NET=0                          # disable network sharing
@@ -973,7 +974,7 @@ PI_ENV_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 ```
 
 Common per-project overrides can be set before running `pienv`,
-`pi-env`, or `pi-bwrap`, or exported in the project's shell hook:
+`pi-env`, or `pi-env-bwrap`, or exported in the project's shell hook:
 
 ```bash
 PI_ENV_BWRAP_PROJECT_ROOT=/path/to/repo pienv  # mount this repo at /workspace
@@ -995,7 +996,7 @@ project-local operational state.
 
 `pi-env` keeps the runtime separate from user-specific agent behavior. It does
 not ship common rules, skills, prompts, or custom roles itself. Instead,
-`pi-bwrap` imports common Pi resources from an external directory into the
+`pi-env-bwrap` imports common Pi resources from an external directory into the
 sandbox Pi agent directory.
 
 By default, the common directory is the user's normal Pi agent directory:
@@ -1005,7 +1006,7 @@ $PI_CODING_AGENT_DIR   # if set
 ~/.pi/agent            # otherwise
 ```
 
-From that directory, `pi-bwrap` imports only common agent resources:
+From that directory, `pi-env-bwrap` imports only common agent resources:
 
 ```text
 AGENTS.md
@@ -1078,7 +1079,7 @@ discovers project resources from `/workspace`, giving a clean split:
 
 ## 9. Git config and credentials
 
-`pi-bwrap` imports the user's host Git config into the isolated sandbox home by
+`pi-env-bwrap` imports the user's host Git config into the isolated sandbox home by
 default:
 
 ```text
@@ -1165,7 +1166,7 @@ Base roles are bundled with the package:
 
 Role definitions are Markdown files with frontmatter. Project roles live in
 `.pi/roles/*.md` beside other project Pi resources. Common roles can live in the
-host/common agent resource directory as `roles/*.md`; `pi-bwrap` imports that
+host/common agent resource directory as `roles/*.md`; `pi-env-bwrap` imports that
 `roles/` directory with common `skills/` and `prompts/` when common import is
 enabled. A mounted coordination clone may also provide roles for that project
 coordination domain.
@@ -1256,7 +1257,7 @@ pienv coord clone --remote git@example.com:org/pi-env-coordination.git
 pienv coord bootstrap --remote git@example.com:org/pi-env-coordination.git --print-only
 ```
 
-`bootstrap-coordination` is a thin wrapper around `agent-coord-init`: it prints
+`pi-env-bootstrap-coordination` is a thin wrapper around `pi-env-coord-init`: it prints
 the inferred root, clone dir, remote, agent ID, project, and project key, then
 initializes with those explicit values. Remote selection uses this precedence:
 explicit `--remote`, then `PI_ENV_COORD_REMOTE`, then `.pi-env-coordination.yaml`
@@ -1279,9 +1280,9 @@ When `--root` is omitted, helpers default to the project-local
 mount rather than a separate remotes mount.
 
 If `PI_ENV_COORD_REMOTE` or `.pi-env-coordination.yaml` names a project-local
-remote path, `pi-bwrap` rewrites it to the matching `/workspace/...` path. If
+remote path, `pi-env-bwrap` rewrites it to the matching `/workspace/...` path. If
 `.pi-env-coordination.yaml` names an external local bare Git repo (detected by
-its `objects/` directory), `pi-bwrap` bind-mounts that remote's parent at
+its `objects/` directory), `pi-env-bwrap` bind-mounts that remote's parent at
 `/workspace/.pi-env/agent-remotes` and rewrites `PI_ENV_COORD_REMOTE` to the same
 project-local shape used by local clones. Outside the sandbox, Git access to
 such an external remote requires running inside `pi-env-shell` or providing a
@@ -1294,7 +1295,7 @@ directories are not selected or mounted automatically.
 
 When `--remote` or `PI_ENV_COORD_REMOTE` points to a Git-server URL, helpers use
 that URL directly and no local remotes mount is
-required. A local path remote is created by `agent-coord-init` when missing;
+required. A local path remote is created by `pi-env-coord-init` when missing;
 Git-server remotes must already exist and be accessible to Git. Provide SSH
 keys, tokens, or credential helpers through narrowly-scoped sandbox/project
 configuration as needed; pi-env does not import the host `~/.ssh` directory or
@@ -1359,11 +1360,11 @@ and a three-digit collision/order suffix that starts at `001`:
 For example, an issue can be created as
 `PIENV-ISS-20260607-204155-001.yaml`; a functional requirement can be created as
 `PIENV-FRQ-20260607-204155-001.yaml`. Use
-`agent-coord-init --project-key PIENV` to set the initial project's stored key
+`pi-env-coord-init --project-key PIENV` to set the initial project's stored key
 during scaffolding. Project-root keys are stored in top-level `PROJECT.md` as `item_key`. Agents
 should use stored keys instead of inventing new ones.
 
-Key resolution for `agent-coord-new` is:
+Key resolution for `pi-env-coord-new` is:
 
 1. `--project-key KEY`;
 2. stored root project `item_key`;
@@ -1383,7 +1384,7 @@ Lifecycle helpers are also available through the `pienv coord` and
 
 ```text
 pienv coord bootstrap
-                      infer defaults and initialize via agent-coord-init
+                      infer defaults and initialize via pi-env-coord-init
 pienv coord status    show sync status and open/blocked/done items
 pienv coord list      list issues, todos, notes, decisions, requirements, or
                       classes by status
@@ -1412,7 +1413,7 @@ Issue items live under `repos/<repo_id>/issues/<status>/`, and each issue
 belongs to exactly one implementation repo by that path. Functional, quality,
 and constraint requirements use the root-level `requirements/` directory while
 preserving FRQ, QRQ, and CRQ item-ID type codes. TODO items use `todos/` and
-single top-level `body: |-` records without issue history. The `agent-coord-list requirements` command reports functional,
+single top-level `body: |-` records without issue history. The `pi-env-coord-list requirements` command reports functional,
 quality, and constraint requirement items; use `functional`, `quality`, or
 `constraint` for class-specific listings. Done issue listings append
 review and verification sub-status after the title. Imported requirement items
@@ -1422,8 +1423,8 @@ lint checks imported FRQ/QRQ/CRQ items for non-empty source references plus the
 standard `testable` metadata.
 
 Decision, note, and other non-issue item types live under their semantic type
-directories shared by the coordination domain. Use `agent-coord-list notes` or
-`agent-coord-list todos` to list those root-level groups, optionally filtered
+directories shared by the coordination domain. Use `pi-env-coord-list notes` or
+`pi-env-coord-list todos` to list those root-level groups, optionally filtered
 by their YAML `status` values. The
 accepted TODO type spellings are `todo` and `todos`; `tdo` is
 not a supported alias. Stored implementation refs are structured objects with
@@ -1431,9 +1432,9 @@ not a supported alias. Stored implementation refs are structured objects with
 `branch`, and full `commit` fields. For cross-repo implementation work, create
 one issue per affected repo and link them with stable item IDs in `related:` or
 messages rather than path-only references; repo renames preserve aliases and
-should not require reference rewrites. `agent-coord-done --implementation-ref
+should not require reference rewrites. `pi-env-coord-done --implementation-ref
 pi-env:main@<full-hash>` accepts the compact CLI form and writes the structured
-YAML form. `agent-coord-close` finalizes only items that are done, reviewed, and
+YAML form. `pi-env-coord-close` finalizes only items that are done, reviewed, and
 verified unless forced.
 
 Commands that create item events or coordination commits accept `--role ROLE`
@@ -1454,7 +1455,7 @@ pienv coord rules upgrade
 
 The helpers do not make `pi-env` create, claim, mark done, review, verify,
 close, commit, or push coordination state automatically. If a coordination clone
-is under the mounted project, `pi-bwrap` only exposes it as normal project files
+is under the mounted project, `pi-env-bwrap` only exposes it as normal project files
 and sets `PI_ENV_COORD_DIR` to the sandbox path. For a coordination clone outside
 the project, opt in explicitly:
 
@@ -1467,7 +1468,7 @@ to `/coordination` inside the sandbox.
 
 When the role-manager extension has an active role, it sets `PI_ENV_COORD_ROLE` for
 Pi subprocesses to the role's `coordCommitter` value, or to the role name when
-`coordCommitter` is omitted. Bash-invoked `agent-coord-*` commands inherit the
+`coordCommitter` is omitted. Bash-invoked `pi-env-coord-*` commands inherit the
 active role without changing project Git identity.
 
 ### Serial role automation
@@ -1486,7 +1487,7 @@ Serial mode prerequisites:
 - provide a writable coordination checkout. Projects default to
   `.pi-env/coordination`; use `PI_ENV_COORD_DIR` or `--coord-dir DIR` for an
   explicit override path;
-- run from the pi-env devshell/profile so `pi-env`, `agent-coord-*` helpers,
+- run from the pi-env devshell/profile so `pi-env`, `pi-env-coord-*` helpers,
   and `PI_ENV_ROLE_MANAGER_PACKAGE` are available, or pass explicit `--pi-env`
   and `--role-manager` paths;
 - configure Pi model credentials on the host the same way you do for normal
@@ -1533,7 +1534,7 @@ non-issue items fail before any Pi job is run. Once the requested issues have
 no eligible tester, reviewer, or developer work, the command exits successfully
 instead of sleeping for unrelated queue work.
 
-Each poll holds `.pi-env/locks/pi-serial-roles.lock` and creates
+Each poll holds `.pi-env/locks/pi-env-serial-roles.lock` and creates
 `.pi-env/locks` as needed. It requires a clean project working tree. A dirty
 coordination checkout before selection is treated as busy: the loop skips
 pulling, selecting, and claiming, then sleeps or exits according to the bounded
@@ -1546,9 +1547,9 @@ diagnostics default under
 2. reviewer: done issues with `reviewed: false`;
 3. developer: open issues that are unowned or already owned by the agent.
 
-Developer items are claimed with `agent-coord-claim` before Pi is invoked.
+Developer items are claimed with `pi-env-coord-claim` before Pi is invoked.
 Reviewer and tester prompts name only the selected done item and instruct the
-role to use `agent-coord-review` or `agent-coord-verify`. If no issue is
+role to use `pi-env-coord-review` or `pi-env-coord-verify`. If no issue is
 eligible, the orchestrator sleeps and polls again without invoking Pi.
 
 Every issue job starts a fresh raw Pi session with `pi-env --raw --` and does
@@ -1600,11 +1601,11 @@ See `designs/agent-coordination.md` for the full design.
 ## 12. Upgrading
 
 `pi-env` does not pin or install `pi-coding-agent` through Nix. The wrappers
-expect a `pi` executable to already exist on the host `PATH`, then `pi-bwrap`
+expect a `pi` executable to already exist on the host `PATH`, then `pi-env-bwrap`
 bind-mounts the host/global Pi installation read-only into the sandbox.
 
 When a new Pi version is available, upgrade Pi on the host, outside `pi-env` /
-`pi-bwrap`:
+`pi-env-bwrap`:
 
 ```bash
 npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
@@ -1647,9 +1648,9 @@ tests/run.sh
 Coordination helper smoke tests:
 
 ```bash
-tests/agent-coord-blackbox.sh
-tests/agent-coord-concurrency.sh
-tests/agent-coord-lint.sh
+tests/pi-env-coord-blackbox.sh
+tests/pi-env-coord-concurrency.sh
+tests/pi-env-coord-lint.sh
 tests/coordination-items-closed-or-done.sh
 ```
 
@@ -1680,7 +1681,7 @@ tests/items/requirements/PIENV-FRQ-20260607-204155-001.sh
 
 - Pi's built-in tool list is `read,bash,edit,write,grep,find,ls`.
   `pi-env` allowlists those by default. If you need extension/custom tools
-  too, include them in `PI_ENV_BWRAP_DEFAULT_TOOLS` or call `pi-bwrap` with your own
+  too, include them in `PI_ENV_BWRAP_DEFAULT_TOOLS` or call `pi-env-bwrap` with your own
   `--tools` list.
 - Global Pi extensions and globally installed Pi packages are exposed read-only
   from the host agent directory by default. Disable this with

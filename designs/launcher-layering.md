@@ -47,7 +47,7 @@ invocation policy: default tool allowlist, `--continue`, role-manager package
 loading, and caller-supplied Pi arguments. This keeps startup ergonomics in the
 user-facing command while still keeping sandbox construction separate.
 
-`pi-bwrap` is the sandbox construction layer. It builds the Bubblewrap command
+`pi-env-bwrap` is the sandbox construction layer. It builds the Bubblewrap command
 line and is the only layer that should assemble mount, environment, network,
 and home-state isolation flags. Shell mode belongs here as a final-payload
 switch: the sandbox setup remains identical, while the final process changes
@@ -57,9 +57,9 @@ from `pi` to Bash.
 
 The launchers pass structured intent downward rather than sharing hidden global
 state. `pi-env` resolves the single project root and runtime inputs, applies the
-default `UC-001` agent startup policy itself, then calls `pi-bwrap`. For the
-custom-argument `UC-002` path, `pi-env --raw` calls `pi-bwrap` directly.
-`pi-env-shell` resolves the same runtime inputs, then calls `pi-bwrap` shell
+default `UC-001` agent startup policy itself, then calls `pi-env-bwrap`. For the
+custom-argument `UC-002` path, `pi-env --raw` calls `pi-env-bwrap` directly.
+`pi-env-shell` resolves the same runtime inputs, then calls `pi-env-bwrap` shell
 mode.
 
 This shape lets `CMD-018` and the launcher-facing part of `CMD-019` add role
@@ -69,7 +69,7 @@ normal command and environment policy. Tool allowlist overrides for `UC-014`
 and globally-installed Pi discovery for `UC-016` are launcher inputs that are
 translated into normal Pi arguments and read-only runtime mounts.
 
-## 3. Compatibility and diagnostics
+## 3. Command stability and diagnostics
 
 Launchers should fail early for unsupported arguments, missing project roots, or
 missing runtime tools. Error messages should identify the layer that rejected
@@ -78,7 +78,7 @@ or sandbox settings.
 
 The layering intentionally removes `pi-start` as a user-visible command because
 this project has no known external users and the command adds unnecessary
-surface area. Compatibility is preserved for the remaining commands by keeping
-`pi-env`, `pi-env-shell`, and `pi-bwrap` semantics stable while implementation
-detail moves between scripts as long as ownership boundaries above are
-maintained.
+surface area. The same early-stage policy permits hard-renaming the sandbox
+layer to `pi-env-bwrap` without old-name shims. Command semantics should remain
+stable while implementation detail moves between scripts as long as the
+ownership boundaries above are maintained.
