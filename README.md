@@ -525,7 +525,7 @@ Then run:
 
 ```bash
 nix develop
-pi-env
+pienv
 ```
 
 `mkPiShell` defaults `includeCoordinationHelpers` to `true` so existing
@@ -975,16 +975,16 @@ PI_ENV_BWRAP_NET=0                          # disable network sharing
 PI_ENV_BWRAP_PASS_ENV="HTTP_PROXY,NO_PROXY" # pass extra env vars by name
 ```
 
-Common per-project overrides can be set before running `pi-env` / `pi-bwrap`,
-or exported in the project's shell hook:
+Common per-project overrides can be set before running `pienv`,
+`pi-env`, or `pi-bwrap`, or exported in the project's shell hook:
 
 ```bash
-PI_ENV_BWRAP_PROJECT_ROOT=/path/to/repo pi-env  # mount this repo at /workspace
-PI_ENV_BWRAP_USE_GIT_ROOT=0 pi-env              # use $PWD instead of git root
-PI_ENV_BWRAP_EPHEMERAL_HOME=1 pi-env            # throw away sandbox home after the run
-PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state pi-env # opt in to project-local sandbox state
-PI_ENV_BWRAP_IMPORT_AUTH=0 pi-env               # do not copy host Pi auth into sandbox state
-PI_ENV_BWRAP_NET=0 pi-env                       # disable network access
+PI_ENV_BWRAP_PROJECT_ROOT=/path/to/repo pienv  # mount this repo at /workspace
+PI_ENV_BWRAP_USE_GIT_ROOT=0 pienv              # use $PWD instead of git root
+PI_ENV_BWRAP_EPHEMERAL_HOME=1 pienv            # throw away sandbox home after the run
+PI_ENV_BWRAP_STATE_DIR=$PWD/.pi-env/state pienv # opt in to project-local sandbox state
+PI_ENV_BWRAP_IMPORT_AUTH=0 pienv               # do not copy host Pi auth into sandbox state
+PI_ENV_BWRAP_NET=0 pienv                       # disable network access
 ```
 
 Inside the sandbox, the selected project root is mounted read-write at
@@ -1029,7 +1029,7 @@ To keep common rules, skills, prompts, or roles in a separate repo or directory,
 point `PI_ENV_BWRAP_COMMON_AGENT_DIR` at it:
 
 ```bash
-PI_ENV_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pi-env
+PI_ENV_BWRAP_COMMON_AGENT_DIR=~/CODE/my-pi-common pienv
 ```
 
 Expected layout:
@@ -1049,7 +1049,7 @@ my-pi-common/
 Disable common resource import entirely with:
 
 ```bash
-PI_ENV_BWRAP_IMPORT_COMMON=0 pi-env
+PI_ENV_BWRAP_IMPORT_COMMON=0 pienv
 ```
 
 Project-specific rules, skills, roles, and extensions should live in the
@@ -1103,21 +1103,21 @@ while still avoiding a host `$HOME` mount.
 Disable this with:
 
 ```bash
-PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 pi-env
+PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 pienv
 ```
 
 Use a different config source with:
 
 ```bash
-PI_ENV_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pi-env
-PI_ENV_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pi-env
+PI_ENV_BWRAP_HOST_GITCONFIG=/path/to/gitconfig pienv
+PI_ENV_BWRAP_HOST_XDG_GIT_CONFIG=/path/to/xdg-git-config pienv
 ```
 
 By default the sandbox copy is refreshed on each run. Preserve an existing
 sandbox copy with:
 
 ```bash
-PI_ENV_BWRAP_GIT_CONFIG_SYNC=missing pi-env
+PI_ENV_BWRAP_GIT_CONFIG_SYNC=missing pienv
 ```
 
 Git credentials, SSH keys, signing keys, credential helpers' backing stores,
@@ -1231,11 +1231,11 @@ want these commands. Projects usually use the project-local
 Guided setup with inferred, project-specific defaults:
 
 ```bash
-bootstrap-coordination
+pienv coord bootstrap
 # inspect another project root from this devshell
-bootstrap-coordination --project-root /path/to/project --print-only
+pienv coord bootstrap --project-root /path/to/project --print-only
 # or only print the suggested PI_ENV_COORD_* environment and init command
-bootstrap-coordination --print-only
+pienv coord bootstrap --print-only
 ```
 
 Manual minimal setup with a local bare remote:
@@ -1247,16 +1247,16 @@ export PI_ENV_COORD_PROJECT_KEY=PIENV
 export PI_ENV_COORD_DIR=/workspace/.pi-env/coordination
 export PI_ENV_COORD_AGENT_ID=agent-a
 
-agent-coord-init
+pienv coord init
 ```
 
 To use a remote hosted by a Git server, pass it explicitly or set
 `PI_ENV_COORD_REMOTE`:
 
 ```bash
-agent-coord-init --project pi-env --remote git@example.com:org/pi-env-coordination.git
-agent-coord-clone --remote git@example.com:org/pi-env-coordination.git
-bootstrap-coordination --remote git@example.com:org/pi-env-coordination.git --print-only
+pienv coord init --project pi-env --remote git@example.com:org/pi-env-coordination.git
+pienv coord clone --remote git@example.com:org/pi-env-coordination.git
+pienv coord bootstrap --remote git@example.com:org/pi-env-coordination.git --print-only
 ```
 
 `bootstrap-coordination` is a thin wrapper around `agent-coord-init`: it prints
@@ -1327,15 +1327,15 @@ domain_generated_files:
 Clone the same coordination domain elsewhere with:
 
 ```bash
-agent-coord-clone
+pienv coord clone
 ```
 
 Create a type-coded timestamp-ID issue in the current repo namespace with:
 
 ```bash
-agent-coord-new --repo-id pi-env --type issue --category bug \
+pienv coord new --repo-id pi-env --type issue --category bug \
   "Document pi config behavior"
-agent-coord-push -m "Add PIENV documentation item"
+pienv coord push -m "Add PIENV documentation item"
 ```
 
 The resulting issue path is
@@ -1344,8 +1344,8 @@ and notes remain common domain records at the coordination root.
 
 Issue items can use optional categories such as `bug`, `feature-request`,
 `task`, `question`, or `improvement`; use `--type issue
---category task` for task-category work. Use `agent-coord-list --category
-bug issues open` to filter, or `agent-coord-list --group-by-category issues`
+--category task` for task-category work. Use `pienv coord list --category
+bug issues open` to filter, or `pienv coord list --group-by-category issues`
 to sort grouped issue output.
 
 When top-level `PROJECT.md` exists, omit `--project` for domain-common items;
@@ -1383,27 +1383,28 @@ Built-in type codes are `ISS` for `issue`, `FRQ` for `functional-requirement`,
 `QRQ` for `quality-requirement`, `CRQ` for `constraint-requirement`, `TODO` for
 `todo`, `DEC` for `decision`, and `NOTE` for `note`.
 
-Lifecycle helpers are also available:
+Lifecycle helpers are also available through the `pienv coord` and
+`pienv roles` namespaces:
 
 ```text
-bootstrap-coordination
+pienv coord bootstrap
                       infer defaults and initialize via agent-coord-init
-agent-coord-status    show sync status and open/blocked/done items
-agent-coord-list      list issues, todos, notes, decisions, requirements, or
+pienv coord status    show sync status and open/blocked/done items
+pienv coord list      list issues, todos, notes, decisions, requirements, or
                       classes by status
-agent-coord-cat       print one resolved item's YAML or repo-relative path
-agent-coord-pull      run git pull --rebase --autostash
-agent-coord-push      commit and push coordination changes
-agent-coord-new       create a templated item
-agent-coord-claim     claim an item, commit, and push
-agent-coord-done      mark developer work done, commit, and push
-agent-coord-review    mark review pass/fail, commit, and push
-agent-coord-verify    mark verification pass/fail, commit, and push
-agent-coord-close     final-close reviewed+verified done items
-agent-coord-lint      lint item IDs, status, and item-matched tests
-agent-coord-upgrade-rules --preview
+pienv coord show      print one resolved item's YAML or repo-relative path
+pienv coord pull      run git pull --rebase --autostash
+pienv coord push      commit and push coordination changes
+pienv coord new       create a templated item
+pienv coord claim     claim an item, commit, and push
+pienv coord done      mark developer work done, commit, and push
+pienv coord review    mark review pass/fail, commit, and push
+pienv coord verify    mark verification pass/fail, commit, and push
+pienv coord close     final-close reviewed+verified done items
+pienv coord lint      lint item IDs, status, and item-matched tests
+pienv coord rules upgrade --preview
                       preview/apply bundled rule template updates
-pi-serial-roles       serially run one developer/reviewer/tester Pi job at a time
+pienv roles serial    serially run one developer/reviewer/tester Pi job at a time
 ```
 
 Items are YAML files with chronological `events` and linked Markdown messages.
@@ -1452,8 +1453,8 @@ Existing coordination repositories are not silently overwritten. Rule upgrades
 are explicit and diffable:
 
 ```bash
-agent-coord-upgrade-rules --preview
-agent-coord-upgrade-rules
+pienv coord rules upgrade --preview
+pienv coord rules upgrade
 ```
 
 The helpers do not make `pi-env` create, claim, mark done, review, verify,
@@ -1463,7 +1464,7 @@ and sets `PI_ENV_COORD_DIR` to the sandbox path. For a coordination clone outsid
 the project, opt in explicitly:
 
 ```bash
-PI_ENV_BWRAP_COORDINATION_DIR=/path/to/coordination pi-env
+PI_ENV_BWRAP_COORDINATION_DIR=/path/to/coordination pienv
 ```
 
 That clone is mounted read-write at `/coordination` and `PI_ENV_COORD_DIR` is set
