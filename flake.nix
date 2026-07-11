@@ -80,6 +80,20 @@
           exec -a pi-env-shell ${pkgs.bash}/bin/bash ${./scripts/pi-env-launcher} "$@"
         '';
 
+      mkPienv = pkgs:
+        let
+          runtimePath = pkgs.lib.makeBinPath ((mkRuntime pkgs) ++ [
+            (mkPiEnv pkgs)
+            (mkPiEnvShell pkgs)
+            (mkPiBwrap pkgs)
+          ] ++ builtins.attrValues (mkAgentCoordCommands pkgs));
+        in
+        pkgs.writeShellScriptBin "pienv" ''
+          set -euo pipefail
+          export PATH="${runtimePath}:''${PATH:-}"
+          exec -a pienv ${pkgs.bash}/bin/bash ${./scripts/pienv} "$@"
+        '';
+
       agentCoordCommandNames = [
         "bootstrap-coordination"
         "agent-coord-init"
@@ -110,7 +124,8 @@
           cp -R ${./scripts} "$out/share/pi-env/scripts"
           chmod +x "$out/share/pi-env/scripts"/agent-coord-* \
             "$out/share/pi-env/scripts/bootstrap-coordination" \
-            "$out/share/pi-env/scripts/pi-serial-roles"
+            "$out/share/pi-env/scripts/pi-serial-roles" \
+            "$out/share/pi-env/scripts/pienv"
         '';
 
       mkAgentCoordCommand = pkgs: name:
@@ -150,6 +165,7 @@
           piBwrap = mkPiBwrap pkgs;
           piEnv = mkPiEnv pkgs;
           piEnvShell = mkPiEnvShell pkgs;
+          pienv = mkPienv pkgs;
           agentCoordCommands = builtins.attrValues (mkAgentCoordCommands pkgs);
           coordinationPackages = if includeCoordinationHelpers then agentCoordCommands else [ ];
           roleManagerPackage = mkRoleManagerPackage pkgs;
@@ -160,6 +176,7 @@
             piBwrap
             piEnv
             piEnvShell
+            pienv
           ] ++ coordinationPackages ++ extraPackages;
 
           shellHook = ''
@@ -188,6 +205,7 @@
           mkPiBwrap
           mkPiEnv
           mkPiEnvShell
+          mkPienv
           agentCoordCommandNames
           mkAgentCoordSupport
           mkAgentCoordCommand
@@ -202,6 +220,7 @@
         piBwrap = mkPiBwrap pkgs;
         piEnv = mkPiEnv pkgs;
         piEnvShell = mkPiEnvShell pkgs;
+        pienv = mkPienv pkgs;
         agentCoordCommands = mkAgentCoordCommands pkgs;
         agentCoordCommandPackages = builtins.attrValues agentCoordCommands;
         roleManagerPackage = mkRoleManagerPackage pkgs;
@@ -209,6 +228,7 @@
           piBwrap
           piEnv
           piEnvShell
+          pienv
         ];
         piCore = pkgs.buildEnv {
           name = "pi-env-core";
@@ -233,6 +253,7 @@
         packages = {
           default = piEnv;
           pi-env = piEnv;
+          pienv = pienv;
           pi-env-shell = piEnvShell;
           pi-bwrap = piBwrap;
           pi-core = piCore;
@@ -250,6 +271,10 @@
             type = "app";
             program = "${piEnv}/bin/pi-env";
           };
+          pienv = {
+            type = "app";
+            program = "${pienv}/bin/pienv";
+          };
           pi-env-shell = {
             type = "app";
             program = "${piEnvShell}/bin/pi-env-shell";
@@ -263,6 +288,7 @@
         checks = {
           pi-core-smoke = smokeCheck "pi-env-core-smoke" [ piCore ] ''
             command -v pi-env >/dev/null
+            command -v pienv >/dev/null
             command -v pi-env-shell >/dev/null
             if command -v pi-start >/dev/null 2>&1; then
               echo "pi-start leaked into pi-core" >&2
@@ -270,6 +296,8 @@
             fi
             command -v pi-bwrap >/dev/null
             pi-env --help >/dev/null
+            pienv help >/dev/null
+            pienv completion bash >/dev/null
             pi-env-shell --help >/dev/null
             pi-bwrap --help >/dev/null
             if command -v agent-coord-status >/dev/null 2>&1; then
@@ -280,6 +308,7 @@
 
           pi-runtime-compat-smoke = smokeCheck "pi-env-runtime-compat-smoke" [ piRuntime ] ''
             command -v pi-env >/dev/null
+            command -v pienv >/dev/null
             command -v pi-env-shell >/dev/null
             if command -v pi-start >/dev/null 2>&1; then
               echo "pi-start leaked into pi-runtime" >&2
@@ -289,6 +318,9 @@
             command -v agent-coord-status >/dev/null
             command -v bootstrap-coordination >/dev/null
             pi-env --help >/dev/null
+            pienv help >/dev/null
+            pienv coord status --help >/dev/null
+            pienv completion bash >/dev/null
             pi-env-shell --help >/dev/null
             agent-coord-status --help >/dev/null
           '';

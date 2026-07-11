@@ -2,6 +2,7 @@
 set -euo pipefail
 
 command_names=(
+  pienv
   pi-env
   pi-env-shell
   pi-bwrap
@@ -136,7 +137,8 @@ origin_file="$share_dir/install-origin"
 
 is_source_root() {
   local candidate="$1"
-  [ -f "$candidate/scripts/pi-env-launcher" ] && \
+  [ -f "$candidate/scripts/pienv" ] && \
+    [ -f "$candidate/scripts/pi-env-launcher" ] && \
     [ -f "$candidate/scripts/agent-coord-lib.sh" ] && \
     [ -d "$candidate/role-manager" ] && \
     [ -d "$candidate/pi-skill-templates" ]
@@ -255,6 +257,7 @@ pi_env_script_target=$target_q
 if [ "\$(basename "\$0")" = "pi-env-shell" ]; then
   export PI_ENV_SHELL_MODE=1
 fi
+export PATH="\$pi_env_bin_dir:\${PATH:-}"
 export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-\$pi_env_share_dir/scripts/agent-coord-lib.sh}"
 export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-\$pi_env_share_dir/pi-skill-templates/agent-coordination}"
 export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-\$pi_env_share_dir/role-manager}"
@@ -379,6 +382,7 @@ chmod +x "$share_dir/scripts"/agent-coord-* \
   "$share_dir/scripts/bootstrap-coordination" \
   "$share_dir/scripts/pi-bwrap" \
   "$share_dir/scripts/pi-env-launcher" \
+  "$share_dir/scripts/pienv" \
   "$share_dir/scripts/pi-serial-roles" \
   "$share_dir/scripts/install-non-nix"
 

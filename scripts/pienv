@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+repo_root="$(cd "$script_dir/.." 2>/dev/null && pwd -P || printf '%s' "$script_dir")"
+
+usage() {
+  cat <<'USAGE'
+pienv - pi-env command namespace
+
+Usage:
+  pienv [pi args...]
+  pienv -- [pi args...]
+  pienv run [pi args...]
+  pienv raw -- [pi args...]
+  pienv shell [shell args...]
+  pienv sandbox [pi args...]
+  pienv sandbox shell [shell args...]
+  pienv coord <command> [args...]
+  pienv roles serial [args...]
+  pienv install [args...]
+  pienv uninstall [args...]
+  pienv completion bash
+
+Use 'pienv -- ...' to pass a first Pi argument that would otherwise be
+parsed as a pienv subcommand.
+USAGE
+}
+
+bash_completion() {
+  cat <<'COMPLETION'
+_pienv() {
+  local cur prev words cword
+  COMPREPLY=()
+  if declare -F _init_completion >/dev/null 2>&1; then
+    _init_completion || return
+  else
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    words=("${COMP_WORDS[@]}")
+    cword=$COMP_CWORD
+  fi
+
+  case "$cword" in
+    1) COMPREPLY=( $(compgen -W "run raw shell sandbox coord roles install uninstall help completion" -- "$cur") ); return ;;
+  esac
+
+  case "${words[1]}" in
+    sandbox)
+      [ "$cword" -eq 2 ] && COMPREPLY=( $(compgen -W "shell" -- "$cur") )
+      ;;
+    coord)
+      case "${words[2]:-}" in
+        rules) [ "$cword" -eq 3 ] && COMPREPLY=( $(compgen -W "upgrade" -- "$cur") ) ;;
+        requirements) [ "$cword" -eq 3 ] && COMPREPLY=( $(compgen -W "generate coverage" -- "$cur") ) ;;
+        *) [ "$cword" -eq 2 ] && COMPREPLY=( $(compgen -W "bootstrap init clone status list show new claim done review verify close pull push lint repo rules requirements" -- "$cur") ) ;;
+      esac
+      ;;
+    roles)
+      [ "$cword" -eq 2 ] && COMPREPLY=( $(compgen -W "serial" -- "$cur") )
+      ;;
+    completion)
+      [ "$cword" -eq 2 ] && COMPREPLY=( $(compgen -W "bash" -- "$cur") )
+      ;;
+  esac
+}
+complete -F _pienv pienv
+COMPLETION
+}
+
+resolve_command() {
+  local name="$1"
+  case "$name" in
+    pi-env|pi-env-shell)
+      if [ -x "$repo_root/$name" ]; then
+        printf '%s\n' "$repo_root/$name"
+        return 0
+      fi
+      ;;
+  esac
+  if [ -x "$script_dir/$name" ]; then
+    printf '%s\n' "$script_dir/$name"
+    return 0
+  fi
+  if command -v "$name" >/dev/null 2>&1; then
+    command -v "$name"
+    return 0
+  fi
+  echo "pienv: required command not found: $name" >&2
+  return 127
+}
+
+exec_command() {
+  local name="$1"
+  shift
+  local command_path
+  command_path="$(resolve_command "$name")"
+  exec "$command_path" "$@"
+}
+
+unknown() {
+  echo "pienv: unknown command: $*" >&2
+  echo "Try 'pienv help'." >&2
+  exit 2
+}
+
+if [ "$#" -eq 0 ]; then
+  exec_command pi-env
+fi
+
+case "${1:-}" in
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+  --)
+    shift
+    exec_command pi-env "$@"
+    ;;
+  run)
+    shift
+    exec_command pi-env "$@"
+    ;;
+  raw)
+    shift
+    exec_command pi-env --raw "$@"
+    ;;
+  shell)
+    shift
+    exec_command pi-env-shell "$@"
+    ;;
+  sandbox)
+    shift
+    if [ "${1:-}" = "shell" ]; then
+      shift
+      exec_command pi-bwrap --shell "$@"
+    fi
+    exec_command pi-bwrap "$@"
+    ;;
+  coord)
+    shift
+    case "${1:-}" in
+      bootstrap) shift; exec_command bootstrap-coordination "$@" ;;
+      init|clone|status|list|new|claim|done|review|verify|close|pull|push|lint|repo)
+        subcommand="$1"
+        shift
+        exec_command "agent-coord-$subcommand" "$@"
+        ;;
+      show) shift; exec_command agent-coord-cat "$@" ;;
+      rules)
+        shift
+        [ "${1:-}" = "upgrade" ] || unknown coord rules "${1:-}"
+        shift
+        exec_command agent-coord-upgrade-rules "$@"
+        ;;
+      requirements)
+        shift
+        case "${1:-}" in
+          generate) shift; exec_command agent-coord-generate-requirements "$@" ;;
+          coverage) shift; exec_command agent-coord-generate-requirements-coverage "$@" ;;
+          *) unknown coord requirements "${1:-}" ;;
+        esac
+        ;;
+      *) unknown coord "${1:-}" ;;
+    esac
+    ;;
+  roles)
+    shift
+    [ "${1:-}" = "serial" ] || unknown roles "${1:-}"
+    shift
+    exec_command pi-serial-roles "$@"
+    ;;
+  install)
+    shift
+    exec_command install-non-nix "$@"
+    ;;
+  uninstall)
+    shift
+    if command -v pi-env-uninstall >/dev/null 2>&1; then
+      exec_command pi-env-uninstall "$@"
+    fi
+    exec_command install-non-nix --uninstall "$@"
+    ;;
+  completion)
+    shift
+    [ "${1:-}" = "bash" ] || unknown completion "${1:-}"
+    shift
+    [ "$#" -eq 0 ] || unknown completion bash "$@"
+    bash_completion
+    ;;
+  *)
+    exec_command pi-env "$@"
+    ;;
+esac

@@ -18,6 +18,9 @@ local_prefix="$workdir/local-prefix"
 mkdir -p "$local_prefix/bin"
 printf 'stale legacy wrapper\n' > "$local_prefix/bin/pi-start"
 "$repo_root/scripts/install-non-nix" --prefix "$local_prefix"
+assert_file "$local_prefix/bin/pienv"
+"$local_prefix/bin/pienv" help >/dev/null
+"$local_prefix/bin/pienv" completion bash | grep -q 'complete -F _pienv pienv'
 assert_file "$local_prefix/bin/pi-env"
 assert_file "$local_prefix/bin/agent-coord-repo"
 assert_file "$local_prefix/share/pi-env/install-manifest"
@@ -53,6 +56,7 @@ remote_prefix="$workdir/remote-prefix"
     --artifact-url "file://$archive"
 )
 
+assert_file "$remote_prefix/bin/pienv"
 assert_file "$remote_prefix/bin/pi-env"
 assert_file "$remote_prefix/bin/agent-coord-repo"
 assert_file "$remote_prefix/share/pi-env/install-origin"
@@ -66,6 +70,10 @@ grep -qx "$remote_prefix/share/pi-env/install-origin" "$remote_prefix/share/pi-e
 # before invoking the installed wrapper.
 rm -rf "$remote_script_dir" "$archive" "$archive_root"
 "$remote_prefix/bin/pi-env-uninstall"
+[ ! -e "$remote_prefix/bin/pienv" ] || {
+  echo "pienv wrapper survived uninstall" >&2
+  exit 1
+}
 [ ! -e "$remote_prefix/bin/pi-env" ] || {
   echo "pi-env wrapper survived uninstall" >&2
   exit 1

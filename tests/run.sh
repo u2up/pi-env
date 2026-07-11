@@ -15,6 +15,7 @@ scripts=(
   tests/flake-package-boundary.sh
   tests/design-covers.sh
   tests/install-non-nix.sh
+  tests/pienv-dispatcher.sh
   tests/coordination-items-closed-or-done.sh
   tests/role-manager-package.sh
   tests/role-manager-schema.sh
