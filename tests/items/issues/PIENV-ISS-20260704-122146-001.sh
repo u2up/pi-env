@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PATH="$repo_root/scripts:$PATH"
 
 tmp="$(mktemp -d)"
@@ -96,11 +96,11 @@ chmod +x "$project_root/tests/items/issues/ALPHA-ISS-1.sh"
 
 # Default lint resolves the current implementation repo and does not require
 # item-matched tests for every repo in the coordination domain.
-agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" >/dev/null
-agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" --all-repos >/dev/null
+pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" >/dev/null
+pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" --all-repos >/dev/null
 
 # Explicit repo selection requires that repo's item-matched issue tests.
-if agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
+if pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
   --repo-id beta >"$tmp/beta.out" 2>"$tmp/beta.err"; then
   printf 'expected lint to require selected beta issue test\n' >&2
   exit 1
@@ -111,7 +111,7 @@ grep -q 'BETA-ISS-1.yaml is testable but missing' "$tmp/beta.err"
 # issue migration failures are rejected.
 mkdir -p "$coord_dir/repos/Mixed/issues/open"
 make_issue "$coord_dir/repos/Mixed/issues/open/BADREPO-ISS-1.yaml" BADREPO-ISS-1 open no
-if agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
+if pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
   >"$tmp/badrepo.out" 2>"$tmp/badrepo.err"; then
   printf 'expected lint to fail for invalid repo id\n' >&2
   exit 1
@@ -121,7 +121,7 @@ rm -rf "$coord_dir/repos/Mixed"
 
 mkdir -p "$coord_dir/repos/alpha/issues/weird"
 make_issue "$coord_dir/repos/alpha/issues/weird/ALPHA-ISS-WEIRD.yaml" ALPHA-ISS-WEIRD open no
-if agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
+if pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
   >"$tmp/badstatus.out" 2>"$tmp/badstatus.err"; then
   printf 'expected lint to fail for invalid status directory\n' >&2
   exit 1
@@ -131,7 +131,7 @@ rm -rf "$coord_dir/repos/alpha/issues/weird"
 
 make_repo "$coord_dir" old retired
 make_issue "$coord_dir/repos/old/issues/open/OLD-ISS-1.yaml" OLD-ISS-1 open no
-if agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
+if pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
   >"$tmp/retired.out" 2>"$tmp/retired.err"; then
   printf 'expected lint to fail for retired repo issue\n' >&2
   exit 1
@@ -142,7 +142,7 @@ rm -rf "$coord_dir/repos/old"
 mkdir -p "$coord_dir/issues/open"
 make_issue "$coord_dir/issues/open/ROOT-ISS-1.yaml" ROOT-ISS-1 open no
 if PI_ENV_COORD_LINT_ROOT_ISSUES=fail \
-  agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
+  pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
     >"$tmp/root.out" 2>"$tmp/root.err"; then
   printf 'expected lint to fail for root issue migration policy\n' >&2
   exit 1
@@ -152,7 +152,7 @@ rm -rf "$coord_dir/issues"
 
 # Duplicate IDs fail globally across repo namespaces.
 make_issue "$coord_dir/repos/beta/issues/open/ALPHA-ISS-1.yaml" ALPHA-ISS-1 open no
-if agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
+if pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root" \
   >"$tmp/dup.out" 2>"$tmp/dup.err"; then
   printf 'expected lint to fail for duplicate issue IDs\n' >&2
   exit 1

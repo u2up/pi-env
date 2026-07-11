@@ -6,16 +6,16 @@ if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
   . "$PI_ENV_COORD_LIB"
 else
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-  # shellcheck source=agent-coord-lib.sh
-  . "$script_dir/agent-coord-lib.sh"
+  # shellcheck source=pi-env-coord-lib.sh
+  . "$script_dir/pi-env-coord-lib.sh"
 fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-push - commit and push coordination changes
+pi-env-coord-push - commit and push coordination changes
 
 Usage:
-  agent-coord-push [options] [git push args...]
+  pi-env-coord-push [options] [git push args...]
 
 Options:
   --coord-dir DIR       Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination

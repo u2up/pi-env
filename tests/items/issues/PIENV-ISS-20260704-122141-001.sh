@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PATH="$repo_root/scripts:$PATH"
 
 tmp="$(mktemp -d)"
@@ -104,43 +104,43 @@ git -C "$coord_dir" commit -q -m 'Seed repo-aware fixtures'
 git -C "$impl_dir" init -q
 git -C "$impl_dir" remote add origin https://example.invalid/alpha.git
 
-created_path="$(cd "$impl_dir" && agent-coord-new --coord-dir "$coord_dir" --category improvement "Created in active repo" | tail -n 1)"
+created_path="$(cd "$impl_dir" && pi-env-coord-new --coord-dir "$coord_dir" --category improvement "Created in active repo" | tail -n 1)"
 case "$created_path" in
   repos/alpha/issues/open/ALPHA-ISS-*.yaml) ;;
   *) printf 'unexpected active repo issue path: %s\n' "$created_path" >&2; exit 1 ;;
 esac
 created_id="$(basename "$created_path" .yaml)"
 
-if (cd "$tmp" && agent-coord-new --coord-dir "$coord_dir" "No active repo" >"$tmp/no-repo.out" 2>"$tmp/no-repo.err"); then
-  printf 'agent-coord-new unexpectedly accepted missing active repo\n' >&2
+if (cd "$tmp" && pi-env-coord-new --coord-dir "$coord_dir" "No active repo" >"$tmp/no-repo.out" 2>"$tmp/no-repo.err"); then
+  printf 'pi-env-coord-new unexpectedly accepted missing active repo\n' >&2
   exit 1
 fi
 grep -q 'missing repo id' "$tmp/no-repo.err"
 
-if agent-coord-new --coord-dir "$coord_dir" --repo-id unknown "Unknown repo" >"$tmp/unknown.out" 2>"$tmp/unknown.err"; then
-  printf 'agent-coord-new unexpectedly accepted unknown repo\n' >&2
+if pi-env-coord-new --coord-dir "$coord_dir" --repo-id unknown "Unknown repo" >"$tmp/unknown.out" 2>"$tmp/unknown.err"; then
+  printf 'pi-env-coord-new unexpectedly accepted unknown repo\n' >&2
   exit 1
 fi
 grep -q 'not registered' "$tmp/unknown.err"
 
-if agent-coord-new --coord-dir "$coord_dir" --repo-id retired "Retired repo" >"$tmp/retired.out" 2>"$tmp/retired.err"; then
-  printf 'agent-coord-new unexpectedly accepted retired repo\n' >&2
+if pi-env-coord-new --coord-dir "$coord_dir" --repo-id retired "Retired repo" >"$tmp/retired.out" 2>"$tmp/retired.err"; then
+  printf 'pi-env-coord-new unexpectedly accepted retired repo\n' >&2
   exit 1
 fi
 grep -q 'retired' "$tmp/retired.err"
 
-alpha_list="$(cd "$impl_dir" && agent-coord-list --coord-dir "$coord_dir" issues open)"
+alpha_list="$(cd "$impl_dir" && pi-env-coord-list --coord-dir "$coord_dir" issues open)"
 printf '%s\n' "$alpha_list" | grep -q $'ALPHA-ISS-1\topen\tAlpha bug'
 if printf '%s\n' "$alpha_list" | grep -q 'BETA-ISS-1'; then
   printf 'default issue list unexpectedly included beta issue\n' >&2
   exit 1
 fi
 
-all_list="$(agent-coord-list --coord-dir "$coord_dir" issues open --all-repos)"
+all_list="$(pi-env-coord-list --coord-dir "$coord_dir" issues open --all-repos)"
 printf '%s\n' "$all_list" | grep -q $'alpha\tALPHA-ISS-1\topen\tAlpha bug'
 printf '%s\n' "$all_list" | grep -q $'beta\tBETA-ISS-1\topen\tBeta task'
 
-all_grouped="$(agent-coord-list --coord-dir "$coord_dir" issues open --all-repos --group-by-category)"
+all_grouped="$(pi-env-coord-list --coord-dir "$coord_dir" issues open --all-repos --group-by-category)"
 printf '%s\n' "$all_grouped" | grep -q $'alpha\tbug\tALPHA-ISS-1\topen\tAlpha bug'
 printf '%s\n' "$all_grouped" | grep -q $'beta\ttask\tBETA-ISS-1\topen\tBeta task'
 expected_grouped=$'alpha\tbug\tALPHA-ISS-1\topen\tAlpha bug\nbeta\tbug\tBETA-ISS-2\topen\tBeta bug'
@@ -152,14 +152,14 @@ if [ "$all_grouped" != "$expected_grouped" ]; then
   exit 1
 fi
 
-bug_list="$(cd "$impl_dir" && agent-coord-list --coord-dir "$coord_dir" issues open --category bug)"
+bug_list="$(cd "$impl_dir" && pi-env-coord-list --coord-dir "$coord_dir" issues open --category bug)"
 printf '%s\n' "$bug_list" | grep -q 'ALPHA-ISS-1'
 if printf '%s\n' "$bug_list" | grep -q 'ALPHA-ISS-2'; then
   printf 'category filter unexpectedly included non-bug issue\n' >&2
   exit 1
 fi
 
-status_default="$(cd "$impl_dir" && agent-coord-status --coord-dir "$coord_dir")"
+status_default="$(cd "$impl_dir" && pi-env-coord-status --coord-dir "$coord_dir")"
 printf '%s\n' "$status_default" | grep -q 'Issue scope: repo alpha'
 printf '%s\n' "$status_default" | grep -q 'ALPHA-ISS-1'
 if printf '%s\n' "$status_default" | grep -q 'BETA-ISS-1'; then
@@ -167,7 +167,7 @@ if printf '%s\n' "$status_default" | grep -q 'BETA-ISS-1'; then
   exit 1
 fi
 
-status_all="$(agent-coord-status --coord-dir "$coord_dir" --all-repos)"
+status_all="$(pi-env-coord-status --coord-dir "$coord_dir" --all-repos)"
 printf '%s\n' "$status_all" | grep -q 'Issue scope: all repos'
 printf '%s\n' "$status_all" | grep -q 'repo=alpha'
 printf '%s\n' "$status_all" | grep -q 'repo=beta'

@@ -6,16 +6,16 @@ if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
   . "$PI_ENV_COORD_LIB"
 else
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-  # shellcheck source=agent-coord-lib.sh
-  . "$script_dir/agent-coord-lib.sh"
+  # shellcheck source=pi-env-coord-lib.sh
+  . "$script_dir/pi-env-coord-lib.sh"
 fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-list - list coordination items by type and optional status
+pi-env-coord-list - list coordination items by type and optional status
 
 Usage:
-  agent-coord-list [options] TYPE [STATUS]
+  pi-env-coord-list [options] TYPE [STATUS]
 
 Arguments:
   TYPE          Item type to list, for example issues, todos, notes,

@@ -3,11 +3,11 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-agent-coord-generate-requirements - render REQUIREMENTS.md from coordination items
+pi-env-coord-generate-requirements - render REQUIREMENTS.md from coordination items
 
 Usage:
-  agent-coord-generate-requirements [--project NAME] [--coordination-dir DIR] [--output PATH]
-  agent-coord-generate-requirements --help
+  pi-env-coord-generate-requirements [--project NAME] [--coordination-dir DIR] [--output PATH]
+  pi-env-coord-generate-requirements --help
 
 Renders active requirement items from the coordination repository's root
 requirements directory as a deterministic Markdown requirements document.

@@ -37,7 +37,7 @@ assert.match(flake, /name = "pi-env-coordination";/);
 assert.match(flake, /paths = coreRuntimePaths;/);
 assert.match(flake, /paths = agentCoordCommandPackages;/);
 assert.match(flake, /paths = coreRuntimePaths \+\+ agentCoordCommandPackages;/);
-assert.match(flake, /"agent-coord-generate-requirements-coverage"/);
+assert.match(flake, /"pi-env-coord-generate-requirements-coverage"/);
 assert.match(flake, /pi-core-smoke/);
 assert.match(flake, /pi-runtime-compat-smoke/);
 assert.match(flake, /pi-env-coordination-smoke/);

@@ -16,7 +16,16 @@ assert_file() {
 # Local payload installs must work without remote bootstrap options or network.
 local_prefix="$workdir/local-prefix"
 mkdir -p "$local_prefix/bin"
-for stale_command in pi-start pi-bwrap pi-serial-roles install-non-nix; do
+stale_commands=(
+  pi-start
+  pi-bwrap
+  bootstrap-coordination
+  agent-coord-repo
+  agent-coord-generate-requirements-coverage
+  pi-serial-roles
+  install-non-nix
+)
+for stale_command in "${stale_commands[@]}"; do
   printf 'stale legacy wrapper\n' > "$local_prefix/bin/$stale_command"
 done
 "$repo_root/scripts/pi-env-install-non-nix" --prefix "$local_prefix"
@@ -27,11 +36,11 @@ assert_file "$local_prefix/bin/pi-env"
 assert_file "$local_prefix/bin/pi-env-bwrap"
 assert_file "$local_prefix/bin/pi-env-serial-roles"
 assert_file "$local_prefix/bin/pi-env-install-non-nix"
-assert_file "$local_prefix/bin/agent-coord-repo"
+assert_file "$local_prefix/bin/pi-env-coord-repo"
 assert_file "$local_prefix/share/pi-env/install-manifest"
 assert_file "$local_prefix/share/bash-completion/completions/pienv"
 grep -qx "$local_prefix/share/bash-completion/completions/pienv" "$local_prefix/share/pi-env/install-manifest"
-for stale_command in pi-start pi-bwrap pi-serial-roles install-non-nix; do
+for stale_command in "${stale_commands[@]}"; do
   [ ! -e "$local_prefix/bin/$stale_command" ] || {
     echo "stale $stale_command wrapper survived reinstall" >&2
     exit 1
@@ -70,7 +79,7 @@ assert_file "$remote_prefix/bin/pi-env"
 assert_file "$remote_prefix/bin/pi-env-bwrap"
 assert_file "$remote_prefix/bin/pi-env-serial-roles"
 assert_file "$remote_prefix/bin/pi-env-install-non-nix"
-assert_file "$remote_prefix/bin/agent-coord-repo"
+assert_file "$remote_prefix/bin/pi-env-coord-repo"
 assert_file "$remote_prefix/share/pi-env/install-origin"
 assert_file "$remote_prefix/share/bash-completion/completions/pienv"
 grep -qx 'repository=test-owner/test-repo' "$remote_prefix/share/pi-env/install-origin"

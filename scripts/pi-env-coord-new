@@ -6,16 +6,16 @@ if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
   . "$PI_ENV_COORD_LIB"
 else
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-  # shellcheck source=agent-coord-lib.sh
-  . "$script_dir/agent-coord-lib.sh"
+  # shellcheck source=pi-env-coord-lib.sh
+  . "$script_dir/pi-env-coord-lib.sh"
 fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-new - create a templated coordination item
+pi-env-coord-new - create a templated coordination item
 
 Usage:
-  agent-coord-new [options] "Item title"
+  pi-env-coord-new [options] "Item title"
 
 Options:
   --coord-dir DIR          Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
@@ -221,7 +221,7 @@ title="${title_parts[*]}"
 coord_dir="$(coord_resolve_dir "$coord_dir_opt")"
 repo_id=""
 if coord_item_type_uses_issue_status_dirs "$item_type" && [ -d "$coord_dir/repos" ]; then
-  repo_err="$(mktemp "${TMPDIR:-/tmp}/agent-coord-new-repo.XXXXXX")" || coord_die "failed to create temporary file"
+  repo_err="$(mktemp "${TMPDIR:-/tmp}/pi-env-coord-new-repo.XXXXXX")" || coord_die "failed to create temporary file"
   if ! repo_id="$(coord_resolve_repo_id "$repo_id_arg" "$coord_dir" 2>"$repo_err")"; then
     cat "$repo_err" >&2
     rm -f "$repo_err"
@@ -242,7 +242,7 @@ elif [ -n "$repo_id_arg" ]; then
   [ -f "$metadata_file" ] || coord_die "repo manifest missing: $metadata_file"
   item_root="repos/$repo_id/$type_dir"
 elif ! coord_write_root_items_by_default; then
-  coord_die "no supported coordination layout found; initialize with agent-coord-init and create repo-scoped or root item directories"
+  coord_die "no supported coordination layout found; initialize with pi-env-coord-init and create repo-scoped or root item directories"
 fi
 
 created="$(coord_timestamp_iso)"

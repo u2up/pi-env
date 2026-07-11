@@ -42,12 +42,12 @@ grep -q 'nix profile install ~/src/pi-env#pi-env-coordination' README.md
 grep -q '`pi-env-coordination` contains the Git-backed coordination helper commands' \
   designs/nix-runtime.md
 
-if grep -q 'legacy_impl_config' scripts/agent-coord-lib.sh; then
-  printf 'legacy implementation config helper remains in agent-coord-lib.sh\n' >&2
+if grep -q 'legacy_impl_config' scripts/pi-env-coord-lib.sh; then
+  printf 'legacy implementation config helper remains in pi-env-coord-lib.sh\n' >&2
   exit 1
 fi
 
-if grep -q 'deprecated:' scripts/agent-coord-lib.sh; then
-  printf 'config deprecation warning path remains in agent-coord-lib.sh\n' >&2
+if grep -q 'deprecated:' scripts/pi-env-coord-lib.sh; then
+  printf 'config deprecation warning path remains in pi-env-coord-lib.sh\n' >&2
   exit 1
 fi

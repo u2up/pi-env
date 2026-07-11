@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 serial_script="$repo_root/scripts/pi-env-serial-roles"
 role_manager="$repo_root/role-manager"
 
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
@@ -65,7 +65,7 @@ mkdir -p "$project"
 git -C "$project" init -q
 (
   cd "$project"
-  agent-coord-init \
+  pi-env-coord-init \
     --project serial-artifacts \
     --project-key SERIALART \
     --agent-id agent-a >/dev/null

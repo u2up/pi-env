@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
@@ -19,7 +19,7 @@ unset PI_ENV_COORD_REMOTE PI_ENV_COORD_WORKSPACE \
 print_project="$tmp/print-project"
 mkdir -p "$print_project"
 git -C "$print_project" init -q
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$print_project" \
   --project print-demo \
   --project-key PRINT \
@@ -35,7 +35,7 @@ init_project="$tmp/init-project"
 mkdir -p "$init_project"
 git -C "$init_project" init -q
 cd "$init_project"
-agent-coord-init \
+pi-env-coord-init \
   --project init-demo \
   --project-key INIT \
   --agent-id agent-a >/dev/null
@@ -78,12 +78,12 @@ cat >"$init_project/designs/default-coverage.md" <<'EOF_DESIGN'
 |-------------|-------------------|
 | INIT-001 | INIT-FRQ-001 |
 EOF_DESIGN
-agent-coord-generate-requirements-coverage \
+pi-env-coord-generate-requirements-coverage \
   --project init-demo \
   --designs-dir "$init_project/designs" \
   --output "$tmp/coverage.md"
 grep -F '| INIT-001 | INIT-FRQ-001 |' "$tmp/coverage.md" >/dev/null
-agent-coord-generate-requirements \
+pi-env-coord-generate-requirements \
   --project init-demo \
   --output "$tmp/requirements.md"
 grep -F '# INIT-001 Default coverage smoke' "$tmp/requirements.md" >/dev/null
@@ -101,7 +101,7 @@ clone_project="$tmp/clone-project"
 mkdir -p "$clone_project"
 git -C "$clone_project" init -q
 cd "$clone_project"
-agent-coord-clone \
+pi-env-coord-clone \
   --remote "$init_project/.pi-env/agent-remotes/init-demo-coordination.git" >/dev/null
 
 test -f "$clone_project/.pi-env/coordination/AGENTS.md"

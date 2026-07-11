@@ -8,7 +8,7 @@ stdout_file="$(mktemp)"
 cleanup() { rm -f "$stdout_file"; }
 trap cleanup EXIT
 
-scripts/agent-coord-generate-requirements > "$stdout_file"
+scripts/pi-env-coord-generate-requirements > "$stdout_file"
 
 grep -F 'This document is generated reference output' "$stdout_file" >/dev/null
 grep -F 'preferred source of truth when present' "$stdout_file" >/dev/null

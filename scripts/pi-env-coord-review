@@ -6,43 +6,40 @@ if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
   . "$PI_ENV_COORD_LIB"
 else
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-  # shellcheck source=agent-coord-lib.sh
-  . "$script_dir/agent-coord-lib.sh"
+  # shellcheck source=pi-env-coord-lib.sh
+  . "$script_dir/pi-env-coord-lib.sh"
 fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-close - final-close a reviewed and verified coordination item
+pi-env-coord-review - mark coordination item review result
 
 Usage:
-  agent-coord-close [options] ITEM
+  pi-env-coord-review [options] ITEM
 
 Options:
-  --coord-dir DIR             Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
-  --agent-id ID               Agent identity; default: PI_ENV_COORD_AGENT_ID or USER
-  --role ROLE                 Coordination role; default: PI_ENV_COORD_ROLE
-  --result TEXT               Result/message text; default: Closed.
-  --implementation-ref REF    Implementation ref in repo:branch@full-commit form;
-                               may be repeated
-  --no-pull                   Do not pull/rebase before closing
-  --no-push                   Commit but do not push after closing
-  --force                     Bypass done/reviewed/verified checks
-  -h, --help                  Show this help
-
-Items are normally closed only after developer work is done and both
-reviewed=true and verified=true are recorded on the item.
+  --coord-dir DIR   Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
+  --agent-id ID     Agent identity; default: PI_ENV_COORD_AGENT_ID or USER
+  --role ROLE       Coordination role; default: PI_ENV_COORD_ROLE
+  --pass            Mark review passed; default
+  --fail            Mark review failed and reopen developer work
+  --result TEXT     Review message text
+  --no-pull         Do not pull/rebase before updating review
+  --no-push         Commit but do not push after updating review
+  --force           Allow reviewing an item that is not in done state
+  -h, --help        Show this help
 USAGE
 }
 
 coord_dir_opt=""
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
-result="Closed."
+result=""
+review_passed=1
 pull_first=1
 push_after=1
 force=0
 item_query=""
-implementation_refs=()
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -61,14 +58,17 @@ while [ "$#" -gt 0 ]; do
       role="$2"
       shift 2
       ;;
+    --pass)
+      review_passed=1
+      shift
+      ;;
+    --fail)
+      review_passed=0
+      shift
+      ;;
     --result)
       [ "$#" -ge 2 ] || coord_die "--result requires a value"
       result="$2"
-      shift 2
-      ;;
-    --implementation-ref)
-      [ "$#" -ge 2 ] || coord_die "--implementation-ref requires a value"
-      implementation_refs+=("$2")
       shift 2
       ;;
     --no-pull)
@@ -118,57 +118,59 @@ if [ -z "$item_id" ]; then
 fi
 
 if [ "$status" = "closed" ]; then
-  coord_die "item is already closed: $item_id"
+  coord_die "cannot review a closed item: $item_id"
 fi
 
-if [ "$force" != "1" ]; then
-  if [ "$status" != "done" ]; then
-    coord_die "item must be done before final close: $item_id"
-  fi
-  if ! coord_item_flag_true "$item_path" reviewed; then
-    coord_die "item must be reviewed before final close: $item_id"
-  fi
-  if ! coord_item_flag_true "$item_path" verified; then
-    coord_die "item must be verified before final close: $item_id"
-  fi
+if [ "$status" != "done" ] && [ "$force" != "1" ]; then
+  coord_die "review normally applies to done items; use --force to override"
 fi
-
-for ref in "${implementation_refs[@]}"; do
-  [ -n "$ref" ] || continue
-  coord_write_implementation_ref_yaml "" "$ref" >/dev/null
-done
-
-item_path="$(coord_move_issue_item_to_status "$item_path" closed)"
 
 now="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
 event_id="$(coord_next_event_id "$item_path")"
 message_id="$(coord_message_id_for_event "$event_id")"
 
-coord_set_item_values \
-  "$item_path" \
-  "status=closed" \
-  "updated=$now" \
-  "closed=$now"
+if [ "$review_passed" = "1" ]; then
+  [ -n "$result" ] || result="Reviewed."
+  event_type="reviewed"
+  coord_set_item_values \
+    "$item_path" \
+    "reviewed=true" \
+    "updated=$now"
+  message="Review $item_id"
+else
+  [ -n "$result" ] || result="Review failed; returned to open developer work."
+  event_type="review_failed"
+  item_path="$(coord_move_issue_item_to_status "$item_path" open)"
+  coord_set_item_values \
+    "$item_path" \
+    "status=open" \
+    "updated=$now" \
+    "done=null" \
+    "closed=null" \
+    "owner=null" \
+    "reviewed=false" \
+    "verified=false"
+  message="Reject review $item_id"
+fi
+
 coord_set_current_pointers "$item_path" "$event_id" "$message_id"
 coord_append_item_event_message \
   "$item_path" \
   "$event_id" \
-  "closed" \
+  "$event_type" \
   "$now" \
   "$agent_id" \
   "$role" \
   "$message_id" \
-  "$result" \
-  "${implementation_refs[@]}"
+  "$result"
 
 git add "$item_path"
 if coord_git_has_staged_changes; then
-  message="Close $item_id"
   coord_validate_subject "$message"
   coord_git_commit "$actor" -m "$message"
 else
-  coord_note "item was already closed: $item_id"
+  coord_note "review state was already recorded for: $item_id"
 fi
 
 if [ "$push_after" = "1" ]; then

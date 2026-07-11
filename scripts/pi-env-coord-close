@@ -6,35 +6,43 @@ if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
   . "$PI_ENV_COORD_LIB"
 else
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-  # shellcheck source=agent-coord-lib.sh
-  . "$script_dir/agent-coord-lib.sh"
+  # shellcheck source=pi-env-coord-lib.sh
+  . "$script_dir/pi-env-coord-lib.sh"
 fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-claim - claim a coordination item
+pi-env-coord-close - final-close a reviewed and verified coordination item
 
 Usage:
-  agent-coord-claim [options] ITEM
+  pi-env-coord-close [options] ITEM
 
 Options:
-  --coord-dir DIR   Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
-  --agent-id ID     Agent identity; default: PI_ENV_COORD_AGENT_ID or USER
-  --role ROLE       Coordination role; default: PI_ENV_COORD_ROLE
-  --no-pull         Do not pull/rebase before claiming
-  --no-push         Commit but do not push after claiming
-  --force           Allow claiming an item owned by another agent
-  -h, --help        Show this help
+  --coord-dir DIR             Coordination clone; default: PI_ENV_COORD_DIR or .pi-env/coordination
+  --agent-id ID               Agent identity; default: PI_ENV_COORD_AGENT_ID or USER
+  --role ROLE                 Coordination role; default: PI_ENV_COORD_ROLE
+  --result TEXT               Result/message text; default: Closed.
+  --implementation-ref REF    Implementation ref in repo:branch@full-commit form;
+                               may be repeated
+  --no-pull                   Do not pull/rebase before closing
+  --no-push                   Commit but do not push after closing
+  --force                     Bypass done/reviewed/verified checks
+  -h, --help                  Show this help
+
+Items are normally closed only after developer work is done and both
+reviewed=true and verified=true are recorded on the item.
 USAGE
 }
 
 coord_dir_opt=""
 agent_id="$(coord_default_agent)"
 role="$(coord_default_role)"
+result="Closed."
 pull_first=1
 push_after=1
 force=0
 item_query=""
+implementation_refs=()
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -51,6 +59,16 @@ while [ "$#" -gt 0 ]; do
     --role)
       [ "$#" -ge 2 ] || coord_die "--role requires a value"
       role="$2"
+      shift 2
+      ;;
+    --result)
+      [ "$#" -ge 2 ] || coord_die "--result requires a value"
+      result="$2"
+      shift 2
+      ;;
+    --implementation-ref)
+      [ "$#" -ge 2 ] || coord_die "--implementation-ref requires a value"
+      implementation_refs+=("$2")
       shift 2
       ;;
     --no-pull)
@@ -92,7 +110,6 @@ fi
 item_path="$(coord_repo_path "$(coord_find_item "$item_query")")"
 item_id="$(coord_item_value "$item_path" id || true)"
 status="$(coord_item_value "$item_path" status || true)"
-owner="$(coord_item_value "$item_path" owner || true)"
 if [ -z "$item_id" ]; then
   item_id="$(basename "$item_path")"
   item_id="${item_id%.yaml}"
@@ -101,16 +118,27 @@ if [ -z "$item_id" ]; then
 fi
 
 if [ "$status" = "closed" ]; then
-  coord_die "cannot claim a closed item: $item_id"
+  coord_die "item is already closed: $item_id"
 fi
 
-if [ "$status" = "done" ] && [ "$force" != "1" ]; then
-  coord_die "cannot claim a done item pending review/verification: $item_id"
+if [ "$force" != "1" ]; then
+  if [ "$status" != "done" ]; then
+    coord_die "item must be done before final close: $item_id"
+  fi
+  if ! coord_item_flag_true "$item_path" reviewed; then
+    coord_die "item must be reviewed before final close: $item_id"
+  fi
+  if ! coord_item_flag_true "$item_path" verified; then
+    coord_die "item must be verified before final close: $item_id"
+  fi
 fi
 
-if [ -n "$owner" ] && [ "$owner" != "$agent_id" ] && [ "$force" != "1" ]; then
-  coord_die "item is owned by $owner; use --force to override"
-fi
+for ref in "${implementation_refs[@]}"; do
+  [ -n "$ref" ] || continue
+  coord_write_implementation_ref_yaml "" "$ref" >/dev/null
+done
+
+item_path="$(coord_move_issue_item_to_status "$item_path" closed)"
 
 now="$(coord_timestamp_iso)"
 actor="$(coord_effective_actor "$agent_id" "$role")"
@@ -119,27 +147,28 @@ message_id="$(coord_message_id_for_event "$event_id")"
 
 coord_set_item_values \
   "$item_path" \
-  "status=claimed" \
-  "owner=$agent_id" \
-  "updated=$now"
+  "status=closed" \
+  "updated=$now" \
+  "closed=$now"
 coord_set_current_pointers "$item_path" "$event_id" "$message_id"
 coord_append_item_event_message \
   "$item_path" \
   "$event_id" \
-  "claimed" \
+  "closed" \
   "$now" \
   "$agent_id" \
   "$role" \
   "$message_id" \
-  "Claimed."
+  "$result" \
+  "${implementation_refs[@]}"
 
 git add "$item_path"
 if coord_git_has_staged_changes; then
-  message="Claim $item_id"
+  message="Close $item_id"
   coord_validate_subject "$message"
   coord_git_commit "$actor" -m "$message"
 else
-  coord_note "item was already claimed by $agent_id"
+  coord_note "item was already closed: $item_id"
 fi
 
 if [ "$push_after" = "1" ]; then

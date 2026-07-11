@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PATH="$repo_root/scripts:$PATH"
 
 tmp="$(mktemp -d)"
@@ -40,7 +40,7 @@ mkdir -p \
 git -C "$coord_dir" add -A
 git -C "$coord_dir" commit -q -m "Initialize root layout"
 
-issue_path="$(agent-coord-new \
+issue_path="$(pi-env-coord-new \
   --coord-dir "$coord_dir" \
   --agent-id agent-a \
   --role architect \
@@ -52,11 +52,11 @@ esac
 issue_id="$(basename "$issue_path" .yaml)"
 grep -q '^project: root-demo$' "$coord_dir/$issue_path"
 grep -q "^$issue_id[[:space:]]\+open[[:space:]]\+Project-local root layout issue$" \
-  <(agent-coord-list --coord-dir "$coord_dir" issues open)
-agent-coord-cat --coord-dir "$coord_dir" "$issue_id" | grep -q "^title: 'Project-local root layout issue'$"
-agent-coord-status --coord-dir "$coord_dir" | grep -q "$issue_id"
+  <(pi-env-coord-list --coord-dir "$coord_dir" issues open)
+pi-env-coord-cat --coord-dir "$coord_dir" "$issue_id" | grep -q "^title: 'Project-local root layout issue'$"
+pi-env-coord-status --coord-dir "$coord_dir" | grep -q "$issue_id"
 
-env_issue_path="$(PI_ENV_COORD_PROJECT=env-project agent-coord-new \
+env_issue_path="$(PI_ENV_COORD_PROJECT=env-project pi-env-coord-new \
   --coord-dir "$coord_dir" \
   --testable no \
   --testability-note "Project-local layout should ignore PI_ENV_COORD_PROJECT for paths." \
@@ -74,17 +74,17 @@ true
 EOF_TEST
 chmod +x "$project_root/tests/items/issues/$issue_id.sh"
 
-agent-coord-claim --coord-dir "$coord_dir" --agent-id agent-a --role developer --no-pull --no-push "$issue_id" >/dev/null
-agent-coord-done --coord-dir "$coord_dir" --agent-id agent-a --role developer --no-pull --no-push "$issue_id" >/dev/null
-agent-coord-review --coord-dir "$coord_dir" --agent-id reviewer --role reviewer --no-pull --no-push --pass "$issue_id" >/dev/null
-agent-coord-verify --coord-dir "$coord_dir" --agent-id verifier --role verifier --no-pull --no-push --pass "$issue_id" >/dev/null
-agent-coord-close --coord-dir "$coord_dir" --agent-id closer --role maintainer --no-pull --no-push "$issue_id" >/dev/null
+pi-env-coord-claim --coord-dir "$coord_dir" --agent-id agent-a --role developer --no-pull --no-push "$issue_id" >/dev/null
+pi-env-coord-done --coord-dir "$coord_dir" --agent-id agent-a --role developer --no-pull --no-push "$issue_id" >/dev/null
+pi-env-coord-review --coord-dir "$coord_dir" --agent-id reviewer --role reviewer --no-pull --no-push --pass "$issue_id" >/dev/null
+pi-env-coord-verify --coord-dir "$coord_dir" --agent-id verifier --role verifier --no-pull --no-push --pass "$issue_id" >/dev/null
+pi-env-coord-close --coord-dir "$coord_dir" --agent-id closer --role maintainer --no-pull --no-push "$issue_id" >/dev/null
 
 test -f "$coord_dir/issues/closed/$issue_id.yaml"
 grep -q '^status: closed$' "$coord_dir/issues/closed/$issue_id.yaml"
-agent-coord-list --coord-dir "$coord_dir" issues closed | grep -q "^$issue_id"
+pi-env-coord-list --coord-dir "$coord_dir" issues closed | grep -q "^$issue_id"
 
-requirement_path="$(agent-coord-new \
+requirement_path="$(pi-env-coord-new \
   --coord-dir "$coord_dir" \
   --type functional \
   --testable no \
@@ -96,7 +96,7 @@ case "$requirement_path" in
 esac
 requirement_id="$(basename "$requirement_path" .yaml)"
 
-agent-coord-generate-requirements \
+pi-env-coord-generate-requirements \
   --coordination-dir "$coord_dir" \
   --project root-demo | grep -q 'Project-local root layout requirement'
 
@@ -109,10 +109,10 @@ cat >"$project_root/designs/root.md" <<EOF_DESIGN
 |-------------|-------------------|
 | $requirement_id | $requirement_id |
 EOF_DESIGN
-agent-coord-generate-requirements-coverage \
+pi-env-coord-generate-requirements-coverage \
   --coordination-dir "$coord_dir" \
   --project root-demo \
   --designs-dir "$project_root/designs" \
   --check
 
-agent-coord-lint --coord-dir "$coord_dir" --project-root "$project_root"
+pi-env-coord-lint --coord-dir "$coord_dir" --project-root "$project_root"

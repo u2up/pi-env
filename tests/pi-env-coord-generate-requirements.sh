@@ -11,8 +11,8 @@ trap cleanup EXIT
 stdout_file="$tmpdir/requirements.stdout.md"
 output_file="$tmpdir/requirements.output.md"
 
-scripts/agent-coord-generate-requirements > "$stdout_file"
-scripts/agent-coord-generate-requirements --output "$output_file"
+scripts/pi-env-coord-generate-requirements > "$stdout_file"
+scripts/pi-env-coord-generate-requirements --output "$output_file"
 
 if [ "$(sha256sum "$stdout_file" | awk '{print $1}')" != "$(sha256sum "$output_file" | awk '{print $1}')" ]; then
   echo "stdout and --output renderings differ" >&2
@@ -57,7 +57,7 @@ body: |-
   Requirements must render from the project-local .pi-env coordination requirements directory.
 EOF
 root_output="$tmpdir/root-requirements.md"
-scripts/agent-coord-generate-requirements \
+scripts/pi-env-coord-generate-requirements \
   --coordination-dir "$root_coord" > "$root_output"
 grep -F '#### ROOT-001 Project-local fixture' "$root_output" >/dev/null
 

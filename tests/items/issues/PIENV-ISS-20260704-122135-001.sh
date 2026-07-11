@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
-lib="$repo_root/scripts/agent-coord-lib.sh"
+lib="$repo_root/scripts/pi-env-coord-lib.sh"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -97,7 +97,7 @@ messages: []
 YAML
   git -C "$command_coord_dir" add .
   git -C "$command_coord_dir" commit -m "Seed coordination item" >/dev/null
-  "$repo_root/scripts/agent-coord-done" \
+  "$repo_root/scripts/pi-env-coord-done" \
     --coord-dir "$command_coord_dir" \
     --agent-id agent-a \
     --role developer \

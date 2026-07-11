@@ -6,6 +6,33 @@ command_names=(
   pi-env
   pi-env-shell
   pi-env-bwrap
+  pi-env-bootstrap-coordination
+  pi-env-coord-init
+  pi-env-coord-clone
+  pi-env-coord-status
+  pi-env-coord-list
+  pi-env-coord-cat
+  pi-env-coord-pull
+  pi-env-coord-push
+  pi-env-coord-new
+  pi-env-coord-repo
+  pi-env-coord-claim
+  pi-env-coord-done
+  pi-env-coord-review
+  pi-env-coord-verify
+  pi-env-coord-close
+  pi-env-coord-lint
+  pi-env-coord-generate-requirements
+  pi-env-coord-generate-requirements-coverage
+  pi-env-coord-upgrade-rules
+  pi-env-serial-roles
+  pi-env-install-non-nix
+  pi-env-uninstall
+)
+
+removed_command_names=(
+  pi-start
+  pi-bwrap
   bootstrap-coordination
   agent-coord-init
   agent-coord-clone
@@ -25,14 +52,6 @@ command_names=(
   agent-coord-generate-requirements
   agent-coord-generate-requirements-coverage
   agent-coord-upgrade-rules
-  pi-env-serial-roles
-  pi-env-install-non-nix
-  pi-env-uninstall
-)
-
-removed_command_names=(
-  pi-start
-  pi-bwrap
   pi-serial-roles
   install-non-nix
 )
@@ -144,7 +163,7 @@ is_source_root() {
   local candidate="$1"
   [ -f "$candidate/scripts/pienv" ] && \
     [ -f "$candidate/scripts/pi-env-launcher" ] && \
-    [ -f "$candidate/scripts/agent-coord-lib.sh" ] && \
+    [ -f "$candidate/scripts/pi-env-coord-lib.sh" ] && \
     [ -d "$candidate/role-manager" ] && \
     [ -d "$candidate/pi-skill-templates" ]
 }
@@ -264,7 +283,7 @@ if [ "\$(basename "\$0")" = "pi-env-shell" ]; then
   export PI_ENV_SHELL_MODE=1
 fi
 export PATH="\$pi_env_bin_dir:\${PATH:-}"
-export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-\$pi_env_share_dir/scripts/agent-coord-lib.sh}"
+export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-\$pi_env_share_dir/scripts/pi-env-coord-lib.sh}"
 export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-\$pi_env_share_dir/pi-skill-templates/agent-coordination}"
 export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-\$pi_env_share_dir/role-manager}"
 export PI_ENV_PI_ENV_BWRAP="\${PI_ENV_PI_ENV_BWRAP:-\$pi_env_bin_dir/pi-env-bwrap}"
@@ -384,8 +403,8 @@ rm -rf "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templ
 cp -R "$source_root/scripts" "$share_dir/scripts"
 cp -R "$source_root/role-manager" "$share_dir/role-manager"
 cp -R "$source_root/pi-skill-templates" "$share_dir/pi-skill-templates"
-chmod +x "$share_dir/scripts"/agent-coord-* \
-  "$share_dir/scripts/bootstrap-coordination" \
+chmod +x "$share_dir/scripts"/pi-env-coord-* \
+  "$share_dir/scripts/pi-env-bootstrap-coordination" \
   "$share_dir/scripts/pi-env-bwrap" \
   "$share_dir/scripts/pi-env-launcher" \
   "$share_dir/scripts/pienv" \

@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 cd "$repo_root"
 . tests/lib/test-helpers.sh
 
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
@@ -22,52 +22,52 @@ git config --global user.email "task-type-test@example.invalid"
 
 git -C "$tmp/project" init -q
 cd "$tmp/project"
-agent-coord-init \
+pi-env-coord-init \
   --project task-type-test \
   --agent-id agent-a >/dev/null
 coord_dir="$tmp/project/.pi-env/coordination"
 
 for unsupported_item_type in task tasks; do
-  if agent-coord-new --coord-dir "$coord_dir" \
+  if pi-env-coord-new --coord-dir "$coord_dir" \
     --type "$unsupported_item_type" "Unsupported task item type" \
     >"$tmp/new-$unsupported_item_type.out" \
     2>"$tmp/new-$unsupported_item_type.err"; then
-    test_fail "agent-coord-new accepted --type $unsupported_item_type"
+    test_fail "pi-env-coord-new accepted --type $unsupported_item_type"
   fi
   test_grep \
     "--type $unsupported_item_type is not a coordination item type; use --type issue --category task" \
     "$tmp/new-$unsupported_item_type.err"
 
-  if agent-coord-list --coord-dir "$coord_dir" "$unsupported_item_type" \
+  if pi-env-coord-list --coord-dir "$coord_dir" "$unsupported_item_type" \
     >"$tmp/list-$unsupported_item_type.out" \
     2>"$tmp/list-$unsupported_item_type.err"; then
-    test_fail "agent-coord-list accepted item type $unsupported_item_type"
+    test_fail "pi-env-coord-list accepted item type $unsupported_item_type"
   fi
   test_grep \
     "$unsupported_item_type is not a coordination item type; use issues --category task" \
     "$tmp/list-$unsupported_item_type.err"
 done
 
-if agent-coord-new --coord-dir "$coord_dir" \
+if pi-env-coord-new --coord-dir "$coord_dir" \
   --issue-type task "Legacy category flag" \
   >"$tmp/new-legacy-category.out" \
   2>"$tmp/new-legacy-category.err"; then
-  test_fail "agent-coord-new accepted legacy --issue-type"
+  test_fail "pi-env-coord-new accepted legacy --issue-type"
 fi
 test_grep '--issue-type has been removed; use --category' \
   "$tmp/new-legacy-category.err"
 
-if agent-coord-list --coord-dir "$coord_dir" \
+if pi-env-coord-list --coord-dir "$coord_dir" \
   --issue-type task issues \
   >"$tmp/list-legacy-category.out" \
   2>"$tmp/list-legacy-category.err"; then
-  test_fail "agent-coord-list accepted legacy --issue-type"
+  test_fail "pi-env-coord-list accepted legacy --issue-type"
 fi
 test_grep '--issue-type has been removed; use category flags' \
   "$tmp/list-legacy-category.err"
 
 for category_alias in task tasks; do
-  issue_path="$(agent-coord-new \
+  issue_path="$(pi-env-coord-new \
     --coord-dir "$coord_dir" \
     --agent-id agent-a \
     --type issue \

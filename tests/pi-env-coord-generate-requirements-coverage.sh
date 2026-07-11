@@ -60,13 +60,13 @@ cat > "$designs_dir/beta.md" <<'EOF'
 EOF
 
 output="$tmpdir/coverage.md"
-scripts/agent-coord-generate-requirements-coverage \
+scripts/pi-env-coord-generate-requirements-coverage \
   --coordination-dir "$coord_dir" \
   --designs-dir "$designs_dir" \
   --output "$output"
 
 stdout_output="$tmpdir/stdout.md"
-scripts/agent-coord-generate-requirements-coverage \
+scripts/pi-env-coord-generate-requirements-coverage \
   --coordination-dir "$coord_dir" \
   --designs-dir "$designs_dir" > "$stdout_output"
 if [ "$(sha256sum "$output" | awk '{print $1}')" != "$(sha256sum "$stdout_output" | awk '{print $1}')" ]; then
@@ -92,7 +92,7 @@ cat > "$unknown_dir/bad.md" <<'EOF'
 |-------------|-------------------|
 | UC-999 | PIENV-FRQ-20260614-000000-999 |
 EOF
-if scripts/agent-coord-generate-requirements-coverage \
+if scripts/pi-env-coord-generate-requirements-coverage \
   --coordination-dir "$coord_dir" \
   --designs-dir "$unknown_dir" \
   --check 2>"$tmpdir/unknown.err"; then
@@ -112,7 +112,7 @@ cat > "$stale_dir/stale.md" <<'EOF'
 |-------------|-------------------|
 | UC-001 | PIENV-FRQ-20260614-000000-003 |
 EOF
-if scripts/agent-coord-generate-requirements-coverage \
+if scripts/pi-env-coord-generate-requirements-coverage \
   --coordination-dir "$coord_dir" \
   --designs-dir "$stale_dir" \
   --check 2>"$tmpdir/stale.err"; then
@@ -132,7 +132,7 @@ cat > "$malformed_dir/malformed.md" <<'EOF'
 |-------------|-------------------|
 | UC-001 | PIENV-FRQ-20260614-000000-001 | extra |
 EOF
-if scripts/agent-coord-generate-requirements-coverage \
+if scripts/pi-env-coord-generate-requirements-coverage \
   --coordination-dir "$coord_dir" \
   --designs-dir "$malformed_dir" \
   --check 2>"$tmpdir/malformed.err"; then
@@ -142,7 +142,7 @@ fi
 grep -F 'malformed Covers row' "$tmpdir/malformed.err" >/dev/null
 
 preview="$tmpdir/preview.md"
-scripts/agent-coord-generate-requirements-coverage \
+scripts/pi-env-coord-generate-requirements-coverage \
   --coordination-dir "$coord_dir" \
   --designs-dir "$unknown_dir" \
   --preview > "$preview"

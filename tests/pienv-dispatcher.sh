@@ -25,13 +25,13 @@ STUB
 }
 
 for name in \
-  pi-env pi-env-shell pi-env-bwrap bootstrap-coordination \
-  agent-coord-init agent-coord-clone agent-coord-status agent-coord-list \
-  agent-coord-cat agent-coord-new agent-coord-claim agent-coord-done \
-  agent-coord-review agent-coord-verify agent-coord-close agent-coord-pull \
-  agent-coord-push agent-coord-lint agent-coord-repo \
-  agent-coord-upgrade-rules agent-coord-generate-requirements \
-  agent-coord-generate-requirements-coverage pi-env-serial-roles \
+  pi-env pi-env-shell pi-env-bwrap pi-env-bootstrap-coordination \
+  pi-env-coord-init pi-env-coord-clone pi-env-coord-status pi-env-coord-list \
+  pi-env-coord-cat pi-env-coord-new pi-env-coord-claim pi-env-coord-done \
+  pi-env-coord-review pi-env-coord-verify pi-env-coord-close pi-env-coord-pull \
+  pi-env-coord-push pi-env-coord-lint pi-env-coord-repo \
+  pi-env-coord-upgrade-rules pi-env-coord-generate-requirements \
+  pi-env-coord-generate-requirements-coverage pi-env-serial-roles \
   pi-env-install-non-nix pi-env-uninstall; do
   make_stub "$name"
 done
@@ -59,12 +59,12 @@ run_case $'cmd=pi-env\narg=--raw\narg=--\narg=run' raw -- run
 run_case $'cmd=pi-env-shell\narg=--runtime\narg=nix' shell --runtime nix
 run_case $'cmd=pi-env-bwrap\narg=--continue' sandbox --continue
 run_case $'cmd=pi-env-bwrap\narg=--shell\narg=--\narg=-l' sandbox shell -- -l
-run_case $'cmd=bootstrap-coordination\narg=--help' coord bootstrap --help
-run_case $'cmd=agent-coord-status\narg=--repo-id\narg=pi-env' coord status --repo-id pi-env
-run_case $'cmd=agent-coord-cat\narg=ITEM-1' coord show ITEM-1
-run_case $'cmd=agent-coord-upgrade-rules\narg=--check' coord rules upgrade --check
-run_case $'cmd=agent-coord-generate-requirements\narg=--repo-id\narg=pi-env' coord requirements generate --repo-id pi-env
-run_case $'cmd=agent-coord-generate-requirements-coverage' coord requirements coverage
+run_case $'cmd=pi-env-bootstrap-coordination\narg=--help' coord bootstrap --help
+run_case $'cmd=pi-env-coord-status\narg=--repo-id\narg=pi-env' coord status --repo-id pi-env
+run_case $'cmd=pi-env-coord-cat\narg=ITEM-1' coord show ITEM-1
+run_case $'cmd=pi-env-coord-upgrade-rules\narg=--check' coord rules upgrade --check
+run_case $'cmd=pi-env-coord-generate-requirements\narg=--repo-id\narg=pi-env' coord requirements generate --repo-id pi-env
+run_case $'cmd=pi-env-coord-generate-requirements-coverage' coord requirements coverage
 run_case $'cmd=pi-env-serial-roles\narg=--role\narg=developer' roles serial --role developer
 run_case $'cmd=pi-env-install-non-nix\narg=--prefix\narg=/tmp/pienv' install --prefix /tmp/pienv
 run_case $'cmd=pi-env-uninstall\narg=--prefix\narg=/tmp/pienv' uninstall --prefix /tmp/pienv
@@ -112,13 +112,13 @@ esac
 
 coord_help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help coord)"
 case "$coord_help_output" in
-  *'rules upgrade'*'agent-coord-upgrade-rules'*'requirements generate'*'agent-coord-generate-requirements'* ) ;;
+  *'rules upgrade'*'pi-env-coord-upgrade-rules'*'requirements generate'*'pi-env-coord-generate-requirements'* ) ;;
   *) echo "pienv help coord did not list nested command equivalents" >&2; exit 1 ;;
 esac
 
 PIENV_TEST_LOG="$tmp_dir/log" PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help coord status
 case "$(cat "$tmp_dir/log")" in
-  $'cmd=agent-coord-status\narg=--help') ;;
+  $'cmd=pi-env-coord-status\narg=--help') ;;
   *) echo "pienv help coord status did not dispatch to leaf help" >&2; exit 1 ;;
 esac
 

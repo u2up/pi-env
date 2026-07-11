@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 cd "$repo_root"
 . tests/lib/test-helpers.sh
 
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
@@ -26,7 +26,7 @@ git config --global user.name "TODO Coordination Test"
 git config --global user.email "todo-coordination@example.invalid"
 
 cd "$tmp/project"
-agent-coord-init \
+pi-env-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
   --agent-id agent-a \
@@ -37,7 +37,7 @@ test_grep '`TODO`: `todo`' .pi-env/coordination/docs/ITEM_FORMAT.md
 test_grep '`TODO` for `todo`' .pi-env/coordination/AGENTS.md
 test_grep '`TODO` for todo' .pi-env/coordination/.pi/skills/agent-coordination/SKILL.md
 
-todo_path="$(agent-coord-new \
+todo_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type todo \
   --testable no \
@@ -58,20 +58,20 @@ test_grep '^body: |-$' ".pi-env/coordination/$todo_path"
 assert_no_top_level_history ".pi-env/coordination/$todo_path"
 
 todo_id="$(grep '^id: ' ".pi-env/coordination/$todo_path" | sed 's/^id: //')"
-todo_list="$(agent-coord-list --coord-dir .pi-env/coordination todos active)"
+todo_list="$(pi-env-coord-list --coord-dir .pi-env/coordination todos active)"
 printf '%s\n' "$todo_list" \
   | grep -Eq "^$todo_id[[:space:]]+active[[:space:]]+Example TODO$" \
   || test_fail 'TODO item was not listed by todos active'
 
-if agent-coord-new --coord-dir .pi-env/coordination --type tdo "Bad alias" \
+if pi-env-coord-new --coord-dir .pi-env/coordination --type tdo "Bad alias" \
   >"$tmp/tdo.out" 2>"$tmp/tdo.err"; then
-  test_fail 'agent-coord-new accepted unsupported tdo alias'
+  test_fail 'pi-env-coord-new accepted unsupported tdo alias'
 fi
 test_grep '--type tdo is not supported; use --type todo' "$tmp/tdo.err"
 
-if agent-coord-list --coord-dir .pi-env/coordination tdo \
+if pi-env-coord-list --coord-dir .pi-env/coordination tdo \
   >"$tmp/list-tdo.out" 2>"$tmp/list-tdo.err"; then
-  test_fail 'agent-coord-list accepted unsupported tdo alias'
+  test_fail 'pi-env-coord-list accepted unsupported tdo alias'
 fi
 test_grep 'item type must be issues, todos,' "$tmp/list-tdo.err"
 

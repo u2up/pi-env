@@ -14,7 +14,7 @@ test_grep 'does not deprecate, warn on, hide, or remove `pi-env`' README.md
 test_grep 'Operational state paths such as `.pi-env/`' README.md
 test_grep 'environment variables such as' README.md
 
-test_grep '^| `pienv coord status \[options\]` | `agent-coord-status \[options\]` |$' README.md
+test_grep '^| `pienv coord status \[options\]` | `pi-env-coord-status \[options\]` |$' README.md
 test_grep '^| `pienv roles serial \[options\]` | `pi-env-serial-roles \[options\]` |$' README.md
 test_grep '^| `pienv install \[options\]` | `pi-env-install-non-nix \[options\]` |$' README.md
 test_grep 'pienv completion bash' designs/pienv-command-namespace.md
@@ -54,7 +54,7 @@ test_grep '^pienv roles serial --issue ISSUE-1 --issue ISSUE-2 --max-jobs 2$' RE
 if grep -q '^PI_ENV_BWRAP_[^#]* pi-env\($\|[[:space:]]#\)' README.md; then
   test_fail 'per-project override examples should prefer pienv'
 fi
-if grep -q '^\(bootstrap-coordination\|agent-coord-init\|agent-coord-clone\|agent-coord-new\|agent-coord-push\|agent-coord-list\|agent-coord-upgrade-rules\)' README.md; then
+if grep -q '^\(pi-env-bootstrap-coordination\|pi-env-coord-init\|pi-env-coord-clone\|pi-env-coord-new\|pi-env-coord-push\|pi-env-coord-list\|pi-env-coord-upgrade-rules\)' README.md; then
   test_fail 'coordination setup examples should prefer pienv coord commands'
 fi
 if grep -q '^PI_ENV_ROLE_MANAGER_AUTO=0 pi-env\($\|[[:space:]]\)' README.md; then

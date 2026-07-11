@@ -3,10 +3,10 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-agent-coord-generate-requirements-coverage - render design coverage for requirements
+pi-env-coord-generate-requirements-coverage - render design coverage for requirements
 
 Usage:
-  agent-coord-generate-requirements-coverage [options]
+  pi-env-coord-generate-requirements-coverage [options]
 
 Options:
   --project NAME            Project name; default: PI_ENV_COORD_PROJECT or pi-env
@@ -179,7 +179,7 @@ for (const paths of coveredBy.values()) paths.sort();
 const coveredCount = requirements.filter((req) => coveredBy.get(req.key).length > 0).length;
 
 if (errors.length && !preview) {
-  for (const e of errors) console.error(`agent-coord-generate-requirements-coverage: ${e}`);
+  for (const e of errors) console.error(`pi-env-coord-generate-requirements-coverage: ${e}`);
   process.exit(1);
 }
 if (check) process.exit(0);

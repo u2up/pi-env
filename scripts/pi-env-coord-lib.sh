@@ -1,12 +1,12 @@
 # Shared helpers for pi-env coordination commands.
 
 coord_die() {
-  printf 'agent-coord: %s\n' "$*" >&2
+  printf 'pi-env-coord: %s\n' "$*" >&2
   exit 1
 }
 
 coord_note() {
-  printf 'agent-coord: %s\n' "$*" >&2
+  printf 'pi-env-coord: %s\n' "$*" >&2
 }
 
 coord_abs() {
@@ -130,7 +130,7 @@ coord_impl_config_set_value() {
     return
   fi
 
-  tmp="$(mktemp "${TMPDIR:-/tmp}/agent-coord-config.XXXXXX")" \
+  tmp="$(mktemp "${TMPDIR:-/tmp}/pi-env-coord-config.XXXXXX")" \
     || coord_die "failed to create temporary file"
   awk -v key="$key" -v rendered="$rendered" '
     BEGIN { written = 0 }
@@ -445,7 +445,7 @@ coord_resolve_repo_id() {
     else
       remote="$(git remote get-url origin 2>/dev/null || true)"
       if [ -n "$remote" ]; then
-        registry_err="$(mktemp "${TMPDIR:-/tmp}/agent-coord-remote.XXXXXX")" || coord_die "failed to create temporary file"
+        registry_err="$(mktemp "${TMPDIR:-/tmp}/pi-env-coord-remote.XXXXXX")" || coord_die "failed to create temporary file"
         if repo_id="$(coord_registry_repo_id_for_remote "$remote" "$coord_dir" 2>"$registry_err")" && [ -n "$repo_id" ]; then
           rm -f "$registry_err"
           source="coordination registry remote"
@@ -1479,7 +1479,7 @@ coord_find_item() {
   fi
 
   if [ "$match_count" != "1" ]; then
-    printf 'agent-coord: multiple items match %s:\n%s' "$query" "$matches" >&2
+    printf 'pi-env-coord: multiple items match %s:\n%s' "$query" "$matches" >&2
     exit 1
   fi
   printf '%s' "$matches" | sed '/^$/d' | head -n 1

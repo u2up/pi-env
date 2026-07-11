@@ -144,19 +144,19 @@ verify_install() {
   assert_executable "$prefix/bin/pi-env"
   [ ! -e "$prefix/bin/pi-start" ] || { echo "pi-start should not be installed" >&2; exit 1; }
   assert_executable "$prefix/bin/pi-env-bwrap"
-  assert_executable "$prefix/bin/bootstrap-coordination"
-  assert_executable "$prefix/bin/agent-coord-status"
-  assert_executable "$prefix/bin/agent-coord-done"
+  assert_executable "$prefix/bin/pi-env-bootstrap-coordination"
+  assert_executable "$prefix/bin/pi-env-coord-status"
+  assert_executable "$prefix/bin/pi-env-coord-done"
   assert_executable "$prefix/bin/pi-env-serial-roles"
   assert_executable "$prefix/bin/pi-env-uninstall"
-  [ ! -e "$prefix/bin/agent-coord-lib.sh" ] || { echo "private library installed as command" >&2; exit 1; }
-  assert_file "$prefix/share/pi-env/scripts/agent-coord-lib.sh"
+  [ ! -e "$prefix/bin/pi-env-coord-lib.sh" ] || { echo "private library installed as command" >&2; exit 1; }
+  assert_file "$prefix/share/pi-env/scripts/pi-env-coord-lib.sh"
   assert_file "$prefix/share/pi-env/pi-skill-templates/agent-coordination/AGENTS.md"
   assert_file "$prefix/share/pi-env/role-manager/package.json"
   assert_file "$prefix/share/pi-env/install-manifest"
 
-  "$prefix/bin/agent-coord-status" --help >/dev/null
-  "$prefix/bin/bootstrap-coordination" --help >/dev/null
+  "$prefix/bin/pi-env-coord-status" --help >/dev/null
+  "$prefix/bin/pi-env-bootstrap-coordination" --help >/dev/null
   PATH="$prefix/bin:$PATH" "$prefix/bin/pi-env-serial-roles" \
     --project-root "$repo_root" \
     --coord-dir "$repo_root/.pi-env/coordination" \
@@ -175,7 +175,7 @@ verify_install() {
     || { echo "dry-run did not pass host read-only bind paths" >&2; cat "$dry_run_out" >&2; exit 1; }
   grep -F "/share/pi-env/scripts" "$dry_run_out" >/dev/null \
     || { echo "dry-run did not bind installed helper scripts" >&2; cat "$dry_run_out" >&2; exit 1; }
-  grep -F "/share/pi-env/scripts/agent-coord-" "$dry_run_out" >/dev/null \
+  grep -F "/share/pi-env/scripts/pi-env-coord-" "$dry_run_out" >/dev/null \
     || { echo "dry-run did not prompt with installed helper path" >&2; cat "$dry_run_out" >&2; exit 1; }
   verify_home_helper_bind_visible "$prefix"
 }

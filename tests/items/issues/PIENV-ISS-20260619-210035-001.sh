@@ -5,7 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 cd "$repo_root"
 . tests/lib/test-helpers.sh
 
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
@@ -36,7 +36,7 @@ workspace="$tmp/workspace"
 mkdir -p "$workspace"
 cd "$workspace"
 
-agent-coord-init \
+pi-env-coord-init \
   --root "$tmp/remotes" \
   --project portable-demo \
   --agent-id agent-a \
@@ -47,10 +47,10 @@ init_expected="$(realpath -m --relative-to="$workspace/.pi-env/coordination" "$r
 assert_relative_origin \
   "$workspace/.pi-env/coordination" \
   "$init_expected" \
-  "agent-coord-init should store a clone-relative local origin"
+  "pi-env-coord-init should store a clone-relative local origin"
 
 cd "$tmp"
-agent-coord-clone \
+pi-env-coord-clone \
   --root "$tmp/remotes" \
   --project portable-demo \
   --dir clone >/dev/null
@@ -59,10 +59,10 @@ clone_expected="$(realpath -m --relative-to="$tmp/clone" "$remote")"
 assert_relative_origin \
   "$tmp/clone" \
   "$clone_expected" \
-  "agent-coord-clone should store a clone-relative local origin"
+  "pi-env-coord-clone should store a clone-relative local origin"
 
 git -C "$tmp/clone" remote remove origin
-agent-coord-clone \
+pi-env-coord-clone \
   --root "$tmp/remotes" \
   --project portable-demo \
   --dir clone >/dev/null
@@ -70,7 +70,7 @@ agent-coord-clone \
 assert_relative_origin \
   "$tmp/clone" \
   "$clone_expected" \
-  "agent-coord-clone should repair an existing clone without origin"
+  "pi-env-coord-clone should repair an existing clone without origin"
 
 bootstrap_project="$tmp/bootstrap-project"
 mkdir -p "$bootstrap_project"
@@ -78,7 +78,7 @@ git -C "$bootstrap_project" init -q
 git -C "$bootstrap_project" remote add origin \
   https://example.invalid/org/bootstrap-demo.git
 
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$bootstrap_project" \
   --root "$tmp/bootstrap-remotes" \
   --agent-id agent-b \
@@ -91,11 +91,11 @@ bootstrap_head="$(git -C "$bootstrap_coord" rev-parse HEAD)"
 assert_relative_origin \
   "$bootstrap_coord" \
   "$bootstrap_expected" \
-  "bootstrap-coordination should store a clone-relative local origin"
+  "pi-env-bootstrap-coordination should store a clone-relative local origin"
 
 git -C "$bootstrap_coord" remote remove origin
 rm -rf "$bootstrap_remote"
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$bootstrap_project" \
   --root "$tmp/bootstrap-remotes" \
   --agent-id agent-b \
@@ -105,10 +105,10 @@ test_dir_exists "$bootstrap_remote/objects"
 test_eq \
   "$bootstrap_head" \
   "$(git --git-dir="$bootstrap_remote" rev-parse main)" \
-  "bootstrap-coordination should restore the missing bare remote from the clone"
+  "pi-env-bootstrap-coordination should restore the missing bare remote from the clone"
 assert_relative_origin \
   "$bootstrap_coord" \
   "$bootstrap_expected" \
-  "bootstrap-coordination should repair a missing origin with a portable URL"
+  "pi-env-bootstrap-coordination should repair a missing origin with a portable URL"
 
 echo "portable local coordination remote URL tests passed"

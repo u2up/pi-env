@@ -102,25 +102,25 @@
         '';
 
       agentCoordCommandNames = [
-        "bootstrap-coordination"
-        "agent-coord-init"
-        "agent-coord-clone"
-        "agent-coord-status"
-        "agent-coord-list"
-        "agent-coord-cat"
-        "agent-coord-pull"
-        "agent-coord-push"
-        "agent-coord-new"
-        "agent-coord-repo"
-        "agent-coord-claim"
-        "agent-coord-done"
-        "agent-coord-review"
-        "agent-coord-verify"
-        "agent-coord-close"
-        "agent-coord-lint"
-        "agent-coord-generate-requirements"
-        "agent-coord-generate-requirements-coverage"
-        "agent-coord-upgrade-rules"
+        "pi-env-bootstrap-coordination"
+        "pi-env-coord-init"
+        "pi-env-coord-clone"
+        "pi-env-coord-status"
+        "pi-env-coord-list"
+        "pi-env-coord-cat"
+        "pi-env-coord-pull"
+        "pi-env-coord-push"
+        "pi-env-coord-new"
+        "pi-env-coord-repo"
+        "pi-env-coord-claim"
+        "pi-env-coord-done"
+        "pi-env-coord-review"
+        "pi-env-coord-verify"
+        "pi-env-coord-close"
+        "pi-env-coord-lint"
+        "pi-env-coord-generate-requirements"
+        "pi-env-coord-generate-requirements-coverage"
+        "pi-env-coord-upgrade-rules"
         "pi-env-serial-roles"
       ];
 
@@ -130,8 +130,8 @@
           cp -R ${./pi-skill-templates} "$out/share/pi-env/pi-skill-templates"
           cp -R ${./role-manager} "$out/share/pi-env/role-manager"
           cp -R ${./scripts} "$out/share/pi-env/scripts"
-          chmod +x "$out/share/pi-env/scripts"/agent-coord-* \
-            "$out/share/pi-env/scripts/bootstrap-coordination" \
+          chmod +x "$out/share/pi-env/scripts"/pi-env-coord-* \
+            "$out/share/pi-env/scripts/pi-env-bootstrap-coordination" \
             "$out/share/pi-env/scripts/pi-env-serial-roles" \
             "$out/share/pi-env/scripts/pienv" \
             "$out/share/pi-env/scripts/pi-env-install-non-nix"
@@ -166,7 +166,7 @@
           set -euo pipefail
           export PATH="${runtimePath}:''${PATH:-}"
           export PI_ENV_COORD_TEMPLATE_DIR="${support}/share/pi-env/pi-skill-templates/agent-coordination"
-          export PI_ENV_COORD_LIB="${support}/share/pi-env/scripts/agent-coord-lib.sh"
+          export PI_ENV_COORD_LIB="${support}/share/pi-env/scripts/pi-env-coord-lib.sh"
           export PI_ENV_ROLE_MANAGER_PACKAGE="''${PI_ENV_ROLE_MANAGER_PACKAGE:-${roleManagerPackage}}"
           exec ${pkgs.bash}/bin/bash "${support}/share/pi-env/scripts/${name}" "$@"
         '';
@@ -347,7 +347,7 @@
             fi
             pi-env-shell --help >/dev/null
             pi-env-bwrap --help >/dev/null
-            if command -v agent-coord-status >/dev/null 2>&1; then
+            if command -v pi-env-coord-status >/dev/null 2>&1; then
               echo "agent coordination helpers leaked into pi-core" >&2
               exit 1
             fi
@@ -368,8 +368,8 @@
               fi
             done
             command -v pi-env-bwrap >/dev/null
-            command -v agent-coord-status >/dev/null
-            command -v bootstrap-coordination >/dev/null
+            command -v pi-env-coord-status >/dev/null
+            command -v pi-env-bootstrap-coordination >/dev/null
             pi-env --help >/dev/null
             pienv help >/dev/null
             pienv help run >/dev/null
@@ -386,16 +386,16 @@
             pienv install --help >/dev/null
             pienv uninstall --help >/dev/null
             pi-env-shell --help >/dev/null
-            agent-coord-status --help >/dev/null
+            pi-env-coord-status --help >/dev/null
           '';
 
           pi-env-coordination-smoke = smokeCheck "pi-env-coordination-smoke" [ piCoordination ] ''
-            command -v agent-coord-status >/dev/null
-            command -v agent-coord-repo >/dev/null
-            command -v agent-coord-lint >/dev/null
-            command -v bootstrap-coordination >/dev/null
-            agent-coord-lint --help >/dev/null
-            bootstrap-coordination --help >/dev/null
+            command -v pi-env-coord-status >/dev/null
+            command -v pi-env-coord-repo >/dev/null
+            command -v pi-env-coord-lint >/dev/null
+            command -v pi-env-bootstrap-coordination >/dev/null
+            pi-env-coord-lint --help >/dev/null
+            pi-env-bootstrap-coordination --help >/dev/null
           '';
         };
 

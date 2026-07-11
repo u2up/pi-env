@@ -13,19 +13,19 @@ if [ ! -d "$coord_dir" ]; then
 fi
 
 item_id="PIENV-ISS-20260613-103516-001"
-item_path="$(scripts/agent-coord-cat --coord-dir "$coord_dir" --path "$item_id")"
+item_path="$(scripts/pi-env-coord-cat --coord-dir "$coord_dir" --path "$item_id")"
 test -f "$coord_dir/$item_path"
 
-test "$(scripts/agent-coord-cat --coord-dir "$coord_dir" "$item_id")" = \
+test "$(scripts/pi-env-coord-cat --coord-dir "$coord_dir" "$item_id")" = \
   "$(cat "$coord_dir/$item_path")"
-test "$(scripts/agent-coord-cat --coord-dir "$coord_dir" --path "$item_path")" = "$item_path"
-test "$(scripts/agent-coord-cat --coord-dir "$coord_dir" --path "${item_id%-001}")" = "$item_path"
+test "$(scripts/pi-env-coord-cat --coord-dir "$coord_dir" --path "$item_path")" = "$item_path"
+test "$(scripts/pi-env-coord-cat --coord-dir "$coord_dir" --path "${item_id%-001}")" = "$item_path"
 
-if scripts/agent-coord-cat --coord-dir "$coord_dir" MISSING-ITEM \
+if scripts/pi-env-coord-cat --coord-dir "$coord_dir" MISSING-ITEM \
   >"$tmp/cat-missing.out" 2>"$tmp/cat-missing.err"; then
-  printf 'agent-coord-cat unexpectedly found missing item\n' >&2
+  printf 'pi-env-coord-cat unexpectedly found missing item\n' >&2
   exit 1
 fi
-grep -q '^agent-coord: item not found: MISSING-ITEM$' "$tmp/cat-missing.err"
+grep -q '^pi-env-coord: item not found: MISSING-ITEM$' "$tmp/cat-missing.err"
 
 printf 'PIENV-ISS-20260613-103516-001 passed\n'

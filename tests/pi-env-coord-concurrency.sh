@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
@@ -17,37 +17,37 @@ git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
 cd "$tmp/seed"
-agent-coord-init \
+pi-env-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
   --agent-id seed-agent \
   --dir .pi-env/coordination >/dev/null
 
-item_path="$(agent-coord-new \
+item_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --repo-id pi-env \
   "Exercise concurrent claim handling" | tail -n 1)"
 item_id="$(grep '^id: ' ".pi-env/coordination/$item_path" | sed 's/^id: //')"
-agent-coord-push \
+pi-env-coord-push \
   --coord-dir .pi-env/coordination \
   -m "Add concurrent claim test item" >/dev/null
 
 cd "$tmp"
-agent-coord-clone \
+pi-env-coord-clone \
   --root "$tmp/remotes" \
   --project pi-env \
   --dir agent-a >/dev/null
-agent-coord-clone \
+pi-env-coord-clone \
   --root "$tmp/remotes" \
   --project pi-env \
   --dir agent-b >/dev/null
 
-agent-coord-claim \
+pi-env-coord-claim \
   --coord-dir agent-a \
   --agent-id agent-a \
   "$item_id" >/dev/null
 
-if agent-coord-claim \
+if pi-env-coord-claim \
   --coord-dir agent-b \
   --agent-id agent-b \
   --no-pull \
@@ -59,7 +59,7 @@ fi
 git -C agent-b fetch origin >/dev/null
 git -C agent-b reset --hard origin/main >/dev/null
 
-if agent-coord-claim \
+if pi-env-coord-claim \
   --coord-dir agent-b \
   --agent-id agent-b \
   "$item_id" >/dev/null 2>&1; then
@@ -67,7 +67,7 @@ if agent-coord-claim \
   exit 1
 fi
 
-if agent-coord-done \
+if pi-env-coord-done \
   --coord-dir agent-b \
   --agent-id agent-b \
   "$item_id" >/dev/null 2>&1; then
@@ -75,7 +75,7 @@ if agent-coord-done \
   exit 1
 fi
 
-done_path="$(agent-coord-done \
+done_path="$(pi-env-coord-done \
   --coord-dir agent-a \
   --agent-id agent-a \
   --result "Done by owning agent." \
@@ -85,7 +85,7 @@ test -f "agent-a/$done_path"
 grep -q '^status: done$' "agent-a/$done_path"
 grep -q '^owner: agent-a$' "agent-a/$done_path"
 
-if agent-coord-close \
+if pi-env-coord-close \
   --coord-dir agent-a \
   --agent-id agent-a \
   "$item_id" >/dev/null 2>&1; then
@@ -93,21 +93,21 @@ if agent-coord-close \
   exit 1
 fi
 
-agent-coord-review \
+pi-env-coord-review \
   --coord-dir agent-b \
   --agent-id reviewer-b \
   --role reviewer \
   --pass \
   "$item_id" >/dev/null
 
-agent-coord-verify \
+pi-env-coord-verify \
   --coord-dir agent-b \
   --agent-id tester-b \
   --role tester \
   --pass \
   "$item_id" >/dev/null
 
-closed_path="$(agent-coord-close \
+closed_path="$(pi-env-coord-close \
   --coord-dir agent-b \
   --agent-id tester-b \
   --role tester \
@@ -120,13 +120,13 @@ grep -q '^owner: agent-a$' "agent-b/$closed_path"
 grep -q '^reviewed: true$' "agent-b/$closed_path"
 grep -q '^verified: true$' "agent-b/$closed_path"
 
-agent-coord-pull --coord-dir agent-a >/dev/null
+pi-env-coord-pull --coord-dir agent-a >/dev/null
 test -f "agent-a/$closed_path"
 grep -q '^status: closed$' "agent-a/$closed_path"
 
 printf 'subject length check\n' >agent-b/decisions/subject-length.md
 long_subject="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-if agent-coord-push \
+if pi-env-coord-push \
   --coord-dir agent-b \
   -m "$long_subject" >/dev/null 2>&1; then
   printf 'expected long commit subject to fail\n' >&2

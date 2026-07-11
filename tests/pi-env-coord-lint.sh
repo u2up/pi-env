@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
@@ -17,14 +17,14 @@ git config --global user.name "Coordination Test"
 git config --global user.email "coordination-test@example.invalid"
 
 cd "$tmp/project"
-agent-coord-init \
+pi-env-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
   --agent-id agent-a \
   --dir .pi-env/coordination >/dev/null
 export PI_ENV_COORD_REPO_ID=pi-env
 
-item_path="$(agent-coord-new \
+item_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type issue \
   "Lint item-matched tests" | tail -n 1)"
@@ -33,7 +33,7 @@ item_id="$(grep '^id: ' ".pi-env/coordination/$item_path" | sed 's/^id: //')"
 grep -q '^testable: yes$' ".pi-env/coordination/$item_path"
 cp ".pi-env/coordination/$item_path" "$tmp/item.clean.yaml"
 printf 'issue_type: bug\n' >>".pi-env/coordination/$item_path"
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for legacy issue_type field\n' >&2
@@ -45,7 +45,7 @@ case "$item_path" in
   *) printf 'unexpected item path: %s\n' "$item_path" >&2; exit 1 ;;
 esac
 
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for missing item-matched test\n' >&2
@@ -60,11 +60,11 @@ printf 'item-matched test placeholder passed\n'
 EOF_TEST
 chmod +x "tests/items/issues/$item_id.sh"
 
-agent-coord-lint \
+pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null
 
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . \
   --require-done-or-closed >/dev/null 2>&1; then
@@ -72,7 +72,7 @@ if agent-coord-lint \
   exit 1
 fi
 
-requirement_path="$(agent-coord-new \
+requirement_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type functional-requirement \
   --testable no \
@@ -95,7 +95,7 @@ fi
 cp ".pi-env/coordination/$requirement_path" "$tmp/requirement.clean.yaml"
 printf 'current:\n  event: evt-0001\n  message: msg-0001\n' \
   >>".pi-env/coordination/$requirement_path"
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for requirement with embedded history\n' >&2
@@ -103,7 +103,7 @@ if agent-coord-lint \
 fi
 cp "$tmp/requirement.clean.yaml" ".pi-env/coordination/$requirement_path"
 
-todo_path="$(agent-coord-new \
+todo_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type todos \
   --testable no \
@@ -124,7 +124,7 @@ if grep -E '^(current|events|messages):' ".pi-env/coordination/$todo_path" >/dev
 fi
 cp ".pi-env/coordination/$todo_path" "$tmp/todo.clean.yaml"
 printf 'events:\n  - id: evt-0001\n' >>".pi-env/coordination/$todo_path"
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for todo with embedded history\n' >&2
@@ -132,19 +132,19 @@ if agent-coord-lint \
 fi
 cp "$tmp/todo.clean.yaml" ".pi-env/coordination/$todo_path"
 
-quality_requirement_path="$(agent-coord-new \
+quality_requirement_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type quality \
   --testable no \
   --testability-note "Reviewed as a quality requirement." \
   "Lint quality requirement item" | tail -n 1)"
-imported_requirement_path="$(agent-coord-new \
+imported_requirement_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type quality \
   --testable no \
   --testability-note "Imported from REQUIREMENTS.md; reviewed as policy." \
   "Lint imported quality requirement" | tail -n 1)"
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for imported requirement without source_refs\n' >&2
@@ -152,13 +152,13 @@ if agent-coord-lint \
 fi
 printf 'source_refs:\n  - "REQUIREMENTS.md#lint-imported-quality-requirement"\n' \
   >>".pi-env/coordination/$imported_requirement_path"
-imported_note_requirement_path="$(agent-coord-new \
+imported_note_requirement_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type functional-requirement \
   --testable no \
   --testability-note "Imported requirement is review-only for now." \
   "Lint imported note wording" | tail -n 1)"
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for imported requirement note without source_refs\n' >&2
@@ -166,13 +166,13 @@ if agent-coord-lint \
 fi
 printf 'source_refs:\n  - "USE_CASES.md#lint-imported-note-wording"\n' \
   >>".pi-env/coordination/$imported_note_requirement_path"
-constraint_requirement_path="$(agent-coord-new \
+constraint_requirement_path="$(pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type constraint \
   --testable no \
   --testability-note "Reviewed as a constraint requirement." \
   "Lint constraint requirement item" | tail -n 1)"
-if agent-coord-new \
+if pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type requirement \
   --testable no \
@@ -190,13 +190,13 @@ grep -q '^id: PIENV-QRQ-[0-9]\{8\}-[0-9]\{6\}-[0-9]\{3\}$' \
 grep -q '^id: PIENV-CRQ-[0-9]\{8\}-[0-9]\{6\}-001$' \
   ".pi-env/coordination/$constraint_requirement_path"
 
-agent-coord-lint \
+pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null
 
 mkdir -p designs scripts
-ln -sf "$repo_root/scripts/agent-coord-generate-requirements-coverage" \
-  scripts/agent-coord-generate-requirements-coverage
+ln -sf "$repo_root/scripts/pi-env-coord-generate-requirements-coverage" \
+  scripts/pi-env-coord-generate-requirements-coverage
 requirement_key="$(grep '^requirement_key: ' ".pi-env/coordination/$requirement_path" | sed 's/^requirement_key: //')"
 cat >designs/lint-coverage.md <<EOF_DESIGN
 # Lint coverage
@@ -207,11 +207,11 @@ cat >designs/lint-coverage.md <<EOF_DESIGN
 |-------------|-------------------|
 | $requirement_key | $requirement_id |
 EOF_DESIGN
-agent-coord-lint \
+pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null
 sed -i "s/$requirement_id/PIENV-FRQ-20260614-000000-999/" designs/lint-coverage.md
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for stale design Covers item ID\n' >&2
@@ -225,7 +225,7 @@ set -euo pipefail
 EOF_TEST
 chmod +x tests/items/issues/ORPHAN-ISS-20260607-204155-001.sh
 
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for orphan item-matched test\n' >&2
@@ -235,7 +235,7 @@ fi
 rm tests/items/issues/ORPHAN-ISS-20260607-204155-001.sh
 chmod -x "tests/items/issues/$item_id.sh"
 
-if agent-coord-lint \
+if pi-env-coord-lint \
   --coord-dir .pi-env/coordination \
   --project-root . >/dev/null 2>&1; then
   printf 'expected lint to fail for non-executable item-matched test\n' >&2

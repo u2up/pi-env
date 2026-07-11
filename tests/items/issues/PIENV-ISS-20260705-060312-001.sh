@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
-lib="$repo_root/scripts/agent-coord-lib.sh"
+lib="$repo_root/scripts/pi-env-coord-lib.sh"
 
 export PATH="$repo_root/scripts:$PATH"
 
@@ -19,7 +19,7 @@ grep -q '^coordination_domain: pi-env$' "$root_config"
 grep -q '^coordination_remote: .pi-env/agent-remotes/pi-env-coordination.git$' "$root_config"
 grep -q '^repo_id: pi-env$' "$root_config"
 
-for command in agent-coord-init agent-coord-clone agent-coord-done agent-coord-lint; do
+for command in pi-env-coord-init pi-env-coord-clone pi-env-coord-done pi-env-coord-lint; do
   help="$($command --help)"
   grep -q '\.pi-env-coordination\.yaml' <<<"$help"
   if grep -q "$legacy_config_help_pattern" <<<"$help"; then

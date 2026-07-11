@@ -12,7 +12,7 @@ cleanup() {
 trap cleanup EXIT
 
 output="$tmpdir/requirements.md"
-scripts/agent-coord-generate-requirements >"$output"
+scripts/pi-env-coord-generate-requirements >"$output"
 
 heading='### 3.2 Flake and package requirements'
 count="$(grep -F -c "$heading" "$output")"

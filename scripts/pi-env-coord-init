@@ -6,16 +6,16 @@ if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
   . "$PI_ENV_COORD_LIB"
 else
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-  # shellcheck source=agent-coord-lib.sh
-  . "$script_dir/agent-coord-lib.sh"
+  # shellcheck source=pi-env-coord-lib.sh
+  . "$script_dir/pi-env-coord-lib.sh"
 fi
 
 usage() {
   cat <<'USAGE'
-agent-coord-init - create and scaffold a coordination repository
+pi-env-coord-init - create and scaffold a coordination repository
 
 Usage:
-  agent-coord-init [options]
+  pi-env-coord-init [options]
 
 Options:
   --root DIR        Bare remote parent; default: .pi-env/agent-remotes

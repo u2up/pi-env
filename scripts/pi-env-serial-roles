@@ -6,8 +6,8 @@ if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
   # shellcheck source=/dev/null
   . "$PI_ENV_COORD_LIB"
 else
-  # shellcheck source=agent-coord-lib.sh
-  . "$script_dir/agent-coord-lib.sh"
+  # shellcheck source=pi-env-coord-lib.sh
+  . "$script_dir/pi-env-coord-lib.sh"
 fi
 
 usage() {
@@ -439,7 +439,7 @@ release_lock() {
 pull_coordination() {
   local pull_cmd
   ensure_clean_git "$coord_dir" "coordination"
-  pull_cmd="$(coord_helper agent-coord-pull)"
+  pull_cmd="$(coord_helper pi-env-coord-pull)"
   "$pull_cmd" --coord-dir "$coord_dir" >&2
   ensure_clean_git "$coord_dir" "coordination"
 }
@@ -616,18 +616,18 @@ role_prompt() {
   ui="$3"
   case "$role" in
     developer)
-      claim_helper="$(coord_helper_prompt_cmd agent-coord-claim)"
-      done_helper="$(coord_helper_prompt_cmd agent-coord-done)"
+      claim_helper="$(coord_helper_prompt_cmd pi-env-coord-claim)"
+      done_helper="$(coord_helper_prompt_cmd pi-env-coord-done)"
       goal="Implement coordination issue $item only."
       helper_text="The serial orchestrator selected this item and claims it before launch; if coordination shows it unclaimed, run $claim_helper for this item only before code changes. Commit project changes, mark the item done with $done_helper and structured implementation refs, then stop."
       ;;
     reviewer)
-      review_helper="$(coord_helper_prompt_cmd agent-coord-review)"
+      review_helper="$(coord_helper_prompt_cmd pi-env-coord-review)"
       goal="Review coordination issue $item only."
       helper_text="Review the committed project state for this done item, then run $review_helper --pass or $review_helper --fail for this item and stop."
       ;;
     tester)
-      verify_helper="$(coord_helper_prompt_cmd agent-coord-verify)"
+      verify_helper="$(coord_helper_prompt_cmd pi-env-coord-verify)"
       goal="Verify coordination issue $item only."
       helper_text="Run item-appropriate checks for this reviewed done item, then run $verify_helper --pass or $verify_helper --fail for this item and stop without closing other work."
       ;;
@@ -761,7 +761,7 @@ print_dry_run() {
   if [ "$role" = "developer" ]; then
     printf 'would-claim: '
     shell_quote_command \
-      "$(coord_helper agent-coord-claim)" \
+      "$(coord_helper pi-env-coord-claim)" \
       --coord-dir "$coord_dir" \
       --agent-id "$agent_id" \
       --role developer \
@@ -836,7 +836,7 @@ print_dry_run() {
 claim_developer_item() {
   local item claim_cmd
   item="$1"
-  claim_cmd="$(coord_helper agent-coord-claim)"
+  claim_cmd="$(coord_helper pi-env-coord-claim)"
   "$claim_cmd" \
     --coord-dir "$coord_dir" \
     --agent-id "$agent_id" \

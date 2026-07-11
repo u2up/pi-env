@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
+export PI_ENV_COORD_LIB="$repo_root/scripts/pi-env-coord-lib.sh"
 export PI_ENV_COORD_TEMPLATE_DIR="$repo_root/pi-skill-templates/agent-coordination"
 export PATH="$repo_root/scripts:$PATH"
 
@@ -29,7 +29,7 @@ test "$(git -C "$project_git" log -1 --format='%an <%ae>')" = "Project User <pro
 mkdir -p "$tmp/default-root"
 cd "$tmp/default-root"
 git init -q
-if agent-coord-init \
+if pi-env-coord-init \
   --workspace default-demo \
   --agent-id agent-a \
   --bare-only >"$tmp/default-root.out" 2>"$tmp/default-root.err"; then
@@ -37,7 +37,7 @@ if agent-coord-init \
   exit 1
 fi
 grep -q -- '--workspace has been removed; use --project' "$tmp/default-root.err"
-agent-coord-init \
+pi-env-coord-init \
   --project default-demo \
   --agent-id agent-a \
   --bare-only >/dev/null
@@ -54,7 +54,7 @@ fresh_default_project="$tmp/fresh-default-project"
 mkdir -p "$fresh_default_project"
 git -C "$fresh_default_project" init -q
 cd "$fresh_default_project"
-agent-coord-init \
+pi-env-coord-init \
   --project fresh-default \
   --agent-id agent-a >/dev/null
 
@@ -78,24 +78,24 @@ mkdir -p "$bootstrap_project_dir"
 git -C "$bootstrap_project_dir" init -q
 git -C "$bootstrap_project_dir" remote add origin git@example.invalid:example/other-project.git
 cd "$tmp"
-if bootstrap-coordination \
+if pi-env-bootstrap-coordination \
   --workspace stale-workspace \
   --project-root "$bootstrap_project_dir" \
   --root "$tmp/bootstrap-remotes" \
   --agent-id agent-b \
   --print-only >"$tmp/bootstrap-workspace.out" 2>"$tmp/bootstrap-workspace.err"; then
-  printf 'expected bootstrap-coordination --workspace to be rejected\n' >&2
+  printf 'expected pi-env-bootstrap-coordination --workspace to be rejected\n' >&2
   exit 1
 fi
 grep -q -- '--workspace has been removed; use --project' \
   "$tmp/bootstrap-workspace.err"
 
-if PI_ENV_COORD_WORKSPACE=stale-workspace bootstrap-coordination \
+if PI_ENV_COORD_WORKSPACE=stale-workspace pi-env-bootstrap-coordination \
   --project-root "$bootstrap_project_dir" \
   --root "$tmp/bootstrap-remotes" \
   --agent-id agent-b \
   --print-only >"$tmp/bootstrap-workspace-env.out" 2>"$tmp/bootstrap-workspace-env.err"; then
-  printf 'expected bootstrap-coordination PI_ENV_COORD_WORKSPACE to be rejected\n' >&2
+  printf 'expected pi-env-bootstrap-coordination PI_ENV_COORD_WORKSPACE to be rejected\n' >&2
   exit 1
 fi
 grep -q -- 'PI_ENV_COORD_WORKSPACE has been removed; use PI_ENV_COORD_PROJECT' \
@@ -105,7 +105,7 @@ bootstrap_plan="$tmp/bootstrap-plan.txt"
 PI_ENV_COORD_DIR="$tmp/stale-coordination" \
 PI_ENV_COORD_PROJECT=stale-project \
 PI_ENV_COORD_PROJECT_KEY=STALE \
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$bootstrap_project_dir" \
   --root "$tmp/bootstrap-remotes" \
   --agent-id agent-b \
@@ -141,7 +141,7 @@ bootstrap_head="$(git -C "$bootstrap_coord_dir" rev-parse HEAD)"
 test "$(git -C "$bootstrap_coord_dir" remote get-url origin)" = "$bootstrap_remote_rel"
 git -C "$bootstrap_coord_dir" remote remove origin
 rm -rf "$bootstrap_remote"
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$bootstrap_project_dir" \
   --root "$tmp/bootstrap-remotes" \
   --agent-id agent-b \
@@ -152,7 +152,7 @@ test "$(git --git-dir="$bootstrap_remote" rev-parse main)" = "$bootstrap_head"
 test "$(git -C "$bootstrap_coord_dir" remote get-url origin)" = "$bootstrap_remote_rel"
 
 rm -rf "$bootstrap_remote"
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$bootstrap_project_dir" \
   --root "$tmp/bootstrap-remotes" \
   --agent-id agent-b \
@@ -166,7 +166,7 @@ mkdir -p "$print_only_project_dir"
 git -C "$print_only_project_dir" init -q
 git -C "$print_only_project_dir" remote add origin https://example.invalid/org/printed-project.git
 cd "$tmp"
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$print_only_project_dir" \
   --root "$tmp/print-only-remotes" \
   --print-only >/dev/null
@@ -177,7 +177,7 @@ test ! -e "$print_only_project_dir/.pi-env/coordination"
 fresh_print_project_dir="$tmp/fresh-print-project"
 mkdir -p "$fresh_print_project_dir"
 git -C "$fresh_print_project_dir" init -q
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$fresh_print_project_dir" \
   --print-only >"$tmp/fresh-print-plan.txt" 2>/dev/null
 grep -q "Root:         $fresh_print_project_dir/.pi-env/agent-remotes" \
@@ -193,21 +193,21 @@ server_print_project_dir="$tmp/server-print-project"
 mkdir -p "$server_print_project_dir"
 git -C "$server_print_project_dir" init -q
 server_print_remote="$tmp/server-print.git"
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$server_print_project_dir" \
   --root "$tmp/server-print-remotes" \
   --remote "$server_print_remote" \
   --print-only >"$tmp/server-print-plan.txt" 2>/dev/null
 
 grep -q "Remote:       $server_print_remote" "$tmp/server-print-plan.txt"
-grep -q "agent-coord-init --remote $server_print_remote" "$tmp/server-print-plan.txt"
+grep -q "pi-env-coord-init --remote $server_print_remote" "$tmp/server-print-plan.txt"
 test ! -e "$tmp/server-print-remotes"
 test ! -e "$server_print_project_dir/.pi-env/coordination"
 
 server_remote="$tmp/server-remote.git"
 git init --bare --initial-branch=main "$server_remote" >/dev/null 2>&1 \
   || git init --bare "$server_remote" >/dev/null
-agent-coord-init \
+pi-env-coord-init \
   --remote "$server_remote" \
   --project server-demo \
   --agent-id agent-server \
@@ -215,7 +215,7 @@ agent-coord-init \
 
 test -f "$tmp/server-coordination/AGENTS.md"
 server_head="$(git --git-dir="$server_remote" rev-parse main)"
-agent-coord-init \
+pi-env-coord-init \
   --remote "$server_remote" \
   --project server-demo \
   --agent-id agent-server \
@@ -226,10 +226,10 @@ test "$(git -C "$tmp/server-coordination-existing" rev-parse HEAD)" = "$server_h
 env_remote="$tmp/env-clone-remote.git"
 git clone --bare "$server_remote" "$env_remote" >/dev/null 2>&1
 unset PI_ENV_COORD_REMOTE
-PI_ENV_COORD_REMOTE="$env_remote" agent-coord-clone \
+PI_ENV_COORD_REMOTE="$env_remote" pi-env-coord-clone \
   --dir "$tmp/env-remote-clone" >/dev/null
 test -f "$tmp/env-remote-clone/AGENTS.md"
-agent-coord-clone \
+pi-env-coord-clone \
   --remote "$server_remote" \
   --dir "$tmp/arg-remote-clone" >/dev/null
 test -f "$tmp/arg-remote-clone/AGENTS.md"
@@ -238,7 +238,7 @@ clone_default_project="$tmp/clone-default-project"
 mkdir -p "$clone_default_project"
 git -C "$clone_default_project" init -q
 cd "$clone_default_project"
-agent-coord-clone \
+pi-env-coord-clone \
   --remote "$server_remote" >/dev/null
 test -f "$clone_default_project/.pi-env/coordination/AGENTS.md"
 grep -Fxq '/.pi-env/' "$clone_default_project/.git/info/exclude"
@@ -248,7 +248,7 @@ mkdir -p "$bare_only_project_dir"
 git -C "$bare_only_project_dir" init -q
 git -C "$bare_only_project_dir" remote add origin https://example.invalid/org/bare-project.git
 cd "$tmp"
-bootstrap-coordination \
+pi-env-bootstrap-coordination \
   --project-root "$bare_only_project_dir" \
   --root "$tmp/bare-only-remotes" \
   --bare-only \
@@ -263,7 +263,7 @@ git -C "$bare_only_mixed_case_project" init -q
 git -C "$bare_only_mixed_case_project" remote add origin \
   https://example.invalid/Org/MixedCase.git
 cd "$bare_only_mixed_case_project"
-agent-coord-init \
+pi-env-coord-init \
   --project demo \
   --root "$tmp/bare-only-mixed-case-remotes" \
   --bare-only >/dev/null
@@ -272,7 +272,7 @@ test -d "$tmp/bare-only-mixed-case-remotes/demo-coordination.git"
 test ! -e "$bare_only_mixed_case_project/.pi-env/coordination"
 
 cd "$workspace_dir"
-agent-coord-init \
+pi-env-coord-init \
   --root "$tmp/remotes" \
   --project pi-env \
   --agent-id agent-a \
@@ -304,7 +304,7 @@ test "$(git -C .pi-env/coordination remote get-url origin)" = "../agent-remotes/
 export PI_ENV_COORD_REPO_ID=pi-env
 
 cd "$tmp"
-agent-coord-clone \
+pi-env-coord-clone \
   --root "$tmp/remotes" \
   --project pi-env \
   --dir clone >/dev/null
@@ -314,7 +314,7 @@ test -f clone/docs/SYNC_PROTOCOL.md
 test "$(git -C clone remote get-url origin)" = "../remotes/pi-env-coordination.git"
 
 git -C clone remote remove origin
-agent-coord-clone \
+pi-env-coord-clone \
   --root "$tmp/remotes" \
   --project pi-env \
   --dir clone >/dev/null
@@ -323,7 +323,7 @@ test "$(git -C clone remote get-url origin)" = "../remotes/pi-env-coordination.g
 
 git -C clone rev-parse --verify HEAD >/dev/null
 
-action_path="$(cd "$workspace_dir" && agent-coord-new \
+action_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --agent-id agent-a \
   --role architect \
@@ -353,16 +353,16 @@ grep -q '^      role: architect$' "$workspace_dir/.pi-env/coordination/$action_p
 grep -q '^      # Document pi config behavior$' \
   "$workspace_dir/.pi-env/coordination/$action_path"
 
-if (cd "$workspace_dir" && agent-coord-new \
+if (cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --project other-project \
   "Legacy project item" >/dev/null 2>"$tmp/project-option.err"); then
-  printf 'expected --project to be rejected for agent-coord-new\n' >&2
+  printf 'expected --project to be rejected for pi-env-coord-new\n' >&2
   exit 1
 fi
 grep -q -- '--project has been removed' "$tmp/project-option.err"
 
-if (cd "$workspace_dir" && agent-coord-new \
+if (cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --project-key 'my_key | test/foo\bar' \
   "Conflicting project key item" >/dev/null 2>"$tmp/project-key-conflict.err"); then
@@ -372,7 +372,7 @@ fi
 grep -q -- '--project-key conflicts with stored project item_key: PIENV' \
   "$tmp/project-key-conflict.err"
 
-if (cd "$workspace_dir" && agent-coord-new \
+if (cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --workspace-item \
   "Workspace coordination item" >/dev/null 2>"$tmp/workspace-item.err"); then
@@ -381,7 +381,7 @@ if (cd "$workspace_dir" && agent-coord-new \
 fi
 grep -q -- '--workspace-item has been removed' "$tmp/workspace-item.err"
 
-requirement_path="$(cd "$workspace_dir" && agent-coord-new \
+requirement_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type functional \
   --status accepted \
@@ -398,7 +398,7 @@ case "$requirement_path" in
   *) printf 'unexpected requirement path: %s\n' "$requirement_path" >&2; exit 1 ;;
 esac
 
-quality_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
+quality_requirement_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type quality \
   --status accepted \
@@ -413,7 +413,7 @@ case "$quality_requirement_path" in
   *) printf 'unexpected quality requirement path: %s\n' "$quality_requirement_path" >&2; exit 1 ;;
 esac
 
-constraint_requirement_path="$(cd "$workspace_dir" && agent-coord-new \
+constraint_requirement_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type constraint \
   --status accepted \
@@ -428,7 +428,7 @@ case "$constraint_requirement_path" in
   *) printf 'unexpected constraint requirement path: %s\n' "$constraint_requirement_path" >&2; exit 1 ;;
 esac
 
-if (cd "$workspace_dir" && agent-coord-new \
+if (cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type requirement \
   --status accepted \
@@ -440,7 +440,7 @@ if (cd "$workspace_dir" && agent-coord-new \
 fi
 grep -q 'generic requirement items have been removed' "$tmp/generic-req.err"
 
-todo_path="$(cd "$workspace_dir" && agent-coord-new \
+todo_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type todo \
   --testable no \
@@ -458,17 +458,17 @@ case "$todo_path" in
   todos/*.yaml) ;;
   *) printf 'unexpected todo path: %s\n' "$todo_path" >&2; exit 1 ;;
 esac
-if agent-coord-new --coord-dir "$workspace_dir/.pi-env/coordination" --type tdo \
+if pi-env-coord-new --coord-dir "$workspace_dir/.pi-env/coordination" --type tdo \
   "Unsupported TODO abbreviation" >"$tmp/tdo.out" 2>"$tmp/tdo.err"; then
-  printf 'agent-coord-new unexpectedly accepted --type tdo\n' >&2
+  printf 'pi-env-coord-new unexpectedly accepted --type tdo\n' >&2
   exit 1
 fi
 grep -q -- '--type tdo is not supported; use --type todo' "$tmp/tdo.err"
 for unsupported_item_type in task tasks; do
-  if agent-coord-new --coord-dir "$workspace_dir/.pi-env/coordination" \
+  if pi-env-coord-new --coord-dir "$workspace_dir/.pi-env/coordination" \
     --type "$unsupported_item_type" "Unsupported task item type" \
     >"$tmp/$unsupported_item_type-type.out" 2>"$tmp/$unsupported_item_type-type.err"; then
-    printf 'agent-coord-new unexpectedly accepted --type %s\n' \
+    printf 'pi-env-coord-new unexpectedly accepted --type %s\n' \
       "$unsupported_item_type" >&2
     exit 1
   fi
@@ -477,16 +477,16 @@ for unsupported_item_type in task tasks; do
     "$tmp/$unsupported_item_type-type.err"
 done
 
-if agent-coord-new --coord-dir "$workspace_dir/.pi-env/coordination" \
+if pi-env-coord-new --coord-dir "$workspace_dir/.pi-env/coordination" \
   --issue-type task "Legacy issue type flag" \
   >"$tmp/new-legacy-category.out" 2>"$tmp/new-legacy-category.err"; then
-  printf 'agent-coord-new unexpectedly accepted --issue-type\n' >&2
+  printf 'pi-env-coord-new unexpectedly accepted --issue-type\n' >&2
   exit 1
 fi
 grep -q -- '--issue-type has been removed; use --category' \
   "$tmp/new-legacy-category.err"
 
-todo_open_path="$(cd "$workspace_dir" && agent-coord-new \
+todo_open_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type todo \
   --status open \
@@ -500,7 +500,7 @@ case "$todo_open_path" in
   *) printf 'unexpected open todo path: %s\n' "$todo_open_path" >&2; exit 1 ;;
 esac
 
-note_path="$(cd "$workspace_dir" && agent-coord-new \
+note_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type note \
   --status active \
@@ -523,7 +523,7 @@ todo_id="$(grep '^id: ' "$workspace_dir/.pi-env/coordination/$todo_path" | sed '
 todo_open_id="$(grep '^id: ' "$workspace_dir/.pi-env/coordination/$todo_open_path" | sed 's/^id: //')"
 note_id="$(grep '^id: ' "$workspace_dir/.pi-env/coordination/$note_path" | sed 's/^id: //')"
 
-decision_path="$(cd "$workspace_dir" && agent-coord-new \
+decision_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --type decision \
   --status accepted \
@@ -542,15 +542,15 @@ esac
 decision_id="$(grep '^id: ' "$workspace_dir/.pi-env/coordination/$decision_path" | sed 's/^id: //')"
 item_id="$(grep '^id: ' "$workspace_dir/.pi-env/coordination/$action_path" | sed 's/^id: //')"
 
-test "$(agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" "$item_id")" = \
+test "$(pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" "$item_id")" = \
   "$(cat "$workspace_dir/.pi-env/coordination/$action_path")"
-test "$(agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" --path "$item_id")" = "$action_path"
-test "$(agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" --path "$action_path")" = "$action_path"
-test "$(agent-coord-cat \
+test "$(pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" --path "$item_id")" = "$action_path"
+test "$(pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" --path "$action_path")" = "$action_path"
+test "$(pi-env-coord-cat \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --path "${item_id%-001}")" = "$action_path"
 
-task_issue_path="$(cd "$workspace_dir" && agent-coord-new \
+task_issue_path="$(cd "$workspace_dir" && pi-env-coord-new \
   --coord-dir .pi-env/coordination \
   --agent-id agent-a \
   --role architect \
@@ -563,41 +563,41 @@ case "$task_issue_path" in
   *) printf 'unexpected task issue path: %s\n' "$task_issue_path" >&2; exit 1 ;;
 esac
 task_issue_id="$(grep '^id: ' "$workspace_dir/.pi-env/coordination/$task_issue_path" | sed 's/^id: //')"
-test "$(agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" "$todo_id")" = \
+test "$(pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" "$todo_id")" = \
   "$(cat "$workspace_dir/.pi-env/coordination/$todo_path")"
-test "$(agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" --path "$todo_id")" = "$todo_path"
-test "$(agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" "$note_id")" = \
+test "$(pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" --path "$todo_id")" = "$todo_path"
+test "$(pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" "$note_id")" = \
   "$(cat "$workspace_dir/.pi-env/coordination/$note_path")"
-test "$(agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" --path "$note_id")" = "$note_path"
-test "$(agent-coord-cat \
+test "$(pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" --path "$note_id")" = "$note_path"
+test "$(pi-env-coord-cat \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --path "${note_id%-001}")" = "$note_path"
-if agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" MISSING-ITEM \
+if pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" MISSING-ITEM \
   >"$tmp/cat-missing.out" 2>"$tmp/cat-missing.err"; then
-  printf 'agent-coord-cat unexpectedly found missing item\n' >&2
+  printf 'pi-env-coord-cat unexpectedly found missing item\n' >&2
   exit 1
 fi
-grep -q '^agent-coord: item not found: MISSING-ITEM$' "$tmp/cat-missing.err"
-if agent-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" PIENV \
+grep -q '^pi-env-coord: item not found: MISSING-ITEM$' "$tmp/cat-missing.err"
+if pi-env-coord-cat --coord-dir "$workspace_dir/.pi-env/coordination" PIENV \
   >"$tmp/cat-ambiguous.out" 2>"$tmp/cat-ambiguous.err"; then
-  printf 'agent-coord-cat unexpectedly resolved ambiguous prefix\n' >&2
+  printf 'pi-env-coord-cat unexpectedly resolved ambiguous prefix\n' >&2
   exit 1
 fi
-grep -q '^agent-coord: multiple items match PIENV:' "$tmp/cat-ambiguous.err"
+grep -q '^pi-env-coord: multiple items match PIENV:' "$tmp/cat-ambiguous.err"
 grep -q "$action_path" "$tmp/cat-ambiguous.err"
 
-issue_list="$(agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" issues open)"
+issue_list="$(pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" issues open)"
 printf '%s\n' "$issue_list" \
   | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
-category_list="$(agent-coord-list \
+category_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" --show-category issues open)"
 printf '%s\n' "$category_list" \
   | grep -Eq "^bug[[:space:]]+$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
-category_filter_list="$(agent-coord-list \
+category_filter_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" --category bug issues open)"
 printf '%s\n' "$category_filter_list" \
   | grep -Eq "^$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
-task_category_filter_list="$(agent-coord-list \
+task_category_filter_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" --category tasks issues open)"
 printf '%s\n' "$task_category_filter_list" \
   | grep -Eq "^$task_issue_id[[:space:]]+open[[:space:]]+Task issue category item$"
@@ -605,26 +605,26 @@ if printf '%s\n' "$task_category_filter_list" | grep -q "$item_id"; then
   printf 'task category filter included non-task issue\n' >&2
   exit 1
 fi
-category_group_list="$(agent-coord-list \
+category_group_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" --group-by-category issues open)"
 printf '%s\n' "$category_group_list" \
   | grep -Eq "^bug[[:space:]]+$item_id[[:space:]]+open[[:space:]]+Document pi config behavior$"
 for legacy_category_flag in --issue-type --show-issue-type --group-by-issue-type; do
-  if agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" \
+  if pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" \
     "$legacy_category_flag" issues open \
     >"$tmp/list-legacy-category.out" 2>"$tmp/list-legacy-category.err"; then
-    printf 'agent-coord-list unexpectedly accepted %s\n' \
+    printf 'pi-env-coord-list unexpectedly accepted %s\n' \
       "$legacy_category_flag" >&2
     exit 1
   fi
   grep -q -- "$legacy_category_flag has been removed; use category flags" \
     "$tmp/list-legacy-category.err"
 done
-requirement_list="$(agent-coord-list \
+requirement_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" functional-requirements accepted)"
 printf '%s\n' "$requirement_list" \
   | grep -Eq "^$requirement_id[[:space:]]+accepted[[:space:]]+Functional requirement item naming$"
-all_requirement_list="$(agent-coord-list \
+all_requirement_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" requirements accepted)"
 printf '%s\n' "$all_requirement_list" \
   | grep -Eq "^$requirement_id[[:space:]]+accepted[[:space:]]+Functional requirement item naming$"
@@ -632,35 +632,35 @@ printf '%s\n' "$all_requirement_list" \
   | grep -Eq "^$quality_requirement_id[[:space:]]+accepted[[:space:]]+Quality requirement item naming$"
 printf '%s\n' "$all_requirement_list" \
   | grep -Eq "^$constraint_requirement_id[[:space:]]+accepted[[:space:]]+Constraint requirement item naming$"
-if agent-coord-list \
+if pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" legacy-requirements accepted \
   >"$tmp/legacy-requirements.out" 2>"$tmp/legacy-requirements.err"; then
-  printf 'agent-coord-list unexpectedly accepted legacy requirements\n' >&2
+  printf 'pi-env-coord-list unexpectedly accepted legacy requirements\n' >&2
   exit 1
 fi
 grep -q 'generic REQ requirement listing has been removed' "$tmp/legacy-requirements.err"
-decision_list="$(agent-coord-list \
+decision_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" decisions accepted)"
 printf '%s\n' "$decision_list" \
   | grep -Eq "^$decision_id[[:space:]]+accepted[[:space:]]+Use coordination list helper$"
-todo_list="$(agent-coord-list \
+todo_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" todos active)"
 printf '%s\n' "$todo_list" \
   | grep -Eq "^$todo_id[[:space:]]+active[[:space:]]+Lightweight TODO item$"
-todo_open_list="$(agent-coord-list \
+todo_open_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" todo open)"
 printf '%s\n' "$todo_open_list" \
   | grep -Eq "^$todo_open_id[[:space:]]+open[[:space:]]+Open TODO item$"
-all_todo_list="$(agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" todos)"
+all_todo_list="$(pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" todos)"
 printf '%s\n' "$all_todo_list" \
   | grep -Eq "^$todo_id[[:space:]]+active[[:space:]]+Lightweight TODO item$"
 printf '%s\n' "$all_todo_list" \
   | grep -Eq "^$todo_open_id[[:space:]]+open[[:space:]]+Open TODO item$"
-note_list="$(agent-coord-list \
+note_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" notes active)"
 printf '%s\n' "$note_list" \
   | grep -Eq "^$note_id[[:space:]]+active[[:space:]]+Reference note item$"
-note_alias_list="$(agent-coord-list \
+note_alias_list="$(pi-env-coord-list \
   --coord-dir "$workspace_dir/.pi-env/coordination" note active)"
 printf '%s\n' "$note_alias_list" \
   | grep -Eq "^$note_id[[:space:]]+active[[:space:]]+Reference note item$"
@@ -668,20 +668,20 @@ if printf '%s\n' "$note_alias_list" | grep -q "$todo_id"; then
   printf 'note list included a todo item\n' >&2
   exit 1
 fi
-all_note_list="$(agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" notes)"
+all_note_list="$(pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" notes)"
 printf '%s\n' "$all_note_list" \
   | grep -Eq "^$note_id[[:space:]]+active[[:space:]]+Reference note item$"
-if agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" tdo \
+if pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" tdo \
   >"$tmp/list-tdo.out" 2>"$tmp/list-tdo.err"; then
-  printf 'agent-coord-list unexpectedly accepted tdo alias\n' >&2
+  printf 'pi-env-coord-list unexpectedly accepted tdo alias\n' >&2
   exit 1
 fi
 grep -q 'item type must be issues, todos,' "$tmp/list-tdo.err"
 for unsupported_list_type in task tasks; do
-  if agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" \
+  if pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" \
     "$unsupported_list_type" >"$tmp/list-$unsupported_list_type.out" \
     2>"$tmp/list-$unsupported_list_type.err"; then
-    printf 'agent-coord-list unexpectedly accepted %s item type\n' \
+    printf 'pi-env-coord-list unexpectedly accepted %s item type\n' \
       "$unsupported_list_type" >&2
     exit 1
   fi
@@ -690,8 +690,8 @@ for unsupported_list_type in task tasks; do
     "$tmp/list-$unsupported_list_type.err"
 done
 
-agent-coord-status --coord-dir "$workspace_dir/.pi-env/coordination" >/dev/null
-agent-coord-push \
+pi-env-coord-status --coord-dir "$workspace_dir/.pi-env/coordination" >/dev/null
+pi-env-coord-push \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role architect \
@@ -699,7 +699,7 @@ agent-coord-push \
 test "$(git -C "$workspace_dir/.pi-env/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "agent-a/architect <agent-a+architect@coordination.local>|agent-a/architect <agent-a+architect@coordination.local>"
 
-agent-coord-claim \
+pi-env-coord-claim \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role developer \
@@ -713,7 +713,7 @@ grep -q '^      Claimed\.$' "$workspace_dir/.pi-env/coordination/$action_path"
 test "$(git -C "$workspace_dir/.pi-env/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "agent-a/developer <agent-a+developer@coordination.local>|agent-a/developer <agent-a+developer@coordination.local>"
 
-done_path="$(agent-coord-done \
+done_path="$(pi-env-coord-done \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role developer \
@@ -738,11 +738,11 @@ grep -q '^      Implemented in test\.$' "$workspace_dir/.pi-env/coordination/$do
 test "$(git -C "$workspace_dir/.pi-env/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "agent-a/developer <agent-a+developer@coordination.local>|agent-a/developer <agent-a+developer@coordination.local>"
 
-done_issue_list="$(agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" issues done)"
+done_issue_list="$(pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" issues done)"
 printf '%s\n' "$done_issue_list" \
   | grep -Eq "^$item_id[[:space:]]+done[[:space:]]+Document pi config behavior \\(reviewed:false, verified:false\\)$"
 
-review_path="$(agent-coord-review \
+review_path="$(pi-env-coord-review \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id reviewer-a \
   --role reviewer \
@@ -758,7 +758,7 @@ grep -q '^      Review passed\.$' "$workspace_dir/.pi-env/coordination/$done_pat
 test "$(git -C "$workspace_dir/.pi-env/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "reviewer-a/reviewer <reviewer-a+reviewer@coordination.local>|reviewer-a/reviewer <reviewer-a+reviewer@coordination.local>"
 
-verify_path="$(PI_ENV_COORD_ROLE=tester agent-coord-verify \
+verify_path="$(PI_ENV_COORD_ROLE=tester pi-env-coord-verify \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id tester-a \
   --pass \
@@ -773,11 +773,11 @@ grep -q '^      Verification passed\.$' "$workspace_dir/.pi-env/coordination/$do
 test "$(git -C "$workspace_dir/.pi-env/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "tester-a/tester <tester-a+tester@coordination.local>|tester-a/tester <tester-a+tester@coordination.local>"
 
-reviewed_verified_done_issue_list="$(agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" issues done)"
+reviewed_verified_done_issue_list="$(pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" issues done)"
 printf '%s\n' "$reviewed_verified_done_issue_list" \
   | grep -Eq "^$item_id[[:space:]]+done[[:space:]]+Document pi config behavior \\(reviewed:true, verified:true\\)$"
 
-closed_path="$(PI_ENV_COORD_ROLE=tester agent-coord-close \
+closed_path="$(PI_ENV_COORD_ROLE=tester pi-env-coord-close \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id tester-a \
   --result "Closed after review and verification." \
@@ -794,29 +794,29 @@ grep -q '^      Closed after review and verification\.$' "$workspace_dir/.pi-env
 test "$(git -C "$workspace_dir/.pi-env/coordination" log -1 --format='%an <%ae>|%cn <%ce>')" = \
   "tester-a/tester <tester-a+tester@coordination.local>|tester-a/tester <tester-a+tester@coordination.local>"
 
-closed_issue_list="$(agent-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" issues closed)"
+closed_issue_list="$(pi-env-coord-list --coord-dir "$workspace_dir/.pi-env/coordination" issues closed)"
 printf '%s\n' "$closed_issue_list" \
   | grep -Eq "^$item_id[[:space:]]+closed[[:space:]]+Document pi config behavior$"
 
-review_fail_path="$(agent-coord-new \
+review_fail_path="$(pi-env-coord-new \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role developer \
   "Review failure clears owner" | tail -n 1)"
 review_fail_id="$(basename "$review_fail_path")"
 review_fail_id="${review_fail_id%.yaml}"
-agent-coord-claim \
+pi-env-coord-claim \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role developer \
   "$review_fail_id" >/dev/null
-agent-coord-done \
+pi-env-coord-done \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role developer \
   --result "Ready for failed review." \
   "$review_fail_id" >/dev/null
-review_failed_path="$(agent-coord-review \
+review_failed_path="$(pi-env-coord-review \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id reviewer-a \
   --role reviewer \
@@ -833,32 +833,32 @@ grep -q '^verified: false$' "$workspace_dir/.pi-env/coordination/$review_failed_
 grep -q '^    type: review_failed$' \
   "$workspace_dir/.pi-env/coordination/$review_failed_path"
 
-verify_fail_path="$(agent-coord-new \
+verify_fail_path="$(pi-env-coord-new \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role developer \
   "Verification failure clears owner" | tail -n 1)"
 verify_fail_id="$(basename "$verify_fail_path")"
 verify_fail_id="${verify_fail_id%.yaml}"
-agent-coord-claim \
+pi-env-coord-claim \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role developer \
   "$verify_fail_id" >/dev/null
-agent-coord-done \
+pi-env-coord-done \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id agent-a \
   --role developer \
   --result "Ready for failed verification." \
   "$verify_fail_id" >/dev/null
-agent-coord-review \
+pi-env-coord-review \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id reviewer-a \
   --role reviewer \
   --pass \
   --result "Review passed for verification failure test." \
   "$verify_fail_id" >/dev/null
-verification_failed_path="$(PI_ENV_COORD_ROLE=tester agent-coord-verify \
+verification_failed_path="$(PI_ENV_COORD_ROLE=tester pi-env-coord-verify \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --agent-id tester-a \
   --fail \
@@ -875,7 +875,7 @@ grep -q '^    type: verification_failed$' \
   "$workspace_dir/.pi-env/coordination/$verification_failed_path"
 
 head_before="$(git -C "$workspace_dir/.pi-env/coordination" rev-parse HEAD)"
-agent-coord-upgrade-rules \
+pi-env-coord-upgrade-rules \
   --coord-dir "$workspace_dir/.pi-env/coordination" \
   --preview >/dev/null
 head_after="$(git -C "$workspace_dir/.pi-env/coordination" rev-parse HEAD)"

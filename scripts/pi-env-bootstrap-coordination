@@ -7,16 +7,16 @@ if [ -n "${PI_ENV_COORD_LIB:-}" ]; then
   # shellcheck source=/dev/null
   . "$PI_ENV_COORD_LIB"
 else
-  # shellcheck source=agent-coord-lib.sh
-  . "$script_dir/agent-coord-lib.sh"
+  # shellcheck source=pi-env-coord-lib.sh
+  . "$script_dir/pi-env-coord-lib.sh"
 fi
 
 usage() {
   cat <<'USAGE'
-bootstrap-coordination - initialize coordination with inferred defaults
+pi-env-bootstrap-coordination - initialize coordination with inferred defaults
 
 Usage:
-  bootstrap-coordination [options]
+  pi-env-bootstrap-coordination [options]
 
 Options:
   --project-root DIR  Project directory to inspect; default: current directory
@@ -29,11 +29,11 @@ Options:
   --bare-only         Only create the bare remote
   --print-only        Print suggested settings and command; do not initialize or restore
   --dry-run           Alias for --print-only
-  --no-status         Do not run agent-coord-status after initialization/existing clone detection
+  --no-status         Do not run pi-env-coord-status after initialization/existing clone detection
   -h, --help          Show this help
 
 The command prints suggested PI_ENV_COORD_* settings, then calls
-agent-coord-init with those explicit values. It is a generic bootstrapper:
+pi-env-coord-init with those explicit values. It is a generic bootstrapper:
 when PI_ENV_COORD_* values are unset, it infers the project name from
 PI_ENV_COORD_PROJECT, the Git origin repository name, the Git root basename, or
 the current directory basename, in that order. PI_ENV_COORD_WORKSPACE and
@@ -110,7 +110,7 @@ bootstrap_shell_quote() {
 
 bootstrap_print_plan() {
   local init_command
-  init_command="agent-coord-init --remote $(bootstrap_shell_quote "$remote")"
+  init_command="pi-env-coord-init --remote $(bootstrap_shell_quote "$remote")"
   init_command="$init_command --project $(bootstrap_shell_quote "$project") --project-key $(bootstrap_shell_quote "$project_item_key") --dir $(bootstrap_shell_quote "$coord_dir_abs") --agent-id $(bootstrap_shell_quote "$agent_id")"
   if [ "$bare_only" = "1" ]; then
     init_command="$init_command --bare-only"
@@ -478,8 +478,8 @@ if [ "$bare_only" != "1" ]; then
   bootstrap_warn_git_identity
 fi
 
-agent_coord_init="$(bootstrap_script_path agent-coord-init)"
-agent_coord_status="$(bootstrap_script_path agent-coord-status)"
+agent_coord_init="$(bootstrap_script_path pi-env-coord-init)"
+agent_coord_status="$(bootstrap_script_path pi-env-coord-status)"
 
 if [ "$bare_only" != "1" ] \
   && [ -e "$coord_dir_abs" ] \

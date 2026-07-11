@@ -28,7 +28,7 @@ Commands:
   raw                 Run pi-env with --raw (existing command: pi-env --raw)
   shell               Run a pi-env shell (existing command: pi-env-shell)
   sandbox             Run the sandbox helper (existing command: pi-env-bwrap)
-  coord               Coordination helpers (existing commands: agent-coord-*)
+  coord               Coordination helpers (existing commands: pi-env-coord-*)
   roles serial        Serial role orchestrator (existing command: pi-env-serial-roles)
   install             Non-Nix installer (existing command: pi-env-install-non-nix)
   uninstall           Non-Nix uninstaller (existing command: pi-env-uninstall)
@@ -51,25 +51,25 @@ Usage:
   pienv coord requirements coverage [args...]
 
 Commands:
-  bootstrap              Existing command: bootstrap-coordination
-  init                   Existing command: agent-coord-init
-  clone                  Existing command: agent-coord-clone
-  status                 Existing command: agent-coord-status
-  list                   Existing command: agent-coord-list
-  show                   Existing command: agent-coord-cat
-  new                    Existing command: agent-coord-new
-  claim                  Existing command: agent-coord-claim
-  done                   Existing command: agent-coord-done
-  review                 Existing command: agent-coord-review
-  verify                 Existing command: agent-coord-verify
-  close                  Existing command: agent-coord-close
-  pull                   Existing command: agent-coord-pull
-  push                   Existing command: agent-coord-push
-  lint                   Existing command: agent-coord-lint
-  repo                   Existing command: agent-coord-repo
-  rules upgrade          Existing command: agent-coord-upgrade-rules
-  requirements generate  Existing command: agent-coord-generate-requirements
-  requirements coverage  Existing command: agent-coord-generate-requirements-coverage
+  bootstrap              Existing command: pi-env-bootstrap-coordination
+  init                   Existing command: pi-env-coord-init
+  clone                  Existing command: pi-env-coord-clone
+  status                 Existing command: pi-env-coord-status
+  list                   Existing command: pi-env-coord-list
+  show                   Existing command: pi-env-coord-cat
+  new                    Existing command: pi-env-coord-new
+  claim                  Existing command: pi-env-coord-claim
+  done                   Existing command: pi-env-coord-done
+  review                 Existing command: pi-env-coord-review
+  verify                 Existing command: pi-env-coord-verify
+  close                  Existing command: pi-env-coord-close
+  pull                   Existing command: pi-env-coord-pull
+  push                   Existing command: pi-env-coord-push
+  lint                   Existing command: pi-env-coord-lint
+  repo                   Existing command: pi-env-coord-repo
+  rules upgrade          Existing command: pi-env-coord-upgrade-rules
+  requirements generate  Existing command: pi-env-coord-generate-requirements
+  requirements coverage  Existing command: pi-env-coord-generate-requirements-coverage
 
 Use 'pienv help coord <command>' or 'pienv coord <command> --help' for
 leaf command help.
@@ -84,7 +84,7 @@ Usage:
   pienv coord rules upgrade [args...]
 
 Commands:
-  upgrade  Upgrade coordination rules (existing command: agent-coord-upgrade-rules)
+  upgrade  Upgrade coordination rules (existing command: pi-env-coord-upgrade-rules)
 USAGE
 }
 
@@ -97,8 +97,8 @@ Usage:
   pienv coord requirements coverage [args...]
 
 Commands:
-  generate  Generate requirements from designs (existing command: agent-coord-generate-requirements)
-  coverage  Generate requirements coverage report (existing command: agent-coord-generate-requirements-coverage)
+  generate  Generate requirements from designs (existing command: pi-env-coord-generate-requirements)
+  coverage  Generate requirements coverage report (existing command: pi-env-coord-generate-requirements-coverage)
 USAGE
 }
 
@@ -270,9 +270,9 @@ run_command_help() {
 
 coord_leaf_command_name() {
   case "$1" in
-    bootstrap) printf '%s\n' bootstrap-coordination ;;
-    init|clone|status|list|new|claim|done|review|verify|close|pull|push|lint|repo) printf 'agent-coord-%s\n' "$1" ;;
-    show) printf '%s\n' agent-coord-cat ;;
+    bootstrap) printf '%s\n' pi-env-bootstrap-coordination ;;
+    init|clone|status|list|new|claim|done|review|verify|close|pull|push|lint|repo) printf 'pi-env-coord-%s\n' "$1" ;;
+    show) printf '%s\n' pi-env-coord-cat ;;
     *) return 1 ;;
   esac
 }
@@ -288,7 +288,7 @@ help_dispatch() {
           shift
           case "${1:-}" in
             ""|-h|--help) coord_rules_help ;;
-            upgrade) run_command_help agent-coord-upgrade-rules ;;
+            upgrade) run_command_help pi-env-coord-upgrade-rules ;;
             *) unknown help coord rules "$1" ;;
           esac
           ;;
@@ -296,8 +296,8 @@ help_dispatch() {
           shift
           case "${1:-}" in
             ""|-h|--help) coord_requirements_help ;;
-            generate) run_command_help agent-coord-generate-requirements ;;
-            coverage) run_command_help agent-coord-generate-requirements-coverage ;;
+            generate) run_command_help pi-env-coord-generate-requirements ;;
+            coverage) run_command_help pi-env-coord-generate-requirements-coverage ;;
             *) unknown help coord requirements "$1" ;;
           esac
           ;;
@@ -394,18 +394,18 @@ case "${1:-}" in
     shift
     case "${1:-}" in
       ""|-h|--help) coord_help; exit 0 ;;
-      bootstrap) shift; exec_command bootstrap-coordination "$@" ;;
+      bootstrap) shift; exec_command pi-env-bootstrap-coordination "$@" ;;
       init|clone|status|list|new|claim|done|review|verify|close|pull|push|lint|repo)
         subcommand="$1"
         shift
-        exec_command "agent-coord-$subcommand" "$@"
+        exec_command "pi-env-coord-$subcommand" "$@"
         ;;
-      show) shift; exec_command agent-coord-cat "$@" ;;
+      show) shift; exec_command pi-env-coord-cat "$@" ;;
       rules)
         shift
         case "${1:-}" in
           ""|-h|--help) coord_rules_help; exit 0 ;;
-          upgrade) shift; exec_command agent-coord-upgrade-rules "$@" ;;
+          upgrade) shift; exec_command pi-env-coord-upgrade-rules "$@" ;;
           *) unknown coord rules "${1:-}" ;;
         esac
         ;;
@@ -413,8 +413,8 @@ case "${1:-}" in
         shift
         case "${1:-}" in
           ""|-h|--help) coord_requirements_help; exit 0 ;;
-          generate) shift; exec_command agent-coord-generate-requirements "$@" ;;
-          coverage) shift; exec_command agent-coord-generate-requirements-coverage "$@" ;;
+          generate) shift; exec_command pi-env-coord-generate-requirements "$@" ;;
+          coverage) shift; exec_command pi-env-coord-generate-requirements-coverage "$@" ;;
           *) unknown coord requirements "${1:-}" ;;
         esac
         ;;
