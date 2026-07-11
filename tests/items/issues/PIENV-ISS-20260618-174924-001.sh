@@ -8,8 +8,8 @@ cd "$repo_root"
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
-script="$tmpdir/pi-bwrap"
-cp scripts/pi-bwrap "$script"
+script="$tmpdir/pi-env-bwrap"
+cp scripts/pi-env-bwrap "$script"
 chmod +x "$script"
 test_grep 'PI_ENV_COORD_REMOTE' "$script"
 test_grep '/agent-remotes' "$script"

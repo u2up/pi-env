@@ -44,7 +44,7 @@ test -d "$init_project/.pi-env/agent-remotes/init-demo-coordination.git"
 test -f "$init_project/.pi-env/coordination/AGENTS.md"
 grep -Fx '/.pi-env/' "$init_project/.git/info/exclude" >/dev/null
 
-pi-serial-roles \
+pi-env-serial-roles \
   --project-root "$init_project" \
   --agent-id agent-a \
   --sleep 0 \

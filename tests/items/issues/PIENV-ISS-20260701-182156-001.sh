@@ -98,7 +98,7 @@ FAKE_BWRAP
     PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
     PI_ENV_BWRAP_IMPORT_AUTH=0 \
     PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
-    "$prefix/bin/pi-bwrap" -- --help
+    "$prefix/bin/pi-env-bwrap" -- --help
   grep -Fx visible "$capture" >/dev/null \
     || { echo 'fake bwrap did not confirm helper visibility' >&2; exit 1; }
 }
@@ -143,11 +143,11 @@ verify_install() {
   local prefix="$1"
   assert_executable "$prefix/bin/pi-env"
   [ ! -e "$prefix/bin/pi-start" ] || { echo "pi-start should not be installed" >&2; exit 1; }
-  assert_executable "$prefix/bin/pi-bwrap"
+  assert_executable "$prefix/bin/pi-env-bwrap"
   assert_executable "$prefix/bin/bootstrap-coordination"
   assert_executable "$prefix/bin/agent-coord-status"
   assert_executable "$prefix/bin/agent-coord-done"
-  assert_executable "$prefix/bin/pi-serial-roles"
+  assert_executable "$prefix/bin/pi-env-serial-roles"
   assert_executable "$prefix/bin/pi-env-uninstall"
   [ ! -e "$prefix/bin/agent-coord-lib.sh" ] || { echo "private library installed as command" >&2; exit 1; }
   assert_file "$prefix/share/pi-env/scripts/agent-coord-lib.sh"
@@ -157,7 +157,7 @@ verify_install() {
 
   "$prefix/bin/agent-coord-status" --help >/dev/null
   "$prefix/bin/bootstrap-coordination" --help >/dev/null
-  PATH="$prefix/bin:$PATH" "$prefix/bin/pi-serial-roles" \
+  PATH="$prefix/bin:$PATH" "$prefix/bin/pi-env-serial-roles" \
     --project-root "$repo_root" \
     --coord-dir "$repo_root/.pi-env/coordination" \
     --max-jobs 0 >/dev/null
@@ -166,7 +166,7 @@ verify_install() {
   dry_run_out="$tmp/pi-serial-dry-run.out"
   fixture="$(make_serial_fixture "$(mktemp -d "$tmp/serial-fixture.XXXXXX")")"
   IFS=$'\t' read -r project_dir coord_dir <<<"$fixture"
-  PATH="$prefix/bin:$PATH" "$prefix/bin/pi-serial-roles" \
+  PATH="$prefix/bin:$PATH" "$prefix/bin/pi-env-serial-roles" \
     --project-root "$project_dir" \
     --coord-dir "$coord_dir" \
     --agent-id samo \
@@ -181,7 +181,7 @@ verify_install() {
 }
 
 source_prefix="$tmp/source prefix with dollar \$ and quote \""
-"$repo_root/scripts/install-non-nix" --prefix "$source_prefix"
+"$repo_root/scripts/pi-env-install-non-nix" --prefix "$source_prefix"
 verify_install "$source_prefix"
 "$source_prefix/bin/pi-env-uninstall"
 [ ! -e "$source_prefix/bin/pi-env" ] || { echo "uninstall left pi-env wrapper behind" >&2; exit 1; }
@@ -193,5 +193,5 @@ cp -R "$repo_root/scripts" "$archive_root/scripts"
 cp -R "$repo_root/role-manager" "$archive_root/role-manager"
 cp -R "$repo_root/pi-skill-templates" "$archive_root/pi-skill-templates"
 archive_prefix="$tmp/archive-prefix"
-"$archive_root/scripts/install-non-nix" --prefix "$archive_prefix"
+"$archive_root/scripts/pi-env-install-non-nix" --prefix "$archive_prefix"
 verify_install "$archive_prefix"

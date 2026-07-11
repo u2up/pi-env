@@ -47,7 +47,7 @@ HOME="$host_home" \
   PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
   PI_ENV_BWRAP_IMPORT_AUTH=0 \
   PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
-  scripts/pi-bwrap -- --help
+  scripts/pi-env-bwrap -- --help
 
 test_file_exists "$host_capture"
 
@@ -90,7 +90,7 @@ HOME="$host_home" \
   PI_ENV_BWRAP_BWRAP="$fakebin/bwrap" \
   PI_ENV_BWRAP_HOST_EXTRA_PATH="$tmpdir/actual-tools:$host_home" \
   PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
-  scripts/pi-bwrap -- --help >"$tmpdir/home-extra-output" 2>&1 || home_extra_status=$?
+  scripts/pi-env-bwrap -- --help >"$tmpdir/home-extra-output" 2>&1 || home_extra_status=$?
 test_eq 2 "$home_extra_status" 'host HOME extra path is rejected before bwrap'
 test_grep 'PI_ENV_BWRAP_HOST_EXTRA_PATH entry under host HOME' "$tmpdir/home-extra-output"
 if [ -e "$tmpdir/home-extra-args" ]; then
@@ -109,7 +109,7 @@ HOME="$host_home" \
   PI_ENV_BWRAP_BWRAP="$fakebin/bwrap" \
   PI_ENV_BWRAP_HOST_EXTRA_PATH="$tmpdir/actual-tools" \
   PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
-  scripts/pi-bwrap -- --help >"$tmpdir/nix-host-extra-output" 2>&1 || nix_host_extra_status=$?
+  scripts/pi-env-bwrap -- --help >"$tmpdir/nix-host-extra-output" 2>&1 || nix_host_extra_status=$?
 test_eq 2 "$nix_host_extra_status" 'Nix runtime rejects host extra path before bwrap'
 test_grep 'PI_ENV_BWRAP_HOST_EXTRA_PATH is only supported in host runtime mode' "$tmpdir/nix-host-extra-output"
 if [ -e "$nix_capture" ]; then
@@ -126,7 +126,7 @@ HOME="$host_home" \
   PI_ENV_BWRAP_BWRAP="$fakebin/bwrap" \
   PI_ENV_BWRAP_EXTRA_PATH="$tmpdir/actual-tools" \
   PI_ENV_BWRAP_PROJECT_ROOT="$repo_root" \
-  scripts/pi-bwrap -- --help >"$tmpdir/nix-extra-output" 2>&1 || nix_extra_status=$?
+  scripts/pi-env-bwrap -- --help >"$tmpdir/nix-extra-output" 2>&1 || nix_extra_status=$?
 test_eq 2 "$nix_extra_status" 'Nix runtime rejects non-store PI_ENV_BWRAP_EXTRA_PATH before bwrap'
 test_grep 'unsafe PI_ENV_BWRAP_EXTRA_PATH entry outside /nix/store' "$tmpdir/nix-extra-output"
 if [ -e "$tmpdir/nix-unsafe-args" ]; then

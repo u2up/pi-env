@@ -16,20 +16,27 @@ assert_file() {
 # Local payload installs must work without remote bootstrap options or network.
 local_prefix="$workdir/local-prefix"
 mkdir -p "$local_prefix/bin"
-printf 'stale legacy wrapper\n' > "$local_prefix/bin/pi-start"
-"$repo_root/scripts/install-non-nix" --prefix "$local_prefix"
+for stale_command in pi-start pi-bwrap pi-serial-roles install-non-nix; do
+  printf 'stale legacy wrapper\n' > "$local_prefix/bin/$stale_command"
+done
+"$repo_root/scripts/pi-env-install-non-nix" --prefix "$local_prefix"
 assert_file "$local_prefix/bin/pienv"
 "$local_prefix/bin/pienv" help >/dev/null
 "$local_prefix/bin/pienv" completion bash | grep -q 'complete -F _pienv pienv'
 assert_file "$local_prefix/bin/pi-env"
+assert_file "$local_prefix/bin/pi-env-bwrap"
+assert_file "$local_prefix/bin/pi-env-serial-roles"
+assert_file "$local_prefix/bin/pi-env-install-non-nix"
 assert_file "$local_prefix/bin/agent-coord-repo"
 assert_file "$local_prefix/share/pi-env/install-manifest"
 assert_file "$local_prefix/share/bash-completion/completions/pienv"
 grep -qx "$local_prefix/share/bash-completion/completions/pienv" "$local_prefix/share/pi-env/install-manifest"
-[ ! -e "$local_prefix/bin/pi-start" ] || {
-  echo "stale pi-start wrapper survived reinstall" >&2
-  exit 1
-}
+for stale_command in pi-start pi-bwrap pi-serial-roles install-non-nix; do
+  [ ! -e "$local_prefix/bin/$stale_command" ] || {
+    echo "stale $stale_command wrapper survived reinstall" >&2
+    exit 1
+  }
+done
 [ ! -f "$local_prefix/share/pi-env/install-origin" ] || {
   echo "local install unexpectedly wrote remote origin metadata" >&2
   exit 1
@@ -47,11 +54,11 @@ tar -czf "$archive" -C "$workdir/archive-root" pi-env-main
 
 remote_script_dir="$workdir/remote-script"
 mkdir -p "$remote_script_dir"
-cp "$repo_root/scripts/install-non-nix" "$remote_script_dir/install-non-nix"
+cp "$repo_root/scripts/pi-env-install-non-nix" "$remote_script_dir/pi-env-install-non-nix"
 remote_prefix="$workdir/remote-prefix"
 (
   cd "$workdir"
-  "$remote_script_dir/install-non-nix" \
+  "$remote_script_dir/pi-env-install-non-nix" \
     --prefix "$remote_prefix" \
     --ref main \
     --repo test-owner/test-repo \
@@ -60,6 +67,9 @@ remote_prefix="$workdir/remote-prefix"
 
 assert_file "$remote_prefix/bin/pienv"
 assert_file "$remote_prefix/bin/pi-env"
+assert_file "$remote_prefix/bin/pi-env-bwrap"
+assert_file "$remote_prefix/bin/pi-env-serial-roles"
+assert_file "$remote_prefix/bin/pi-env-install-non-nix"
 assert_file "$remote_prefix/bin/agent-coord-repo"
 assert_file "$remote_prefix/share/pi-env/install-origin"
 assert_file "$remote_prefix/share/bash-completion/completions/pienv"
@@ -90,4 +100,4 @@ rm -rf "$remote_script_dir" "$archive" "$archive_root"
   exit 1
 }
 
-printf 'install-non-nix tests passed\n'
+printf 'pi-env-install-non-nix tests passed\n'

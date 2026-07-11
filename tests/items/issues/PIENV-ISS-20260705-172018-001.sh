@@ -19,7 +19,7 @@ mkdir -p "$HOME"
 git config --global user.name "Serial Batch Test"
 git config --global user.email "serial-batch-test@example.invalid"
 
-serial_script="$repo_root/scripts/pi-serial-roles"
+serial_script="$repo_root/scripts/pi-env-serial-roles"
 role_manager="$repo_root/role-manager"
 
 make_fake_pi_env() {

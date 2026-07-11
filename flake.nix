@@ -41,7 +41,7 @@
           runtimePackages = mkRuntime pkgs;
           runtimePath = pkgs.lib.makeBinPath runtimePackages;
         in
-        pkgs.writeShellScriptBin "pi-bwrap" ''
+        pkgs.writeShellScriptBin "pi-env-bwrap" ''
           set -euo pipefail
           export PI_ENV_RUNTIME_PATH="${runtimePath}"
           export PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS="${defaultTools}"
@@ -49,7 +49,7 @@
           export PI_ENV_BWRAP_ENV="${pkgs.coreutils}/bin/env"
           export PI_ENV_BWRAP_CA_BUNDLE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           export PI_ENV_BWRAP_BWRAP="${pkgs.bubblewrap}/bin/bwrap"
-          exec ${pkgs.bash}/bin/bash ${./scripts/pi-bwrap} "$@"
+          exec ${pkgs.bash}/bin/bash ${./scripts/pi-env-bwrap} "$@"
         '';
 
       mkPiEnv = pkgs:
@@ -63,7 +63,7 @@
           export PATH="${runtimePath}:''${PATH:-}"
           export PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS="${defaultTools}"
           export PI_ENV_ROLE_MANAGER_PACKAGE="''${PI_ENV_ROLE_MANAGER_PACKAGE:-${roleManagerPackage}}"
-          export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-bwrap"
+          export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-env-bwrap"
           exec -a pi-env ${pkgs.bash}/bin/bash ${./scripts/pi-env-launcher} "$@"
         '';
 
@@ -76,7 +76,7 @@
           set -euo pipefail
           export PATH="${runtimePath}:''${PATH:-}"
           export PI_ENV_SHELL_MODE=1
-          export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-bwrap"
+          export PI_ENV_PI_ENV_BWRAP="${piBwrap}/bin/pi-env-bwrap"
           exec -a pi-env-shell ${pkgs.bash}/bin/bash ${./scripts/pi-env-launcher} "$@"
         '';
 
@@ -121,7 +121,7 @@
         "agent-coord-generate-requirements"
         "agent-coord-generate-requirements-coverage"
         "agent-coord-upgrade-rules"
-        "pi-serial-roles"
+        "pi-env-serial-roles"
       ];
 
       mkAgentCoordSupport = pkgs:
@@ -132,24 +132,24 @@
           cp -R ${./scripts} "$out/share/pi-env/scripts"
           chmod +x "$out/share/pi-env/scripts"/agent-coord-* \
             "$out/share/pi-env/scripts/bootstrap-coordination" \
-            "$out/share/pi-env/scripts/pi-serial-roles" \
+            "$out/share/pi-env/scripts/pi-env-serial-roles" \
             "$out/share/pi-env/scripts/pienv" \
-            "$out/share/pi-env/scripts/install-non-nix"
+            "$out/share/pi-env/scripts/pi-env-install-non-nix"
         '';
 
       mkInstallNonNixCommands = pkgs:
         let
           runtimePath = pkgs.lib.makeBinPath (mkRuntime pkgs);
           support = mkAgentCoordSupport pkgs;
-          installNonNix = pkgs.writeShellScriptBin "install-non-nix" ''
+          installNonNix = pkgs.writeShellScriptBin "pi-env-install-non-nix" ''
             set -euo pipefail
             export PATH="${runtimePath}:''${PATH:-}"
-            exec ${pkgs.bash}/bin/bash "${support}/share/pi-env/scripts/install-non-nix" "$@"
+            exec ${pkgs.bash}/bin/bash "${support}/share/pi-env/scripts/pi-env-install-non-nix" "$@"
           '';
           piEnvUninstall = pkgs.writeShellScriptBin "pi-env-uninstall" ''
             set -euo pipefail
             export PATH="${runtimePath}:''${PATH:-}"
-            exec ${pkgs.bash}/bin/bash "${support}/share/pi-env/scripts/install-non-nix" --uninstall "$@"
+            exec ${pkgs.bash}/bin/bash "${support}/share/pi-env/scripts/pi-env-install-non-nix" --uninstall "$@"
           '';
         in
         {
@@ -285,7 +285,7 @@
           pi-env = piEnv;
           pienv = pienv;
           pi-env-shell = piEnvShell;
-          pi-bwrap = piBwrap;
+          pi-env-bwrap = piBwrap;
           pi-core = piCore;
           pi-runtime = piRuntime;
           pi-env-coordination = piCoordination;
@@ -309,9 +309,9 @@
             type = "app";
             program = "${piEnvShell}/bin/pi-env-shell";
           };
-          pi-bwrap = {
+          pi-env-bwrap = {
             type = "app";
-            program = "${piBwrap}/bin/pi-bwrap";
+            program = "${piBwrap}/bin/pi-env-bwrap";
           };
         };
 
@@ -324,7 +324,13 @@
               echo "pi-start leaked into pi-core" >&2
               exit 1
             fi
-            command -v pi-bwrap >/dev/null
+            for legacy in pi-bwrap pi-serial-roles install-non-nix; do
+              if command -v "$legacy" >/dev/null 2>&1; then
+                echo "$legacy leaked into pi-core" >&2
+                exit 1
+              fi
+            done
+            command -v pi-env-bwrap >/dev/null
             pi-env --help >/dev/null
             pienv help >/dev/null
             pienv help run >/dev/null
@@ -340,7 +346,7 @@
               exit 1
             fi
             pi-env-shell --help >/dev/null
-            pi-bwrap --help >/dev/null
+            pi-env-bwrap --help >/dev/null
             if command -v agent-coord-status >/dev/null 2>&1; then
               echo "agent coordination helpers leaked into pi-core" >&2
               exit 1
@@ -355,7 +361,13 @@
               echo "pi-start leaked into pi-runtime" >&2
               exit 1
             fi
-            command -v pi-bwrap >/dev/null
+            for legacy in pi-bwrap pi-serial-roles install-non-nix; do
+              if command -v "$legacy" >/dev/null 2>&1; then
+                echo "$legacy leaked into pi-runtime" >&2
+                exit 1
+              fi
+            done
+            command -v pi-env-bwrap >/dev/null
             command -v agent-coord-status >/dev/null
             command -v bootstrap-coordination >/dev/null
             pi-env --help >/dev/null

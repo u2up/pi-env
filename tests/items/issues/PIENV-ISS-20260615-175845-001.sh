@@ -19,7 +19,7 @@ mkdir -p "$HOME"
 git config --global user.name "Serial Roles Test"
 git config --global user.email "serial-roles-test@example.invalid"
 
-serial_script="$repo_root/scripts/pi-serial-roles"
+serial_script="$repo_root/scripts/pi-env-serial-roles"
 role_manager="$repo_root/role-manager"
 
 make_fake_pi_env() {
@@ -217,7 +217,7 @@ fi
 test_grep '--ui must be interactive, json, or none' "$invalid_out"
 
 # Tester work is preferred over reviewer and developer queues, and the dry-run
-# command shows role activation variables that pi-bwrap must pass through.
+# command shows role activation variables that pi-env-bwrap must pass through.
 new_scenario tester-priority
 add_issue "$SCENARIO_COORD" SERIAL-TESTER-001 done true false \
   "Tester candidate"

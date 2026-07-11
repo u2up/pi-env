@@ -27,10 +27,10 @@ Commands:
   run                 Run pi-env (existing command: pi-env)
   raw                 Run pi-env with --raw (existing command: pi-env --raw)
   shell               Run a pi-env shell (existing command: pi-env-shell)
-  sandbox             Run the sandbox helper (existing command: pi-bwrap)
+  sandbox             Run the sandbox helper (existing command: pi-env-bwrap)
   coord               Coordination helpers (existing commands: agent-coord-*)
-  roles serial        Serial role orchestrator (existing command: pi-serial-roles)
-  install             Non-Nix installer (existing command: install-non-nix)
+  roles serial        Serial role orchestrator (existing command: pi-env-serial-roles)
+  install             Non-Nix installer (existing command: pi-env-install-non-nix)
   uninstall           Non-Nix uninstaller (existing command: pi-env-uninstall)
   completion bash     Print Bash completion for pienv
   help                Show help for pienv commands
@@ -110,7 +110,7 @@ Usage:
   pienv roles serial [args...]
 
 Commands:
-  serial  Run serial role orchestration (existing command: pi-serial-roles)
+  serial  Run serial role orchestration (existing command: pi-env-serial-roles)
 USAGE
 }
 
@@ -315,7 +315,7 @@ help_dispatch() {
       shift
       case "${1:-}" in
         ""|-h|--help) roles_help ;;
-        serial) run_command_help pi-serial-roles ;;
+        serial) run_command_help pi-env-serial-roles ;;
         *) unknown help roles "$1" ;;
       esac
       ;;
@@ -330,13 +330,13 @@ help_dispatch() {
     run) run_command_help pi-env ;;
     raw) run_command_help pi-env ;;
     shell) run_command_help pi-env-shell ;;
-    sandbox) run_command_help pi-bwrap ;;
-    install) run_command_help install-non-nix ;;
+    sandbox) run_command_help pi-env-bwrap ;;
+    install) run_command_help pi-env-install-non-nix ;;
     uninstall)
       if command -v pi-env-uninstall >/dev/null 2>&1; then
         run_command_help pi-env-uninstall
       else
-        run_command_help install-non-nix
+        run_command_help pi-env-install-non-nix
       fi
       ;;
     *) unknown help "$1" ;;
@@ -382,13 +382,13 @@ case "${1:-}" in
   sandbox)
     shift
     case "${1:-}" in
-      -h|--help) run_command_help pi-bwrap; exit 0 ;;
+      -h|--help) run_command_help pi-env-bwrap; exit 0 ;;
       shell)
         shift
-        exec_command pi-bwrap --shell "$@"
+        exec_command pi-env-bwrap --shell "$@"
         ;;
     esac
-    exec_command pi-bwrap "$@"
+    exec_command pi-env-bwrap "$@"
     ;;
   coord)
     shift
@@ -425,20 +425,20 @@ case "${1:-}" in
     shift
     case "${1:-}" in
       ""|-h|--help) roles_help; exit 0 ;;
-      serial) shift; exec_command pi-serial-roles "$@" ;;
+      serial) shift; exec_command pi-env-serial-roles "$@" ;;
       *) unknown roles "${1:-}" ;;
     esac
     ;;
   install)
     shift
-    exec_command install-non-nix "$@"
+    exec_command pi-env-install-non-nix "$@"
     ;;
   uninstall)
     shift
     if command -v pi-env-uninstall >/dev/null 2>&1; then
       exec_command pi-env-uninstall "$@"
     fi
-    exec_command install-non-nix --uninstall "$@"
+    exec_command pi-env-install-non-nix --uninstall "$@"
     ;;
   completion)
     shift

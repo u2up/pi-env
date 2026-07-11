@@ -36,7 +36,7 @@ run_pi_bwrap() {
   PI_ENV_BWRAP_IMPORT_AUTH=0 \
   PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
   PI_ENV_TEST_BWRAP_TRACE="$trace" \
-  bash scripts/pi-bwrap "$@" >/dev/null
+  bash scripts/pi-env-bwrap "$@" >/dev/null
 }
 
 normal_trace="$fake_root/normal.trace"

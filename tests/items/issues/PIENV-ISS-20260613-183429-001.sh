@@ -19,10 +19,10 @@ tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 fakebin="$tmpdir/bin"
 mkdir -p "$fakebin" "$tmpdir/project"
-cat >"$fakebin/pi-bwrap" <<'FAKE'
+cat >"$fakebin/pi-env-bwrap" <<'FAKE'
 #!/usr/bin/env bash
 {
-  printf 'pi-bwrap\n'
+  printf 'pi-env-bwrap\n'
   pwd
   printf '<%s>\n' "$@"
 } >"$PI_ENV_CAPTURE"
@@ -42,7 +42,7 @@ capture="$tmpdir/capture"
   PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_RUNTIME=auto \
     "$repo_root/pi-env" "hello prompt"
 )
-test_grep '^pi-bwrap$' "$capture"
+test_grep '^pi-env-bwrap$' "$capture"
 test_grep "^$tmpdir/project$" "$capture"
 test_grep '^<--tools>$' "$capture"
 test_grep '^<read,bash,edit,write,grep,find,ls>$' "$capture"
@@ -56,13 +56,13 @@ test_grep '^<hello prompt>$' "$capture"
   PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_RUNTIME=auto \
     "$repo_root/pi-env" --raw -- --model example/model "prompt"
 )
-test_grep '^pi-bwrap$' "$capture"
+test_grep '^pi-env-bwrap$' "$capture"
 test_grep '^<-->$' "$capture"
 test_grep '^<--model>$' "$capture"
 test_grep '^<example/model>$' "$capture"
 test_grep '^<prompt>$' "$capture"
 
-rm "$fakebin/pi-bwrap"
+rm "$fakebin/pi-env-bwrap"
 PI_ENV_CAPTURE="$capture" PATH="$fakebin:$PATH" PI_ENV_RUNTIME=nix \
   PI_ENV_FLAKE=env-flake "$repo_root/pi-env" "env prompt"
 test_grep '^nix$' "$capture"

@@ -15,8 +15,8 @@ test_grep 'Operational state paths such as `.pi-env/`' README.md
 test_grep 'environment variables such as' README.md
 
 test_grep '^| `pienv coord status \[options\]` | `agent-coord-status \[options\]` |$' README.md
-test_grep '^| `pienv roles serial \[options\]` | `pi-serial-roles \[options\]` |$' README.md
-test_grep '^| `pienv install \[options\]` | `install-non-nix \[options\]` |$' README.md
+test_grep '^| `pienv roles serial \[options\]` | `pi-env-serial-roles \[options\]` |$' README.md
+test_grep '^| `pienv install \[options\]` | `pi-env-install-non-nix \[options\]` |$' README.md
 test_grep 'pienv completion bash' designs/pienv-command-namespace.md
 
 test_grep '^pienv help$' README.md
@@ -60,10 +60,10 @@ fi
 if grep -q '^PI_ENV_ROLE_MANAGER_AUTO=0 pi-env\($\|[[:space:]]\)' README.md; then
   test_fail 'role-manager opt-out examples should prefer pienv'
 fi
-if grep -q '^pi-bwrap install ' README.md; then
+if grep -q '^pi-env-bwrap install ' README.md; then
   test_fail 'role-manager install examples should prefer pienv sandbox'
 fi
-if grep -q '^pi-serial-roles\($\|[[:space:]]\)' README.md; then
+if grep -q '^pi-env-serial-roles\($\|[[:space:]]\)' README.md; then
   test_fail 'serial role examples should prefer pienv roles serial'
 fi
 

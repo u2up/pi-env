@@ -216,7 +216,7 @@ print('requirement_kind: detailed-behavior');
 print('domain: commands');
 print('status: active');
 print('project: pi-env');
-print('title: "`pi-bwrap` default invocation"');
+print('title: "`pi-env-bwrap` default invocation"');
 print('source_refs:');
 print('  - "REQUIREMENTS.md#CMD-004"');
 print('related_workflows:');

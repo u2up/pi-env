@@ -58,7 +58,7 @@ env HOME="$host_home" \
   PATH="$host_home/bin:$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$tmpdir/home-pi-args" \
   "${common_env[@]}" \
-  scripts/pi-bwrap -- --help >"$tmpdir/home-pi-output" 2>&1 || home_pi_status=$?
+  scripts/pi-env-bwrap -- --help >"$tmpdir/home-pi-output" 2>&1 || home_pi_status=$?
 test_eq 127 "$home_pi_status" 'host HOME pi is rejected before bwrap'
 test_grep 'resolved pi under host HOME' "$tmpdir/home-pi-output"
 if [ -e "$tmpdir/home-pi-args" ]; then
@@ -70,7 +70,7 @@ env HOME="$host_home" \
   PATH="$custom_tools:$fakebin:$PATH" \
   PI_ENV_TEST_BWRAP_ARGS="$tmpdir/outside-pi-args" \
   "${common_env[@]}" \
-  scripts/pi-bwrap -- --help >"$tmpdir/outside-pi-output" 2>&1 || outside_pi_status=$?
+  scripts/pi-env-bwrap -- --help >"$tmpdir/outside-pi-output" 2>&1 || outside_pi_status=$?
 test_eq 127 "$outside_pi_status" 'unmounted custom pi is rejected before bwrap'
 test_grep 'resolved pi outside default sandbox mounts' "$tmpdir/outside-pi-output"
 if [ -e "$tmpdir/outside-pi-args" ]; then
@@ -83,7 +83,7 @@ env HOME="$host_home" \
   PI_ENV_TEST_BWRAP_ARGS="$custom_capture" \
   PI_ENV_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
   "${common_env[@]}" \
-  scripts/pi-bwrap -e "$external_role_manager" --help
+  scripts/pi-env-bwrap -e "$external_role_manager" --help
 
 test_file_exists "$custom_capture"
 if ! awk -v dir="$custom_tools" 'prev == "--ro-bind" && $0 == dir { getline; if ($0 == dir) found = 1 } { prev = $0 } END { exit found ? 0 : 1 }' "$custom_capture"; then
@@ -100,7 +100,7 @@ env HOME="$host_home" \
   PI_ENV_TEST_BWRAP_ARGS="$checkout_capture" \
   PI_ENV_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
   "${common_env[@]}" \
-  scripts/pi-bwrap -e "$repo_root/role-manager" --help
+  scripts/pi-env-bwrap -e "$repo_root/role-manager" --help
 
 test_file_exists "$checkout_capture"
 test_grep '/workspace/role-manager' "$checkout_capture"
@@ -114,7 +114,7 @@ env HOME="$host_home" \
   PI_ENV_RUNTIME=auto \
   PI_ENV_TEST_BWRAP_ARGS="$pi_env_capture" \
   PI_ENV_BWRAP_HOST_EXTRA_PATH="$custom_tools" \
-  PI_ENV_PI_ENV_BWRAP="$repo_root/scripts/pi-bwrap" \
+  PI_ENV_PI_ENV_BWRAP="$repo_root/scripts/pi-env-bwrap" \
   "${common_env[@]}" \
   ./pi-env 'prompt'
 

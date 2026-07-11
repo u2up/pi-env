@@ -31,18 +31,18 @@ fi
 
 usage() {
   cat <<'USAGE'
-pi-bwrap - run pi-coding-agent inside a rootless bubblewrap sandbox
+pi-env-bwrap - run pi-coding-agent inside a rootless bubblewrap sandbox
 
 Usage:
-  pi-bwrap [pi args...]
-  pi-bwrap -- [pi args...]
-  pi-bwrap --shell [--] [bash args...]
+  pi-env-bwrap [pi args...]
+  pi-env-bwrap -- [pi args...]
+  pi-env-bwrap --shell [--] [bash args...]
 
 Defaults when no pi args are given:
   pi --tools read,bash,edit,write,grep,find,ls --continue
 
 Shell mode enters the same sandbox but execs Bash instead of Pi. Use
-pi-env-shell for normal runtime selection; use pi-bwrap --shell only when the
+pi-env-shell for normal runtime selection; use pi-env-bwrap --shell only when the
 runtime is already selected.
 
 Security model:
@@ -90,7 +90,7 @@ Environment knobs:
   PI_ENV_BWRAP_PASS_ENV="A B,C"     Extra environment variable names to pass through
 
 To pass pi's own -h/--help, use:
-  pi-bwrap -- --help
+  pi-env-bwrap -- --help
 USAGE
 }
 
@@ -113,12 +113,12 @@ pi_host_path=""
 if [ "$shell_mode" = "0" ]; then
   pi_host_path="$(command -v pi 2>/dev/null || true)"
   if [ -z "$pi_host_path" ]; then
-    echo "pi-bwrap: pi was not found on PATH before entering the sandbox." >&2
+    echo "pi-env-bwrap: pi was not found on PATH before entering the sandbox." >&2
     echo "Install pi globally, or enter a shell that provides it, then retry." >&2
     exit 127
   fi
   if ! pi_host_path="$(realpath -e "$pi_host_path" 2>/dev/null)"; then
-    echo "pi-bwrap: resolved host pi path does not exist: $(command -v pi 2>/dev/null || true)" >&2
+    echo "pi-env-bwrap: resolved host pi path does not exist: $(command -v pi 2>/dev/null || true)" >&2
     exit 127
   fi
 fi
@@ -131,18 +131,18 @@ resolve_required_tool() {
     value="$(command -v "$fallback_name" 2>/dev/null || true)"
   fi
   if [ -z "$value" ]; then
-    echo "pi-bwrap: required host tool was not found: $fallback_name" >&2
+    echo "pi-env-bwrap: required host tool was not found: $fallback_name" >&2
     exit 127
   fi
   case "$value" in
     /*) ;;
     *)
-      echo "pi-bwrap: required host tool did not resolve to an absolute path: $fallback_name -> $value" >&2
+      echo "pi-env-bwrap: required host tool did not resolve to an absolute path: $fallback_name -> $value" >&2
       exit 127
       ;;
   esac
   if ! value="$(realpath -e "$value" 2>/dev/null)"; then
-    echo "pi-bwrap: required host tool path does not exist: $fallback_name -> ${!env_name:-$value}" >&2
+    echo "pi-env-bwrap: required host tool path does not exist: $fallback_name -> ${!env_name:-$value}" >&2
     exit 127
   fi
   printf '%s' "$value"
@@ -196,8 +196,8 @@ if [ "$host_runtime" = "1" ]; then
   for host_runtime_tool in "$pi_bwrap_bash" "$pi_bwrap_env"; do
     case "$host_runtime_tool" in
       /nix/store/*)
-        echo "pi-bwrap: host runtime requires host bash/env tools, but resolved a Nix-store tool: $host_runtime_tool" >&2
-        echo "pi-bwrap: install host runtime tools, set PI_ENV_BWRAP_BASH/PI_ENV_BWRAP_ENV to host paths, or use the Nix runtime." >&2
+        echo "pi-env-bwrap: host runtime requires host bash/env tools, but resolved a Nix-store tool: $host_runtime_tool" >&2
+        echo "pi-env-bwrap: install host runtime tools, set PI_ENV_BWRAP_BASH/PI_ENV_BWRAP_ENV to host paths, or use the Nix runtime." >&2
         exit 127
         ;;
     esac
@@ -206,15 +206,15 @@ if [ "$host_runtime" = "1" ]; then
   if [ "$shell_mode" = "0" ] && [ -n "$canonical_host_home" ]; then
     case "$pi_host_path" in
       "$canonical_host_home"|"$canonical_host_home"/*)
-        echo "pi-bwrap: host runtime resolved pi under host HOME, which is not mounted by default: $pi_host_path" >&2
-        echo "pi-bwrap: install pi under /usr/local/bin, /usr/bin, or /bin; provide a safe command dir with PI_ENV_BWRAP_HOST_EXTRA_PATH; or use --runtime nix." >&2
+        echo "pi-env-bwrap: host runtime resolved pi under host HOME, which is not mounted by default: $pi_host_path" >&2
+        echo "pi-env-bwrap: install pi under /usr/local/bin, /usr/bin, or /bin; provide a safe command dir with PI_ENV_BWRAP_HOST_EXTRA_PATH; or use --runtime nix." >&2
         exit 127
         ;;
     esac
   fi
   if [ "$shell_mode" = "0" ] && ! host_path_is_default_mounted "$pi_host_path" && ! host_path_is_under_host_extra_path "$pi_host_path"; then
-    echo "pi-bwrap: host runtime resolved pi outside default sandbox mounts: $pi_host_path" >&2
-    echo "pi-bwrap: install pi under /usr/local/bin, /usr/bin, or /bin; add its directory with PI_ENV_BWRAP_HOST_EXTRA_PATH for a read-only bind; or use --runtime nix." >&2
+    echo "pi-env-bwrap: host runtime resolved pi outside default sandbox mounts: $pi_host_path" >&2
+    echo "pi-env-bwrap: install pi under /usr/local/bin, /usr/bin, or /bin; add its directory with PI_ENV_BWRAP_HOST_EXTRA_PATH for a read-only bind; or use --runtime nix." >&2
     exit 127
   fi
 
@@ -223,14 +223,14 @@ if [ "$host_runtime" = "1" ]; then
       *'/usr/bin/env node'*)
         node_path="$(command -v node 2>/dev/null || true)"
         if [ -z "$node_path" ] || ! node_path="$(realpath -e "$node_path" 2>/dev/null)"; then
-          echo "pi-bwrap: host runtime pi launcher requires node, but node was not found on PATH." >&2
+          echo "pi-env-bwrap: host runtime pi launcher requires node, but node was not found on PATH." >&2
           exit 127
         fi
         case "$node_path" in
           /bin/*|/usr/bin/*|/usr/local/bin/*) ;;
           *)
-            echo "pi-bwrap: host runtime pi launcher requires node inside the sandbox, but node resolved outside mounted host command dirs: $node_path" >&2
-            echo "pi-bwrap: install node under /usr/local/bin, /usr/bin, or /bin, or use the Nix runtime." >&2
+            echo "pi-env-bwrap: host runtime pi launcher requires node inside the sandbox, but node resolved outside mounted host command dirs: $node_path" >&2
+            echo "pi-env-bwrap: install node under /usr/local/bin, /usr/bin, or /bin, or use the Nix runtime." >&2
             exit 127
             ;;
         esac
@@ -250,7 +250,7 @@ if [ -z "$project_root" ]; then
 fi
 project_root="$(realpath -m "$project_root")"
 if [ ! -d "$project_root" ]; then
-  echo "pi-bwrap: project root does not exist: $project_root" >&2
+  echo "pi-env-bwrap: project root does not exist: $project_root" >&2
   exit 2
 fi
 
@@ -332,7 +332,7 @@ pi_bwrap_remote_local_path() {
 }
 
 if [ "${PI_ENV_BWRAP_EPHEMERAL_HOME:-0}" = "1" ]; then
-  state_base="$(mktemp -d "${TMPDIR:-/tmp}/pi-bwrap.XXXXXX")"
+  state_base="$(mktemp -d "${TMPDIR:-/tmp}/pi-env-bwrap.XXXXXX")"
   cleanup_tmp="$state_base"
   trap 'rm -rf "$cleanup_tmp"' EXIT
 else
@@ -481,7 +481,7 @@ if [ "${PI_ENV_BWRAP_IMPORT_SESSIONS:-$import_sessions_default}" = "1" ] && [ -n
     fi
     session_bind_args=(--bind "$host_project_session_dir" "/home/pi/.pi/agent/sessions/$sandbox_session_dir_name")
   else
-    echo "pi-bwrap: warning: could not prepare host project session dir: $host_project_session_dir" >&2
+    echo "pi-env-bwrap: warning: could not prepare host project session dir: $host_project_session_dir" >&2
   fi
 fi
 
@@ -529,19 +529,19 @@ if [ -n "$coord_remote" ]; then
               coord_remote_mount_point="/workspace/.pi-env/agent-remotes"
               sandbox_coord_remote="$coord_remote_mount_point/$host_coord_remote_base"
               coord_remote_bind_args=(--dir /workspace/.pi-env --dir "$coord_remote_mount_point" --bind "$host_coord_remote_parent" "$coord_remote_mount_point")
-              echo "pi-bwrap: coordination remote parent from project config available at $coord_remote_mount_point" >&2
+              echo "pi-env-bwrap: coordination remote parent from project config available at $coord_remote_mount_point" >&2
             else
               sandbox_coord_remote="$coord_remote"
-              echo "pi-bwrap: warning: external coordination_remote from project config is not an existing bare Git repo and will not be mounted: $coord_remote" >&2
+              echo "pi-env-bwrap: warning: external coordination_remote from project config is not an existing bare Git repo and will not be mounted: $coord_remote" >&2
             fi
           elif [ -d "$host_coord_remote_parent" ] && [ "$host_coord_remote_parent" != "/" ]; then
             coord_remote_mount_point="/agent-remotes"
             sandbox_coord_remote="$coord_remote_mount_point/$host_coord_remote_base"
             coord_remote_bind_args=(--dir "$coord_remote_mount_point" --bind "$host_coord_remote_parent" "$coord_remote_mount_point")
-            echo "pi-bwrap: coordination remote parent available at $coord_remote_mount_point" >&2
+            echo "pi-env-bwrap: coordination remote parent available at $coord_remote_mount_point" >&2
           else
             sandbox_coord_remote="$coord_remote"
-            echo "pi-bwrap: warning: local PI_ENV_COORD_REMOTE outside project cannot be mounted: $coord_remote" >&2
+            echo "pi-env-bwrap: warning: local PI_ENV_COORD_REMOTE outside project cannot be mounted: $coord_remote" >&2
           fi
         fi
         ;;
@@ -592,11 +592,11 @@ if [ -n "$host_coord_dir" ]; then
     esac
 
     if [ -d "$host_coord_dir/.git" ] || [ -f "$host_coord_dir/AGENTS.md" ]; then
-      echo "pi-bwrap: coordination repo available at $sandbox_coord_dir" >&2
-      echo "pi-bwrap: pull/rebase before changing shared state" >&2
+      echo "pi-env-bwrap: coordination repo available at $sandbox_coord_dir" >&2
+      echo "pi-env-bwrap: pull/rebase before changing shared state" >&2
     fi
   elif [ "$coord_dir_explicit" = "1" ]; then
-    echo "pi-bwrap: warning: coordination dir not found: $host_coord_dir" >&2
+    echo "pi-env-bwrap: warning: coordination dir not found: $host_coord_dir" >&2
   fi
 fi
 
@@ -749,12 +749,12 @@ if [ -n "${PI_ENV_BWRAP_EXTRA_PATH:-}" ]; then
     case "$extra_path_entry" in
       /*) ;;
       *)
-        echo "pi-bwrap: unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not absolute: $extra_path_entry" >&2
+        echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not absolute: $extra_path_entry" >&2
         exit 2
         ;;
     esac
     if [ ! -d "$extra_path_entry" ]; then
-      echo "pi-bwrap: unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not an existing directory: $extra_path_entry" >&2
+      echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not an existing directory: $extra_path_entry" >&2
       exit 2
     fi
     canonical_extra_path="$(realpath "$extra_path_entry")"
@@ -763,7 +763,7 @@ if [ -n "${PI_ENV_BWRAP_EXTRA_PATH:-}" ]; then
         append_validated_extra_path "$canonical_extra_path"
         ;;
       *)
-        echo "pi-bwrap: unsafe PI_ENV_BWRAP_EXTRA_PATH entry outside /nix/store: $extra_path_entry -> $canonical_extra_path" >&2
+        echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_EXTRA_PATH entry outside /nix/store: $extra_path_entry -> $canonical_extra_path" >&2
         exit 2
         ;;
     esac
@@ -774,7 +774,7 @@ fi
 
 if [ -n "${PI_ENV_BWRAP_HOST_EXTRA_PATH:-}" ]; then
   if [ "$host_runtime" != "1" ]; then
-    echo "pi-bwrap: PI_ENV_BWRAP_HOST_EXTRA_PATH is only supported in host runtime mode." >&2
+    echo "pi-env-bwrap: PI_ENV_BWRAP_HOST_EXTRA_PATH is only supported in host runtime mode." >&2
     exit 2
   fi
   old_ifs="$IFS"
@@ -785,12 +785,12 @@ if [ -n "${PI_ENV_BWRAP_HOST_EXTRA_PATH:-}" ]; then
     case "$host_extra_path_entry" in
       /*) ;;
       *)
-        echo "pi-bwrap: unsafe PI_ENV_BWRAP_HOST_EXTRA_PATH entry is not absolute: $host_extra_path_entry" >&2
+        echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_HOST_EXTRA_PATH entry is not absolute: $host_extra_path_entry" >&2
         exit 2
         ;;
     esac
     if [ ! -d "$host_extra_path_entry" ]; then
-      echo "pi-bwrap: unsafe PI_ENV_BWRAP_HOST_EXTRA_PATH entry is not an existing directory: $host_extra_path_entry" >&2
+      echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_HOST_EXTRA_PATH entry is not an existing directory: $host_extra_path_entry" >&2
       exit 2
     fi
     canonical_host_extra_path="$(realpath -e "$host_extra_path_entry")"
@@ -798,7 +798,7 @@ if [ -n "${PI_ENV_BWRAP_HOST_EXTRA_PATH:-}" ]; then
       canonical_host_home="$(realpath -m "$host_home")"
       case "$canonical_host_extra_path" in
         "$canonical_host_home"|"$canonical_host_home"/*)
-          echo "pi-bwrap: unsafe PI_ENV_BWRAP_HOST_EXTRA_PATH entry under host HOME is not mounted by default: $host_extra_path_entry -> $canonical_host_extra_path" >&2
+          echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_HOST_EXTRA_PATH entry under host HOME is not mounted by default: $host_extra_path_entry -> $canonical_host_extra_path" >&2
           exit 2
           ;;
       esac
@@ -812,7 +812,7 @@ fi
 
 if [ -n "${PI_ENV_BWRAP_HOST_RO_PATHS:-}" ]; then
   if [ "$host_runtime" != "1" ]; then
-    echo "pi-bwrap: PI_ENV_BWRAP_HOST_RO_PATHS is only supported in host runtime mode." >&2
+    echo "pi-env-bwrap: PI_ENV_BWRAP_HOST_RO_PATHS is only supported in host runtime mode." >&2
     exit 2
   fi
   old_ifs="$IFS"
@@ -823,18 +823,18 @@ if [ -n "${PI_ENV_BWRAP_HOST_RO_PATHS:-}" ]; then
     case "$host_ro_path_entry" in
       /*) ;;
       *)
-        echo "pi-bwrap: unsafe PI_ENV_BWRAP_HOST_RO_PATHS entry is not absolute: $host_ro_path_entry" >&2
+        echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_HOST_RO_PATHS entry is not absolute: $host_ro_path_entry" >&2
         exit 2
         ;;
     esac
     if [ ! -e "$host_ro_path_entry" ]; then
-      echo "pi-bwrap: unsafe PI_ENV_BWRAP_HOST_RO_PATHS entry does not exist: $host_ro_path_entry" >&2
+      echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_HOST_RO_PATHS entry does not exist: $host_ro_path_entry" >&2
       exit 2
     fi
     canonical_host_ro_path="$(realpath -e "$host_ro_path_entry")"
     case "$canonical_host_ro_path" in
       /|/home|/tmp|/var|/usr|/usr/local)
-        echo "pi-bwrap: unsafe PI_ENV_BWRAP_HOST_RO_PATHS entry is too broad: $host_ro_path_entry -> $canonical_host_ro_path" >&2
+        echo "pi-env-bwrap: unsafe PI_ENV_BWRAP_HOST_RO_PATHS entry is too broad: $host_ro_path_entry -> $canonical_host_ro_path" >&2
         exit 2
         ;;
     esac

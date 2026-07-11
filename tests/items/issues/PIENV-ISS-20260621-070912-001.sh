@@ -4,8 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 cd "$repo_root"
 
-# This item changed the pi-bwrap root-level /workspace/agent-remotes
-# compatibility behavior. The exercised coverage lives in the pi-bwrap item
+# This item changed the pi-env-bwrap root-level /workspace/agent-remotes
+# compatibility behavior. The exercised coverage lives in the pi-env-bwrap item
 # suites that were cited by review and verification for this item; keep this
 # item-matched entry point so coordination lint can require direct evidence.
 ./tests/items/issues/PIENV-ISS-20260618-174924-001.sh

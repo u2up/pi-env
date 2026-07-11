@@ -12,7 +12,7 @@ flake=flake.nix
 test_grep 'extraPackagePath = pkgs.lib.makeBinPath extraPackages;' "$flake"
 test_grep 'export PI_ENV_BWRAP_EXTRA_PATH="${extraPackagePath}:$PI_ENV_BWRAP_EXTRA_PATH"' "$flake"
 
-# pi-bwrap validates the explicit extra path input before bwrap starts.
+# pi-env-bwrap validates the explicit extra path input before bwrap starts.
 test_grep 'PI_ENV_BWRAP_EXTRA_PATH' "$flake"
 test_grep 'unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not absolute' "$flake"
 test_grep 'unsafe PI_ENV_BWRAP_EXTRA_PATH entry is not an existing directory' "$flake"
@@ -47,12 +47,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Build a runnable pi-bwrap harness directly from the flake source. This keeps
+# Build a runnable pi-env-bwrap harness directly from the flake source. This keeps
 # the test executable in environments where the Nix CLI is unavailable while
 # still exercising the launcher shell code with a fake bwrap boundary.
-script="$tmpdir/pi-bwrap"
+script="$tmpdir/pi-env-bwrap"
 awk '
-  /pkgs\.writeShellScriptBin "pi-bwrap"/ { in_script = 1; next }
+  /pkgs\.writeShellScriptBin "pi-env-bwrap"/ { in_script = 1; next }
   in_script && index($0, sprintf("        %c%c;", 39, 39)) == 1 { exit }
   in_script {
     sub(/^          /, "")

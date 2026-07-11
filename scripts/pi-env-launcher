@@ -12,10 +12,10 @@ Usage:
   pi-env --help
   pi-env-shell --help
 
-Default pi-env mode starts Pi through pi-bwrap with the standard tools,
+Default pi-env mode starts Pi through pi-env-bwrap with the standard tools,
 --continue, and role-manager auto-loading policy.
-Raw pi-env mode delegates to pi-bwrap for fully custom Pi arguments.
-pi-env-shell selects the same runtime as pi-env, then asks pi-bwrap to enter
+Raw pi-env mode delegates to pi-env-bwrap for fully custom Pi arguments.
+pi-env-shell selects the same runtime as pi-env, then asks pi-env-bwrap to enter
 sandbox shell mode instead of starting Pi.
 
 Runtime modes:
@@ -158,7 +158,7 @@ exec_pi_bwrap_default() {
 }
 
 exec_host_runtime() {
-  local host_pi_bwrap="$script_dir/pi-bwrap"
+  local host_pi_bwrap="$script_dir/pi-env-bwrap"
   export PI_ENV_HOST_RUNTIME=1
   unset PI_ENV_RUNTIME_PATH
   export PI_ENV_PI_ENV_BWRAP="$host_pi_bwrap"
@@ -198,7 +198,7 @@ exec_nix_runtime() {
 }
 
 exec_auto_runtime() {
-  local pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-pi-bwrap}"
+  local pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-pi-env-bwrap}"
   if [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ] || command -v "$pi_bwrap" >/dev/null 2>&1; then
     if [ "$shell_mode" = "1" ]; then
       exec "$pi_bwrap" --shell -- "${args[@]}"

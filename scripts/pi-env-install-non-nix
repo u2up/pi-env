@@ -5,7 +5,7 @@ command_names=(
   pienv
   pi-env
   pi-env-shell
-  pi-bwrap
+  pi-env-bwrap
   bootstrap-coordination
   agent-coord-init
   agent-coord-clone
@@ -25,23 +25,27 @@ command_names=(
   agent-coord-generate-requirements
   agent-coord-generate-requirements-coverage
   agent-coord-upgrade-rules
-  pi-serial-roles
+  pi-env-serial-roles
+  pi-env-install-non-nix
   pi-env-uninstall
 )
 
 removed_command_names=(
   pi-start
+  pi-bwrap
+  pi-serial-roles
+  install-non-nix
 )
 
 usage() {
   cat <<'USAGE'
-install-non-nix - install pi-env for host-runtime use without Nix
+pi-env-install-non-nix - install pi-env for host-runtime use without Nix
 
 Usage:
-  scripts/install-non-nix [--prefix PREFIX] [--check-deps]
-  scripts/install-non-nix [--ref REF] [--repo OWNER/REPO] [--artifact-url URL]
-  scripts/install-non-nix --uninstall [--prefix PREFIX]
-  scripts/install-non-nix --help
+  scripts/pi-env-install-non-nix [--prefix PREFIX] [--check-deps]
+  scripts/pi-env-install-non-nix [--ref REF] [--repo OWNER/REPO] [--artifact-url URL]
+  scripts/pi-env-install-non-nix --uninstall [--prefix PREFIX]
+  scripts/pi-env-install-non-nix --help
 
 Options:
   --prefix PREFIX      Install prefix; default: $PREFIX or ~/.local
@@ -71,7 +75,7 @@ temp_source_dir=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --prefix)
-      [ "$#" -ge 2 ] || { echo "install-non-nix: --prefix requires a value" >&2; exit 2; }
+      [ "$#" -ge 2 ] || { echo "pi-env-install-non-nix: --prefix requires a value" >&2; exit 2; }
       prefix="$2"
       shift 2
       ;;
@@ -84,7 +88,7 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --ref)
-      [ "$#" -ge 2 ] || { echo "install-non-nix: --ref requires a value" >&2; exit 2; }
+      [ "$#" -ge 2 ] || { echo "pi-env-install-non-nix: --ref requires a value" >&2; exit 2; }
       remote_ref="$2"
       shift 2
       ;;
@@ -93,7 +97,7 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --repo)
-      [ "$#" -ge 2 ] || { echo "install-non-nix: --repo requires a value" >&2; exit 2; }
+      [ "$#" -ge 2 ] || { echo "pi-env-install-non-nix: --repo requires a value" >&2; exit 2; }
       remote_repo="$2"
       shift 2
       ;;
@@ -102,7 +106,7 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --artifact-url)
-      [ "$#" -ge 2 ] || { echo "install-non-nix: --artifact-url requires a value" >&2; exit 2; }
+      [ "$#" -ge 2 ] || { echo "pi-env-install-non-nix: --artifact-url requires a value" >&2; exit 2; }
       artifact_url="$2"
       shift 2
       ;;
@@ -119,7 +123,7 @@ while [ "$#" -gt 0 ]; do
       exit 0
       ;;
     *)
-      echo "install-non-nix: unknown argument: $1" >&2
+      echo "pi-env-install-non-nix: unknown argument: $1" >&2
       exit 2
       ;;
   esac
@@ -169,8 +173,8 @@ find_unpacked_source_root() {
       return 0
     fi
   done < <(find "$unpack_dir" -mindepth 1 -maxdepth 2 -type d -print | sort)
-  echo "install-non-nix: downloaded archive does not contain pi-env release/source layout" >&2
-  echo "install-non-nix: expected scripts/, role-manager/, and pi-skill-templates/" >&2
+  echo "pi-env-install-non-nix: downloaded archive does not contain pi-env release/source layout" >&2
+  echo "pi-env-install-non-nix: expected scripts/, role-manager/, and pi-skill-templates/" >&2
   return 1
 }
 
@@ -178,12 +182,12 @@ check_host_dependencies() {
   local missing=0 dep
   for dep in bash bwrap git jq node pi env realpath sed grep awk find sort mkdir cp rm chmod ln dirname basename mktemp tar; do
     if ! command -v "$dep" >/dev/null 2>&1; then
-      echo "install-non-nix: missing host dependency: $dep" >&2
+      echo "pi-env-install-non-nix: missing host dependency: $dep" >&2
       missing=1
     fi
   done
   if [ "$missing" = "1" ]; then
-    echo "install-non-nix: install the missing host tools, or use the Nix runtime for pinned tools." >&2
+    echo "pi-env-install-non-nix: install the missing host tools, or use the Nix runtime for pinned tools." >&2
     return 127
   fi
 }
@@ -220,14 +224,14 @@ remove_obsolete_commands() {
 
 run_uninstall() {
   if [ ! -f "$manifest" ]; then
-    echo "install-non-nix: manifest not found: $manifest" >&2
+    echo "pi-env-install-non-nix: manifest not found: $manifest" >&2
     exit 1
   fi
   while IFS= read -r path; do
     [ -n "$path" ] || continue
     case "$path" in
       "$prefix"/*) ;;
-      *) echo "install-non-nix: refusing to remove path outside prefix: $path" >&2; exit 1 ;;
+      *) echo "pi-env-install-non-nix: refusing to remove path outside prefix: $path" >&2; exit 1 ;;
     esac
     if [ -d "$path" ]; then
       rmdir "$path" 2>/dev/null || true
@@ -263,7 +267,7 @@ export PATH="\$pi_env_bin_dir:\${PATH:-}"
 export PI_ENV_COORD_LIB="\${PI_ENV_COORD_LIB:-\$pi_env_share_dir/scripts/agent-coord-lib.sh}"
 export PI_ENV_COORD_TEMPLATE_DIR="\${PI_ENV_COORD_TEMPLATE_DIR:-\$pi_env_share_dir/pi-skill-templates/agent-coordination}"
 export PI_ENV_ROLE_MANAGER_PACKAGE="\${PI_ENV_ROLE_MANAGER_PACKAGE:-\$pi_env_share_dir/role-manager}"
-export PI_ENV_PI_ENV_BWRAP="\${PI_ENV_PI_ENV_BWRAP:-\$pi_env_bin_dir/pi-bwrap}"
+export PI_ENV_PI_ENV_BWRAP="\${PI_ENV_PI_ENV_BWRAP:-\$pi_env_bin_dir/pi-env-bwrap}"
 exec /usr/bin/env bash "\$pi_env_share_dir/scripts/\$pi_env_script_target" "\$@"
 EOF
   chmod +x "$bin_dir/$name"
@@ -278,7 +282,7 @@ install_uninstall_wrapper() {
 set -euo pipefail
 pi_env_prefix=$prefix_q
 pi_env_share_dir=$share_dir_q
-exec /usr/bin/env bash "\$pi_env_share_dir/scripts/install-non-nix" --uninstall --prefix "\$pi_env_prefix" "\$@"
+exec /usr/bin/env bash "\$pi_env_share_dir/scripts/pi-env-install-non-nix" --uninstall --prefix "\$pi_env_prefix" "\$@"
 EOF
   chmod +x "$bin_dir/pi-env-uninstall"
 }
@@ -293,12 +297,12 @@ remote_archive_url() {
     return 0
   fi
   if [ -z "$remote_ref" ]; then
-    echo "install-non-nix: remote install requires --ref or --artifact-url" >&2
+    echo "pi-env-install-non-nix: remote install requires --ref or --artifact-url" >&2
     return 1
   fi
   case "$remote_repo" in
     */*) ;;
-    *) echo "install-non-nix: --repo must use OWNER/REPO form" >&2; return 2 ;;
+    *) echo "pi-env-install-non-nix: --repo must use OWNER/REPO form" >&2; return 2 ;;
   esac
   printf 'https://codeload.github.com/%s/tar.gz/%s\n' "$remote_repo" "$remote_ref"
 }
@@ -314,7 +318,7 @@ copy_or_download() {
       elif command -v wget >/dev/null 2>&1; then
         wget -q -O "$destination" "$url"
       else
-        echo "install-non-nix: remote install requires curl or wget" >&2
+        echo "pi-env-install-non-nix: remote install requires curl or wget" >&2
         return 127
       fi
       ;;
@@ -369,9 +373,9 @@ elif [ -n "$remote_ref" ] || [ -n "$artifact_url" ]; then
   source_url="$(remote_archive_url)"
   fetch_source_root
 else
-  echo "install-non-nix: could not find pi-env release/source layout" >&2
-  echo "install-non-nix: expected scripts/, role-manager/, and pi-skill-templates/" >&2
-  echo "install-non-nix: pass --ref REF or --artifact-url URL to bootstrap from an archive" >&2
+  echo "pi-env-install-non-nix: could not find pi-env release/source layout" >&2
+  echo "pi-env-install-non-nix: expected scripts/, role-manager/, and pi-skill-templates/" >&2
+  echo "pi-env-install-non-nix: pass --ref REF or --artifact-url URL to bootstrap from an archive" >&2
   exit 1
 fi
 mkdir -p "$bin_dir" "$share_dir" "$completion_dir"
@@ -382,11 +386,11 @@ cp -R "$source_root/role-manager" "$share_dir/role-manager"
 cp -R "$source_root/pi-skill-templates" "$share_dir/pi-skill-templates"
 chmod +x "$share_dir/scripts"/agent-coord-* \
   "$share_dir/scripts/bootstrap-coordination" \
-  "$share_dir/scripts/pi-bwrap" \
+  "$share_dir/scripts/pi-env-bwrap" \
   "$share_dir/scripts/pi-env-launcher" \
   "$share_dir/scripts/pienv" \
-  "$share_dir/scripts/pi-serial-roles" \
-  "$share_dir/scripts/install-non-nix"
+  "$share_dir/scripts/pi-env-serial-roles" \
+  "$share_dir/scripts/pi-env-install-non-nix"
 /usr/bin/env bash "$share_dir/scripts/pienv" completion bash > "$completion_dir/pienv"
 
 for name in "${command_names[@]}"; do

@@ -29,9 +29,9 @@ fi
 
 if grep -RIn --exclude-dir=.git --exclude='PIENV-ISS-20260710-184852-001.sh' \
   -E '(^|[^[:alnum:]_-])pi-start([^[:alnum:]_-]|$)' \
-  README.md role-manager designs examples pi-env pi-env-shell scripts/install-non-nix flake.nix tests/*.sh \
+  README.md role-manager designs examples pi-env pi-env-shell scripts/pi-env-install-non-nix flake.nix tests/*.sh \
   tests/items/issues 2>/dev/null \
-  | grep -Ev 'intentionally removes|scripts/install-non-nix:[0-9]+:  pi-start|removed_command_names|command -v pi-start|stale legacy wrapper|stale pi-start wrapper|\[ ! -e .*pi-start|pi-start should not be installed|should be removed|still exposes|still installs|survived reinstall|left stale|pi-start removal tests passed|leaked into pi-core|leaked into pi-runtime|PIENV-ISS-20260710-184849-001' >/tmp/pi-env-stale-pi-start.$$; then
+  | grep -Ev 'intentionally removes|scripts/pi-env-install-non-nix:[0-9]+:  pi-start|removed_command_names|command -v pi-start|stale legacy wrapper|stale pi-start wrapper|\[ ! -e .*pi-start|pi-start should not be installed|should be removed|still exposes|still installs|survived reinstall|left stale|pi-start removal tests passed|leaked into pi-core|leaked into pi-runtime|PIENV-ISS-20260710-184849-001' >/tmp/pi-env-stale-pi-start.$$; then
   cat /tmp/pi-env-stale-pi-start.$$ >&2
   rm -f /tmp/pi-env-stale-pi-start.$$
   test_fail 'stale user-facing pi-start guidance remains'

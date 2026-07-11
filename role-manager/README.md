@@ -42,7 +42,7 @@ use an installed-package workflow and want to avoid also passing the per-run
 extension flag, keep using the opt-out variable:
 
 ```bash
-pi-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
+pi-env-bwrap install -l "$PI_ENV_ROLE_MANAGER_PACKAGE"
 PI_ENV_ROLE_MANAGER_AUTO=0 pi-env
 ```
 

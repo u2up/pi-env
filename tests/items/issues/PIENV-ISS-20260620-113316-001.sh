@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
-serial_script="$repo_root/scripts/pi-serial-roles"
+serial_script="$repo_root/scripts/pi-env-serial-roles"
 role_manager="$repo_root/role-manager"
 
 export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
@@ -48,16 +48,16 @@ assert_clean_git() {
 
 help_out="$tmp/help.out"
 "$serial_script" --help >"$help_out"
-assert_file_contains '.pi-env/locks/pi-serial-roles.lock' "$help_out"
+assert_file_contains '.pi-env/locks/pi-env-serial-roles.lock' "$help_out"
 if grep -F 'Git metadata directory' "$help_out" >/dev/null; then
   fail 'help still describes the default lock under Git metadata'
 fi
 
-assert_file_contains '.pi-env/locks/pi-serial-roles.lock' \
+assert_file_contains '.pi-env/locks/pi-env-serial-roles.lock' \
   "$repo_root/designs/serial-role-automation.md"
 assert_file_contains '.pi-env/logs' \
   "$repo_root/designs/serial-role-automation.md"
-assert_file_contains '.pi-env/locks/pi-serial-roles.lock' "$repo_root/README.md"
+assert_file_contains '.pi-env/locks/pi-env-serial-roles.lock' "$repo_root/README.md"
 assert_file_contains '.pi-env/logs' "$repo_root/README.md"
 
 project="$tmp/default-project"
@@ -71,7 +71,7 @@ git -C "$project" init -q
     --agent-id agent-a >/dev/null
 )
 coord="$project/.pi-env/coordination"
-default_lock="$project/.pi-env/locks/pi-serial-roles.lock"
+default_lock="$project/.pi-env/locks/pi-env-serial-roles.lock"
 assert_no_path "$project/.pi-env/locks"
 coord_head_before="$(git -C "$coord" rev-parse HEAD)"
 
@@ -88,8 +88,8 @@ assert_file_contains 'selected role=none item=none' "$serial_out"
 [ -d "$project/.pi-env/locks" ] \
   || fail 'default run did not create .pi-env/locks'
 assert_no_path "$default_lock"
-assert_no_path "$project/.pi-serial-roles.lock"
-assert_no_path "$project/pi-serial-roles.lock"
+assert_no_path "$project/.pi-env-serial-roles.lock"
+assert_no_path "$project/pi-env-serial-roles.lock"
 [ "$(git -C "$coord" rev-parse HEAD)" = "$coord_head_before" ] \
   || fail 'default lock run changed coordination HEAD'
 assert_clean_git "$coord" 'coordination'
@@ -142,8 +142,8 @@ assert_file_contains 'selected role=none item=none' "$legacy_out"
   || fail 'legacy run did not create .pi-env/locks'
 grep -Fx '/.pi-env/' "$legacy_project/.git/info/exclude" >/dev/null \
   || fail 'serial run did not exclude the .pi-env operational root'
-assert_no_path "$legacy_project/.pi-serial-roles.lock"
-assert_no_path "$legacy_project/pi-serial-roles.lock"
+assert_no_path "$legacy_project/.pi-env-serial-roles.lock"
+assert_no_path "$legacy_project/pi-env-serial-roles.lock"
 [ "$(git -C "$legacy_coord" rev-parse HEAD)" = "$legacy_head_before" ] \
   || fail 'legacy run changed coordination HEAD'
 assert_clean_git "$legacy_coord" 'legacy coordination'

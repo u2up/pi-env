@@ -12,10 +12,10 @@ fi
 
 usage() {
   cat <<'USAGE'
-pi-serial-roles - run serial developer/reviewer/tester Pi role jobs
+pi-env-serial-roles - run serial developer/reviewer/tester Pi role jobs
 
 Usage:
-  pi-serial-roles [options]
+  pi-env-serial-roles [options]
 
 Options:
   --project-root DIR      Project checkout to operate on; default: Git root or $PWD
@@ -38,7 +38,7 @@ Options:
                           structured event stream, and none runs a
                           non-interactive print job
   --lock-file PATH        Local lock path; default:
-                          .pi-env/locks/pi-serial-roles.lock relative to
+                          .pi-env/locks/pi-env-serial-roles.lock relative to
                           the project root
   --pi-env COMMAND        pi-env launcher; default: pi-env on PATH or this checkout
   --role-manager PATH     Role-manager package/path for raw Pi jobs; default:
@@ -58,11 +58,11 @@ USAGE
 }
 
 note() {
-  printf 'pi-serial-roles: %s\n' "$*" >&2
+  printf 'pi-env-serial-roles: %s\n' "$*" >&2
 }
 
 die() {
-  printf 'pi-serial-roles: %s\n' "$*" >&2
+  printf 'pi-env-serial-roles: %s\n' "$*" >&2
   exit 1
 }
 
@@ -322,9 +322,9 @@ role_manager_arg_for_pi() {
       printf '/workspace%s\n' "${candidate#"$project_root"}"
       ;;
     *)
-      # pi-bwrap rewrites and read-only binds external package paths passed
+      # pi-env-bwrap rewrites and read-only binds external package paths passed
       # with -e/--package.  Allow installed non-Nix role-manager packages here
-      # instead of rejecting them before pi-bwrap can make them available.
+      # instead of rejecting them before pi-env-bwrap can make them available.
       printf '%s\n' "$candidate"
       ;;
   esac
@@ -382,7 +382,7 @@ ensure_clean_git() {
   label="$2"
   status="$(git_worktree_status "$dir" "$label")"
   if [ -n "$status" ]; then
-    printf 'pi-serial-roles: unexpected dirty %s working tree: %s\n' "$label" "$dir" >&2
+    printf 'pi-env-serial-roles: unexpected dirty %s working tree: %s\n' "$label" "$dir" >&2
     printf '%s\n' "$status" >&2
     exit 1
   fi
@@ -478,7 +478,7 @@ requested_issue_file_in_coord() {
     die "requested issue not found: $requested_id"
   fi
   if [ "$match_count" != "1" ]; then
-    printf 'pi-serial-roles: requested issue ID is ambiguous: %s\n%s' \
+    printf 'pi-env-serial-roles: requested issue ID is ambiguous: %s\n%s' \
       "$requested_id" "$matches" >&2
     exit 1
   fi
@@ -952,7 +952,7 @@ esac
 if [ -n "$lock_file_opt" ]; then
   lock_file="$(resolve_relative_to_project "$lock_file_opt" "$project_root")"
 else
-  lock_file="$(realpath -m "$project_root/.pi-env/locks/pi-serial-roles.lock")"
+  lock_file="$(realpath -m "$project_root/.pi-env/locks/pi-env-serial-roles.lock")"
 fi
 
 (

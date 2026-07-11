@@ -8,7 +8,7 @@ cd "$repo_root"
 export PI_ENV_COORD_LIB="$repo_root/scripts/agent-coord-lib.sh"
 export PATH="$repo_root/scripts:$PATH"
 
-serial_script="$repo_root/scripts/pi-serial-roles"
+serial_script="$repo_root/scripts/pi-env-serial-roles"
 role_manager="$repo_root/role-manager"
 
 tmp="$(mktemp -d)"

@@ -36,36 +36,36 @@ run_host_shell() {
 
 run_host_shell
 if grep -qx -- '--tools' "$fake_root/host.trace" || grep -qx -- '--continue' "$fake_root/host.trace"; then
-  echo "pi-env-shell --runtime host must delegate to pi-bwrap shell mode" >&2
+  echo "pi-env-shell --runtime host must delegate to pi-env-bwrap shell mode" >&2
   exit 1
 fi
 tail -n 2 "$fake_root/host.trace" | grep -Fx -- '-lc' >/dev/null
 tail -n 1 "$fake_root/host.trace" | grep -Fx -- 'printf host-shell' >/dev/null
 
-cat >"$fake_root/fake-pi-bwrap" <<'FAKE_PI_ENV_BWRAP'
+cat >"$fake_root/fake-pi-env-bwrap" <<'FAKE_PI_ENV_BWRAP'
 #!/usr/bin/env bash
 : "${PI_ENV_TEST_LAUNCHER_TRACE:?}"
-printf 'pi-bwrap\n' >"$PI_ENV_TEST_LAUNCHER_TRACE"
+printf 'pi-env-bwrap\n' >"$PI_ENV_TEST_LAUNCHER_TRACE"
 printf '%s\n' "$@" >>"$PI_ENV_TEST_LAUNCHER_TRACE"
 FAKE_PI_ENV_BWRAP
-chmod +x "$fake_root/fake-pi-bwrap"
+chmod +x "$fake_root/fake-pi-env-bwrap"
 
-PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-bwrap" \
+PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-env-bwrap" \
 PI_ENV_TEST_LAUNCHER_TRACE="$fake_root/wired-nix.trace" \
 ./pi-env-shell --runtime nix -- -lc 'printf nix-shell'
 mapfile -t wired_nix <"$fake_root/wired-nix.trace"
-[ "${wired_nix[0]}" = "pi-bwrap" ]
+[ "${wired_nix[0]}" = "pi-env-bwrap" ]
 [ "${wired_nix[1]}" = "--shell" ]
 [ "${wired_nix[2]}" = "--" ]
 [ "${wired_nix[3]}" = "-lc" ]
 [ "${wired_nix[4]}" = "printf nix-shell" ]
 
 PATH="$fake_root:$PATH" \
-PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-bwrap" \
+PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-env-bwrap" \
 PI_ENV_TEST_LAUNCHER_TRACE="$fake_root/auto.trace" \
 ./pi-env-shell --runtime auto -- -i
 mapfile -t auto_trace <"$fake_root/auto.trace"
-[ "${auto_trace[0]}" = "pi-bwrap" ]
+[ "${auto_trace[0]}" = "pi-env-bwrap" ]
 [ "${auto_trace[1]}" = "--shell" ]
 [ "${auto_trace[2]}" = "--" ]
 [ "${auto_trace[3]}" = "-i" ]
@@ -99,7 +99,7 @@ import { join } from "node:path";
 
 const root = process.env.REPO_ROOT;
 const flake = readFileSync(join(root, "flake.nix"), "utf8");
-const install = readFileSync(join(root, "scripts/install-non-nix"), "utf8");
+const install = readFileSync(join(root, "scripts/pi-env-install-non-nix"), "utf8");
 assert.match(flake, /pi-env-shell = piEnvShell;/);
 assert.match(flake, /program = "\$\{piEnvShell\}\/bin\/pi-env-shell";/);
 assert.match(flake, /command -v pi-env-shell >\/dev\/null/);

@@ -25,14 +25,14 @@ STUB
 }
 
 for name in \
-  pi-env pi-env-shell pi-bwrap bootstrap-coordination \
+  pi-env pi-env-shell pi-env-bwrap bootstrap-coordination \
   agent-coord-init agent-coord-clone agent-coord-status agent-coord-list \
   agent-coord-cat agent-coord-new agent-coord-claim agent-coord-done \
   agent-coord-review agent-coord-verify agent-coord-close agent-coord-pull \
   agent-coord-push agent-coord-lint agent-coord-repo \
   agent-coord-upgrade-rules agent-coord-generate-requirements \
-  agent-coord-generate-requirements-coverage pi-serial-roles \
-  install-non-nix pi-env-uninstall; do
+  agent-coord-generate-requirements-coverage pi-env-serial-roles \
+  pi-env-install-non-nix pi-env-uninstall; do
   make_stub "$name"
 done
 
@@ -57,19 +57,19 @@ run_case $'cmd=pi-env\narg=--first' -- --first
 run_case $'cmd=pi-env\narg=--foo' run --foo
 run_case $'cmd=pi-env\narg=--raw\narg=--\narg=run' raw -- run
 run_case $'cmd=pi-env-shell\narg=--runtime\narg=nix' shell --runtime nix
-run_case $'cmd=pi-bwrap\narg=--continue' sandbox --continue
-run_case $'cmd=pi-bwrap\narg=--shell\narg=--\narg=-l' sandbox shell -- -l
+run_case $'cmd=pi-env-bwrap\narg=--continue' sandbox --continue
+run_case $'cmd=pi-env-bwrap\narg=--shell\narg=--\narg=-l' sandbox shell -- -l
 run_case $'cmd=bootstrap-coordination\narg=--help' coord bootstrap --help
 run_case $'cmd=agent-coord-status\narg=--repo-id\narg=pi-env' coord status --repo-id pi-env
 run_case $'cmd=agent-coord-cat\narg=ITEM-1' coord show ITEM-1
 run_case $'cmd=agent-coord-upgrade-rules\narg=--check' coord rules upgrade --check
 run_case $'cmd=agent-coord-generate-requirements\narg=--repo-id\narg=pi-env' coord requirements generate --repo-id pi-env
 run_case $'cmd=agent-coord-generate-requirements-coverage' coord requirements coverage
-run_case $'cmd=pi-serial-roles\narg=--role\narg=developer' roles serial --role developer
-run_case $'cmd=install-non-nix\narg=--prefix\narg=/tmp/pienv' install --prefix /tmp/pienv
+run_case $'cmd=pi-env-serial-roles\narg=--role\narg=developer' roles serial --role developer
+run_case $'cmd=pi-env-install-non-nix\narg=--prefix\narg=/tmp/pienv' install --prefix /tmp/pienv
 run_case $'cmd=pi-env-uninstall\narg=--prefix\narg=/tmp/pienv' uninstall --prefix /tmp/pienv
 rm "$tmp_dir/bin/pi-env-uninstall"
-run_case $'cmd=install-non-nix\narg=--uninstall\narg=--prefix\narg=/tmp/pienv' uninstall --prefix /tmp/pienv
+run_case $'cmd=pi-env-install-non-nix\narg=--uninstall\narg=--prefix\narg=/tmp/pienv' uninstall --prefix /tmp/pienv
 
 completion_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" completion bash)"
 case "$completion_output" in

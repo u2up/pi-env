@@ -34,7 +34,7 @@ assert.ok(existsSync(join(packageRoot, "lib", "role-loader.mjs")));
 assert.ok(existsSync(join(packageRoot, "roles", "architect.md")));
 
 const flake = readFileSync(join(repoRoot, "flake.nix"), "utf8");
-const piBwrap = readFileSync(join(repoRoot, "scripts", "pi-bwrap"), "utf8");
+const piBwrap = readFileSync(join(repoRoot, "scripts", "pi-env-bwrap"), "utf8");
 assert.match(flake, /mkRoleManagerPackage/);
 assert.match(flake, /pi-role-manager = roleManagerPackage/);
 assert.match(flake, /PI_ENV_ROLE_MANAGER_PACKAGE/);

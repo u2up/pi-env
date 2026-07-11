@@ -14,18 +14,18 @@ test_grep 'pi-env-shell = piEnvShell;' flake.nix
 if grep -Eq 'mkPiStart|PI_ENV_PI_START|pi-start = piStart|program = "\$\{piStart\}/bin/pi-start"' flake.nix; then
   test_fail 'flake still exposes pi-start wiring'
 fi
-if awk '/^command_names=\(/ { in_commands=1; next } in_commands && /^\)/ { in_commands=0 } in_commands { print }' scripts/install-non-nix | grep -Fx '  pi-start' >/dev/null 2>&1 || \
-    grep -q 'PI_ENV_PI_START' scripts/install-non-nix; then
+if awk '/^command_names=\(/ { in_commands=1; next } in_commands && /^\)/ { in_commands=0 } in_commands { print }' scripts/pi-env-install-non-nix | grep -Fx '  pi-start' >/dev/null 2>&1 || \
+    grep -q 'PI_ENV_PI_START' scripts/pi-env-install-non-nix; then
   test_fail 'non-Nix installer still installs pi-start'
 fi
 
 install_prefix="$tmpdir/install-prefix"
 mkdir -p "$install_prefix/bin"
 printf 'stale legacy wrapper\n' >"$install_prefix/bin/pi-start"
-./scripts/install-non-nix --prefix "$install_prefix" >/dev/null
+./scripts/pi-env-install-non-nix --prefix "$install_prefix" >/dev/null
 [ ! -e "$install_prefix/bin/pi-start" ] || test_fail 'non-Nix reinstall left stale pi-start wrapper'
 
-fake_bwrap="$tmpdir/pi-bwrap"
+fake_bwrap="$tmpdir/pi-env-bwrap"
 cat >"$fake_bwrap" <<'FAKE_BWRAP'
 #!/usr/bin/env bash
 printf '%s\n' "$@" >"$PI_ENV_TEST_CAPTURE"

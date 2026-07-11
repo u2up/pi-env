@@ -101,7 +101,7 @@ PATH="$fakebin:$PATH" \
   PI_ENV_BWRAP_IMPORT_GIT_CONFIG=0 \
   PI_ENV_BWRAP_IMPORT_AUTH=0 \
   PI_ENV_BWRAP_IMPORT_SESSIONS=0 \
-  scripts/pi-bwrap -- --help
+  scripts/pi-env-bwrap -- --help
 
 test_file_exists "$runtime_capture"
 runtime_sandbox_path="$(awk 'prev == "--setenv" && $0 == "PATH" { getline; print; exit } { prev = $0 }' "$runtime_capture")"

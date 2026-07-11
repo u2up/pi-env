@@ -118,12 +118,12 @@ home_pi_status=0
 env -u PI_ENV_RUNTIME -u PI_ENV_PI_START -u PI_ENV_PI_ENV_BWRAP \
   HOME="$host_home" \
   PATH="$host_home/bin:$fakebin:$PATH" \
-  PI_ENV_TEST_BWRAP_ARGS="$tmpdir/home-pi-bwrap-args" \
+  PI_ENV_TEST_BWRAP_ARGS="$tmpdir/home-pi-env-bwrap-args" \
   "${common_bwrap_env[@]}" \
   ./pi-env --raw -- --help >"$tmpdir/home-pi-output" 2>&1 || home_pi_status=$?
 test_eq 127 "$home_pi_status" 'host-home pi is rejected fail-closed'
 test_grep 'host runtime resolved pi under host HOME' "$tmpdir/home-pi-output"
-if [ -e "$tmpdir/home-pi-bwrap-args" ]; then
+if [ -e "$tmpdir/home-pi-env-bwrap-args" ]; then
   test_fail 'host-home pi reached bwrap despite fail-closed policy'
 fi
 
