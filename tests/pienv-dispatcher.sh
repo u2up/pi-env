@@ -76,11 +76,50 @@ case "$completion_output" in
   *'complete -F _pienv pienv'*) ;;
   *) echo "pienv completion bash did not print sourceable completion" >&2; exit 1 ;;
 esac
+bash -n <(printf '%s\n' "$completion_output")
+
+completion_env="$tmp_dir/completion-env.sh"
+{
+  printf '%s\n' "$completion_output"
+  cat <<'COMPTEST'
+assert_completion() {
+  local expected="$1"
+  shift
+  COMP_WORDS=(pienv "$@")
+  COMP_CWORD=$((${#COMP_WORDS[@]} - 1))
+  _pienv
+  case " ${COMPREPLY[*]} " in
+    *" $expected "*) ;;
+    *) echo "missing completion '$expected' for: pienv $* (got: ${COMPREPLY[*]})" >&2; exit 1 ;;
+  esac
+}
+assert_completion coord c
+assert_completion rules coord r
+assert_completion upgrade coord rules u
+assert_completion generate coord requirements g
+assert_completion coverage coord requirements c
+assert_completion serial roles s
+assert_completion --repo-id coord status --
+COMPTEST
+} > "$completion_env"
+bash "$completion_env"
 
 help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help)"
 case "$help_output" in
   *'pienv coord <command>'* ) ;;
   *) echo "pienv help did not include command namespace" >&2; exit 1 ;;
+esac
+
+coord_help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help coord)"
+case "$coord_help_output" in
+  *'rules upgrade'*'agent-coord-upgrade-rules'*'requirements generate'*'agent-coord-generate-requirements'* ) ;;
+  *) echo "pienv help coord did not list nested command equivalents" >&2; exit 1 ;;
+esac
+
+PIENV_TEST_LOG="$tmp_dir/log" PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help coord status
+case "$(cat "$tmp_dir/log")" in
+  $'cmd=agent-coord-status\narg=--help') ;;
+  *) echo "pienv help coord status did not dispatch to leaf help" >&2; exit 1 ;;
 esac
 
 printf 'pienv dispatcher tests passed\n'

@@ -132,6 +132,7 @@ esac
 
 bin_dir="$prefix/bin"
 share_dir="$prefix/share/pi-env"
+completion_dir="$prefix/share/bash-completion/completions"
 manifest="$share_dir/install-manifest"
 origin_file="$share_dir/install-origin"
 
@@ -196,15 +197,16 @@ write_manifest() {
   [ ! -f "$origin_file" ] || printf '%s\n' "$origin_file" >> "$tmp_manifest"
   find "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates" \
     -mindepth 1 -type f -print | sort >> "$tmp_manifest"
+  [ ! -f "$completion_dir/pienv" ] || printf '%s\n' "$completion_dir/pienv" >> "$tmp_manifest"
   find "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates" \
     -depth -type d -print >> "$tmp_manifest"
-  printf '%s\n' "$share_dir" "$prefix/share" "$bin_dir" >> "$tmp_manifest"
+  printf '%s\n' "$completion_dir" "$prefix/share/bash-completion" "$share_dir" "$prefix/share" "$bin_dir" >> "$tmp_manifest"
   mv "$tmp_manifest" "$manifest"
 }
 
 remove_empty_parents() {
   local dir
-  for dir in "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates" "$share_dir" "$prefix/share" "$bin_dir"; do
+  for dir in "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates" "$completion_dir" "$prefix/share/bash-completion" "$share_dir" "$prefix/share" "$bin_dir"; do
     rmdir "$dir" 2>/dev/null || true
   done
 }
@@ -372,7 +374,7 @@ else
   echo "install-non-nix: pass --ref REF or --artifact-url URL to bootstrap from an archive" >&2
   exit 1
 fi
-mkdir -p "$bin_dir" "$share_dir"
+mkdir -p "$bin_dir" "$share_dir" "$completion_dir"
 remove_obsolete_commands
 rm -rf "$share_dir/scripts" "$share_dir/role-manager" "$share_dir/pi-skill-templates"
 cp -R "$source_root/scripts" "$share_dir/scripts"
@@ -385,6 +387,7 @@ chmod +x "$share_dir/scripts"/agent-coord-* \
   "$share_dir/scripts/pienv" \
   "$share_dir/scripts/pi-serial-roles" \
   "$share_dir/scripts/install-non-nix"
+/usr/bin/env bash "$share_dir/scripts/pienv" completion bash > "$completion_dir/pienv"
 
 for name in "${command_names[@]}"; do
   case "$name" in

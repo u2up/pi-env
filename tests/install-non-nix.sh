@@ -24,6 +24,8 @@ assert_file "$local_prefix/bin/pienv"
 assert_file "$local_prefix/bin/pi-env"
 assert_file "$local_prefix/bin/agent-coord-repo"
 assert_file "$local_prefix/share/pi-env/install-manifest"
+assert_file "$local_prefix/share/bash-completion/completions/pienv"
+grep -qx "$local_prefix/share/bash-completion/completions/pienv" "$local_prefix/share/pi-env/install-manifest"
 [ ! -e "$local_prefix/bin/pi-start" ] || {
   echo "stale pi-start wrapper survived reinstall" >&2
   exit 1
@@ -60,6 +62,7 @@ assert_file "$remote_prefix/bin/pienv"
 assert_file "$remote_prefix/bin/pi-env"
 assert_file "$remote_prefix/bin/agent-coord-repo"
 assert_file "$remote_prefix/share/pi-env/install-origin"
+assert_file "$remote_prefix/share/bash-completion/completions/pienv"
 grep -qx 'repository=test-owner/test-repo' "$remote_prefix/share/pi-env/install-origin"
 grep -qx 'ref=main' "$remote_prefix/share/pi-env/install-origin"
 grep -qx "artifact_url=file://$archive" "$remote_prefix/share/pi-env/install-origin"
@@ -80,6 +83,10 @@ rm -rf "$remote_script_dir" "$archive" "$archive_root"
 }
 [ ! -e "$remote_prefix/share/pi-env/install-origin" ] || {
   echo "origin metadata survived uninstall" >&2
+  exit 1
+}
+[ ! -e "$remote_prefix/share/bash-completion/completions/pienv" ] || {
+  echo "pienv bash completion survived uninstall" >&2
   exit 1
 }
 

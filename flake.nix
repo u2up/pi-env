@@ -89,11 +89,16 @@
             (mkPiEnvShell pkgs)
             (mkPiBwrap pkgs)
           ] ++ installCommands ++ coordinationCommands);
+          pienvBin = pkgs.writeShellScriptBin "pienv" ''
+            set -euo pipefail
+            export PATH="${runtimePath}:''${PATH:-}"
+            exec -a pienv ${pkgs.bash}/bin/bash ${./scripts/pienv} "$@"
+          '';
         in
-        pkgs.writeShellScriptBin "pienv" ''
-          set -euo pipefail
-          export PATH="${runtimePath}:''${PATH:-}"
-          exec -a pienv ${pkgs.bash}/bin/bash ${./scripts/pienv} "$@"
+        pkgs.runCommand "pienv" { } ''
+          mkdir -p "$out/bin" "$out/share/bash-completion/completions"
+          ln -s ${pienvBin}/bin/pienv "$out/bin/pienv"
+          ${pkgs.bash}/bin/bash ${./scripts/pienv} completion bash > "$out/share/bash-completion/completions/pienv"
         '';
 
       agentCoordCommandNames = [

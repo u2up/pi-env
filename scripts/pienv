@@ -21,16 +21,115 @@ Usage:
   pienv install [args...]
   pienv uninstall [args...]
   pienv completion bash
+  pienv help [command...]
+
+Commands:
+  run                 Run pi-env (existing command: pi-env)
+  raw                 Run pi-env with --raw (existing command: pi-env --raw)
+  shell               Run a pi-env shell (existing command: pi-env-shell)
+  sandbox             Run the sandbox helper (existing command: pi-bwrap)
+  coord               Coordination helpers (existing commands: agent-coord-*)
+  roles serial        Serial role orchestrator (existing command: pi-serial-roles)
+  install             Non-Nix installer (existing command: install-non-nix)
+  uninstall           Non-Nix uninstaller (existing command: pi-env-uninstall)
+  completion bash     Print Bash completion for pienv
+  help                Show help for pienv commands
 
 Use 'pienv -- ...' to pass a first Pi argument that would otherwise be
 parsed as a pienv subcommand.
 USAGE
 }
 
+coord_help() {
+  cat <<'USAGE'
+pienv coord - coordination command namespace
+
+Usage:
+  pienv coord <command> [args...]
+  pienv coord rules upgrade [args...]
+  pienv coord requirements generate [args...]
+  pienv coord requirements coverage [args...]
+
+Commands:
+  bootstrap              Existing command: bootstrap-coordination
+  init                   Existing command: agent-coord-init
+  clone                  Existing command: agent-coord-clone
+  status                 Existing command: agent-coord-status
+  list                   Existing command: agent-coord-list
+  show                   Existing command: agent-coord-cat
+  new                    Existing command: agent-coord-new
+  claim                  Existing command: agent-coord-claim
+  done                   Existing command: agent-coord-done
+  review                 Existing command: agent-coord-review
+  verify                 Existing command: agent-coord-verify
+  close                  Existing command: agent-coord-close
+  pull                   Existing command: agent-coord-pull
+  push                   Existing command: agent-coord-push
+  lint                   Existing command: agent-coord-lint
+  repo                   Existing command: agent-coord-repo
+  rules upgrade          Existing command: agent-coord-upgrade-rules
+  requirements generate  Existing command: agent-coord-generate-requirements
+  requirements coverage  Existing command: agent-coord-generate-requirements-coverage
+
+Use 'pienv help coord <command>' or 'pienv coord <command> --help' for
+leaf command help.
+USAGE
+}
+
+coord_rules_help() {
+  cat <<'USAGE'
+pienv coord rules - coordination rules commands
+
+Usage:
+  pienv coord rules upgrade [args...]
+
+Commands:
+  upgrade  Upgrade coordination rules (existing command: agent-coord-upgrade-rules)
+USAGE
+}
+
+coord_requirements_help() {
+  cat <<'USAGE'
+pienv coord requirements - coordination requirements commands
+
+Usage:
+  pienv coord requirements generate [args...]
+  pienv coord requirements coverage [args...]
+
+Commands:
+  generate  Generate requirements from designs (existing command: agent-coord-generate-requirements)
+  coverage  Generate requirements coverage report (existing command: agent-coord-generate-requirements-coverage)
+USAGE
+}
+
+roles_help() {
+  cat <<'USAGE'
+pienv roles - role orchestration commands
+
+Usage:
+  pienv roles serial [args...]
+
+Commands:
+  serial  Run serial role orchestration (existing command: pi-serial-roles)
+USAGE
+}
+
+completion_help() {
+  cat <<'USAGE'
+pienv completion - shell completion commands
+
+Usage:
+  pienv completion bash
+
+Commands:
+  bash  Print a sourceable Bash completion script for pienv
+USAGE
+}
+
 bash_completion() {
   cat <<'COMPLETION'
 _pienv() {
-  local cur prev words cword
+  local cur prev words cword command_path option_words path_options
   COMPREPLY=()
   if declare -F _init_completion >/dev/null 2>&1; then
     _init_completion || return
@@ -41,26 +140,89 @@ _pienv() {
     cword=$COMP_CWORD
   fi
 
-  case "$cword" in
-    1) COMPREPLY=( $(compgen -W "run raw shell sandbox coord roles install uninstall help completion" -- "$cur") ); return ;;
+  _pienv_comp_words() {
+    compgen -W "$1" -- "$cur"
+  }
+
+  path_options="--coord-dir --coordination-dir --designs-dir --output -o --prefix --artifact-url"
+  if [[ " $path_options " == *" $prev "* ]]; then
+    compopt -o default 2>/dev/null || true
+    return 0
+  fi
+
+  command_path=""
+  case "${words[1]:-}" in
+    coord)
+      case "${words[2]:-}" in
+        rules) [ "${words[3]:-}" = "upgrade" ] && command_path="coord rules upgrade" ;;
+        requirements)
+          case "${words[3]:-}" in
+            generate) command_path="coord requirements generate" ;;
+            coverage) command_path="coord requirements coverage" ;;
+          esac
+          ;;
+        bootstrap|init|clone|status|list|show|new|claim|done|review|verify|close|pull|push|lint|repo)
+          command_path="coord ${words[2]}"
+          ;;
+      esac
+      ;;
+    roles) [ "${words[2]:-}" = "serial" ] && command_path="roles serial" ;;
+    install|uninstall) command_path="${words[1]}" ;;
   esac
 
-  case "${words[1]}" in
+  if [[ "$cur" == -* ]]; then
+    case "$command_path" in
+      coord\ status) option_words="--coord-dir --repo-id --porcelain --help -h" ;;
+      coord\ list) option_words="--coord-dir --repo-id --all-repos --show-repo --category --show-category --group-by-category --help -h" ;;
+      coord\ show) option_words="--coord-dir --path --help -h" ;;
+      coord\ rules\ upgrade) option_words="--coord-dir --agent-id --role --preview --no-pull --push --help -h" ;;
+      coord\ requirements\ generate) option_words="--project --coordination-dir --designs-dir --output -o --help -h" ;;
+      coord\ requirements\ coverage) option_words="--project --coordination-dir --designs-dir --output -o --help -h" ;;
+      coord\ claim|coord\ done|coord\ review|coord\ verify|coord\ close) option_words="--coord-dir --agent-id --role --result --message --no-pull --no-push --force --pass --fail --help -h" ;;
+      coord\ pull|coord\ push|coord\ lint|coord\ repo|coord\ init|coord\ clone|coord\ bootstrap|coord\ new) option_words="--coord-dir --repo-id --help -h" ;;
+      roles\ serial) option_words="--role --limit --coord-dir --help -h" ;;
+      install) option_words="--prefix --check-deps --ref --repo --artifact-url --help -h" ;;
+      uninstall) option_words="--prefix --help -h" ;;
+      *) option_words="--help -h" ;;
+    esac
+    COMPREPLY=( $(_pienv_comp_words "$option_words") )
+    return 0
+  fi
+
+  case "$cword" in
+    1) COMPREPLY=( $(_pienv_comp_words "run raw shell sandbox coord roles install uninstall help completion") ); return 0 ;;
+  esac
+
+  case "${words[1]:-}" in
     sandbox)
-      [ "$cword" -eq 2 ] && COMPREPLY=( $(compgen -W "shell" -- "$cur") )
+      [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "shell") )
       ;;
     coord)
       case "${words[2]:-}" in
-        rules) [ "$cword" -eq 3 ] && COMPREPLY=( $(compgen -W "upgrade" -- "$cur") ) ;;
-        requirements) [ "$cword" -eq 3 ] && COMPREPLY=( $(compgen -W "generate coverage" -- "$cur") ) ;;
-        *) [ "$cword" -eq 2 ] && COMPREPLY=( $(compgen -W "bootstrap init clone status list show new claim done review verify close pull push lint repo rules requirements" -- "$cur") ) ;;
+        rules) [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "upgrade") ) ;;
+        requirements) [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "generate coverage") ) ;;
+        *) [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "bootstrap init clone status list show new claim done review verify close pull push lint repo rules requirements") ) ;;
       esac
       ;;
     roles)
-      [ "$cword" -eq 2 ] && COMPREPLY=( $(compgen -W "serial" -- "$cur") )
+      [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "serial") )
       ;;
     completion)
-      [ "$cword" -eq 2 ] && COMPREPLY=( $(compgen -W "bash" -- "$cur") )
+      [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "bash") )
+      ;;
+    help)
+      case "${words[2]:-}" in
+        "") [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "run raw shell sandbox coord roles install uninstall completion") ) ;;
+        coord)
+          case "${words[3]:-}" in
+            "") [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "bootstrap init clone status list show new claim done review verify close pull push lint repo rules requirements") ) ;;
+            rules) [ "$cword" -eq 4 ] && COMPREPLY=( $(_pienv_comp_words "upgrade") ) ;;
+            requirements) [ "$cword" -eq 4 ] && COMPREPLY=( $(_pienv_comp_words "generate coverage") ) ;;
+          esac
+          ;;
+        roles) [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "serial") ) ;;
+        completion) [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "bash") ) ;;
+      esac
       ;;
   esac
 }
@@ -98,6 +260,89 @@ exec_command() {
   exec "$command_path" "$@"
 }
 
+run_command_help() {
+  local name="$1"
+  shift
+  local command_path
+  command_path="$(resolve_command "$name")"
+  "$command_path" --help
+}
+
+coord_leaf_command_name() {
+  case "$1" in
+    bootstrap) printf '%s\n' bootstrap-coordination ;;
+    init|clone|status|list|new|claim|done|review|verify|close|pull|push|lint|repo) printf 'agent-coord-%s\n' "$1" ;;
+    show) printf '%s\n' agent-coord-cat ;;
+    *) return 1 ;;
+  esac
+}
+
+help_dispatch() {
+  case "${1:-}" in
+    "") usage ;;
+    coord)
+      shift
+      case "${1:-}" in
+        ""|-h|--help) coord_help ;;
+        rules)
+          shift
+          case "${1:-}" in
+            ""|-h|--help) coord_rules_help ;;
+            upgrade) run_command_help agent-coord-upgrade-rules ;;
+            *) unknown help coord rules "$1" ;;
+          esac
+          ;;
+        requirements)
+          shift
+          case "${1:-}" in
+            ""|-h|--help) coord_requirements_help ;;
+            generate) run_command_help agent-coord-generate-requirements ;;
+            coverage) run_command_help agent-coord-generate-requirements-coverage ;;
+            *) unknown help coord requirements "$1" ;;
+          esac
+          ;;
+        *)
+          local leaf
+          if leaf="$(coord_leaf_command_name "$1")"; then
+            run_command_help "$leaf"
+          else
+            unknown help coord "$1"
+          fi
+          ;;
+      esac
+      ;;
+    roles)
+      shift
+      case "${1:-}" in
+        ""|-h|--help) roles_help ;;
+        serial) run_command_help pi-serial-roles ;;
+        *) unknown help roles "$1" ;;
+      esac
+      ;;
+    completion)
+      shift
+      case "${1:-}" in
+        ""|-h|--help) completion_help ;;
+        bash) completion_help ;;
+        *) unknown help completion "$1" ;;
+      esac
+      ;;
+    run) run_command_help pi-env ;;
+    raw) run_command_help pi-env ;;
+    shell) run_command_help pi-env-shell ;;
+    sandbox) run_command_help pi-bwrap ;;
+    install) run_command_help install-non-nix ;;
+    uninstall)
+      if command -v pi-env-uninstall >/dev/null 2>&1; then
+        run_command_help pi-env-uninstall
+      else
+        run_command_help install-non-nix
+      fi
+      ;;
+    *) unknown help "$1" ;;
+  esac
+}
+
 unknown() {
   echo "pienv: unknown command: $*" >&2
   echo "Try 'pienv help'." >&2
@@ -109,8 +354,13 @@ if [ "$#" -eq 0 ]; then
 fi
 
 case "${1:-}" in
-  -h|--help|help)
+  -h|--help)
     usage
+    exit 0
+    ;;
+  help)
+    shift
+    help_dispatch "$@"
     exit 0
     ;;
   --)
@@ -131,15 +381,19 @@ case "${1:-}" in
     ;;
   sandbox)
     shift
-    if [ "${1:-}" = "shell" ]; then
-      shift
-      exec_command pi-bwrap --shell "$@"
-    fi
+    case "${1:-}" in
+      -h|--help) run_command_help pi-bwrap; exit 0 ;;
+      shell)
+        shift
+        exec_command pi-bwrap --shell "$@"
+        ;;
+    esac
     exec_command pi-bwrap "$@"
     ;;
   coord)
     shift
     case "${1:-}" in
+      ""|-h|--help) coord_help; exit 0 ;;
       bootstrap) shift; exec_command bootstrap-coordination "$@" ;;
       init|clone|status|list|new|claim|done|review|verify|close|pull|push|lint|repo)
         subcommand="$1"
@@ -149,13 +403,16 @@ case "${1:-}" in
       show) shift; exec_command agent-coord-cat "$@" ;;
       rules)
         shift
-        [ "${1:-}" = "upgrade" ] || unknown coord rules "${1:-}"
-        shift
-        exec_command agent-coord-upgrade-rules "$@"
+        case "${1:-}" in
+          ""|-h|--help) coord_rules_help; exit 0 ;;
+          upgrade) shift; exec_command agent-coord-upgrade-rules "$@" ;;
+          *) unknown coord rules "${1:-}" ;;
+        esac
         ;;
       requirements)
         shift
         case "${1:-}" in
+          ""|-h|--help) coord_requirements_help; exit 0 ;;
           generate) shift; exec_command agent-coord-generate-requirements "$@" ;;
           coverage) shift; exec_command agent-coord-generate-requirements-coverage "$@" ;;
           *) unknown coord requirements "${1:-}" ;;
@@ -166,9 +423,11 @@ case "${1:-}" in
     ;;
   roles)
     shift
-    [ "${1:-}" = "serial" ] || unknown roles "${1:-}"
-    shift
-    exec_command pi-serial-roles "$@"
+    case "${1:-}" in
+      ""|-h|--help) roles_help; exit 0 ;;
+      serial) shift; exec_command pi-serial-roles "$@" ;;
+      *) unknown roles "${1:-}" ;;
+    esac
     ;;
   install)
     shift
@@ -183,10 +442,15 @@ case "${1:-}" in
     ;;
   completion)
     shift
-    [ "${1:-}" = "bash" ] || unknown completion "${1:-}"
-    shift
-    [ "$#" -eq 0 ] || unknown completion bash "$@"
-    bash_completion
+    case "${1:-}" in
+      ""|-h|--help) completion_help; exit 0 ;;
+      bash)
+        shift
+        [ "$#" -eq 0 ] || unknown completion bash "$@"
+        bash_completion
+        ;;
+      *) unknown completion "${1:-}" ;;
+    esac
     ;;
   *)
     exec_command pi-env "$@"
