@@ -30,13 +30,17 @@ USAGE
 }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-command_name="$(basename "$0")"
+command_name="${0##*/}"
 shell_mode=0
 if [ "$command_name" = "pi-env-shell" ] || [ "${PI_ENV_SHELL_MODE:-0}" = "1" ]; then
   shell_mode=1
 fi
 checkout_root="$(cd "$script_dir/.." && pwd -P)"
 flake_ref="${PI_ENV_FLAKE:-$checkout_root}"
+flake_selector_set=0
+if [ "${PI_ENV_FLAKE+x}" = "x" ]; then
+  flake_selector_set=1
+fi
 runtime_mode=""
 runtime_selector_set=0
 runtime_cli_set=0
@@ -68,10 +72,12 @@ while [ "$#" -gt 0 ]; do
         exit 2
       fi
       flake_ref="$1"
+      flake_selector_set=1
       shift
       ;;
     --flake=*)
       flake_ref="${1#--flake=}"
+      flake_selector_set=1
       shift
       ;;
     --runtime)
@@ -170,8 +176,34 @@ exec_host_runtime() {
   exec_pi_bwrap_default "$host_pi_bwrap"
 }
 
+resolve_project_root() {
+  local root=""
+  root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$root" ]; then
+    (cd "$root" && pwd -P)
+  else
+    pwd -P
+  fi
+}
+
+select_default_nix_flake() {
+  if [ "$flake_selector_set" = "1" ]; then
+    return 0
+  fi
+
+  local project_root
+  project_root="$(resolve_project_root)"
+  if [ ! -f "$project_root/flake.nix" ]; then
+    echo "pi-env: runtime mode 'nix' requires a target project flake." >&2
+    echo "pi-env: expected flake.nix at: $project_root/flake.nix" >&2
+    echo "pi-env: run from a project with flake.nix or pass --flake REF / set PI_ENV_FLAKE explicitly." >&2
+    exit 2
+  fi
+  flake_ref="$project_root"
+}
+
 exec_nix_runtime() {
-  if [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
+  if [ "${PI_ENV_NIX_RUNTIME_READY:-0}" = "1" ] && [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
     if [ "$shell_mode" = "1" ]; then
       exec "$PI_ENV_PI_ENV_BWRAP" --shell -- "${args[@]}"
     elif [ "$raw" = "1" ]; then
@@ -179,6 +211,8 @@ exec_nix_runtime() {
     fi
     exec_pi_bwrap_default "$PI_ENV_PI_ENV_BWRAP"
   fi
+
+  select_default_nix_flake
 
   if ! command -v nix >/dev/null 2>&1; then
     echo "pi-env: runtime mode 'nix' requires nix, but nix was not found on PATH." >&2
@@ -194,7 +228,7 @@ exec_nix_runtime() {
   if [ "$raw" = "1" ]; then
     nix_args+=(--raw --)
   fi
-  PI_ENV_RUNTIME="$runtime_mode" exec nix "${nix_args[@]}" "${args[@]}"
+  PI_ENV_RUNTIME="$runtime_mode" PI_ENV_NIX_RUNTIME_READY=1 exec nix "${nix_args[@]}" "${args[@]}"
 }
 
 exec_auto_runtime() {

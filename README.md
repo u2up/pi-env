@@ -361,11 +361,12 @@ utilities must already be available for host-runtime use.
   "$HOME/.local/bin/pi-env-uninstall"
   ```
 
-Installed non-Nix commands are intended for host-runtime startup today. For
-pi-env's reproducible core runtime, use a Nix entrypoint such as `nix run` or
-`nix develop` on the pi-env flake. For a target project's flake-provided tools,
-integrate pi-env into that project flake and run `nix develop` from the project
-until installed-launcher Nix-runtime support is implemented.
+Installed non-Nix commands default to host-runtime startup. If you select
+`--runtime nix` from a project checkout, the installed launcher enters that
+project's `flake.nix` with `nix develop` before starting Pi through the Nix
+runtime. Run from the target project root (or a Git subdirectory) so pi-env can
+find the project flake, or pass `--flake REF` / set `PI_ENV_FLAKE=REF` to select
+a flake explicitly.
 
 Inside `nix develop` the prompt is prefixed with `(nix-dev)`. The shell exports
 `PI_ENV_ROLE_MANAGER_PACKAGE` to the Nix-built role-manager package path and
@@ -391,15 +392,15 @@ nix profile install ~/src/pi-env#pi-env-coordination
 nix profile install ~/src/pi-env#pi-runtime
 ```
 
-`pi-runtime` includes the core runtime plus coordination helpers.
+`pi-runtime` continues to include the core runtime plus coordination helpers.
 None of these packages install `pi-coding-agent`; the host `pi` command must
 already exist.
 
 A profile install gives you Nix-built pi-env commands and pi-env's pinned core
-runtime on `PATH`. It does not, by itself, enter a target project's `flake.nix`
-or add that project's extra devshell tools. When a target project needs its own
-Nix-provided build/test tools, integrate pi-env into that project flake and run
-`nix develop` from the project before calling `pienv`.
+runtime on `PATH`. Selecting `--runtime nix` from a target project enters that
+project's `flake.nix` with `nix develop`, so project-specific devshell tools are
+available before Pi starts. Without `--runtime nix`, profile commands keep using
+the profile-provided pi-env runtime on `PATH`.
 
 ## 3. Use pi-env directly from any project
 
@@ -442,9 +443,11 @@ PI_ENV_RUNTIME=nix ~/src/pi-env/pienv
 
 Use `--runtime host` for direct startup with unpinned host tools. Use
 `--runtime nix`, `nix run`, `nix develop`, profile packages, or project flake
-integration when you need the reproducible/pinned Nix runtime. `--runtime auto`
-keeps compatibility with environments that already provide pi-env commands and
-falls back to the Nix runtime when needed.
+integration when you need the reproducible/pinned Nix runtime. Installed and
+profile launchers with `--runtime nix` require the detected target project to
+have `flake.nix` unless you pass `--flake REF` or set `PI_ENV_FLAKE=REF`.
+`--runtime auto` keeps compatibility with environments that already provide
+pi-env commands and falls back to the Nix runtime when needed.
 
 Use `pienv shell` when you want an interactive shell inside the same selected
 runtime and Bubblewrap sandbox instead of starting the Pi agent:

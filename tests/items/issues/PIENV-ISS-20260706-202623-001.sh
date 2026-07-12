@@ -51,6 +51,7 @@ FAKE_PI_ENV_BWRAP
 chmod +x "$fake_root/fake-pi-env-bwrap"
 
 PI_ENV_PI_ENV_BWRAP="$fake_root/fake-pi-env-bwrap" \
+PI_ENV_NIX_RUNTIME_READY=1 \
 PI_ENV_TEST_LAUNCHER_TRACE="$fake_root/wired-nix.trace" \
 ./pi-env-shell --runtime nix -- -lc 'printf nix-shell'
 mapfile -t wired_nix <"$fake_root/wired-nix.trace"
