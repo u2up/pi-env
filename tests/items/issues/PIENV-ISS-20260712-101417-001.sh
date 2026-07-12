@@ -127,6 +127,23 @@ if [ -e "${PI_ENV_TEST_BWRAP_LOG:-$tmpdir/unset}" ]; then
   test_fail 'second-stage nix runtime reused stale installed/profile pi-env-bwrap'
 fi
 
+stale_profile_status=0
+stale_profile_bwrap_log="$tmpdir/stale-profile-bwrap.log"
+(
+  cd "$project"
+  env -u PI_ENV_RUNTIME -u PI_ENV_FLAKE -u PI_ENV_NIX_RUNTIME_READY -u PI_ENV_NIX_IGNORED_BWRAP \
+    PATH="$fakebin:$install_bin:$PATH" PI_ENV_PI_ENV_BWRAP="$install_bin/pi-env-bwrap" \
+    PI_ENV_TEST_NIX_LOG="$tmpdir/stale-profile-nix.log" PI_ENV_TEST_NIX_EXEC=1 \
+    PI_ENV_TEST_BWRAP_LOG="$stale_profile_bwrap_log" \
+    "$install_bin/pienv" --runtime nix --raw -- --version >"$tmpdir/stale-profile.out" 2>&1
+) || stale_profile_status=$?
+test_eq 127 "$stale_profile_status" \
+  'second-stage nix runtime without project pi-env-bwrap must fail instead of reusing installed/profile runtime'
+test_grep 'project pi-env-bwrap was not found' "$tmpdir/stale-profile.out"
+if [ -e "$stale_profile_bwrap_log" ]; then
+  test_fail 'second-stage nix runtime executed stale installed/profile pi-env-bwrap from PATH'
+fi
+
 missing_status=0
 (
   cd "$no_flake_project"

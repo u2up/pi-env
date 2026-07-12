@@ -202,17 +202,53 @@ select_default_nix_flake() {
   flake_ref="$project_root"
 }
 
+canonical_path() {
+  local path="$1"
+  if [ -e "$path" ] && command -v realpath >/dev/null 2>&1; then
+    realpath "$path"
+    return 0
+  fi
+  if [ -e "$path" ] && readlink -f "$path" >/dev/null 2>&1; then
+    readlink -f "$path"
+    return 0
+  fi
+  local dir
+  dir="$(dirname "$path")"
+  local base
+  base="$(basename "$path")"
+  if [ -d "$dir" ]; then
+    (cd "$dir" && printf '%s/%s\n' "$(pwd -P)" "$base")
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+is_ignored_nix_bwrap() {
+  local candidate="$1"
+  local ignored="${PI_ENV_NIX_IGNORED_BWRAP:-}"
+  if [ -z "$candidate" ] || [ -z "$ignored" ]; then
+    return 1
+  fi
+  if [ "$candidate" = "$ignored" ]; then
+    return 0
+  fi
+  [ "$(canonical_path "$candidate")" = "$(canonical_path "$ignored")" ]
+}
+
 exec_nix_runtime() {
   if [ "${PI_ENV_NIX_RUNTIME_READY:-0}" = "1" ]; then
     local ready_pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-}"
-    if [ -n "${PI_ENV_NIX_IGNORED_BWRAP:-}" ] && [ "$ready_pi_bwrap" = "$PI_ENV_NIX_IGNORED_BWRAP" ]; then
+    if is_ignored_nix_bwrap "$ready_pi_bwrap"; then
       ready_pi_bwrap=""
     fi
     if [ -z "$ready_pi_bwrap" ] && command -v pi-env-bwrap >/dev/null 2>&1; then
       ready_pi_bwrap="$(command -v pi-env-bwrap)"
+      if is_ignored_nix_bwrap "$ready_pi_bwrap"; then
+        ready_pi_bwrap=""
+      fi
     fi
     if [ -z "$ready_pi_bwrap" ]; then
-      echo "pi-env: runtime mode 'nix' entered nix develop, but pi-env-bwrap was not found." >&2
+      echo "pi-env: runtime mode 'nix' entered nix develop, but project pi-env-bwrap was not found." >&2
       echo "pi-env: ensure the selected flake provides the pi-env runtime or pass a flake that does." >&2
       exit 127
     fi
