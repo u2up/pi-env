@@ -305,51 +305,67 @@ pienv completion bash
 pienv sandbox --help
 ```
 
-### Non-Nix host-runtime installation
+### Non-Nix installation
 
-For a conventional host-runtime install, use the non-Nix installer from a
-release/archive checkout:
+Use the non-Nix installer when you want pi-env commands copied into a normal
+prefix without entering Nix during installation. The installer copies commands
+to `$PREFIX/bin`, support files to `$PREFIX/share/pi-env`, and writes wrappers
+that resolve coordination support, coordination templates, and the role-manager
+package from that installed prefix.
 
-```bash
-./scripts/pi-env-install-non-nix --prefix "$HOME/.local" --check-deps
-export PATH="$HOME/.local/bin:$PATH"
-pienv --runtime host --help
-```
+The installer does not install or pin runtime tools. Host tools such as Bash,
+Bubblewrap, Git, jq, Node, the `pi` launcher, and standard POSIX text/file
+utilities must already be available for host-runtime use.
 
-The installer does not invoke Nix and does not install a pinned runtime
-toolchain. It copies pi-env commands to `$PREFIX/bin`, support files to
-`$PREFIX/share/pi-env`, and writes wrappers that resolve coordination support,
-coordination templates, and the role-manager package from that installed
-prefix. Host tools such as Bash, Bubblewrap, Git, jq, Node, the `pi` launcher,
-and standard POSIX text/file utilities must already be available. Use the Nix
-flake, devshell, or profile packages when you need the reproducible pinned
-runtime.
+- **Install directly from GitHub.** Prefer tagged releases or release artifact
+  URLs for stable installs:
 
-Release artifacts can contain only the pi-env payload directories (`scripts/`,
-`role-manager/`, and `pi-skill-templates/`); end users do not need a Git clone
-for installation. Prefer tagged releases or release artifact URLs for stable
-installs, for example `--ref v0.1.0` or `--artifact-url URL`.
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/u2up/pi-env/v0.1.0/scripts/pi-env-install-non-nix \
+    | bash -s -- --ref v0.1.0 --prefix "$HOME/.local" --check-deps
+  export PATH="$HOME/.local/bin:$PATH"
+  pienv --runtime host --help
+  ```
 
-For latest/development testing, the installer can bootstrap itself from a
-GitHub branch archive when no local payload is present:
+  For latest/development testing, use the mutable `main` branch instead:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/u2up/pi-env/main/scripts/pi-env-install-non-nix \
-  | bash -s -- --ref main --prefix "$HOME/.local" --check-deps
-```
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/u2up/pi-env/main/scripts/pi-env-install-non-nix \
+    | bash -s -- --ref main --prefix "$HOME/.local" --check-deps
+  ```
 
-`--ref main` is mutable and non-reproducible; treat it as a development/latest
-channel, not the recommended stable install path. Use `--repo OWNER/REPO` for
-forks, or `--artifact-url URL` to install from a specific archive URL.
+  `--ref main` is mutable and non-reproducible; treat it as a development/latest
+  channel, not the recommended stable install path. Use `--repo OWNER/REPO` for
+  forks, or `--artifact-url URL` to install from a specific archive URL.
 
-Re-run the same command to upgrade or repair an install. To
-remove installed files later, use the manifest-backed uninstall command:
+- **Install from a local Git checkout or unpacked archive.** Run the installer
+  from the checkout/archive root:
 
-```bash
-pi-env-uninstall
-# or, without PATH setup:
-"$HOME/.local/bin/pi-env-uninstall"
-```
+  ```bash
+  ./scripts/pi-env-install-non-nix --prefix "$HOME/.local" --check-deps
+  export PATH="$HOME/.local/bin:$PATH"
+  pienv --runtime host --help
+  ```
+
+  Release artifacts can contain only the pi-env payload directories
+  (`scripts/`, `role-manager/`, and `pi-skill-templates/`); end users do not
+  need a full Git clone for installation.
+
+- **Upgrade or repair an existing local installation.** Re-run the same
+  installer command with the same prefix. To remove installed files later, use
+  the manifest-backed uninstall command:
+
+  ```bash
+  pi-env-uninstall
+  # or, without PATH setup:
+  "$HOME/.local/bin/pi-env-uninstall"
+  ```
+
+Installed non-Nix commands are intended for host-runtime startup today. For
+pi-env's reproducible core runtime, use a Nix entrypoint such as `nix run` or
+`nix develop` on the pi-env flake. For a target project's flake-provided tools,
+integrate pi-env into that project flake and run `nix develop` from the project
+until installed-launcher Nix-runtime support is implemented.
 
 Inside `nix develop` the prompt is prefixed with `(nix-dev)`. The shell exports
 `PI_ENV_ROLE_MANAGER_PACKAGE` to the Nix-built role-manager package path and
@@ -379,6 +395,12 @@ nix profile install ~/src/pi-env#pi-runtime
 None of these packages install `pi-coding-agent`; the host `pi` command must
 already exist.
 
+A profile install gives you Nix-built pi-env commands and pi-env's pinned core
+runtime on `PATH`. It does not, by itself, enter a target project's `flake.nix`
+or add that project's extra devshell tools. When a target project needs its own
+Nix-provided build/test tools, integrate pi-env into that project flake and run
+`nix develop` from the project before calling `pienv`.
+
 ## 3. Use pi-env directly from any project
 
 Use direct mode for local, ad hoc, or internal runs where selecting a pi-env
@@ -396,8 +418,8 @@ cd /path/to/project
 ~/src/pi-env/pienv raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
-If you installed `#pi-core` or `#pi-runtime` into a profile, you can run the
-shorter command:
+If you installed pi-env into a prefix with the non-Nix installer, or installed
+`#pi-core` or `#pi-runtime` into a Nix profile, you can run the shorter command:
 
 ```bash
 cd /path/to/project
@@ -1598,7 +1620,7 @@ See `designs/serial-role-automation.md` for the full design.
 
 See `designs/agent-coordination.md` for the full design.
 
-## 12. Upgrading
+## 12. Upgrading Pi
 
 `pi-env` does not pin or install `pi-coding-agent` through Nix. The wrappers
 expect a `pi` executable to already exist on the host `PATH`, then `pi-env-bwrap`
