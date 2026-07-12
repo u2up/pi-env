@@ -366,16 +366,16 @@ commands:
 nix profile install ~/src/pi-env#pi-core
 ```
 
-If you also use coordination helpers, either install them separately or keep the
-compatibility runtime bundle:
+If you also use coordination helpers, either install them separately or install
+the combined runtime bundle:
 
 ```bash
 nix profile install ~/src/pi-env#pi-env-coordination
-# or, for the compatibility bundle used by older docs/automation:
+# or, for the combined core plus coordination bundle:
 nix profile install ~/src/pi-env#pi-runtime
 ```
 
-`pi-runtime` continues to include the core runtime plus coordination helpers.
+`pi-runtime` includes the core runtime plus coordination helpers.
 None of these packages install `pi-coding-agent`; the host `pi` command must
 already exist.
 
@@ -636,8 +636,8 @@ packages = existingPackages ++ [
 If your shell uses `nativeBuildInputs` or `buildInputs`, add the same package
 there instead. Use `pi-env.packages.${system}.pi-env-coordination` when you want
 only the optional coordination helpers, or `pi-env.packages.${system}.pi-runtime`
-when older automation expects the compatibility bundle containing both the core
-runtime and coordination helpers.
+when you want the combined bundle containing both the core runtime and
+coordination helpers.
 
 Update a consuming project's pinned input with:
 
@@ -1221,7 +1221,7 @@ See `designs/role-manager.md` for the architecture.
 selected project. A domain can cover multiple implementation repositories, but
 each pi-env invocation mounts and works in one implementation repository at
 `/workspace`. They are plain Git/text-file tooling and are separate from
-`pi-env`. Install `#pi-env-coordination`, use the compatibility `#pi-runtime`
+`pi-env`. Install `#pi-env-coordination`, use the combined `#pi-runtime`
 bundle, or leave `includeCoordinationHelpers` enabled in `mkPiShell` when you
 want these commands. Projects usually use the project-local
 `.pi-env/coordination` clone as their attachment to the shared domain.

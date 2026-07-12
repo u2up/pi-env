@@ -7,12 +7,14 @@ cd "$repo_root"
 # shellcheck source=tests/lib/test-helpers.sh
 . "$repo_root/tests/lib/test-helpers.sh"
 
-# User docs should present pienv as the canonical namespace while retaining
-# compatibility language for the existing commands and state/environment names.
+# User docs should present pienv as the canonical namespace while documenting
+# the hard rename to pi-env-prefixed lower-level commands. State paths and
+# environment variable names are intentionally unchanged.
 test_grep '`pienv` is the canonical user-facing command namespace' README.md
-test_grep 'does not deprecate, warn on, hide, or remove `pi-env`' README.md
-test_grep 'Operational state paths such as `.pi-env/`' README.md
-test_grep 'environment variables such as' README.md
+test_grep 'The old non-prefixed names' README.md
+test_grep 'are intentionally not compatibility entrypoints' README.md
+test_grep 'Operational state paths such' README.md
+test_grep 'as `.pi-env/` and environment variables such as' README.md
 
 test_grep '^| `pienv coord status \[options\]` | `pi-env-coord-status \[options\]` |$' README.md
 test_grep '^| `pienv roles serial \[options\]` | `pi-env-serial-roles \[options\]` |$' README.md

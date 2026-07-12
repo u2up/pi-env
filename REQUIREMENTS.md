@@ -358,7 +358,7 @@ For each supported system the flake must expose packages:
 - `pi-env-bwrap`
 - `pi-core` for core runtime commands and tools only
 - `pi-env-coordination` for the optional Git-backed coordination helpers
-- `pi-runtime` as a compatibility bundle containing `pi-core` plus
+- `pi-runtime` as a combined bundle containing `pi-core` plus
   `pi-env-coordination`
 - `pi-role-manager`
 - `pi-env-bootstrap-coordination`
