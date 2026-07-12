@@ -203,13 +203,25 @@ select_default_nix_flake() {
 }
 
 exec_nix_runtime() {
-  if [ "${PI_ENV_NIX_RUNTIME_READY:-0}" = "1" ] && [ -n "${PI_ENV_PI_ENV_BWRAP:-}" ]; then
-    if [ "$shell_mode" = "1" ]; then
-      exec "$PI_ENV_PI_ENV_BWRAP" --shell -- "${args[@]}"
-    elif [ "$raw" = "1" ]; then
-      exec "$PI_ENV_PI_ENV_BWRAP" -- "${args[@]}"
+  if [ "${PI_ENV_NIX_RUNTIME_READY:-0}" = "1" ]; then
+    local ready_pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-}"
+    if [ -n "${PI_ENV_NIX_IGNORED_BWRAP:-}" ] && [ "$ready_pi_bwrap" = "$PI_ENV_NIX_IGNORED_BWRAP" ]; then
+      ready_pi_bwrap=""
     fi
-    exec_pi_bwrap_default "$PI_ENV_PI_ENV_BWRAP"
+    if [ -z "$ready_pi_bwrap" ] && command -v pi-env-bwrap >/dev/null 2>&1; then
+      ready_pi_bwrap="$(command -v pi-env-bwrap)"
+    fi
+    if [ -z "$ready_pi_bwrap" ]; then
+      echo "pi-env: runtime mode 'nix' entered nix develop, but pi-env-bwrap was not found." >&2
+      echo "pi-env: ensure the selected flake provides the pi-env runtime or pass a flake that does." >&2
+      exit 127
+    fi
+    if [ "$shell_mode" = "1" ]; then
+      exec "$ready_pi_bwrap" --shell -- "${args[@]}"
+    elif [ "$raw" = "1" ]; then
+      exec "$ready_pi_bwrap" -- "${args[@]}"
+    fi
+    exec_pi_bwrap_default "$ready_pi_bwrap"
   fi
 
   select_default_nix_flake
@@ -228,7 +240,10 @@ exec_nix_runtime() {
   if [ "$raw" = "1" ]; then
     nix_args+=(--raw --)
   fi
-  PI_ENV_RUNTIME="$runtime_mode" PI_ENV_NIX_RUNTIME_READY=1 exec nix "${nix_args[@]}" "${args[@]}"
+  PI_ENV_RUNTIME="$runtime_mode" \
+    PI_ENV_NIX_RUNTIME_READY=1 \
+    PI_ENV_NIX_IGNORED_BWRAP="${PI_ENV_PI_ENV_BWRAP:-}" \
+    exec nix "${nix_args[@]}" "${args[@]}"
 }
 
 exec_auto_runtime() {

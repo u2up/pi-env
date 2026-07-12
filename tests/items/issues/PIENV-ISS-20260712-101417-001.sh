@@ -26,11 +26,19 @@ set -euo pipefail
 {
   printf 'env.PI_ENV_RUNTIME=%s\n' "${PI_ENV_RUNTIME:-}"
   printf 'env.PI_ENV_NIX_RUNTIME_READY=%s\n' "${PI_ENV_NIX_RUNTIME_READY:-}"
+  printf 'env.PI_ENV_NIX_IGNORED_BWRAP=%s\n' "${PI_ENV_NIX_IGNORED_BWRAP:-}"
   printf 'args:\n'
   for arg in "$@"; do
     printf '%s\n' "$arg"
   done
 } >"$PI_ENV_TEST_NIX_LOG"
+if [ "${PI_ENV_TEST_NIX_EXEC:-0}" = "1" ]; then
+  [ "$1" = develop ] || exit 64
+  shift 2
+  [ "$1" = -c ] || exit 64
+  shift
+  exec "$@"
+fi
 exit 0
 FAKE_NIX
 chmod +x "$fakebin/nix"
@@ -61,6 +69,7 @@ test_file_exists "$nix_log"
 printf '%s\n' \
   'env.PI_ENV_RUNTIME=nix' \
   'env.PI_ENV_NIX_RUNTIME_READY=1' \
+  'env.PI_ENV_NIX_IGNORED_BWRAP=' \
   'args:' \
   develop "$project" -c pi-env --raw -- --help >"$tmpdir/expected-nix.log"
 test_eq "$(cat "$tmpdir/expected-nix.log")" "$(cat "$nix_log")" \
@@ -79,6 +88,43 @@ test_grep '^develop$' "$profile_log"
 test_grep "^$project$" "$profile_log"
 if [ -e "${PI_ENV_TEST_BWRAP_LOG:-$tmpdir/unset}" ]; then
   test_fail 'profile-style wired launcher bypassed project nix develop before recursion marker'
+fi
+
+tmp_project_runtime="$tmpdir/project-runtime/bin"
+mkdir -p "$tmp_project_runtime"
+project_bwrap="$tmp_project_runtime/pi-env-bwrap"
+cat >"$project_bwrap" <<'PROJECT_BWRAP'
+#!/usr/bin/env bash
+set -euo pipefail
+{
+  printf 'project bwrap=%s\n' "$0"
+  printf 'stale bwrap=%s\n' "${PI_ENV_PI_ENV_BWRAP:-}"
+  printf 'ignored bwrap=%s\n' "${PI_ENV_NIX_IGNORED_BWRAP:-}"
+  printf 'args:\n'
+  for arg in "$@"; do
+    printf '%s\n' "$arg"
+  done
+} >"$PI_ENV_TEST_PROJECT_BWRAP_LOG"
+exit 0
+PROJECT_BWRAP
+chmod +x "$project_bwrap"
+second_stage_log="$tmpdir/profile-second-stage-nix.log"
+project_bwrap_log="$tmpdir/project-bwrap.log"
+(
+  cd "$project"
+  env -u PI_ENV_RUNTIME -u PI_ENV_FLAKE -u PI_ENV_NIX_RUNTIME_READY -u PI_ENV_NIX_IGNORED_BWRAP \
+    PATH="$fakebin:$tmp_project_runtime:$install_bin:$PATH" PI_ENV_PI_ENV_BWRAP="$fake_bwrap" \
+    PI_ENV_TEST_NIX_LOG="$second_stage_log" PI_ENV_TEST_NIX_EXEC=1 \
+    PI_ENV_TEST_PROJECT_BWRAP_LOG="$project_bwrap_log" \
+    "$install_bin/pienv" --runtime nix --raw -- --version
+)
+test_file_exists "$project_bwrap_log"
+test_grep "^project bwrap=$project_bwrap$" "$project_bwrap_log"
+test_grep "^stale bwrap=$fake_bwrap$" "$project_bwrap_log"
+test_grep "^ignored bwrap=$fake_bwrap$" "$project_bwrap_log"
+test_grep '^--version$' "$project_bwrap_log"
+if [ -e "${PI_ENV_TEST_BWRAP_LOG:-$tmpdir/unset}" ]; then
+  test_fail 'second-stage nix runtime reused stale installed/profile pi-env-bwrap'
 fi
 
 missing_status=0
