@@ -220,7 +220,7 @@
             fi
             if [ -z "''${PI_ENV_QUIET:-}" ]; then
               echo "Pi agent runtime loaded"
-              echo "Use 'pi-env' for default startup, 'pi-env-shell' for a sandbox shell, or 'pi-env --raw -- <pi args>' for custom runs."
+              echo "Use 'pienv' for default startup, 'pienv shell' for a sandbox shell, or 'pienv raw -- <pi args>' for custom runs."
             fi
           '' + shellHook;
         };
