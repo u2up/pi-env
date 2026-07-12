@@ -158,6 +158,16 @@ if [ -e "$tmpdir/missing-nix.log" ]; then
   test_fail 'missing project flake still invoked nix'
 fi
 
+direct_checkout_log="$tmpdir/direct-checkout-nix.log"
+(
+  cd "$no_flake_project"
+  env -u PI_ENV_RUNTIME -u PI_ENV_FLAKE -u PI_ENV_PI_ENV_BWRAP -u PI_ENV_NIX_RUNTIME_READY \
+    PATH="$fakebin:$PATH" PI_ENV_TEST_NIX_LOG="$direct_checkout_log" \
+    "$repo_root/pienv" --runtime nix --raw -- --help
+)
+test_file_exists "$direct_checkout_log"
+test_grep "^$repo_root$" "$direct_checkout_log"
+
 explicit_cli_log="$tmpdir/explicit-cli-flake.log"
 (
   cd "$no_flake_project"

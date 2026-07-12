@@ -186,8 +186,17 @@ resolve_project_root() {
   fi
 }
 
+is_direct_checkout_launcher() {
+  [ "$script_dir" = "$checkout_root/scripts" ] && [ -f "$checkout_root/flake.nix" ]
+}
+
 select_default_nix_flake() {
   if [ "$flake_selector_set" = "1" ]; then
+    return 0
+  fi
+
+  if is_direct_checkout_launcher; then
+    flake_ref="$checkout_root"
     return 0
   fi
 
