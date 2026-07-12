@@ -702,7 +702,11 @@ copy_env NO_COLOR
 copy_env FORCE_COLOR
 
 if [ "$shell_mode" = "1" ]; then
-  copy_env PS1
+  if inherited_ps1="$(printenv PS1 2>/dev/null)" && [ -n "$inherited_ps1" ]; then
+    set_env PS1 "$inherited_ps1"
+  elif [ -n "${PI_ENV_DEV_SHELL_PS1:-}" ]; then
+    set_env PS1 "$PI_ENV_DEV_SHELL_PS1"
+  fi
   bwrap_dev_prompt_command='case "$-" in *i*) case "${PS1-}" in *"(bwrap-dev)"*) ;; *) PS1="(bwrap-dev) ${PS1-}" ;; esac ;; esac'
   if inherited_prompt_command="$(printenv PROMPT_COMMAND 2>/dev/null)" && [ -n "$inherited_prompt_command" ]; then
     set_env PROMPT_COMMAND "$bwrap_dev_prompt_command; $inherited_prompt_command"

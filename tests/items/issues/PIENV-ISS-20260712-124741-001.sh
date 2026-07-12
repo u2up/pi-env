@@ -12,7 +12,8 @@ prompt_command="$(awk -F"'" '/bwrap_dev_prompt_command=/{print $2; exit}' "$scri
 
 [ -n "$prompt_command" ] || test_fail 'missing bwrap-dev prompt command setup'
 
-test_grep 'copy_env PS1' "$script"
+test_grep 'PI_ENV_DEV_SHELL_PS1' flake.nix
+test_grep 'set_env PS1 "$PI_ENV_DEV_SHELL_PS1"' "$script"
 test_grep 'set_env PROMPT_COMMAND "$bwrap_dev_prompt_command' "$script"
 
 evaluate_interactive_prompt() {
@@ -33,5 +34,34 @@ test_eq '(bwrap-dev) (nix-dev) base$ ' "$actual" \
 PS1='plain$ '
 eval "$prompt_command"
 test_eq 'plain$ ' "$PS1" 'non-interactive prompt command should be inert'
+
+fake_bin="$(mktemp -d)"
+trap 'rm -rf "$fake_bin"' EXIT
+cat >"$fake_bin/bwrap" <<'FAKE_BWRAP'
+#!/usr/bin/env bash
+set -euo pipefail
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--setenv" ] && [ "${2:-}" = "PS1" ]; then
+    printf '%s' "${3:-}"
+    exit 0
+  fi
+  shift
+done
+exit 1
+FAKE_BWRAP
+chmod +x "$fake_bin/bwrap"
+
+actual="$(
+  env \
+    PS1='should be stripped by the bash wrapper' \
+    PI_ENV_DEV_SHELL_PS1='(nix-dev) wrapper$ ' \
+    PI_ENV_RUNTIME_PATH=/usr/bin \
+    PI_ENV_BWRAP_BWRAP="$fake_bin/bwrap" \
+    PI_ENV_BWRAP_BASH="$(command -v bash)" \
+    PI_ENV_BWRAP_ENV="$(command -v env)" \
+    bash "$script" --shell -- -lc true
+)"
+test_eq '(nix-dev) wrapper$ ' "$actual" \
+  'bwrap wrapper path should preserve the nix prompt via PI_ENV_DEV_SHELL_PS1'
 
 test_note 'bwrap-dev prompt prefix setup is covered'
