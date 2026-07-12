@@ -771,7 +771,14 @@ source <(pienv completion bash)
 Completion covers top-level commands, nested `coord`, `roles`, `sandbox`, and
 `completion` subcommands, and known options for representative leaf commands.
 
-### Existing `pi-env` entrypoint
+### Lower-level entrypoints
+
+These `pi-env-*` commands are the lower-level wrappers behind the canonical
+`pienv` namespace. Most users should prefer `pienv`, `pienv shell`, and
+`pienv sandbox` unless they need compatibility with an existing invocation or
+are debugging a specific layer.
+
+#### `pi-env`: default Pi launcher
 
 Start Pi with pi-env defaults:
 
@@ -779,13 +786,27 @@ Start Pi with pi-env defaults:
 pi-env
 ```
 
-Direct checkout `pi-env` defaults to host runtime mode. In all runtime modes,
-default `pi-env` startup runs the sandbox with the default tool allowlist,
-`--continue`, and the default role-manager package when available:
+Direct checkout `pi-env` defaults to host runtime mode. It chooses the default
+tool list from `PI_ENV_BWRAP_DEFAULT_TOOLS` when set, otherwise uses Pi's
+built-in tools:
+
+```text
+read,bash,edit,write,grep,find,ls
+```
+
+In all runtime modes, default `pi-env` startup runs the sandbox with the default
+tool allowlist, `--continue`, and the default role-manager package when
+available:
 
 ```bash
 pi-env-bwrap --tools read,bash,edit,write,grep,find,ls --continue -e "$PI_ENV_ROLE_MANAGER_PACKAGE"
 ```
+
+By default, `pi-env` loads the packaged role-manager extension when the package
+path exists. The role manager is inactive until you select a role, restore one
+from session state, or request one through supported environment variables. Set
+`PI_ENV_ROLE_MANAGER_AUTO=0` to omit the automatic per-run extension argument,
+especially if you prefer an installed-package workflow.
 
 Select the runtime with `--runtime host|nix|auto` or
 `PI_ENV_RUNTIME=host|nix|auto`; the command-line option wins. Host runtime is
@@ -799,7 +820,7 @@ pi-env --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 pi-env --runtime nix --raw -- --model anthropic/claude-sonnet-4-5 "Inspect this repo"
 ```
 
-### `pi-env-shell`
+#### `pi-env-shell`: sandboxed interactive shell
 
 Enter a shell inside the selected pi-env runtime and the same Bubblewrap
 sandbox used for Pi runs:
@@ -816,25 +837,11 @@ Pi arguments; any remaining arguments are Bash arguments after runtime
 selection. Use `pi-env` for normal agent startup and `pi-env --raw -- ...` when
 you need custom Pi arguments.
 
-### Default `pi-env` startup
+#### `pi-env-bwrap`: direct Bubblewrap launcher
 
-`pi-env` is the default startup wrapper. It chooses the default tool list from
-`PI_ENV_BWRAP_DEFAULT_TOOLS` when set, otherwise uses Pi's built-in tools:
-
-```text
-read,bash,edit,write,grep,find,ls
-```
-
-By default, `pi-env` loads the packaged role-manager extension when the package
-path exists. The role manager is inactive until you select a role, restore one
-from session state, or request one through supported environment variables. Set
-`PI_ENV_ROLE_MANAGER_AUTO=0` to omit the automatic per-run extension argument,
-especially if you prefer an installed-package workflow.
-
-### `pi-env-bwrap`
-
-`pi-env-bwrap` runs `pi-coding-agent` inside the Bubblewrap sandbox. Use it directly
-when you want full control over the Pi arguments or when running Pi subcommands:
+`pi-env-bwrap` runs `pi-coding-agent` inside the Bubblewrap sandbox. Use it
+directly when you want full control over the Pi arguments or when running Pi
+subcommands:
 
 ```bash
 pi-env-bwrap -- --help
@@ -842,12 +849,12 @@ pi-env-bwrap -- config
 pi-env-bwrap --shell
 ```
 
-`pi-env-bwrap --shell [--] [bash args...]` keeps the same project mount, isolated
-home, runtime `PATH`, and environment policy, but execs Bash as the sandbox
-payload instead of `pi`. Prefer `pi-env-shell` unless you have already selected
-the runtime and intentionally want to call the sandbox layer directly.
+`pi-env-bwrap --shell [--] [bash args...]` keeps the same project mount,
+isolated home, runtime `PATH`, and environment policy, but execs Bash as the
+sandbox payload instead of `pi`. Prefer `pi-env-shell` unless you have already
+selected the runtime and intentionally want to call the sandbox layer directly.
 
-### Running `pi config`
+### Pi configuration inside and outside the sandbox
 
 Pi's `config` subcommand enables or disables extensions, skills, prompt
 templates, and themes.
