@@ -40,6 +40,9 @@ if [ "${PI_ENV_TEST_NIX_EXEC:-0}" = "1" ]; then
   if [ -n "${PI_ENV_TEST_NIX_PREPEND_PATH:-}" ]; then
     export PATH="$PI_ENV_TEST_NIX_PREPEND_PATH:$PATH"
   fi
+  if [ -n "${PI_ENV_TEST_NIX_PROJECT_BWRAP:-}" ]; then
+    export PI_ENV_NIX_PROJECT_BWRAP="$PI_ENV_TEST_NIX_PROJECT_BWRAP"
+  fi
   exec "$@"
 fi
 exit 0
@@ -136,7 +139,7 @@ same_store_bwrap_log="$tmpdir/same-store-project-bwrap.log"
   env -u PI_ENV_RUNTIME -u PI_ENV_FLAKE -u PI_ENV_NIX_RUNTIME_READY -u PI_ENV_NIX_IGNORED_BWRAP \
     PATH="$fakebin:$install_bin:$PATH" PI_ENV_PI_ENV_BWRAP="$install_bin/pi-env-bwrap" \
     PI_ENV_TEST_NIX_LOG="$tmpdir/same-store-nix.log" PI_ENV_TEST_NIX_EXEC=1 \
-    PI_ENV_TEST_NIX_PREPEND_PATH="$install_bin" \
+    PI_ENV_TEST_NIX_PROJECT_BWRAP="$install_bin/pi-env-bwrap" \
     PI_ENV_TEST_BWRAP_LOG="$same_store_bwrap_log" \
     "$install_bin/pienv" --runtime nix --raw -- --version
 )

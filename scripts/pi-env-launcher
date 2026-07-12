@@ -232,16 +232,28 @@ canonical_path() {
   fi
 }
 
+same_canonical_path() {
+  local left="$1"
+  local right="$2"
+  [ -n "$left" ] && [ -n "$right" ] && [ "$(canonical_path "$left")" = "$(canonical_path "$right")" ]
+}
+
+is_project_nix_bwrap() {
+  local candidate="$1"
+  local project_bwrap="${PI_ENV_NIX_PROJECT_BWRAP:-}"
+  same_canonical_path "$candidate" "$project_bwrap"
+}
+
 is_ignored_nix_bwrap() {
   local candidate="$1"
   local ignored="${PI_ENV_NIX_IGNORED_BWRAP:-}"
   if [ -z "$candidate" ] || [ -z "$ignored" ]; then
     return 1
   fi
-  if [ "$candidate" = "$ignored" ]; then
-    return 0
+  if is_project_nix_bwrap "$candidate"; then
+    return 1
   fi
-  [ "$(canonical_path "$candidate")" = "$(canonical_path "$ignored")" ]
+  same_canonical_path "$candidate" "$ignored"
 }
 
 path_entry_count() {
@@ -264,10 +276,10 @@ is_ignored_nix_path_bwrap() {
   fi
 
   # A project flake may legitimately provide the same Nix-store pi-env-bwrap
-  # path as the profile-installed command.  In that case nix develop normally
-  # adds the runtime bin directory to PATH again.  Treat an additional PATH
-  # occurrence as evidence that the selected flake provided the runtime, while
-  # still rejecting an unchanged inherited profile/install PATH.
+  # path as the profile-installed command.  The preferred signal is the
+  # PI_ENV_NIX_PROJECT_BWRAP marker exported by pi-env's devshell; keep the
+  # PATH-count fallback for older test/devshell shims that prepend duplicate
+  # entries rather than exporting the marker.
   local old_path="${PI_ENV_NIX_IGNORED_PATH:-}"
   local candidate_dir
   candidate_dir="$(dirname "$candidate")"
@@ -323,6 +335,7 @@ exec_nix_runtime() {
     PI_ENV_NIX_RUNTIME_READY=1 \
     PI_ENV_NIX_IGNORED_BWRAP="${PI_ENV_PI_ENV_BWRAP:-}" \
     PI_ENV_NIX_IGNORED_PATH="${PATH:-}" \
+    PI_ENV_NIX_PROJECT_BWRAP= \
     exec nix "${nix_args[@]}" "${args[@]}"
 }
 

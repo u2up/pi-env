@@ -210,6 +210,7 @@
           shellHook = ''
             export PS1="(nix-dev) \u@\h:\w$ "
             export PI_ENV_ROLE_MANAGER_PACKAGE="${roleManagerPackage}"
+            export PI_ENV_NIX_PROJECT_BWRAP="${piBwrap}/bin/pi-env-bwrap"
             if [ -n "${extraPackagePath}" ]; then
               if [ -n "''${PI_ENV_BWRAP_EXTRA_PATH:-}" ]; then
                 export PI_ENV_BWRAP_EXTRA_PATH="${extraPackagePath}:$PI_ENV_BWRAP_EXTRA_PATH"
