@@ -244,6 +244,40 @@ is_ignored_nix_bwrap() {
   [ "$(canonical_path "$candidate")" = "$(canonical_path "$ignored")" ]
 }
 
+path_entry_count() {
+  local needle="$1"
+  local haystack="$2"
+  local count=0
+  local entry
+  while IFS= read -r -d ':' entry; do
+    if [ "$entry" = "$needle" ]; then
+      count=$((count + 1))
+    fi
+  done < <(printf '%s:' "$haystack")
+  printf '%s\n' "$count"
+}
+
+is_ignored_nix_path_bwrap() {
+  local candidate="$1"
+  if ! is_ignored_nix_bwrap "$candidate"; then
+    return 1
+  fi
+
+  # A project flake may legitimately provide the same Nix-store pi-env-bwrap
+  # path as the profile-installed command.  In that case nix develop normally
+  # adds the runtime bin directory to PATH again.  Treat an additional PATH
+  # occurrence as evidence that the selected flake provided the runtime, while
+  # still rejecting an unchanged inherited profile/install PATH.
+  local old_path="${PI_ENV_NIX_IGNORED_PATH:-}"
+  local candidate_dir
+  candidate_dir="$(dirname "$candidate")"
+  local old_count
+  old_count="$(path_entry_count "$candidate_dir" "$old_path")"
+  local current_count
+  current_count="$(path_entry_count "$candidate_dir" "${PATH:-}")"
+  [ "$current_count" -le "$old_count" ]
+}
+
 exec_nix_runtime() {
   if [ "${PI_ENV_NIX_RUNTIME_READY:-0}" = "1" ]; then
     local ready_pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-}"
@@ -252,7 +286,7 @@ exec_nix_runtime() {
     fi
     if [ -z "$ready_pi_bwrap" ] && command -v pi-env-bwrap >/dev/null 2>&1; then
       ready_pi_bwrap="$(command -v pi-env-bwrap)"
-      if is_ignored_nix_bwrap "$ready_pi_bwrap"; then
+      if is_ignored_nix_path_bwrap "$ready_pi_bwrap"; then
         ready_pi_bwrap=""
       fi
     fi
@@ -288,6 +322,7 @@ exec_nix_runtime() {
   PI_ENV_RUNTIME="$runtime_mode" \
     PI_ENV_NIX_RUNTIME_READY=1 \
     PI_ENV_NIX_IGNORED_BWRAP="${PI_ENV_PI_ENV_BWRAP:-}" \
+    PI_ENV_NIX_IGNORED_PATH="${PATH:-}" \
     exec nix "${nix_args[@]}" "${args[@]}"
 }
 

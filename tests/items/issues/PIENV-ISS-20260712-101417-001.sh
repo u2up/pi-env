@@ -37,6 +37,9 @@ if [ "${PI_ENV_TEST_NIX_EXEC:-0}" = "1" ]; then
   shift 2
   [ "$1" = -c ] || exit 64
   shift
+  if [ -n "${PI_ENV_TEST_NIX_PREPEND_PATH:-}" ]; then
+    export PATH="$PI_ENV_TEST_NIX_PREPEND_PATH:$PATH"
+  fi
   exec "$@"
 fi
 exit 0
@@ -126,6 +129,19 @@ test_grep '^--version$' "$project_bwrap_log"
 if [ -e "${PI_ENV_TEST_BWRAP_LOG:-$tmpdir/unset}" ]; then
   test_fail 'second-stage nix runtime reused stale installed/profile pi-env-bwrap'
 fi
+
+same_store_bwrap_log="$tmpdir/same-store-project-bwrap.log"
+(
+  cd "$project"
+  env -u PI_ENV_RUNTIME -u PI_ENV_FLAKE -u PI_ENV_NIX_RUNTIME_READY -u PI_ENV_NIX_IGNORED_BWRAP \
+    PATH="$fakebin:$install_bin:$PATH" PI_ENV_PI_ENV_BWRAP="$install_bin/pi-env-bwrap" \
+    PI_ENV_TEST_NIX_LOG="$tmpdir/same-store-nix.log" PI_ENV_TEST_NIX_EXEC=1 \
+    PI_ENV_TEST_NIX_PREPEND_PATH="$install_bin" \
+    PI_ENV_TEST_BWRAP_LOG="$same_store_bwrap_log" \
+    "$install_bin/pienv" --runtime nix --raw -- --version
+)
+test_file_exists "$same_store_bwrap_log"
+test_grep '^--version$' "$same_store_bwrap_log"
 
 stale_profile_status=0
 stale_profile_bwrap_log="$tmpdir/stale-profile-bwrap.log"
