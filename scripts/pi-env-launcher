@@ -16,7 +16,9 @@ Default pi-env mode starts Pi through pi-env-bwrap with the standard tools,
 --continue, and role-manager auto-loading policy.
 Raw pi-env mode delegates to pi-env-bwrap for fully custom Pi arguments.
 pi-env-shell selects the same runtime as pi-env, then asks pi-env-bwrap to enter
-sandbox shell mode instead of starting Pi.
+sandbox shell mode instead of starting Pi. With no Bash arguments it starts an
+interactive login shell and requires both stdin and stdout to be TTYs. In non-TTY
+contexts, pass explicit non-interactive Bash arguments such as -- -lc 'pwd'.
 
 Runtime modes:
   host  Use host-installed tools inside the Bubblewrap sandbox. This is the

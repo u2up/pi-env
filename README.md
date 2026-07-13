@@ -831,6 +831,13 @@ pi-env-shell --runtime nix
 pi-env-shell -- -lc 'pwd && command -v git'
 ```
 
+With no Bash arguments, `pi-env-shell` starts an interactive login shell and
+requires both stdin and stdout to be TTYs. Non-TTY invocations fail before
+entering Bubblewrap with a pi-env diagnostic; use a terminal/PTY for interactive
+shells, or pass explicit non-interactive Bash arguments such as
+`-- -lc 'pwd && command -v git'` in scripts and CI. Explicit interactive Bash
+requests such as `-- -i` follow the same TTY requirement.
+
 `pi-env-shell` accepts the same `--runtime host|nix|auto`, `--flake REF`, and
 `PI_ENV_RUNTIME` selection inputs as `pi-env`. It does not reinterpret normal
 Pi arguments; any remaining arguments are Bash arguments after runtime
@@ -851,8 +858,11 @@ pi-env-bwrap --shell
 
 `pi-env-bwrap --shell [--] [bash args...]` keeps the same project mount,
 isolated home, runtime `PATH`, and environment policy, but execs Bash as the
-sandbox payload instead of `pi`. Prefer `pi-env-shell` unless you have already
-selected the runtime and intentionally want to call the sandbox layer directly.
+sandbox payload instead of `pi`. The default shell payload is interactive and
+requires stdin/stdout TTYs; explicit non-interactive payloads such as
+`pi-env-bwrap --shell -- -lc 'pwd'` are supported in non-TTY runners. Prefer
+`pi-env-shell` unless you have already selected the runtime and intentionally
+want to call the sandbox layer directly.
 
 ### Pi configuration inside and outside the sandbox
 

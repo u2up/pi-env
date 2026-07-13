@@ -41,9 +41,11 @@ Usage:
 Defaults when no pi args are given:
   pi --tools read,bash,edit,write,grep,find,ls --continue
 
-Shell mode enters the same sandbox but execs Bash instead of Pi. Use
-pi-env-shell for normal runtime selection; use pi-env-bwrap --shell only when the
-runtime is already selected.
+Shell mode enters the same sandbox but execs Bash instead of Pi. With no Bash
+arguments it starts an interactive login shell and therefore requires both stdin
+and stdout to be TTYs. Use explicit non-interactive Bash arguments such as
+-- -lc 'pwd' for non-TTY command evaluation. Use pi-env-shell for normal runtime
+selection; use pi-env-bwrap --shell only when the runtime is already selected.
 
 Security model:
   - mounts the detected project root read-write at /workspace
@@ -600,11 +602,40 @@ if [ -n "$host_coord_dir" ]; then
   fi
 fi
 
+shell_interactive=0
+bash_args_request_interactive() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --)
+        return 1
+        ;;
+      --*)
+        ;;
+      -?*)
+        case "$arg" in
+          *i*) return 0 ;;
+        esac
+        ;;
+    esac
+  done
+  return 1
+}
+
 if [ "$shell_mode" = "1" ]; then
   if [ "$#" -eq 0 ]; then
     pi_args=(-l)
+    shell_interactive=1
   else
     pi_args=("$@")
+    if bash_args_request_interactive "${pi_args[@]}"; then
+      shell_interactive=1
+    fi
+  fi
+  if [ "$shell_interactive" = "1" ] && { [ ! -t 0 ] || [ ! -t 1 ]; }; then
+    echo "pi-env-bwrap: interactive shell mode requires both stdin and stdout to be TTYs." >&2
+    echo "pi-env-bwrap: run from a terminal/PTY, or pass explicit non-interactive Bash arguments such as: -- -lc 'pwd'." >&2
+    exit 2
   fi
 elif [ "$#" -eq 0 ]; then
   pi_args=(--tools "$DEFAULT_PI_TOOLS" --continue)
@@ -915,7 +946,13 @@ fi
 bwrap_args=(
   --die-with-parent
   --unshare-all
-  --new-session
+)
+
+if [ "$shell_interactive" != "1" ]; then
+  bwrap_args+=(--new-session)
+fi
+
+bwrap_args+=(
   --proc /proc
   --dev /dev
   --tmpfs /tmp
