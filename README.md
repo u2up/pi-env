@@ -109,7 +109,8 @@ Then bootstrap a local coordination repository for the checkout and run Pi:
 pienv coord bootstrap \
   --project-root "$PWD" \
   --project evm \
-  --project-key EVM
+  --project-key EVM \
+  --repo-id evm
 pienv coord status
 pienv "Inspect this repository and review its state."
 ```
@@ -1299,9 +1300,10 @@ memory, requirements, decisions, or work queues.
 Bootstrap option names are domain-oriented: `--project` names the coordination
 domain and `--project-key` selects the domain-level item ID prefix stored in
 root `PROJECT.md`. They are not implementation repository ids. The
-implementation repo id is the `repo_id` in `.pi-env-coordination.yaml` and
-`repos/<repo_id>/REPO.md`, or the `--repo-id` value on lower-level coordination
-commands that accept one.
+coordination `--remote` is the shared coordination repository remote. Use
+`--repo-id` for the current implementation repo namespace and
+`--implementation-remote` for that implementation repo's Git remote when
+registering it.
 
 Guided setup with inferred, project-specific defaults:
 
@@ -1311,6 +1313,44 @@ pienv coord bootstrap
 pienv coord bootstrap --project-root /path/to/project --print-only
 # or only print the suggested PI_ENV_COORD_* environment and init command
 pienv coord bootstrap --print-only
+```
+
+Create or bootstrap a local-only coordination domain for one implementation
+repo:
+
+```bash
+pienv coord bootstrap \
+  --project-root "$PWD" \
+  --project my-product \
+  --project-key MYPROD \
+  --repo-id backend-api
+```
+
+Attach an implementation repo to an existing coordination domain without
+mutating shared coordination state. This writes/updates the local
+`.pi-env-coordination.yaml` attachment hint and, if `backend-api` is not already
+registered, reports how to register it explicitly:
+
+```bash
+pienv coord bootstrap \
+  --remote git@example.com:org/my-product-coordination.git \
+  --project my-product \
+  --project-key MYPROD \
+  --repo-id backend-api
+```
+
+Attach and explicitly register a new implementation repo namespace. This
+mutates shared coordination state by creating `repos/backend-api/REPO.md` and
+issue status directories, then commits and pushes the coordination change:
+
+```bash
+pienv coord bootstrap \
+  --remote git@example.com:org/my-product-coordination.git \
+  --project my-product \
+  --project-key MYPROD \
+  --repo-id backend-api \
+  --implementation-remote git@example.com:org/backend-api.git \
+  --register-repo
 ```
 
 Manual minimal setup with a local bare remote:
@@ -1335,15 +1375,18 @@ pienv coord bootstrap --remote git@example.com:org/pi-env-coordination.git --pri
 ```
 
 `pi-env-bootstrap-coordination` is a thin wrapper around `pi-env-coord-init`: it prints
-the inferred root, clone dir, remote, agent ID, project, and project key, then
-initializes with those explicit values. Remote selection uses this precedence:
-explicit `--remote`, then `PI_ENV_COORD_REMOTE`, then `.pi-env-coordination.yaml`
-`coordination_remote`, then the local bare remote under explicit `--root` or the
-project-local default. After a real bootstrap, it records the selected
-remote in `.pi-env-coordination.yaml` as `coordination_remote`. If the local
-coordination clone already exists but the planned local bare remote is missing
-or empty, it recreates that remote from the clone's committed Git history and
-repairs `origin` when it is absent or points to a missing local path.
+the inferred root, coordination clone dir, coordination remote, agent ID,
+coordination domain project, domain item key, implementation repo id, and
+implementation repo remote(s), then initializes with those explicit values.
+Coordination remote selection uses this precedence: explicit `--remote`, then
+`PI_ENV_COORD_REMOTE`, then `.pi-env-coordination.yaml` `coordination_remote`,
+then the local bare remote under explicit `--root` or the project-local default.
+After a real bootstrap, it records the selected coordination remote in
+`.pi-env-coordination.yaml` as `coordination_remote` and the implementation repo
+namespace as `repo_id` when one is resolved. If the local coordination clone
+already exists but the planned local bare remote is missing or empty, it
+recreates that remote from the clone's committed Git history and repairs
+`origin` when it is absent or points to a missing local path.
 
 Without a configured exact remote, this creates a bare remote at:
 

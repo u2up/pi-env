@@ -25,9 +25,9 @@ pi-env-bootstrap-coordination \
   --project-key PRINT \
   --agent-id agent-a \
   --print-only >"$tmp/print-plan.txt"
-grep -F "Root:         $print_project/.pi-env/agent-remotes" \
+grep -F "Root:                        $print_project/.pi-env/agent-remotes" \
   "$tmp/print-plan.txt" >/dev/null
-grep -F "Clone dir:    $print_project/.pi-env/coordination" \
+grep -F "Coordination clone dir:      $print_project/.pi-env/coordination" \
   "$tmp/print-plan.txt" >/dev/null
 test ! -e "$print_project/.pi-env"
 

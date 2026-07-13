@@ -21,15 +21,20 @@ Usage:
 Options:
   --project-root DIR  Project directory to inspect; default: current directory
   --root DIR          Bare remote parent; default: .pi-env/agent-remotes
-  --remote REMOTE     Coordination Git remote URL or local bare path; default: PI_ENV_COORD_REMOTE
-  --project KEY       Coordination project; default: PI_ENV_COORD_PROJECT or inferred project name
-  --project-key KEY   Project item ID prefix; default: PI_ENV_COORD_PROJECT_KEY or derived project
-  --repo-id ID        Current implementation repo id; default: PI_ENV_COORD_REPO_ID,
-                     .pi-env-coordination.yaml repo_id, or Git origin name
+  --remote REMOTE     Coordination repository Git remote URL or local bare path;
+                     default: PI_ENV_COORD_REMOTE
+  --project NAME      Coordination domain project name; default: PI_ENV_COORD_PROJECT
+                     or inferred domain name
+  --project-key KEY   Domain-level item ID prefix stored in root PROJECT.md;
+                     default: PI_ENV_COORD_PROJECT_KEY or derived from domain
+  --repo-id ID        Implementation repo namespace to attach/register; default:
+                     PI_ENV_COORD_REPO_ID, .pi-env-coordination.yaml repo_id,
+                     or Git origin name
   --register-repo     Register a missing --repo-id in the coordination registry
   --implementation-remote URL
-                     Implementation Git remote URL for registration; repeatable.
-                     Defaults to the current repo's Git origin URL when present
+                     Implementation repository Git remote URL for registration;
+                     repeatable. Defaults to current repo's Git origin URL
+                     when present
   --dir DIR           Working clone dir; default: PI_ENV_COORD_DIR or .pi-env/coordination
   --agent-id ID       Agent identity; default: PI_ENV_COORD_AGENT_ID or USER
   --bare-only         Only create the bare remote
@@ -135,17 +140,17 @@ bootstrap_print_plan() {
 
   cat <<EOF_PLAN
 Suggested coordination settings:
-  Inspect dir:  $inspect_dir
-  Root:         $root_abs
-  Project:      $project
-  Project key:  $project_item_key
-  Clone dir:    $coord_dir_abs
-  Remote:       $remote
-  Agent ID:     $agent_id
-  Repo ID:      ${implementation_repo_id:-<unresolved>}
-  Repo remotes: ${implementation_remotes_display:-<none>}
-  Register:     $register_repo
-  Registration required: $registration_required
+  Inspect dir:                 $inspect_dir
+  Root:                        $root_abs
+  Coordination domain project: $project
+  Domain item key:             $project_item_key
+  Coordination clone dir:      $coord_dir_abs
+  Coordination remote:         $remote
+  Agent ID:                    $agent_id
+  Implementation repo id:      ${implementation_repo_id:-<unresolved>}
+  Implementation repo remote:  ${implementation_remotes_display:-<none>}
+  Register implementation:     $register_repo
+  Registration required:       $registration_required
 
 Suggested environment for future runs:
   export PI_ENV_COORD_REMOTE=$(bootstrap_shell_quote "$config_remote")

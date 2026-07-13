@@ -45,8 +45,8 @@ env -u PI_ENV_COORD_REMOTE -u PI_ENV_COORD_DIR -u PI_ENV_COORD_PROJECT \
   bash "$bootstrap" --project-root "$impl" --remote "$coord_remote" \
     --project domain --project-key DOMAIN --repo-id frontend \
     --dir "$impl/.pi-env/coordination" --dry-run >"$dry_out"
-test_grep 'Repo ID:      frontend' "$dry_out"
-test_grep "Repo remotes: $impl_origin" "$dry_out"
+test_grep 'Implementation repo id:      frontend' "$dry_out"
+test_grep "Implementation repo remote:  $impl_origin" "$dry_out"
 [ ! -e "$impl/.pi-env/coordination" ] || test_fail 'dry-run should not clone coordination repo'
 [ ! -e "$impl/.pi-env-coordination.yaml" ] || test_fail 'dry-run should not write implementation config'
 

@@ -126,7 +126,7 @@ test -d "$bootstrap_project_dir/.pi-env/coordination/notes"
 grep -q '^project: other-project$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
 grep -q '^item_key: OTHERPROJECT$' "$bootstrap_project_dir/.pi-env/coordination/PROJECT.md"
 grep -q '^domain_generated_files: \[\]$' "$bootstrap_project_dir/.pi-env/coordination/repos/other-project/REPO.md"
-grep -q "Clone dir:    $bootstrap_project_dir/.pi-env/coordination" "$bootstrap_plan"
+grep -q "Coordination clone dir:      $bootstrap_project_dir/.pi-env/coordination" "$bootstrap_plan"
 grep -q "export PI_ENV_COORD_REMOTE=$tmp/bootstrap-remotes/other-project-coordination.git" "$bootstrap_plan"
 grep -Fxq '/.pi-env/' "$bootstrap_project_dir/.git/info/exclude"
 grep -q 'export PI_ENV_COORD_PROJECT=other-project' "$bootstrap_plan"
@@ -180,9 +180,9 @@ git -C "$fresh_print_project_dir" init -q
 pi-env-bootstrap-coordination \
   --project-root "$fresh_print_project_dir" \
   --print-only >"$tmp/fresh-print-plan.txt" 2>/dev/null
-grep -q "Root:         $fresh_print_project_dir/.pi-env/agent-remotes" \
+grep -q "Root:                        $fresh_print_project_dir/.pi-env/agent-remotes" \
   "$tmp/fresh-print-plan.txt"
-grep -q "Clone dir:    $fresh_print_project_dir/.pi-env/coordination" \
+grep -q "Coordination clone dir:      $fresh_print_project_dir/.pi-env/coordination" \
   "$tmp/fresh-print-plan.txt"
 grep -q 'export PI_ENV_COORD_REMOTE=.pi-env/agent-remotes/fresh-print-project-coordination.git' \
   "$tmp/fresh-print-plan.txt"
@@ -199,7 +199,7 @@ pi-env-bootstrap-coordination \
   --remote "$server_print_remote" \
   --print-only >"$tmp/server-print-plan.txt" 2>/dev/null
 
-grep -q "Remote:       $server_print_remote" "$tmp/server-print-plan.txt"
+grep -q "Coordination remote:         $server_print_remote" "$tmp/server-print-plan.txt"
 grep -q "pi-env-coord-init --remote $server_print_remote" "$tmp/server-print-plan.txt"
 test ! -e "$tmp/server-print-remotes"
 test ! -e "$server_print_project_dir/.pi-env/coordination"
