@@ -86,6 +86,27 @@ git clone "$coord_remote" "$pushed_clone" >/dev/null 2>&1
 test_file_exists "$pushed_clone/repos/frontend/REPO.md"
 test_file_exists "$pushed_clone/repos/frontend/issues/open/.gitkeep"
 
+# Brand-new coordination domains seeded by bootstrap still record explicit
+# implementation remotes when --register-repo is requested.
+fresh_remote="$tmpdir/fresh-domain.git"
+fresh_impl="$tmpdir/fresh-frontend-work"
+mkdir -p "$fresh_impl"
+git -C "$fresh_impl" init --initial-branch=main >/dev/null 2>&1 \
+  || git -C "$fresh_impl" init >/dev/null
+env -u PI_ENV_COORD_REMOTE -u PI_ENV_COORD_DIR -u PI_ENV_COORD_PROJECT \
+  -u PI_ENV_COORD_PROJECT_KEY -u PI_ENV_COORD_REPO_ID \
+  bash "$bootstrap" --project-root "$fresh_impl" --remote "$fresh_remote" \
+    --project freshdomain --project-key FRESH --repo-id frontend \
+    --implementation-remote "ssh://example.invalid/fresh-frontend.git" \
+    --dir "$fresh_impl/.pi-env/coordination" --register-repo --no-status
+fresh_manifest="$fresh_impl/.pi-env/coordination/repos/frontend/REPO.md"
+test_file_exists "$fresh_manifest"
+test_grep 'ssh://example.invalid/fresh-frontend.git' "$fresh_manifest"
+fresh_pushed="$tmpdir/fresh-pushed-check"
+git clone "$fresh_remote" "$fresh_pushed" >/dev/null 2>&1
+test_grep 'ssh://example.invalid/fresh-frontend.git' \
+  "$fresh_pushed/repos/frontend/REPO.md"
+
 # Existing active registrations are detected without an extra commit.
 before_head="$(git -C "$impl/.pi-env/coordination" rev-parse HEAD)"
 env -u PI_ENV_COORD_REMOTE -u PI_ENV_COORD_DIR -u PI_ENV_COORD_PROJECT \

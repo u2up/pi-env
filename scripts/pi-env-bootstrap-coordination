@@ -273,8 +273,33 @@ bootstrap_pull_coordination() {
   fi
 }
 
+bootstrap_set_repo_manifest_remotes() {
+  local manifest tmp remotes_text
+  manifest="$1"
+  shift
+  [ "$#" -gt 0 ] || return 1
+  remotes_text=""
+  for remote in "$@"; do
+    remotes_text="${remotes_text}  - $(coord_yaml_scalar "$remote")"$'\n'
+  done
+  tmp="$(mktemp)"
+  awk -v remotes_text="$remotes_text" '
+    NR == 1 && $0 == "---" { in_fm = 1; print; next }
+    in_fm && /^remotes:/ {
+      printf "remotes:\n%s", remotes_text
+      skip_remotes = 1
+      next
+    }
+    skip_remotes && /^[[:space:]]*-[[:space:]]*/ { next }
+    skip_remotes { skip_remotes = 0 }
+    { print }
+  ' "$manifest" >"$tmp"
+  mv "$tmp" "$manifest"
+  return 0
+}
+
 bootstrap_register_or_report_repo() {
-  local match canonical kind status repo_tool add_args actor
+  local match canonical kind status manifest repo_tool add_args actor
   [ -n "$implementation_repo_id" ] || return 0
   coord_repo_id_is_valid "$implementation_repo_id" \
     || coord_die "invalid repo id '$implementation_repo_id'; use lowercase letters, digits, dots, underscores, and hyphens"
@@ -290,6 +315,21 @@ bootstrap_register_or_report_repo() {
     fi
     if [ "$status" != "active" ]; then
       coord_die "repo id '$implementation_repo_id' is $status as canonical repo '$canonical'; not reactivating retired registry entries"
+    fi
+    manifest="$(printf '%s' "$match" | cut -d: -f4-)"
+    if [ "${bootstrap_initialized_coordination:-0}" = "1" ] \
+      && [ "$register_repo" = "1" ] \
+      && [ "${#implementation_remotes[@]}" -gt 0 ] \
+      && [ -f "$manifest" ] \
+      && [ -z "$(coord_repo_manifest_list_values "$manifest" remotes | sed '/^$/d')" ]; then
+      bootstrap_set_repo_manifest_remotes "$manifest" "${implementation_remotes[@]}" || true
+      git -C "$coord_dir_abs" add "$manifest"
+      actor="$(coord_effective_actor "$agent_id" "$(coord_default_role)")"
+      if (cd "$coord_dir_abs" && coord_commit_all_if_changed "Register $implementation_repo_id implementation repo remotes" "$actor"); then
+        git -C "$coord_dir_abs" push origin HEAD >/dev/null
+        coord_note "recorded implementation remotes for '$implementation_repo_id'"
+      fi
+      return 0
     fi
     coord_note "implementation repo '$implementation_repo_id' is already registered"
     return 0
@@ -654,6 +694,7 @@ if [ "$bare_only" = "1" ]; then
   init_args+=(--bare-only)
 fi
 
+bootstrap_initialized_coordination=1
 "$agent_coord_init" "${init_args[@]}"
 if [ "$bare_only" != "1" ] && [ -n "$remote_local_path" ]; then
   bootstrap_ensure_remote_from_clone "$coord_dir_abs" "$remote_local_path"
