@@ -1296,6 +1296,13 @@ view.
 Use separate coordination domains when repositories should not share process
 memory, requirements, decisions, or work queues.
 
+Bootstrap option names are domain-oriented: `--project` names the coordination
+domain and `--project-key` selects the domain-level item ID prefix stored in
+root `PROJECT.md`. They are not implementation repository ids. The
+implementation repo id is the `repo_id` in `.pi-env-coordination.yaml` and
+`repos/<repo_id>/REPO.md`, or the `--repo-id` value on lower-level coordination
+commands that accept one.
+
 Guided setup with inferred, project-specific defaults:
 
 ```bash

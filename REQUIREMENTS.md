@@ -650,27 +650,46 @@ The flake/devshell must provide these opt-in coordination commands:
 - `pi-env-coord-lint`
 - `pi-env-coord-upgrade-rules`
 
-`pi-env-bootstrap-coordination` must remain a thin wrapper around
-`pi-env-coord-init`: it prints the inferred `PI_ENV_COORD_*` settings and the
-corresponding initialization command, records the selected remote as
+`pi-env-bootstrap-coordination` must provide the high-level setup path for
+attaching an implementation repository to a coordination domain. By default
+it prints the inferred `PI_ENV_COORD_*` settings and the corresponding
+initialization command, records the selected remote as
 `.pi-env-coordination.yaml` `coordination_remote` on real bootstraps, then
-initializes with those explicit values unless `--print-only`/`--dry-run` is
-used. When project values are unset, it must infer useful defaults from
-`PI_ENV_COORD_PROJECT`, the Git
-origin repository name, the Git root basename, or the current directory
-basename, in that order. It must support `--project-root DIR` to infer and
-initialize relative to another project directory; when doing so, stale
-context values from `PI_ENV_COORD_DIR`, `PI_ENV_COORD_PROJECT`, and
-`PI_ENV_COORD_PROJECT_KEY` must not override the target directory's inferred
-defaults unless explicit options are supplied. If the selected
-coordination clone already exists but the
-planned local bare remote is missing or does not contain the clone's
+initializes or clones with those explicit values unless `--print-only` or
+`--dry-run` is used. When project values are unset, it must infer useful
+domain defaults from `PI_ENV_COORD_PROJECT`, the Git origin repository name,
+the Git root basename, or the current directory basename, in that order. It
+must support `--project-root DIR` to infer and initialize relative to another
+project directory; when doing so, stale context values from
+`PI_ENV_COORD_DIR`, `PI_ENV_COORD_PROJECT`, and `PI_ENV_COORD_PROJECT_KEY`
+must not override the target directory's inferred defaults unless explicit
+options are supplied. If the selected coordination clone already exists but
+the planned local bare remote is missing or does not contain the clone's
 current branch, it must restore that bare remote from committed clone
 history, adding `origin` when absent and updating `origin` only when it
 points to a missing local path.
-`--print-only`/`--dry-run` must not create or restore anything. It must not
-claim, mark done, review, verify, close, or otherwise mutate item state
-automatically.
+
+Bootstrap must distinguish domain-level options from implementation-repo
+options. `--project` names the coordination domain and `--project-key`
+selects the domain-level item ID prefix stored in root `PROJECT.md`; neither
+option identifies the implementation repository namespace. A separate
+implementation `repo_id` must identify the current implementation repo.
+
+For existing coordination domains, bootstrap should support an explicit
+registration mode that attaches the current implementation repo and, only
+when requested, mutates shared coordination state. A real bootstrap may write
+`.pi-env-coordination.yaml` `repo_id` for the implementation repo. When an
+explicit registration option is provided, it may create the missing
+`repos/<repo_id>/REPO.md` manifest and issue-status directories, then commit
+and push that coordination-domain registry change. Without the explicit
+registration option, bootstrap must not silently add a repo namespace; it
+should report that the repo id is unregistered and tell the user how to
+register it.
+
+`--print-only`/`--dry-run` must not create, restore, register, commit, push,
+or otherwise mutate anything. Default `pi-env` startup and non-registration
+bootstrap paths must not claim, mark done, review, verify, close, or
+otherwise mutate item state automatically.
 
 #### CMD-010 `pi-env-coord-init`
 
