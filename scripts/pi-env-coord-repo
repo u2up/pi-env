@@ -99,6 +99,7 @@ case "$cmd" in
     done
     if repo_find_any "$repo_id" >/dev/null; then coord_die "repo id or alias already exists: $repo_id"; fi
     mkdir -p "repos/$repo_id/issues/open" "repos/$repo_id/issues/blocked" "repos/$repo_id/issues/done" "repos/$repo_id/issues/closed"
+    find "repos/$repo_id/issues" -type d -empty -exec sh -c 'touch "$1/.gitkeep"' sh {} \;
     item_key="$(coord_project_id_prefix "$repo_id")"
     created="$(coord_timestamp_iso)"
     {

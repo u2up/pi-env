@@ -821,18 +821,23 @@ coord_remote_for() {
 }
 
 coord_local_remote_url_for_clone() {
-  local coord_dir remote_path rel project_root default_coord_dir remote_base
+  local coord_dir remote_path rel project_root default_coord_dir default_remote_dir remote_base
   coord_dir="$(coord_abs "$1")"
   remote_path="$(coord_abs "$2")"
   project_root="$(coord_project_root)"
   default_coord_dir="$(coord_abs "$project_root/.pi-env/coordination")"
+  default_remote_dir="$(coord_abs "$project_root/.pi-env/agent-remotes")"
 
   if [ "$coord_dir" = "$default_coord_dir" ]; then
-    remote_base="$(basename "$remote_path")"
-    if [ -n "$remote_base" ] && [ "$remote_base" != "." ] && [ "$remote_base" != ".." ]; then
-      printf '../agent-remotes/%s\n' "$remote_base"
-      return
-    fi
+    case "$remote_path" in
+      "$default_remote_dir"/*)
+        remote_base="$(basename "$remote_path")"
+        if [ -n "$remote_base" ] && [ "$remote_base" != "." ] && [ "$remote_base" != ".." ]; then
+          printf '../agent-remotes/%s\n' "$remote_base"
+          return
+        fi
+        ;;
+    esac
   fi
 
   if rel="$(realpath -m --relative-to="$coord_dir" "$remote_path" 2>/dev/null)"; then
