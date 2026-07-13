@@ -136,7 +136,8 @@ resolution is explicit `--remote`, `PI_ENV_COORD_REMOTE`, then
 `.pi-env-coordination.yaml`. No legacy implementation attachment filename is
 read as a fallback. The coordination repository registry remains authoritative
 for canonical and active repo ids when `repositories.yaml` or the
-`repos/<repo_id>/REPO.md` registry is present.
+`repos/<repo_id>/REPO.md` registry is present. For the full model, see
+[One coordination domain across multiple implementation repos](#one-coordination-domain-across-multiple-implementation-repos).
 
 Domain-wide generated files that are committed to implementation repositories
 are declared in the owning repo's coordination manifest, not in the per-repo
@@ -1267,6 +1268,33 @@ each pi-env invocation mounts and works in one implementation repository at
 bundle, or leave `includeCoordinationHelpers` enabled in `mkPiShell` when you
 want these commands. Projects usually use the project-local
 `.pi-env/coordination` clone as their attachment to the shared domain.
+
+### One coordination domain across multiple implementation repos
+
+Use one shared coordination repository when several implementation repos belong
+to the same product, service family, or delivery domain and should share
+requirements, decisions, notes, TODOs, and cross-agent work state. The shared
+Git remote is the coordination domain; each implementation repo attaches to it
+with its own canonical `repo_id`.
+
+Each `pi-env` invocation still works in one implementation repository mounted at
+`/workspace`. Repo-specific issues live under
+`repos/<repo_id>/issues/{open,blocked,done,closed}/`, so each issue belongs to
+exactly one implementation repo by path. For cross-repo work, create one issue
+per affected repo and link them with stable item IDs instead of making one issue
+span multiple codebases.
+
+Domain records such as requirements, decisions, notes, and TODOs remain at the
+coordination root and are common to the whole domain. Each implementation repo
+can commit a root `.pi-env-coordination.yaml` pointing to the same coordination
+remote, while `repos/<repo_id>/REPO.md` remains the authoritative manifest for
+that repo. The manifest may also list domain-wide generated files, such as
+`REQUIREMENTS.md` or `REQUIREMENTS_COVERAGE.md`, that this implementation repo
+commits; multiple active repos may intentionally publish the same generated
+view.
+
+Use separate coordination domains when repositories should not share process
+memory, requirements, decisions, or work queues.
 
 Guided setup with inferred, project-specific defaults:
 
