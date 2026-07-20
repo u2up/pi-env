@@ -634,12 +634,12 @@ devShells.${system} = (builtins.mapAttrs (name: profile:
 ```
 
 This is different from creating a project-native shell that is merely named
-`agent`. A pi-env-aware shell must expose `pienv` and the pi-env runtime, so it
-should use `pi-env.lib.mkPiShell` or include the appropriate pi-env package
-outputs explicitly.
+`agent`. A pi-env-aware shell must expose `pienv`, the pi-env runtime, and the
+pi-env sandbox/runtime wiring, so it should use `pi-env.lib.mkPiShell` or
+include the appropriate pi-env package outputs explicitly.
 
 When asking Pi to make this edit from inside an external project, be explicit
-or request the packaged skill:
+or request the packaged skill. Copy either prompt from the project root:
 
 ```text
 Use the pi-env-flake-integration skill. Modify flake.nix to add
@@ -647,6 +647,13 @@ devShells.${system}.agent using pi-env.lib.mkPiShell. Add pi-env as a
 flake input, add it to outputs, preserve existing devShells and package
 outputs, and do not create a project-native agentProfile unless I
 explicitly ask for one.
+```
+
+```text
+I am in an existing external project. Make `nix develop .#agent` start a
+pi-env-aware shell, not a generic project shell named agent. Preserve the
+current flake outputs and merge an `agent = pi-env.lib.mkPiShell { ... };`
+devshell that exposes `pienv` and pi-env's sandbox/runtime wiring.
 ```
 
 The skill is shipped in `pi-skill-templates/pi-env-flake-integration/` so it is
