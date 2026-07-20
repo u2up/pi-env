@@ -561,7 +561,15 @@ Set it to `false` for core-only project shells.
 ### Existing project flake
 
 If the project already has a `flake.nix`, keep its existing structure and add
-only the pi-env pieces.
+only the pi-env pieces. The canonical, copyable helper for this integration is
+non-mutating:
+
+```bash
+pienv recipe flake-agent-shell
+```
+
+Use that output as the stable source for agent-oriented `.#agent` shell edits.
+
 
 Add the input:
 

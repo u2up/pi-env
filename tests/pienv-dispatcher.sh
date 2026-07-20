@@ -99,6 +99,8 @@ assert_completion upgrade coord rules u
 assert_completion generate coord requirements g
 assert_completion coverage coord requirements c
 assert_completion serial roles s
+assert_completion recipe r
+assert_completion flake-agent-shell recipe f
 assert_completion --repo-id coord status --
 COMPTEST
 } > "$completion_env"
@@ -106,8 +108,8 @@ bash "$completion_env"
 
 help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help)"
 case "$help_output" in
-  *'pienv coord <command>'* ) ;;
-  *) echo "pienv help did not include command namespace" >&2; exit 1 ;;
+  *'pienv coord <command>'*'pienv recipe flake-agent-shell'* ) ;;
+  *) echo "pienv help did not include command and recipe namespaces" >&2; exit 1 ;;
 esac
 
 coord_help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help coord)"
@@ -120,6 +122,33 @@ PIENV_TEST_LOG="$tmp_dir/log" PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv"
 case "$(cat "$tmp_dir/log")" in
   $'cmd=pi-env-coord-status\narg=--help') ;;
   *) echo "pienv help coord status did not dispatch to leaf help" >&2; exit 1 ;;
+esac
+
+recipe_help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help recipe)"
+case "$recipe_help_output" in
+  *'flake-agent-shell'*'Recipes only print guidance'* ) ;;
+  *) echo "pienv help recipe did not describe recipe command" >&2; exit 1 ;;
+esac
+
+recipe_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" recipe flake-agent-shell)"
+for snippet in \
+  'pi-env.url = "git+file:///home/me/src/pi-env";' \
+  'outputs = { self, nixpkgs, flake-utils, pi-env, ... }:' \
+  'devShells.${system} = existingDevShells // {' \
+  'agent = pi-env.lib.mkPiShell {' \
+  'includeCoordinationHelpers = false;' \
+  'extraPackages = with pkgs; [' \
+  'does not read, edit, or write project files'; do
+  if ! grep -Fq "$snippet" <<< "$recipe_output"; then
+    echo "pienv recipe flake-agent-shell missed stable recipe snippet: $snippet" >&2
+    exit 1
+  fi
+done
+
+recipe_help_alias_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" recipe flake-agent-shell --help)"
+case "$recipe_help_alias_output" in
+  *'pienv recipe flake-agent-shell'*'nix develop .#agent'* ) ;;
+  *) echo "pienv recipe flake-agent-shell --help did not print recipe" >&2; exit 1 ;;
 esac
 
 printf 'pienv dispatcher tests passed\n'

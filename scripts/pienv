@@ -18,6 +18,7 @@ Usage:
   pienv sandbox shell [shell args...]
   pienv coord <command> [args...]
   pienv roles serial [args...]
+  pienv recipe flake-agent-shell
   pienv install [args...]
   pienv uninstall [args...]
   pienv completion bash
@@ -30,6 +31,7 @@ Commands:
   sandbox             Run the sandbox helper (existing command: pi-env-bwrap)
   coord               Coordination helpers (existing commands: pi-env-coord-*)
   roles serial        Serial role orchestrator (existing command: pi-env-serial-roles)
+  recipe              Print non-mutating integration recipes
   install             Non-Nix installer (existing command: pi-env-install-non-nix)
   uninstall           Non-Nix uninstaller (existing command: pi-env-uninstall)
   completion bash     Print Bash completion for pienv
@@ -114,6 +116,105 @@ Commands:
 USAGE
 }
 
+recipe_help() {
+  cat <<'USAGE'
+pienv recipe - copyable pi-env integration recipes
+
+Usage:
+  pienv recipe flake-agent-shell
+
+Commands:
+  flake-agent-shell  Print the canonical non-mutating flake .#agent shell recipe
+
+Recipes only print guidance. They do not modify project files.
+USAGE
+}
+
+flake_agent_shell_recipe() {
+  cat <<'RECIPE'
+# pienv recipe flake-agent-shell
+
+Purpose: add a pi-env-aware `nix develop .#agent` shell to an existing
+flake without replacing project devShells, packages, FHS shells, containers,
+or project-specific shell policy. This command is informational only and does not read, edit, or write project files.
+
+1. Add the pi-env input next to existing inputs:
+
+```nix
+inputs = {
+  # existing inputs...
+
+  # Local checkout for active pi-env development:
+  pi-env.url = "git+file:///home/me/src/pi-env";
+  # Shared/pinned alternative:
+  # pi-env.url = "github:u2up/pi-env";
+
+  # Follow the project's pins when those inputs exist.
+  pi-env.inputs.nixpkgs.follows = "nixpkgs";
+  pi-env.inputs.flake-utils.follows = "flake-utils";
+};
+```
+
+2. Include `pi-env` in the outputs argument set:
+
+```nix
+outputs = { self, nixpkgs, flake-utils, pi-env, ... }:
+  # existing outputs...
+```
+
+3. Preserve existing devShells and merge an agent shell:
+
+```nix
+let
+  pkgs = import nixpkgs { inherit system; };
+  existingDevShells = self.devShells.${system} or { };
+in {
+  devShells.${system} = existingDevShells // {
+    agent = pi-env.lib.mkPiShell {
+      inherit pkgs;
+
+      # Set to true, or omit because true is the default, when this project
+      # uses pi-env-bootstrap-coordination or pi-env-coord-* helpers.
+      includeCoordinationHelpers = false;
+
+      extraPackages = with pkgs; [
+        # Project-specific tools Pi should see inside Bubblewrap, for example:
+        # gnumake
+        # nodejs
+        # python3
+      ];
+
+      shellHook = ''
+        echo "Pi agent shell loaded. Use 'pienv' or 'pienv shell'."
+      '';
+    };
+  };
+}
+```
+
+For flakes that already construct `devShells.${system}` with mapAttrs, an FHS
+builder, flake-parts, devenv, or a container output, keep that structure and
+append only the `// { agent = pi-env.lib.mkPiShell { ... }; }` merge at the
+smallest safe point. Do not create a project-native shell that only happens to
+be named `agent`; a pi-env-aware shell must expose `pienv` and the pi-env
+runtime through `pi-env.lib.mkPiShell` or equivalent pi-env packages.
+
+Coordination variants:
+- `includeCoordinationHelpers = true;` includes `pienv coord ...`,
+  pi-env-bootstrap-coordination, pi-env-coord-*, and role orchestration helpers.
+- `includeCoordinationHelpers = false;` keeps a smaller runtime shell when the
+  project does not use Git-backed coordination.
+
+After editing manually, run:
+
+```bash
+nix flake lock --update-input pi-env
+nix develop .#agent
+pienv --help
+```
+RECIPE
+}
+
 completion_help() {
   cat <<'USAGE'
 pienv completion - shell completion commands
@@ -167,6 +268,7 @@ _pienv() {
       esac
       ;;
     roles) [ "${words[2]:-}" = "serial" ] && command_path="roles serial" ;;
+    recipe) [ "${words[2]:-}" = "flake-agent-shell" ] && command_path="recipe flake-agent-shell" ;;
     install|uninstall) command_path="${words[1]}" ;;
   esac
 
@@ -182,6 +284,7 @@ _pienv() {
       coord\ bootstrap) option_words="--project-root --root --remote --project --project-key --repo-id --register-repo --implementation-remote --dir --agent-id --bare-only --print-only --dry-run --no-status --help -h" ;;
       coord\ pull|coord\ push|coord\ lint|coord\ repo|coord\ init|coord\ clone|coord\ new) option_words="--coord-dir --repo-id --help -h" ;;
       roles\ serial) option_words="--role --limit --coord-dir --help -h" ;;
+      recipe\ flake-agent-shell) option_words="--help -h" ;;
       install) option_words="--prefix --check-deps --ref --repo --artifact-url --help -h" ;;
       uninstall) option_words="--prefix --help -h" ;;
       *) option_words="--help -h" ;;
@@ -191,7 +294,7 @@ _pienv() {
   fi
 
   case "$cword" in
-    1) COMPREPLY=( $(_pienv_comp_words "run raw shell sandbox coord roles install uninstall help completion") ); return 0 ;;
+    1) COMPREPLY=( $(_pienv_comp_words "run raw shell sandbox coord roles recipe install uninstall help completion") ); return 0 ;;
   esac
 
   case "${words[1]:-}" in
@@ -208,12 +311,15 @@ _pienv() {
     roles)
       [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "serial") )
       ;;
+    recipe)
+      [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "flake-agent-shell") )
+      ;;
     completion)
       [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "bash") )
       ;;
     help)
       case "${words[2]:-}" in
-        "") [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "run raw shell sandbox coord roles install uninstall completion") ) ;;
+        "") [ "$cword" -eq 2 ] && COMPREPLY=( $(_pienv_comp_words "run raw shell sandbox coord roles recipe install uninstall completion") ) ;;
         coord)
           case "${words[3]:-}" in
             "") [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "bootstrap init clone status list show new claim done review verify close pull push lint repo rules requirements") ) ;;
@@ -222,6 +328,7 @@ _pienv() {
           esac
           ;;
         roles) [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "serial") ) ;;
+        recipe) [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "flake-agent-shell") ) ;;
         completion) [ "$cword" -eq 3 ] && COMPREPLY=( $(_pienv_comp_words "bash") ) ;;
       esac
       ;;
@@ -318,6 +425,14 @@ help_dispatch() {
         ""|-h|--help) roles_help ;;
         serial) run_command_help pi-env-serial-roles ;;
         *) unknown help roles "$1" ;;
+      esac
+      ;;
+    recipe)
+      shift
+      case "${1:-}" in
+        ""|-h|--help) recipe_help ;;
+        flake-agent-shell) flake_agent_shell_recipe ;;
+        *) unknown help recipe "$1" ;;
       esac
       ;;
     completion)
@@ -428,6 +543,21 @@ case "${1:-}" in
       ""|-h|--help) roles_help; exit 0 ;;
       serial) shift; exec_command pi-env-serial-roles "$@" ;;
       *) unknown roles "${1:-}" ;;
+    esac
+    ;;
+  recipe)
+    shift
+    case "${1:-}" in
+      ""|-h|--help) recipe_help; exit 0 ;;
+      flake-agent-shell)
+        shift
+        case "${1:-}" in
+          "") flake_agent_shell_recipe; exit 0 ;;
+          -h|--help) flake_agent_shell_recipe; exit 0 ;;
+          *) unknown recipe flake-agent-shell "$@" ;;
+        esac
+        ;;
+      *) unknown recipe "${1:-}" ;;
     esac
     ;;
   install)
