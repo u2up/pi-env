@@ -9,11 +9,11 @@ usage() {
 pienv - pi-env command namespace
 
 Usage:
-  pienv [pi args...]
-  pienv -- [pi args...]
-  pienv run [pi args...]
-  pienv raw -- [pi args...]
-  pienv shell [shell args...]
+  pienv [launcher options] [pi args...]
+  pienv [launcher options] -- [pi args...]
+  pienv run [launcher options] [pi args...]
+  pienv raw [launcher options] -- [pi args...]
+  pienv shell [launcher options] [shell args...]
   pienv sandbox [pi args...]
   pienv sandbox shell [shell args...]
   pienv coord <command> [args...]
@@ -36,6 +36,16 @@ Commands:
   uninstall           Non-Nix uninstaller (existing command: pi-env-uninstall)
   completion bash     Print Bash completion for pienv
   help                Show help for pienv commands
+
+Launcher options for the default, run, raw, and shell forms:
+  --runtime host|nix|auto  Select host tools, Nix-backed runtime, or auto.
+  --flake REF              Select the Nix flake used by --runtime nix|auto.
+  --devshell NAME          Select the Nix devShell name for --runtime nix|auto.
+
+Environment variables provide the same defaults: PI_ENV_RUNTIME, PI_ENV_FLAKE,
+and PI_ENV_NIX_DEVSHELL. CLI options win over environment values. These
+launcher options are passed to pi-env or pi-env-shell; coordination, recipe,
+install, uninstall, and sandbox commands have separate option sets.
 
 Use 'pienv -- ...' to pass a first Pi argument that would otherwise be
 parsed as a pienv subcommand.
@@ -261,7 +271,7 @@ USAGE
 bash_completion() {
   cat <<'COMPLETION'
 _pienv() {
-  local cur prev words cword command_path option_words path_options
+  local cur prev words cword command_path option_words path_options launcher_options
   COMPREPLY=()
   if declare -F _init_completion >/dev/null 2>&1; then
     _init_completion || return
@@ -276,7 +286,12 @@ _pienv() {
     compgen -W "$1" -- "$cur"
   }
 
-  path_options="--coord-dir --coordination-dir --designs-dir --output -o --prefix --artifact-url"
+  launcher_options="--runtime --runtime= --flake --flake= --devshell --devshell= --help -h"
+  path_options="--coord-dir --coordination-dir --designs-dir --output -o --prefix --artifact-url --flake"
+  if [ "$prev" = "--runtime" ]; then
+    COMPREPLY=( $(_pienv_comp_words "host nix auto") )
+    return 0
+  fi
   if [[ " $path_options " == *" $prev "* ]]; then
     compopt -o default 2>/dev/null || true
     return 0
@@ -298,6 +313,7 @@ _pienv() {
           ;;
       esac
       ;;
+    run|raw|shell) command_path="${words[1]}" ;;
     roles) [ "${words[2]:-}" = "serial" ] && command_path="roles serial" ;;
     recipe) [ "${words[2]:-}" = "flake-agent-shell" ] && command_path="recipe flake-agent-shell" ;;
     install|uninstall) command_path="${words[1]}" ;;
@@ -314,6 +330,7 @@ _pienv() {
       coord\ claim|coord\ done|coord\ review|coord\ verify|coord\ close) option_words="--coord-dir --agent-id --role --result --message --no-pull --no-push --force --pass --fail --help -h" ;;
       coord\ bootstrap) option_words="--project-root --root --remote --project --project-key --repo-id --register-repo --implementation-remote --dir --agent-id --bare-only --print-only --dry-run --no-status --help -h" ;;
       coord\ pull|coord\ push|coord\ lint|coord\ repo|coord\ init|coord\ clone|coord\ new) option_words="--coord-dir --repo-id --help -h" ;;
+      run|raw|shell|"") option_words="$launcher_options" ;;
       roles\ serial) option_words="--role --limit --coord-dir --help -h" ;;
       recipe\ flake-agent-shell) option_words="--help -h" ;;
       install) option_words="--prefix --check-deps --ref --repo --artifact-url --help -h" ;;
@@ -520,7 +537,30 @@ case "${1:-}" in
     ;;
   raw)
     shift
-    exec_command pi-env --raw "$@"
+    raw_launcher_args=()
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --runtime|--flake|--devshell)
+          opt="$1"
+          shift
+          [ "$#" -gt 0 ] || { echo "pienv raw: $opt requires an argument" >&2; exit 2; }
+          raw_launcher_args+=("$opt" "$1")
+          shift
+          ;;
+        --runtime=*|--flake=*|--devshell=*)
+          raw_launcher_args+=("$1")
+          shift
+          ;;
+        -h|--help)
+          run_command_help pi-env
+          exit 0
+          ;;
+        *)
+          break
+          ;;
+      esac
+    done
+    exec_command pi-env "${raw_launcher_args[@]}" --raw "$@"
     ;;
   shell)
     shift

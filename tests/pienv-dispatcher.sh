@@ -56,6 +56,7 @@ run_case $'cmd=pi-env'
 run_case $'cmd=pi-env\narg=--first' -- --first
 run_case $'cmd=pi-env\narg=--foo' run --foo
 run_case $'cmd=pi-env\narg=--raw\narg=--\narg=run' raw -- run
+run_case $'cmd=pi-env\narg=--runtime\narg=host\narg=--flake\narg=.#agent\narg=--devshell=agent\narg=--raw\narg=--\narg=run' raw --runtime host --flake .#agent --devshell=agent -- run
 run_case $'cmd=pi-env-shell\narg=--runtime\narg=nix' shell --runtime nix
 run_case $'cmd=pi-env-bwrap\narg=--continue' sandbox --continue
 run_case $'cmd=pi-env-bwrap\narg=--shell\narg=--\narg=-l' sandbox shell -- -l
@@ -101,6 +102,12 @@ assert_completion coverage coord requirements c
 assert_completion serial roles s
 assert_completion recipe r
 assert_completion flake-agent-shell recipe f
+assert_completion --runtime --
+assert_completion --runtime run --
+assert_completion --runtime raw --
+assert_completion --runtime shell --
+assert_completion --flake raw --
+assert_completion host run --runtime h
 assert_completion --repo-id coord status --
 COMPTEST
 } > "$completion_env"
@@ -108,8 +115,8 @@ bash "$completion_env"
 
 help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help)"
 case "$help_output" in
-  *'pienv coord <command>'*'pienv recipe flake-agent-shell'* ) ;;
-  *) echo "pienv help did not include command and recipe namespaces" >&2; exit 1 ;;
+  *'pienv coord <command>'*'pienv recipe flake-agent-shell'*'--runtime host|nix|auto'*'--flake REF'*'--devshell NAME'*'PI_ENV_RUNTIME'*'PI_ENV_FLAKE'*'PI_ENV_NIX_DEVSHELL'*'CLI options win'* ) ;;
+  *) echo "pienv help did not include command, recipe, and runtime launcher guidance" >&2; exit 1 ;;
 esac
 
 coord_help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help coord)"
@@ -122,6 +129,17 @@ PIENV_TEST_LOG="$tmp_dir/log" PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv"
 case "$(cat "$tmp_dir/log")" in
   $'cmd=pi-env-coord-status\narg=--help') ;;
   *) echo "pienv help coord status did not dispatch to leaf help" >&2; exit 1 ;;
+esac
+
+PIENV_TEST_LOG="$tmp_dir/log" PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help run
+case "$(cat "$tmp_dir/log")" in
+  $'cmd=pi-env\narg=--help') ;;
+  *) echo "pienv help run did not delegate to pi-env help" >&2; exit 1 ;;
+esac
+PIENV_TEST_LOG="$tmp_dir/log" PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help shell
+case "$(cat "$tmp_dir/log")" in
+  $'cmd=pi-env-shell\narg=--help') ;;
+  *) echo "pienv help shell did not delegate to pi-env-shell help" >&2; exit 1 ;;
 esac
 
 recipe_help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help recipe)"
