@@ -138,6 +138,7 @@ for snippet in \
   'devShells.${system} = {' \
   '} // {' \
   'agent = pi-env.lib.mkPiShell {' \
+  'agent = existingDevShells.default;' \
   'includeCoordinationHelpers = false;' \
   'extraPackages = with pkgs; [' \
   'does not read, edit, or write project files'; do

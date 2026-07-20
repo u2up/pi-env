@@ -18,6 +18,8 @@ test_grep 'merely named `agent`' "$skill"
 test_grep 'Preserve the existing flake structure' "$skill"
 test_grep 'FHS/container builders' "$skill"
 test_grep 'Preserve existing devshells, shell hooks' "$skill"
+test_grep 'agent = existingDevShells.default;' "$skill"
+test_grep 'avoid replacing project-owned' "$skill"
 test_grep 'Ask clarifying questions' "$skill"
 
 test_grep 'cp -R ${./pi-skill-templates} "$out/share/pi-env/pi-skill-templates"' flake.nix

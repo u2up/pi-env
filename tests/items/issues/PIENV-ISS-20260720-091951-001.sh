@@ -29,6 +29,7 @@ test_grep 'keep that expression on' "$tmpdir/recipe.out"
 test_grep 'devShells.${system} = {' "$tmpdir/recipe.out"
 test_grep '} // {' "$tmpdir/recipe.out"
 test_grep 'agent = pi-env.lib.mkPiShell {' "$tmpdir/recipe.out"
+test_grep 'agent = existingDevShells.default;' "$tmpdir/recipe.out"
 if grep -Fq 'self.devShells.${system}' "$tmpdir/recipe.out"; then
   test_fail 'recipe must not read devShells through self and recurse'
 fi

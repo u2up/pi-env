@@ -134,9 +134,12 @@ flake_agent_shell_recipe() {
   cat <<'RECIPE'
 # pienv recipe flake-agent-shell
 
-Purpose: add a pi-env-aware `nix develop .#agent` shell to an existing
-flake without replacing project devShells, packages, FHS shells, containers,
-or project-specific shell policy. This command is informational only and does not read, edit, or write project files.
+Purpose: make `nix develop .#agent` the pi-env-aware agent entrypoint for
+an existing flake without replacing project devShells, packages, FHS shells,
+containers, or project-specific shell policy. Pi-env-integrated projects should
+always expose devShells.<system>.agent; it can be a dedicated mkPiShell shell or
+an alias when the default shell is already pi-env-aware. This command is
+informational only and does not read, edit, or write project files.
 
 1. Add the pi-env input next to existing inputs:
 
@@ -162,7 +165,9 @@ outputs = { self, nixpkgs, flake-utils, pi-env, ... }:
   # existing outputs...
 ```
 
-3. Preserve existing devShells and merge an agent shell:
+3. Preserve existing devShells and choose one `agent` pattern.
+
+Dedicated agent shell pattern:
 
 ```nix
 let
@@ -197,12 +202,33 @@ in {
 }
 ```
 
+Alias pattern when the default shell is already pi-env-aware:
+
+```nix
+let
+  pkgs = import nixpkgs { inherit system; };
+  existingDevShells = {
+    default = pi-env.lib.mkPiShell {
+      inherit pkgs;
+      includeCoordinationHelpers = true;
+      extraPackages = with pkgs; [ ];
+    };
+  };
+in {
+  devShells.${system} = existingDevShells // {
+    # Keep `nix develop .#agent` stable without replacing the default shell.
+    agent = existingDevShells.default;
+  };
+}
+```
+
 For flakes that already construct `devShells.${system}` with mapAttrs, an FHS
 builder, flake-parts, devenv, or a container output, keep that structure and
-append only the `// { agent = pi-env.lib.mkPiShell { ... }; }` merge at the
-smallest safe point. Do not create a project-native shell that only happens to
-be named `agent`; a pi-env-aware shell must expose `pienv` and the pi-env
-runtime through `pi-env.lib.mkPiShell` or equivalent pi-env packages.
+append only the dedicated `// { agent = pi-env.lib.mkPiShell { ... }; }` merge
+or alias `// { agent = existingDevShells.default; }` at the smallest safe point.
+Do not create a project-native shell that only happens to be named `agent`; a
+pi-env-aware shell must expose `pienv` and the pi-env runtime through
+`pi-env.lib.mkPiShell` or equivalent pi-env packages.
 
 Coordination variants:
 - `includeCoordinationHelpers = true;` includes `pienv coord ...`,

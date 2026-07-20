@@ -447,9 +447,14 @@ Use `--runtime host` for direct startup with unpinned host tools. Use
 `--runtime nix`, `nix run`, `nix develop`, profile packages, or project flake
 integration when you need the reproducible/pinned Nix runtime. Installed and
 profile launchers with `--runtime nix` require the detected target project to
-have `flake.nix` unless you pass `--flake REF` or set `PI_ENV_FLAKE=REF`.
-`--runtime auto` keeps compatibility with environments that already provide
-pi-env commands and falls back to the Nix runtime when needed.
+have `flake.nix` unless you pass `--flake REF` or set `PI_ENV_FLAKE=REF`. When
+a project flake is selected, Nix runtime startup prefers `.#agent` when that
+shell exists, falls back to the default shell when `.#agent` is absent, and
+fails visibly if an existing or explicitly selected `.#agent` cannot evaluate
+or build. That visible failure prevents silently running agents in the wrong or
+under-provisioned shell. `--runtime auto` keeps compatibility with environments
+that already provide pi-env commands and falls back to the Nix runtime when
+needed.
 
 Use `pienv shell` when you want an interactive shell inside the same selected
 runtime and Bubblewrap sandbox instead of starting the Pi agent:
@@ -525,8 +530,7 @@ reference that your team can access.
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-      in {
-        devShells.default = pi-env.lib.mkPiShell {
+        projectShell = pi-env.lib.mkPiShell {
           inherit pkgs;
 
           # Smallest project shell: omit pi-env-coord-* helper commands unless
@@ -543,14 +547,19 @@ reference that your team can access.
             echo "project shell loaded"
           '';
         };
+      in {
+        devShells.default = projectShell;
+        # Pi-env-aware projects should also expose the agent selector.
+        devShells.agent = projectShell;
       });
 }
 ```
 
-Then run:
+Then run either selector:
 
 ```bash
 nix develop
+nix develop .#agent
 pienv
 ```
 
@@ -569,7 +578,10 @@ pienv recipe flake-agent-shell
 ```
 
 Use that output as the stable source for agent-oriented `.#agent` shell edits.
-
+For pi-env-integrated projects, prefer always providing
+`devShells.<system>.agent`: use a dedicated agent shell when the default shell
+belongs to the project, or alias `agent` to the default shell when the default
+shell is already pi-env-aware.
 
 Add the input:
 
@@ -591,7 +603,9 @@ outputs = { self, nixpkgs, flake-utils, pi-env, ... }:
   # existing outputs...
 ```
 
-Then choose one integration style.
+Then choose one integration style. In both styles, keep `nix develop .#agent`
+working for agents and avoid replacing project-owned default shells unless the
+user explicitly requests that change.
 
 #### Add a separate `.#agent` shell with `mkPiShell`
 
@@ -637,6 +651,30 @@ This is different from creating a project-native shell that is merely named
 `agent`. A pi-env-aware shell must expose `pienv`, the pi-env runtime, and the
 pi-env sandbox/runtime wiring, so it should use `pi-env.lib.mkPiShell` or
 include the appropriate pi-env package outputs explicitly.
+
+#### Alias `.#agent` to an already pi-env-aware default shell
+
+Use this when the existing default shell already comes from `mkPiShell` and you
+only need the conventional agent selector:
+
+```nix
+let
+  existingDevShells = {
+    default = pi-env.lib.mkPiShell {
+      inherit pkgs;
+      includeCoordinationHelpers = true;
+      extraPackages = with pkgs; [ ];
+    };
+  };
+in {
+  devShells.${system} = existingDevShells // {
+    agent = existingDevShells.default;
+  };
+}
+```
+
+This keeps human `nix develop` behavior unchanged while making
+`nix develop .#agent` explicit for pi-env startup.
 
 When asking Pi to make this edit from inside an external project, be explicit
 or request the packaged skill. Copy either prompt from the project root:

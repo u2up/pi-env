@@ -96,7 +96,9 @@ The stable integration target is therefore additive:
 2. include `pi-env` in the `outputs` argument set;
 3. preserve existing `devShells`, package outputs, FHS/container outputs, and
    project-specific shell policy;
-4. merge an agent shell using `pi-env.lib.mkPiShell`; and
+4. expose `devShells.<system>.agent` either by merging a dedicated agent shell
+   using `pi-env.lib.mkPiShell` or by aliasing it to an already pi-env-aware
+   default shell such as `existingDevShells.default`; and
 5. declare only explicit project tools in `extraPackages`.
 
 A deterministic recipe helper should expose this target shape for humans and
@@ -109,10 +111,13 @@ be changed safely with a small textual patch.
 The `.#agent` selector should become the conventional target for pi-env-aware
 project shells. Projects that do not need a separate agent shell can keep
 backward-compatible human behavior by defining `agent` as an alias of the
-normal default shell. Launcher behavior should mirror that convention: Nix
-runtime startup may probe for the agent devshell and prefer it when present,
-fall back to the default shell when absent, and fail visibly when a present or
-explicitly selected agent shell is broken. An explicit selector override keeps
+normal default shell, provided that default shell is already pi-env-aware.
+Launcher behavior should mirror that convention: Nix runtime startup may probe
+for the agent devshell and prefer it when present, fall back to the default
+shell when absent, and fail visibly when a present or explicitly selected agent
+shell is broken. An existing but broken `.#agent` is treated as a configuration
+error rather than ignored, because silently falling back could run an agent in a
+less isolated or under-provisioned shell. An explicit selector override keeps
 advanced projects in control of non-default shell names and lets users force
 legacy default-shell behavior.
 
