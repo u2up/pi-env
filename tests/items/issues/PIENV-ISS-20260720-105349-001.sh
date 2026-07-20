@@ -65,4 +65,26 @@ assert_no_completion auto coord --runtime a
 CHECK
 bash "$tmpdir/completion-check.sh" "$tmpdir/completion.bash"
 
-test_note 'PIENV-ISS-20260720-105349 top-level help and completion are covered'
+mkdir -p "$tmpdir/bin" "$tmpdir/support"
+cp scripts/pienv "$tmpdir/support/pienv"
+chmod +x "$tmpdir/support/pienv"
+cat >"$tmpdir/bin/pi-env" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+for arg in "$@"; do
+  printf 'arg=%s\n' "$arg"
+done >"$PIENV_RAW_CAPTURE"
+STUB
+chmod +x "$tmpdir/bin/pi-env"
+PIENV_RAW_CAPTURE="$tmpdir/raw.args" PATH="$tmpdir/bin:$PATH" \
+  "$tmpdir/support/pienv" raw --runtime host -- foo
+printf '%s\n' \
+  'arg=--raw' \
+  'arg=--runtime' \
+  'arg=host' \
+  'arg=--' \
+  'arg=foo' >"$tmpdir/expected-raw.args"
+test_eq "$(cat "$tmpdir/expected-raw.args")" "$(cat "$tmpdir/raw.args")" \
+  'pienv raw must remain thin pi-env --raw parity dispatcher'
+
+test_note 'PIENV-ISS-20260720-105349 top-level help, completion, and raw parity are covered'

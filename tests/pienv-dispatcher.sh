@@ -56,7 +56,7 @@ run_case $'cmd=pi-env'
 run_case $'cmd=pi-env\narg=--first' -- --first
 run_case $'cmd=pi-env\narg=--foo' run --foo
 run_case $'cmd=pi-env\narg=--raw\narg=--\narg=run' raw -- run
-run_case $'cmd=pi-env\narg=--runtime\narg=host\narg=--flake\narg=.#agent\narg=--devshell=agent\narg=--raw\narg=--\narg=run' raw --runtime host --flake .#agent --devshell=agent -- run
+run_case $'cmd=pi-env\narg=--raw\narg=--runtime\narg=host\narg=--flake\narg=.#agent\narg=--devshell=agent\narg=--\narg=run' raw --runtime host --flake .#agent --devshell=agent -- run
 run_case $'cmd=pi-env-shell\narg=--runtime\narg=nix' shell --runtime nix
 run_case $'cmd=pi-env-bwrap\narg=--continue' sandbox --continue
 run_case $'cmd=pi-env-bwrap\narg=--shell\narg=--\narg=-l' sandbox shell -- -l

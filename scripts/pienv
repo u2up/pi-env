@@ -548,30 +548,7 @@ case "${1:-}" in
     ;;
   raw)
     shift
-    raw_launcher_args=()
-    while [ "$#" -gt 0 ]; do
-      case "$1" in
-        --runtime|--flake|--devshell)
-          opt="$1"
-          shift
-          [ "$#" -gt 0 ] || { echo "pienv raw: $opt requires an argument" >&2; exit 2; }
-          raw_launcher_args+=("$opt" "$1")
-          shift
-          ;;
-        --runtime=*|--flake=*|--devshell=*)
-          raw_launcher_args+=("$1")
-          shift
-          ;;
-        -h|--help)
-          run_command_help pi-env
-          exit 0
-          ;;
-        *)
-          break
-          ;;
-      esac
-    done
-    exec_command pi-env "${raw_launcher_args[@]}" --raw "$@"
+    exec_command pi-env --raw "$@"
     ;;
   shell)
     shift
