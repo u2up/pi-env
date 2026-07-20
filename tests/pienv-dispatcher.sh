@@ -114,9 +114,9 @@ assert_completion recipe r
 assert_completion flake-agent-shell recipe f
 assert_completion --runtime --
 assert_completion --runtime run --
-assert_completion --runtime raw --
 assert_completion --runtime shell --
-assert_completion --flake raw --
+assert_no_completion --runtime raw --
+assert_no_completion --flake raw --
 assert_completion host run --runtime h
 assert_completion --repo-id coord status --
 assert_no_completion --runtime coord --
@@ -128,10 +128,24 @@ COMPTEST
 bash "$completion_env"
 
 help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help)"
-case "$help_output" in
-  *'pienv coord <command>'*'pienv recipe flake-agent-shell'*'--runtime host|nix|auto'*'--flake REF'*'--devshell NAME'*'PI_ENV_RUNTIME'*'PI_ENV_FLAKE'*'PI_ENV_NIX_DEVSHELL'*'CLI options win'* ) ;;
-  *) echo "pienv help did not include command, recipe, and runtime launcher guidance" >&2; exit 1 ;;
-esac
+for snippet in \
+  'pienv coord <command>' \
+  'pienv recipe flake-agent-shell' \
+  '--raw --' \
+  'pienv raw --' \
+  '--runtime host|nix|auto' \
+  '--flake REF' \
+  '--devshell NAME' \
+  'PI_ENV_RUNTIME' \
+  'PI_ENV_FLAKE' \
+  'PI_ENV_NIX_DEVSHELL' \
+  'CLI options win' \
+  'pienv raw'; do
+  if ! grep -Fq -- "$snippet" <<<"$help_output"; then
+    echo "pienv help missed command, recipe, or runtime launcher guidance: $snippet" >&2
+    exit 1
+  fi
+done
 
 coord_help_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" help coord)"
 case "$coord_help_output" in

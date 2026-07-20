@@ -14,7 +14,8 @@ bash scripts/pienv --help >"$tmpdir/help.out"
 
 test_grep 'pienv \[launcher options\] \[pi args\.\.\.\]' "$tmpdir/help.out"
 test_grep 'pienv run \[launcher options\] \[pi args\.\.\.\]' "$tmpdir/help.out"
-test_grep 'pienv raw \[launcher options\] -- \[pi args\.\.\.\]' "$tmpdir/help.out"
+test_grep 'pienv \[launcher options\] --raw -- \[pi args\.\.\.\]' "$tmpdir/help.out"
+test_grep 'pienv raw -- \[pi args\.\.\.\]' "$tmpdir/help.out"
 test_grep 'pienv shell \[launcher options\] \[shell args\.\.\.\]' "$tmpdir/help.out"
 test_grep '--runtime host|nix|auto' "$tmpdir/help.out"
 test_grep '--flake REF' "$tmpdir/help.out"
@@ -23,7 +24,8 @@ test_grep 'PI_ENV_RUNTIME' "$tmpdir/help.out"
 test_grep 'PI_ENV_FLAKE' "$tmpdir/help.out"
 test_grep 'PI_ENV_NIX_DEVSHELL' "$tmpdir/help.out"
 test_grep 'CLI options win over environment values' "$tmpdir/help.out"
-test_grep 'coordination, recipe,' "$tmpdir/help.out"
+test_grep 'Coordination,' "$tmpdir/help.out"
+test_grep 'recipe, install, uninstall, and sandbox commands have separate option sets' "$tmpdir/help.out"
 
 bash scripts/pienv completion bash >"$tmpdir/completion.bash"
 bash -n "$tmpdir/completion.bash"
@@ -53,11 +55,12 @@ assert_no_completion() {
 }
 assert_completion --runtime --
 assert_completion --runtime run --
-assert_completion --runtime raw --
 assert_completion --runtime shell --
 assert_completion --flake run --
 assert_completion --devshell shell --
-assert_completion auto raw --runtime a
+assert_no_completion --runtime raw --
+assert_no_completion --flake raw --
+assert_no_completion auto raw --runtime a
 assert_no_completion --runtime coord --
 assert_no_completion --runtime sandbox --
 assert_no_completion --runtime recipe --
@@ -86,5 +89,16 @@ printf '%s\n' \
   'arg=foo' >"$tmpdir/expected-raw.args"
 test_eq "$(cat "$tmpdir/expected-raw.args")" "$(cat "$tmpdir/raw.args")" \
   'pienv raw must remain thin pi-env --raw parity dispatcher'
+
+PIENV_RAW_CAPTURE="$tmpdir/raw-launcher.args" PATH="$tmpdir/bin:$PATH" \
+  "$tmpdir/support/pienv" --runtime host --raw -- foo
+printf '%s\n' \
+  'arg=--runtime' \
+  'arg=host' \
+  'arg=--raw' \
+  'arg=--' \
+  'arg=foo' >"$tmpdir/expected-raw-launcher.args"
+test_eq "$(cat "$tmpdir/expected-raw-launcher.args")" "$(cat "$tmpdir/raw-launcher.args")" \
+  'top-level raw launcher options must remain available before --raw'
 
 test_note 'PIENV-ISS-20260720-105349 top-level help, completion, and raw parity are covered'
