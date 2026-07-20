@@ -1135,6 +1135,21 @@ names. The old lower-level commands `pi-bwrap`, `bootstrap-coordination`,
 `agent-coord-*`, `pi-serial-roles`, and `install-non-nix` must not remain
 supported command entrypoints after the rename.
 
+#### CMD-027 — Canonical flake agent shell integration recipe
+
+pi-env must provide a deterministic user-facing recipe for adding an
+agent-oriented devshell to an external project flake.
+
+The recipe must make the pi-env-specific intent explicit: add `pi-env` as a
+flake input, include it in `outputs`, preserve existing project devshells,
+and add an agent shell with `pi-env.lib.mkPiShell` rather than creating a
+project-native shell that only happens to be named `agent`.
+
+The recipe may start as a print-only helper, but its output must be stable
+enough for humans and agents to copy into common existing-flake shapes. It
+must document when to choose `includeCoordinationHelpers = true` and where to
+declare project-specific sandbox tools with `extraPackages`.
+
 ### 3.5 Project root and working directory requirements
 
 #### PATH-001 Project root detection
@@ -1396,6 +1411,23 @@ appropriate helpers:
 - final close is optional and must only happen after done, reviewed, and
   verified states are all present.
 
+#### AGENT-018 — Packaged flake integration skill
+
+pi-env must provide agent-facing guidance for modifying external flakes to
+add pi-env-aware development shells.
+
+The skill must teach agents that a request such as "make `nix develop
+.#agent` work for pi-env" means adding the pi-env flake input and using
+`pi-env.lib.mkPiShell`, unless the user explicitly asks for a normal
+project-native shell. It must instruct agents to preserve existing flake
+structure, existing devshells, project package outputs, and project-specific
+shell policy.
+
+The skill must prefer the canonical recipe helper from CMD-027 when
+available, and must warn against satisfying the request by creating an
+unrelated `agentProfile` or `devShells.agent` that lacks `pienv` and the
+pi-env sandbox/runtime wiring.
+
 ### 3.8 Git configuration requirements
 
 #### GIT-001 Git config import default
@@ -1562,6 +1594,22 @@ mounted read-only, host `/bin` and `/usr/bin` are not mounted as the tool
 source, and direct `nix run` examples are suitable for inspection but may
 lack project build/test tools unless the project integrates pi-env or an
 explicit extra path is provided.
+
+#### DOC-005 — Document pi-env flake integration guidance
+
+pi-env documentation must distinguish between a generic project devshell named
+`agent` and a pi-env-aware agent shell built with `pi-env.lib.mkPiShell`.
+
+The documentation must show the canonical external-flake edit pattern:
+adding the pi-env flake input, adding it to the `outputs` argument set,
+preserving existing `devShells`, and merging an `agent` shell that exposes
+`pienv` and the pi-env runtime. It must also explain that copied or
+agent-generated flake changes should not replace project-specific FHS,
+container, build, or test shell policy unless explicitly requested.
+
+Documentation for the helper and skill must include copyable prompts or
+commands for users who ask Pi to perform the flake integration from inside an
+external project.
 
 ### 4.1 Documentation requirements
 

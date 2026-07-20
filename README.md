@@ -585,6 +585,67 @@ outputs = { self, nixpkgs, flake-utils, pi-env, ... }:
 
 Then choose one integration style.
 
+#### Add a separate `.#agent` shell with `mkPiShell`
+
+Use this when the project already has important devshells, FHS shells, container
+outputs, or shell hooks that should remain unchanged, but you want a dedicated
+Pi entrypoint:
+
+```nix
+devShells.${system} = existingDevShells // {
+  agent = pi-env.lib.mkPiShell {
+    inherit pkgs;
+
+    # Set this to true when the project uses pi-env coordination helpers.
+    includeCoordinationHelpers = false;
+
+    extraPackages = with pkgs; [
+      # project-specific tools Pi should see inside Bubblewrap
+    ];
+
+    shellHook = ''
+      echo "Pi agent shell loaded. Use 'pienv' or 'pienv shell'."
+    '';
+  };
+};
+```
+
+For example, if an existing flake builds `devShells.${system}` with
+`builtins.mapAttrs`, preserve that expression and merge the agent shell:
+
+```nix
+devShells.${system} = (builtins.mapAttrs (name: profile:
+  (mkEnv profile).devShell.env
+) profileSet) // {
+  agent = pi-env.lib.mkPiShell {
+    inherit pkgs;
+    includeCoordinationHelpers = true;
+    extraPackages = with pkgs; [ ];
+  };
+};
+```
+
+This is different from creating a project-native shell that is merely named
+`agent`. A pi-env-aware shell must expose `pienv` and the pi-env runtime, so it
+should use `pi-env.lib.mkPiShell` or include the appropriate pi-env package
+outputs explicitly.
+
+When asking Pi to make this edit from inside an external project, be explicit:
+
+```text
+Modify flake.nix to add devShells.${system}.agent using
+pi-env.lib.mkPiShell. Add pi-env as a flake input, add it to outputs,
+preserve existing devShells and package outputs, and do not create a
+project-native agentProfile unless I explicitly ask for one.
+```
+
+Then use:
+
+```bash
+nix develop .#agent
+pienv
+```
+
 #### Wrap the devshell with `mkPiShell`
 
 Use this when you want pi-env to own the shell composition and add your project

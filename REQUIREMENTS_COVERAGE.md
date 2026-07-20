@@ -4,8 +4,8 @@ This file is generated from active requirement items and `designs/*.md`.
 
 ## Summary
 
-- Requirements: 169
-- Covered by design: 169
+- Requirements: 172
+- Covered by design: 172
 - Not covered by design: 0
 
 ## Coverage by requirement
@@ -85,6 +85,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | CMD-024 | PIENV-FRQ-20260711-092100-002 | designs/pienv-command-namespace.md |
 | CMD-025 | PIENV-FRQ-20260711-092100-003 | designs/pienv-command-namespace.md |
 | CMD-026 | PIENV-FRQ-20260711-170000-001 | designs/pienv-command-namespace.md |
+| CMD-027 | PIENV-FRQ-20260720-091901-001 | designs/nix-runtime.md |
 | PATH-004 | PIENV-FRQ-20260612-210000-051 | designs/bubblewrap-sandbox.md |
 | PATH-005 | PIENV-FRQ-20260612-210000-052 | designs/bubblewrap-sandbox.md |
 | PATH-006 | PIENV-FRQ-20260701-110514-001 | designs/host-runtime.md |
@@ -119,6 +120,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | AGENT-017 | PIENV-FRQ-20260701-110518-001 | designs/host-runtime.md |
 | AGENT-016 | PIENV-FRQ-20260615-175838-001 | designs/serial-role-automation.md |
 | GIT-001 | PIENV-FRQ-20260612-210000-080 | designs/git-config-import.md |
+| AGENT-018 | PIENV-FRQ-20260720-091904-001 | designs/nix-runtime.md |
 | GIT-002 | PIENV-FRQ-20260612-210000-081 | designs/git-config-import.md |
 | GIT-003 | PIENV-FRQ-20260612-210000-082 | designs/git-config-import.md |
 | GIT-004 | PIENV-FRQ-20260612-210000-083 | designs/git-config-import.md |
@@ -138,6 +140,7 @@ This file is generated from active requirement items and `designs/*.md`.
 | DOC-001 | PIENV-QRQ-20260612-210000-002 | designs/requirements-traceability.md |
 | DOC-003 | PIENV-QRQ-20260614-180310-001 | designs/requirements-traceability.md |
 | TEST-001 | PIENV-QRQ-20260612-210000-003 | designs/verification-strategy.md |
+| DOC-005 | PIENV-QRQ-20260720-091907-001 | designs/nix-runtime.md |
 | TEST-002 | PIENV-QRQ-20260612-210000-004 | designs/verification-strategy.md |
 | TEST-003 | PIENV-QRQ-20260612-210000-005 | designs/verification-strategy.md |
 | TEST-004 | PIENV-QRQ-20260612-210000-006 | designs/verification-strategy.md |
