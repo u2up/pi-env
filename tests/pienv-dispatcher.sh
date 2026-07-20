@@ -117,6 +117,9 @@ assert_completion --runtime run --
 assert_completion --runtime shell --
 assert_no_completion --runtime raw --
 assert_no_completion --flake raw --
+assert_no_completion --runtime --raw --
+assert_no_completion --runtime --runtime host --raw --
+assert_no_completion host --runtime host --raw --runtime h
 assert_completion host run --runtime h
 assert_completion --repo-id coord status --
 assert_no_completion --runtime coord --

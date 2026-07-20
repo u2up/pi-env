@@ -274,7 +274,7 @@ USAGE
 bash_completion() {
   cat <<'COMPLETION'
 _pienv() {
-  local cur prev words cword command_path option_words path_options launcher_options
+  local cur prev words cword command_path option_words path_options launcher_options raw_marker_seen i
   COMPREPLY=()
   if declare -F _init_completion >/dev/null 2>&1; then
     _init_completion || return
@@ -291,6 +291,14 @@ _pienv() {
 
   launcher_options="--runtime --runtime= --flake --flake= --devshell --devshell= --help -h"
   path_options="--coord-dir --coordination-dir --designs-dir --output -o --prefix --artifact-url --flake"
+
+  raw_marker_seen=false
+  for ((i = 1; i < cword; i++)); do
+    if [ "${words[i]}" = "--raw" ]; then
+      raw_marker_seen=true
+      break
+    fi
+  done
 
   command_path=""
   case "${words[1]:-}" in
@@ -323,9 +331,11 @@ _pienv() {
   esac
 
   if [ "$prev" = "--runtime" ]; then
-    case "$command_path" in
-      run|shell|"") COMPREPLY=( $(_pienv_comp_words "host nix auto") ) ;;
-    esac
+    if ! $raw_marker_seen; then
+      case "$command_path" in
+        run|shell|"") COMPREPLY=( $(_pienv_comp_words "host nix auto") ) ;;
+      esac
+    fi
     return 0
   fi
   if [[ " $path_options " == *" $prev "* ]]; then
@@ -344,7 +354,13 @@ _pienv() {
       coord\ claim|coord\ done|coord\ review|coord\ verify|coord\ close) option_words="--coord-dir --agent-id --role --result --message --no-pull --no-push --force --pass --fail --help -h" ;;
       coord\ bootstrap) option_words="--project-root --root --remote --project --project-key --repo-id --register-repo --implementation-remote --dir --agent-id --bare-only --print-only --dry-run --no-status --help -h" ;;
       coord\ pull|coord\ push|coord\ lint|coord\ repo|coord\ init|coord\ clone|coord\ new) option_words="--coord-dir --repo-id --help -h" ;;
-      run|shell|"") option_words="$launcher_options" ;;
+      run|shell|"")
+        if $raw_marker_seen; then
+          option_words="--help -h"
+        else
+          option_words="$launcher_options"
+        fi
+        ;;
       raw) option_words="--help -h" ;;
       roles\ serial) option_words="--role --limit --coord-dir --help -h" ;;
       recipe\ flake-agent-shell) option_words="--help -h" ;;

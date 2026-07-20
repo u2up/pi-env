@@ -61,6 +61,9 @@ assert_completion --devshell shell --
 assert_no_completion --runtime raw --
 assert_no_completion --flake raw --
 assert_no_completion auto raw --runtime a
+assert_no_completion --runtime --raw --
+assert_no_completion --runtime --runtime host --raw --
+assert_no_completion auto --runtime host --raw --runtime a
 assert_no_completion --runtime coord --
 assert_no_completion --runtime sandbox --
 assert_no_completion --runtime recipe --
