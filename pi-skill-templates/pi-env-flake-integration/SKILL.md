@@ -27,6 +27,19 @@ If `pienv` is not on `PATH`, continue only when the existing project flake is
 simple enough to edit safely from local context; otherwise ask how pi-env should
 be referenced and where the agent shell should be merged.
 
+## Suggested user prompt
+
+When users want Pi to make this edit from inside an external project with a
+complex flake, recommend this canonical wording:
+
+```text
+Use the pi-env-flake-integration skill. Modify flake.nix to add
+devShells.${system}.agent using pi-env.lib.mkPiShell. Add pi-env as a
+flake input, add it to outputs, preserve existing devShells and package
+outputs, and do not create a project-native agentProfile unless I
+explicitly ask for one.
+```
+
 ## Editing rules
 
 - Preserve the existing flake structure. Keep current `outputs` layout,

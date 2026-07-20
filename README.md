@@ -676,8 +676,11 @@ in {
 This keeps human `nix develop` behavior unchanged while making
 `nix develop .#agent` explicit for pi-env startup.
 
+#### Suggested prompt for external complex flakes
+
 When asking Pi to make this edit from inside an external project, be explicit
-or request the packaged skill. Copy either prompt from the project root:
+or request the packaged skill. For complex flakes, use this canonical wording
+from the project root:
 
 ```text
 Use the pi-env-flake-integration skill. Modify flake.nix to add
@@ -686,6 +689,8 @@ flake input, add it to outputs, preserve existing devShells and package
 outputs, and do not create a project-native agentProfile unless I
 explicitly ask for one.
 ```
+
+An equivalent shorter request is:
 
 ```text
 I am in an existing external project. Make `nix develop .#agent` start a

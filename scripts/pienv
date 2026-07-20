@@ -249,6 +249,16 @@ Coordination variants:
 - `includeCoordinationHelpers = false;` keeps a smaller runtime shell when the
   project does not use Git-backed coordination.
 
+Suggested prompt when asking Pi to modify an external complex flake:
+
+```text
+Use the pi-env-flake-integration skill. Modify flake.nix to add
+devShells.${system}.agent using pi-env.lib.mkPiShell. Add pi-env as a
+flake input, add it to outputs, preserve existing devShells and package
+outputs, and do not create a project-native agentProfile unless I
+explicitly ask for one.
+```
+
 After editing manually, run:
 
 ```bash
