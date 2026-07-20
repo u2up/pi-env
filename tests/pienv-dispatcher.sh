@@ -94,6 +94,16 @@ assert_completion() {
     *) echo "missing completion '$expected' for: pienv $* (got: ${COMPREPLY[*]})" >&2; exit 1 ;;
   esac
 }
+assert_no_completion() {
+  local unexpected="$1"
+  shift
+  COMP_WORDS=(pienv "$@")
+  COMP_CWORD=$((${#COMP_WORDS[@]} - 1))
+  _pienv
+  case " ${COMPREPLY[*]} " in
+    *" $unexpected "*) echo "unexpected completion '$unexpected' for: pienv $* (got: ${COMPREPLY[*]})" >&2; exit 1 ;;
+  esac
+}
 assert_completion coord c
 assert_completion rules coord r
 assert_completion upgrade coord rules u
@@ -109,6 +119,10 @@ assert_completion --runtime shell --
 assert_completion --flake raw --
 assert_completion host run --runtime h
 assert_completion --repo-id coord status --
+assert_no_completion --runtime coord --
+assert_no_completion --runtime sandbox --
+assert_no_completion --runtime recipe --
+assert_no_completion host coord --runtime h
 COMPTEST
 } > "$completion_env"
 bash "$completion_env"

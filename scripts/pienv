@@ -288,18 +288,11 @@ _pienv() {
 
   launcher_options="--runtime --runtime= --flake --flake= --devshell --devshell= --help -h"
   path_options="--coord-dir --coordination-dir --designs-dir --output -o --prefix --artifact-url --flake"
-  if [ "$prev" = "--runtime" ]; then
-    COMPREPLY=( $(_pienv_comp_words "host nix auto") )
-    return 0
-  fi
-  if [[ " $path_options " == *" $prev "* ]]; then
-    compopt -o default 2>/dev/null || true
-    return 0
-  fi
 
   command_path=""
   case "${words[1]:-}" in
     coord)
+      command_path="coord"
       case "${words[2]:-}" in
         rules) [ "${words[3]:-}" = "upgrade" ] && command_path="coord rules upgrade" ;;
         requirements)
@@ -314,10 +307,28 @@ _pienv() {
       esac
       ;;
     run|raw|shell) command_path="${words[1]}" ;;
-    roles) [ "${words[2]:-}" = "serial" ] && command_path="roles serial" ;;
-    recipe) [ "${words[2]:-}" = "flake-agent-shell" ] && command_path="recipe flake-agent-shell" ;;
-    install|uninstall) command_path="${words[1]}" ;;
+    sandbox) command_path="sandbox" ;;
+    roles)
+      command_path="roles"
+      [ "${words[2]:-}" = "serial" ] && command_path="roles serial"
+      ;;
+    recipe)
+      command_path="recipe"
+      [ "${words[2]:-}" = "flake-agent-shell" ] && command_path="recipe flake-agent-shell"
+      ;;
+    install|uninstall|completion|help) command_path="${words[1]}" ;;
   esac
+
+  if [ "$prev" = "--runtime" ]; then
+    case "$command_path" in
+      run|raw|shell|"") COMPREPLY=( $(_pienv_comp_words "host nix auto") ) ;;
+    esac
+    return 0
+  fi
+  if [[ " $path_options " == *" $prev "* ]]; then
+    compopt -o default 2>/dev/null || true
+    return 0
+  fi
 
   if [[ "$cur" == -* ]]; then
     case "$command_path" in

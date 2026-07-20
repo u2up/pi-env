@@ -41,6 +41,16 @@ assert_completion() {
     *) printf 'missing completion %s for pienv %s; got: %s\n' "$expected" "$*" "${COMPREPLY[*]}" >&2; exit 1 ;;
   esac
 }
+assert_no_completion() {
+  local unexpected="$1"
+  shift
+  COMP_WORDS=(pienv "$@")
+  COMP_CWORD=$((${#COMP_WORDS[@]} - 1))
+  _pienv
+  case " ${COMPREPLY[*]} " in
+    *" $unexpected "*) printf 'unexpected completion %s for pienv %s; got: %s\n' "$unexpected" "$*" "${COMPREPLY[*]}" >&2; exit 1 ;;
+  esac
+}
 assert_completion --runtime --
 assert_completion --runtime run --
 assert_completion --runtime raw --
@@ -48,6 +58,10 @@ assert_completion --runtime shell --
 assert_completion --flake run --
 assert_completion --devshell shell --
 assert_completion auto raw --runtime a
+assert_no_completion --runtime coord --
+assert_no_completion --runtime sandbox --
+assert_no_completion --runtime recipe --
+assert_no_completion auto coord --runtime a
 CHECK
 bash "$tmpdir/completion-check.sh" "$tmpdir/completion.bash"
 
