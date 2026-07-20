@@ -6,9 +6,9 @@ usage() {
 pi-env - run Pi through the pi-env launcher
 
 Usage:
-  pi-env [--runtime host|nix|auto] [--flake REF] [pi args...]
-  pi-env [--runtime host|nix|auto] [--flake REF] --raw -- [pi args...]
-  pi-env-shell [--runtime host|nix|auto] [--flake REF] [shell args...]
+  pi-env [--runtime host|nix|auto] [--flake REF] [--devshell NAME] [pi args...]
+  pi-env [--runtime host|nix|auto] [--flake REF] [--devshell NAME] --raw -- [pi args...]
+  pi-env-shell [--runtime host|nix|auto] [--flake REF] [--devshell NAME] [shell args...]
   pi-env --help
   pi-env-shell --help
 
@@ -28,6 +28,12 @@ Runtime modes:
   auto  Use available pi-env commands first, then fall back to nix develop.
 
 Select a mode with --runtime or PI_ENV_RUNTIME; the CLI option wins.
+For Nix runtime, pi-env prefers devShells.<system>.agent when the selected
+flake exposes it. Use --devshell NAME or PI_ENV_NIX_DEVSHELL=NAME to force a
+shell; --devshell wins over the environment. NAME=default preserves the
+compatible nix develop <flake> startup even when .#agent exists. Explicit or
+auto-discovered non-default shells report Nix evaluation/build errors instead
+of silently falling back to default.
 USAGE
 }
 
@@ -49,6 +55,11 @@ runtime_cli_set=0
 if [ "${PI_ENV_RUNTIME+x}" = "x" ]; then
   runtime_mode="$PI_ENV_RUNTIME"
   runtime_selector_set=1
+fi
+devshell_name="${PI_ENV_NIX_DEVSHELL:-}"
+devshell_selector_set=0
+if [ "${PI_ENV_NIX_DEVSHELL+x}" = "x" ]; then
+  devshell_selector_set=1
 fi
 raw=0
 args=()
@@ -99,6 +110,21 @@ while [ "$#" -gt 0 ]; do
       runtime_cli_set=1
       shift
       ;;
+    --devshell)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "pi-env: --devshell requires an argument" >&2
+        exit 2
+      fi
+      devshell_name="$1"
+      devshell_selector_set=1
+      shift
+      ;;
+    --devshell=*)
+      devshell_name="${1#--devshell=}"
+      devshell_selector_set=1
+      shift
+      ;;
     --)
       shift
       break
@@ -133,6 +159,11 @@ case "$runtime_mode" in
     exit 2
     ;;
 esac
+
+if [ "$devshell_selector_set" = "1" ] && [ -z "$devshell_name" ]; then
+  echo "pi-env: --devshell / PI_ENV_NIX_DEVSHELL requires a non-empty shell name" >&2
+  exit 2
+fi
 
 default_startup_args() {
   local tools="${PI_ENV_BWRAP_COMPILED_DEFAULT_TOOLS:-read,bash,edit,write,grep,find,ls}"
@@ -292,6 +323,45 @@ is_ignored_nix_path_bwrap() {
   [ "$current_count" -le "$old_count" ]
 }
 
+nix_string_literal() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
+current_nix_system() {
+  nix eval --raw --impure --expr 'builtins.currentSystem'
+}
+
+flake_has_devshell() {
+  local name="$1"
+  local system
+  system="$(current_nix_system)" || return 1
+  local flake_literal
+  flake_literal="$(nix_string_literal "$flake_ref")"
+  local name_literal
+  name_literal="$(nix_string_literal "$name")"
+  nix eval --raw --impure --expr \
+    "let f = builtins.getFlake $flake_literal; system = builtins.currentSystem; shells = f.devShells.\${system} or {}; in if builtins.hasAttr $name_literal shells then \"1\" else \"0\"" 2>/dev/null | grep -qx 1
+}
+
+selected_nix_develop_ref() {
+  if [ "$devshell_selector_set" = "1" ]; then
+    if [ "$devshell_name" = "default" ]; then
+      printf '%s\n' "$flake_ref"
+    else
+      printf '%s#%s\n' "$flake_ref" "$devshell_name"
+    fi
+    return 0
+  fi
+  if flake_has_devshell agent; then
+    printf '%s#agent\n' "$flake_ref"
+    return 0
+  fi
+  printf '%s\n' "$flake_ref"
+}
+
 exec_nix_runtime() {
   if [ "${PI_ENV_NIX_RUNTIME_READY:-0}" = "1" ]; then
     local ready_pi_bwrap="${PI_ENV_PI_ENV_BWRAP:-}"
@@ -329,7 +399,9 @@ exec_nix_runtime() {
   if [ "$shell_mode" = "1" ]; then
     nix_command=pi-env-shell
   fi
-  local nix_args=(develop "$flake_ref" -c "$nix_command")
+  local develop_ref
+  develop_ref="$(selected_nix_develop_ref)"
+  local nix_args=(develop "$develop_ref" -c "$nix_command")
   if [ "$raw" = "1" ]; then
     nix_args+=(--raw --)
   fi
