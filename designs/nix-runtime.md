@@ -22,6 +22,7 @@ contract for packages, apps, shells, and reusable shell construction.
 | RUNTIME-001 | PIENV-FRQ-20260612-210000-030 |
 | RUNTIME-002 | PIENV-FRQ-20260612-210000-031 |
 | RUNTIME-003 | PIENV-FRQ-20260614-180306-001 |
+| RUNTIME-006 | PIENV-FRQ-20260720-094621-001 |
 | CMD-027 | PIENV-FRQ-20260720-091901-001 |
 | AGENT-018 | PIENV-FRQ-20260720-091904-001 |
 | DOC-005 | PIENV-QRQ-20260720-091907-001 |
@@ -104,6 +105,16 @@ instead of attempting broad AST edits across arbitrary flakes. A packaged skill
 should teach agents to consult that helper, to avoid inventing unrelated
 `agentProfile` shells, and to ask for clarification when a flake shape cannot
 be changed safely with a small textual patch.
+
+The `.#agent` selector should become the conventional target for pi-env-aware
+project shells. Projects that do not need a separate agent shell can keep
+backward-compatible human behavior by defining `agent` as an alias of the
+normal default shell. Launcher behavior should mirror that convention: Nix
+runtime startup may probe for the agent devshell and prefer it when present,
+fall back to the default shell when absent, and fail visibly when a present or
+explicitly selected agent shell is broken. An explicit selector override keeps
+advanced projects in control of non-default shell names and lets users force
+legacy default-shell behavior.
 
 ## 5. Compatibility
 

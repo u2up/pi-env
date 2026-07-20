@@ -536,6 +536,35 @@ Acceptance criteria:
 - Existing direct-checkout and Nix flake/devshell workflows remain
   compatible.
 
+#### RUNTIME-006 — Nix runtime agent devshell selection
+
+When `pienv --runtime nix`, `pi-env --runtime nix`, or `pi-env-shell
+--runtime nix` enters a target project flake, pi-env should prefer a
+pi-env-aware agent devshell when the project provides one.
+
+The preferred convention is `devShells.<system>.agent`, selected by the flake
+reference fragment `.#agent`. If that shell exists, Nix runtime startup should
+enter it instead of the default devshell so `pienv` uses the project-declared
+agent shell, runtime wiring, extra packages, and optional coordination
+helpers.
+
+For backward compatibility, projects may define `.#agent` as an alias of
+their normal default shell when no separate agent policy is needed. pi-env
+must not require the alias for older flakes: if no agent devshell exists, Nix
+runtime startup must continue to use the existing default `nix develop`
+behavior.
+
+pi-env must not silently fall back to the default devshell when an explicitly
+selected or discovered `.#agent` shell exists but fails to evaluate or build;
+that failure is actionable project configuration feedback and should be
+reported.
+
+The runtime should also provide an explicit selector override, such as a
+`--devshell NAME` command-line option and `PI_ENV_NIX_DEVSHELL=NAME`, so
+users can force `agent`, `default`, or another project shell without relying
+on automatic discovery. Command-line selection must take precedence over the
+environment variable.
+
 #### INSTALL-002 Remote-ref non-Nix installer bootstrap
 
 The non-Nix installer should be able to run as a small bootstrap script when
@@ -1150,6 +1179,11 @@ enough for humans and agents to copy into common existing-flake shapes. It
 must document when to choose `includeCoordinationHelpers = true` and where to
 declare project-specific sandbox tools with `extraPackages`.
 
+The recipe should recommend that pi-env-integrated projects provide the
+`.#agent` selector consistently. If the default shell is already pi-env-aware,
+the recipe may show `agent` as an alias of that normal `nix develop` shell;
+otherwise it should show a separate `pi-env.lib.mkPiShell` agent shell.
+
 ### 3.5 Project root and working directory requirements
 
 #### PATH-001 Project root detection
@@ -1428,6 +1462,11 @@ available, and must warn against satisfying the request by creating an
 unrelated `agentProfile` or `devShells.agent` that lacks `pienv` and the
 pi-env sandbox/runtime wiring.
 
+The skill must also teach `.#agent` as the preferred shell selector for
+pi-env-integrated projects, including the compatibility pattern where
+`agent` aliases the normal default shell when that shell is already
+pi-env-aware.
+
 ### 3.8 Git configuration requirements
 
 #### GIT-001 Git config import default
@@ -1610,6 +1649,11 @@ container, build, or test shell policy unless explicitly requested.
 Documentation for the helper and skill must include copyable prompts or
 commands for users who ask Pi to perform the flake integration from inside an
 external project.
+
+Documentation must also explain the runtime selector convention: Nix runtime
+startup should prefer `.#agent` when present, fall back to the default shell
+only when the selector is absent, and fail visibly rather than hiding an
+existing but broken `.#agent` shell.
 
 ### 4.1 Documentation requirements
 
