@@ -167,9 +167,14 @@ outputs = { self, nixpkgs, flake-utils, pi-env, ... }:
 ```nix
 let
   pkgs = import nixpkgs { inherit system; };
-  existingDevShells = self.devShells.${system} or { };
 in {
-  devShells.${system} = existingDevShells // {
+  # If this flake already has devShells.${system}, keep that expression on
+  # the left side of `//` instead of reading this output back through self.
+  # For example, move existing shells into this attrset or replace it with
+  # the flake's current devShells.${system} expression.
+  devShells.${system} = {
+    # default = pkgs.mkShell { ...existing project shell...; };
+  } // {
     agent = pi-env.lib.mkPiShell {
       inherit pkgs;
 

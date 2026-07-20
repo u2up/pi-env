@@ -25,8 +25,13 @@ test_grep 'does not read, edit, or write project files' "$tmpdir/recipe.out"
 test_grep 'pi-env.url = "git+file:///home/me/src/pi-env";' "$tmpdir/recipe.out"
 test_grep '# pi-env.url = "github:u2up/pi-env";' "$tmpdir/recipe.out"
 test_grep 'outputs = { self, nixpkgs, flake-utils, pi-env, ... }:' "$tmpdir/recipe.out"
-test_grep 'devShells.${system} = existingDevShells // {' "$tmpdir/recipe.out"
+test_grep 'keep that expression on' "$tmpdir/recipe.out"
+test_grep 'devShells.${system} = {' "$tmpdir/recipe.out"
+test_grep '} // {' "$tmpdir/recipe.out"
 test_grep 'agent = pi-env.lib.mkPiShell {' "$tmpdir/recipe.out"
+if grep -Fq 'self.devShells.${system}' "$tmpdir/recipe.out"; then
+  test_fail 'recipe must not read devShells through self and recurse'
+fi
 test_grep 'includeCoordinationHelpers = false;' "$tmpdir/recipe.out"
 test_grep 'extraPackages = with pkgs; \[' "$tmpdir/recipe.out"
 test_grep 'includeCoordinationHelpers = true;' "$tmpdir/recipe.out"

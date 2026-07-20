@@ -134,7 +134,9 @@ recipe_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" recipe flake
 for snippet in \
   'pi-env.url = "git+file:///home/me/src/pi-env";' \
   'outputs = { self, nixpkgs, flake-utils, pi-env, ... }:' \
-  'devShells.${system} = existingDevShells // {' \
+  'keep that expression on' \
+  'devShells.${system} = {' \
+  '} // {' \
   'agent = pi-env.lib.mkPiShell {' \
   'includeCoordinationHelpers = false;' \
   'extraPackages = with pkgs; [' \
@@ -144,6 +146,10 @@ for snippet in \
     exit 1
   fi
 done
+if grep -Fq 'self.devShells.${system}' <<< "$recipe_output"; then
+  echo "pienv recipe flake-agent-shell must not recurse through self.devShells" >&2
+  exit 1
+fi
 
 recipe_help_alias_output="$(PATH="$tmp_dir/bin:$PATH" "$tmp_dir/support/pienv" recipe flake-agent-shell --help)"
 case "$recipe_help_alias_output" in
