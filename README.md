@@ -638,14 +638,20 @@ This is different from creating a project-native shell that is merely named
 should use `pi-env.lib.mkPiShell` or include the appropriate pi-env package
 outputs explicitly.
 
-When asking Pi to make this edit from inside an external project, be explicit:
+When asking Pi to make this edit from inside an external project, be explicit
+or request the packaged skill:
 
 ```text
-Modify flake.nix to add devShells.${system}.agent using
-pi-env.lib.mkPiShell. Add pi-env as a flake input, add it to outputs,
-preserve existing devShells and package outputs, and do not create a
-project-native agentProfile unless I explicitly ask for one.
+Use the pi-env-flake-integration skill. Modify flake.nix to add
+devShells.${system}.agent using pi-env.lib.mkPiShell. Add pi-env as a
+flake input, add it to outputs, preserve existing devShells and package
+outputs, and do not create a project-native agentProfile unless I
+explicitly ask for one.
 ```
+
+The skill is shipped in `pi-skill-templates/pi-env-flake-integration/` so it is
+available from Nix-built support payloads and non-Nix installs that copy the
+pi-env support files.
 
 Then use:
 
